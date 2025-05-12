@@ -11,8 +11,11 @@
 #include "JaamAnimation.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
+#include "JaamUtils.h"
+#include "JaamSettings.h"
 
 char        chipID[13];
+char        currentFwVersion[25];
 int         currentIdx = 0;
 uint32_t    loopCount = 0;
 int         needRebootWithDelay = -1;
@@ -21,6 +24,9 @@ WiFiManager wm;
 WiFiClient  client;
 
 Async       asyncEngine = Async(20);
+
+JaamSettings settings;
+Firmware currentFirmware;
 
 
 // Глобальний менеджер анімацій
@@ -34,8 +40,8 @@ uint32_t testColor3 = 0;
 uint32_t lastWifiConnectTime = 0;  // Track when WiFi was last connected
 
 // Функція для створення стріпки з обробкою помилок
-ErrorCode createStrip(Adafruit_NeoPixel*& strip, uint8_t pin, uint8_t type) {
-    strip = new Adafruit_NeoPixel(NUM_LEDS_STRIP, pin, type);
+ErrorCode createStrip(Adafruit_NeoPixel*& strip, uint8_t pin, uint8_t count, uint8_t type) {
+    strip = new Adafruit_NeoPixel(count, pin, type);
     if (strip == nullptr) {
         LOG.println("ERROR: Не вдалося створити стріпку");
         return ErrorCode::STRIP_CREATION_FAILED;
@@ -47,15 +53,15 @@ ErrorCode createStrip(Adafruit_NeoPixel*& strip, uint8_t pin, uint8_t type) {
     
     // Встановлюємо дефолтний колір для всіх LED
     uint32_t defaultColor;
-    if (pin == PIN_STRIP1) {
+    if (pin == settings.getInt(MAIN_LED_PIN)) {
         defaultColor = DefaultColors::STRIP1;
-    } else if (pin == PIN_STRIP2) {
+    } else if (pin == settings.getInt(BG_LED_PIN)) {
         defaultColor = DefaultColors::STRIP2;
     } else {
         defaultColor = DefaultColors::STRIP3;
     }
     
-    for(int i = 0; i < NUM_LEDS_STRIP; i++) {
+    for(int i = 0; i < count; i++) {
         strip->setPixelColor(i, defaultColor);
     }
     strip->show();
@@ -136,7 +142,7 @@ void animations() {
     }
 
     currentIdx++;
-    if (currentIdx >= NUM_LEDS_STRIP) {
+    if (currentIdx >= 26) {
         currentIdx = 0;
     }
 }
@@ -163,6 +169,14 @@ void memory() {
     wifiStatus.c_str(),
     wifiUptime
   );
+}
+
+void initSettings() {
+  LOG.println("Init settings");
+  settings.init();
+  currentFirmware = parseFirmwareVersion(VERSION);
+  fillFwVersion(currentFwVersion, currentFirmware);
+  LOG.printf("Current firmware version: %s\n", currentFwVersion);
 }
 
 
@@ -265,6 +279,7 @@ void setup() {
     LOG.begin(115200);
 
     initChipID();
+    initSettings();
     initWifi();
     
     // Створюємо м'ютекс для захисту доступу до стріпів
@@ -277,19 +292,19 @@ void setup() {
     // Ініціалізуємо стріпки з бажаними пінами
     ErrorCode error;
     
-    error = createStrip(strip1, PIN_STRIP1, NEO_GRB + NEO_KHZ800);
+    error = createStrip(strip1, settings.getInt(MAIN_LED_PIN), 26, NEO_GRB + NEO_KHZ800);
     if (error != ErrorCode::SUCCESS) {
         LOG.println("ERROR: Не вдалося створити strip1");
         return;
     }
     
-    error = createStrip(strip2, PIN_STRIP2, NEO_GRB + NEO_KHZ800);
+    error = createStrip(strip2, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), NEO_GRB + NEO_KHZ800);
     if (error != ErrorCode::SUCCESS) {
         LOG.println("ERROR: Не вдалося створити strip2");
         return;
     }
     
-    error = createStrip(strip3, PIN_STRIP3, NEO_GRB + NEO_KHZ800);
+    error = createStrip(strip3, settings.getInt(SERVICE_LED_PIN), 5, NEO_GRB + NEO_KHZ800);
     if (error != ErrorCode::SUCCESS) {
         LOG.println("ERROR: Не вдалося створити strip3");
         return;
@@ -302,7 +317,7 @@ void setup() {
         testColor2 = strip2->Color(255, 0, 0);    // Червоний
         testColor3 = strip3->Color(0, 0, 255);    // Синій
 
-        for(int i = 0; i < NUM_LEDS_STRIP; i++) {
+        for(int i = 0; i < 26; i++) {
             strip1->setPixelColor(i, testColor1);
             strip2->setPixelColor(i, testColor2);
             strip3->setPixelColor(i, testColor3);
@@ -333,7 +348,7 @@ void cleanup() {
     if (strip1 != nullptr) {
         strip1->clear();
         // Встановлюємо дефолтний колір
-        for(int i = 0; i < NUM_LEDS_STRIP; i++) {
+        for(int i = 0; i < 26; i++) {
             strip1->setPixelColor(i, DefaultColors::STRIP1);
         }
         strip1->show();
@@ -343,7 +358,7 @@ void cleanup() {
     if (strip2 != nullptr) {
         strip2->clear();
         // Встановлюємо дефолтний колір
-        for(int i = 0; i < NUM_LEDS_STRIP; i++) {
+        for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
             strip2->setPixelColor(i, DefaultColors::STRIP2);
         }
         strip2->show();
@@ -353,7 +368,7 @@ void cleanup() {
     if (strip3 != nullptr) {
         strip3->clear();
         // Встановлюємо дефолтний колір
-        for(int i = 0; i < NUM_LEDS_STRIP; i++) {
+        for(int i = 0; i < 5; i++) {
             strip3->setPixelColor(i, DefaultColors::STRIP3);
         }
         strip3->show();
