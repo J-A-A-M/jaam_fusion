@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #if TELNET_ENABLED
 #include <TelnetSpy.h>
 

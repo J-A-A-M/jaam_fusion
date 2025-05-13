@@ -7,7 +7,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-
 #include "JaamAnimation.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
@@ -15,12 +14,14 @@
 #include "JaamSettings.h"
 #include "JaamWeb.h"
 #include "JaamLed.h"
+#include "JaamGlobals.h"
 
 char        chipID[13];
 char        currentFwVersion[25];
 int         currentIdx = 0;
 uint32_t    loopCount = 0;
 int         needRebootWithDelay = -1;
+uint8_t     homeDistrict = 18;
 
 WiFiManager wm;
 WiFiClient  client;
@@ -133,12 +134,13 @@ void animations() {
         default:
             animType = AnimationParams::Type::FADE;
     }
+    animType = AnimationParams::Type::PULSE;
 
     // Випадкові параметри для анімації з використанням конфігурації
-    uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
-    uint8_t cycles = random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
-    uint8_t startBrightness = random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
-    uint8_t endBrightness = random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
+    uint32_t period = 1000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
+    uint8_t cycles = 3; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
+    uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
+    uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
     
     // Створення анімації з обробкою помилок
     if (!animManager.createAnimation(
@@ -283,20 +285,7 @@ void initWifi() {
     delay(5000);
 }
 
-void wifiReconnect() {
-  if (WiFi.status() != WL_CONNECTED) {
-    LOG.println("WiFI Reconnect");
-    initWifi();
-  }
-}
-
-void setup() {
-    LOG.begin(115200);
-
-    initChipID();
-    initSettings();
-    initWifi();
-    
+void initStrip() {
     // Створюємо м'ютекс для захисту доступу до стріпів
     stripMutex = xSemaphoreCreateMutex();
     if (stripMutex == NULL) {
@@ -336,7 +325,18 @@ void setup() {
         safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             testColor1 = strip->Color(0, 255, 0);    // Зелений
             for(int i = 0; i < 26; i++) {
-                strip->setPixelColor(i, testColor1);
+                if (i == homeDistrict) {
+                    // Встановлюємо спеціальну яскравість для домашнього району
+                    uint8_t homeBrightness = brightnessVal(settings.getInt(BRIGHTNESS_HOME_DISTRICT));
+                    uint8_t r = ((testColor1 >> 16) & 0xFF) * homeBrightness / 255;
+                    uint8_t g = ((testColor1 >> 8) & 0xFF) * homeBrightness / 255;
+                    uint8_t b = (testColor1 & 0xFF) * homeBrightness / 255;
+                    LOG.printf("Setting home district brightness at init: raw=%d, converted=%d, color=0x%02X%02X%02X\n", 
+                             settings.getInt(BRIGHTNESS_HOME_DISTRICT), homeBrightness, r, g, b);
+                    strip->setPixelColor(i, r, g, b);
+                } else {
+                    strip->setPixelColor(i, testColor1);
+                }
             }
             strip->show();
         });
@@ -361,12 +361,48 @@ void setup() {
             strip->show();
         });
     }
+}
 
+void wifiReconnect() {
+  if (WiFi.status() != WL_CONNECTED) {
+    LOG.println("WiFI Reconnect");
+    initWifi();
+  }
+}
+
+void get_pixel_color() {
+  if (strip_main_initialized) {
+    safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+      uint32_t color = strip->getPixelColor(currentIdx);
+      uint8_t r = (color >> 16) & 0xFF;
+      uint8_t g = (color >> 8) & 0xFF;
+      uint8_t b = color & 0xFF;
+      LOG.printf("Pixel %d color: R=%d, G=%d, B=%d (0x%06X)\n", 
+                currentIdx, r, g, b, color);
+    });
+  }
+
+  // Виводимо інформацію про активні анімації
+  animManager.logActiveAnimations();
+}
+
+void setup() {
+    LOG.begin(115200);
+
+    initChipID();
+    initSettings();
+    initStrip();
+    initWifi();
+    
+    // Передаємо settings в AnimationManager
+    animManager.setSettings(&settings);
+    
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
 
     // Налаштовуємо асинхронні задачі
     asyncEngine.setInterval(animations, ANIMATION_INTERVAL);
+    //asyncEngine.setInterval(get_pixel_color, ANIMATION_INTERVAL);
     asyncEngine.setInterval(memory, MEMORY_CHECK_INTERVAL);
     asyncEngine.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
 

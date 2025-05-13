@@ -1,18 +1,24 @@
 #pragma once
 #include "JaamLed.h" 
 #include "JaamConfig.h"
+#include "JaamLogs.h"
+#include "JaamGlobals.h"
 
 // Зовнішні змінні для стріпок
 extern Adafruit_NeoPixel* strip_main;
 extern Adafruit_NeoPixel* strip_bg;
 extern Adafruit_NeoPixel* strip_service;
 
+// Зовнішня змінна для індексу домашнього району
+extern uint8_t homeDistrict;
+
 // Структура для параметрів анімації
 struct AnimationParams {
     enum class Type {
         FADE,
         BLINK,
-        BLEND_BLINK
+        BLEND_BLINK,
+        PULSE  // Новий тип анімації
     };
 
     Adafruit_NeoPixel* strip;
@@ -52,6 +58,7 @@ class AnimationManager {
         AnimationParams* animations[MAX_ANIMATIONS];
         SemaphoreHandle_t animMutex;
         int activeCount;
+        JaamSettings* settings;  // Додаємо посилання на налаштування
 
         // Структура для відстеження активних анімацій
         struct ActiveAnimation {
@@ -63,7 +70,7 @@ class AnimationManager {
         int activeAnimationsCount;
 
     public:
-        AnimationManager() : activeCount(0), activeAnimationsCount(0) {
+        AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr) {
             animMutex = xSemaphoreCreateMutex();
             for (int i = 0; i < MAX_ANIMATIONS; i++) {
                 animations[i] = nullptr;
@@ -71,6 +78,10 @@ class AnimationManager {
                 activeAnimations[i].ledIndex = -1;
                 activeAnimations[i].animationIndex = -1;
             }
+        }
+
+        void setSettings(JaamSettings* settings) {
+            this->settings = settings;
         }
 
         bool createAnimation(AnimationParams::Type type, 
@@ -168,6 +179,45 @@ class AnimationManager {
             }
         }
 
+        void logActiveAnimations() {
+            if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+                LOG.printf("Active animations count: %d\n", activeCount);
+                for (int i = 0; i < MAX_ANIMATIONS; i++) {
+                    if (animations[i] != nullptr && animations[i]->isActive) {
+                        AnimationParams* anim = animations[i];
+                        const char* stripName = "unknown";
+                        if (anim->strip == strip_main) {
+                            stripName = "main";
+                        } else if (anim->strip == strip_bg) {
+                            stripName = "bg";
+                        } else if (anim->strip == strip_service) {
+                            stripName = "service";
+                        }
+
+                        const char* typeName = "unknown";
+                        switch (anim->type) {
+                            case AnimationParams::Type::FADE:
+                                typeName = "FADE";
+                                break;
+                            case AnimationParams::Type::BLINK:
+                                typeName = "BLINK";
+                                break;
+                            case AnimationParams::Type::BLEND_BLINK:
+                                typeName = "BLEND_BLINK";
+                                break;
+                            case AnimationParams::Type::PULSE:
+                                typeName = "PULSE";
+                                break;
+                        }
+
+                        LOG.printf("Animation %d: strip=%s, LED=%d, type=%s, color=0x%06X, period=%u, cycles=%u\n",
+                                 i, stripName, anim->positions[0], typeName, anim->color, anim->period, anim->cycles);
+                    }
+                }
+                xSemaphoreGive(animMutex);
+            }
+        }
+
     private:
         void updateAnimation(AnimationParams* anim, int index) {
             uint32_t currentTime = millis();
@@ -188,6 +238,9 @@ class AnimationManager {
                     break;
                 case AnimationParams::Type::BLEND_BLINK:
                     updateBlendBlinkAnimation(anim, elapsed);
+                    break;
+                case AnimationParams::Type::PULSE:
+                    updatePulseAnimation(anim, elapsed);
                     break;
             }
         }
@@ -248,10 +301,49 @@ class AnimationManager {
             }
         }
 
+        void updatePulseAnimation(AnimationParams* anim, float elapsed) {
+            float phase = elapsed - floor(elapsed);
+            float factor;
+            
+            // Розділяємо цикл на 4 фази:
+            // 0.0-0.2: підйом до максимуму
+            // 0.2-0.3: спуск до середини
+            // 0.3-0.4: підйом до максимуму
+            // 0.4-1.0: спуск до мінімуму
+            if (phase < 0.2) {
+                // Підйом до максимуму (0.0 -> 1.0)
+                factor = sin(phase * 5 * PI);
+            } else if (phase < 0.3) {
+                // Спуск до середини (1.0 -> 0.5)
+                factor = 1.0 - (phase - 0.2) * 5;
+            } else if (phase < 0.4) {
+                // Підйом до максимуму (0.5 -> 1.0)
+                factor = 0.5 + sin((phase - 0.3) * 5 * PI) * 0.5;
+            } else {
+                // Спуск до мінімуму (1.0 -> 0.0)
+                factor = 1.0 - (phase - 0.4) * 1.67;
+            }
+            
+            uint8_t scale = anim->startBrightness + 
+                        (anim->endBrightness - anim->startBrightness) * factor;
+
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                for (int i = 0; i < anim->posCount; ++i) {
+                    int idx = anim->positions[i];
+                    uint32_t c = anim->color;
+                    uint8_t r = ((c >> 16) & 0xFF) * scale / 255;
+                    uint8_t g = ((c >>  8) & 0xFF) * scale / 255;
+                    uint8_t b = ( c        & 0xFF) * scale / 255;
+                    anim->strip->setPixelColor(idx, r, g, b);
+                }
+                anim->strip->show();
+                xSemaphoreGive(stripMutex);
+            }
+        }
+
         void updateRainbowAnimation(AnimationParams* anim, float elapsed) {
             // TODO: Реалізувати радужну анімацію
         }
-
 
         void cleanupAnimation(AnimationParams* anim, int index) {
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
@@ -260,6 +352,18 @@ class AnimationManager {
                     uint32_t defaultColor;
                     if (anim->strip == strip_main) {
                         defaultColor = DefaultColors::MAIN_STRIP;
+                        // Перевіряємо чи це LED домашнього району
+                        if (anim->positions[i] == homeDistrict) {
+                            // Встановлюємо спеціальну яскравість для домашнього району
+                            uint8_t homeBrightness = brightnessVal(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+                            uint8_t r = ((defaultColor >> 16) & 0xFF) * homeBrightness / 255;
+                            uint8_t g = ((defaultColor >> 8) & 0xFF) * homeBrightness / 255;
+                            uint8_t b = (defaultColor & 0xFF) * homeBrightness / 255;
+                            LOG.printf("Setting home district brightness after animation: raw=%d, converted=%d, color=0x%02X%02X%02X\n", 
+                                     settings->getInt(BRIGHTNESS_HOME_DISTRICT), homeBrightness, r, g, b);
+                            anim->strip->setPixelColor(anim->positions[i], r, g, b);
+                            continue;
+                        }
                     } else if (anim->strip == strip_bg) {
                         defaultColor = DefaultColors::BG_STRIP;
                     } else {

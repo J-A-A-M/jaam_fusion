@@ -21,4 +21,5 @@ private:
     void handleRoot();
     void handleParameter();
     String getParameterHtml(const char* name, int min, int max, int value, const char* label);
+    void setStripBrightness(Adafruit_NeoPixel* strip, int value);
 }; 
