@@ -1,5 +1,8 @@
+#pragma once
 #include <Print.h>
 #include <JaamConfig.h>
+#include <Preferences.h>
+
 
 class JaamSettings {
 
@@ -17,4 +20,7 @@ public:
     void saveBool(Type type, bool value, bool saveToPrefs = true);
     void getSettingsBackup(Print* stream, const char* fwVersion, const char* chipID, const char* time);
     bool restoreSettingsBackup(const char* settings);
+
+private:
+    Preferences preferences;
 };

@@ -2,14 +2,17 @@
 #include "JaamLed.h" 
 #include "JaamConfig.h"
 
+// Зовнішні змінні для стріпок
+extern Adafruit_NeoPixel* strip_main;
+extern Adafruit_NeoPixel* strip_bg;
+extern Adafruit_NeoPixel* strip_service;
+
 // Структура для параметрів анімації
 struct AnimationParams {
     enum class Type {
         FADE,
         BLINK,
-        BLEND_BLINK,  // Новий тип анімації
-        RAINBOW,
-        WAVE
+        BLEND_BLINK
     };
 
     Adafruit_NeoPixel* strip;
@@ -45,7 +48,7 @@ uint32_t blendColors(uint32_t color1, uint32_t color2, float factor) {
 
 class AnimationManager {
     private:
-        static const int MAX_ANIMATIONS = 26;
+        static const int MAX_ANIMATIONS = 50;
         AnimationParams* animations[MAX_ANIMATIONS];
         SemaphoreHandle_t animMutex;
         int activeCount;
@@ -186,12 +189,6 @@ class AnimationManager {
                 case AnimationParams::Type::BLEND_BLINK:
                     updateBlendBlinkAnimation(anim, elapsed);
                     break;
-                case AnimationParams::Type::RAINBOW:
-                    updateRainbowAnimation(anim, elapsed);
-                    break;
-                case AnimationParams::Type::WAVE:
-                    updateWaveAnimation(anim, elapsed);
-                    break;
             }
         }
 
@@ -255,46 +252,18 @@ class AnimationManager {
             // TODO: Реалізувати радужну анімацію
         }
 
-        void updateWaveAnimation(AnimationParams* anim, float elapsed) {
-            float phase = elapsed - floor(elapsed);
-            
-            // Створюємо хвилю, яка рухається по стрічці
-            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-                for (int i = 0; i < anim->posCount; ++i) {
-                    int idx = anim->positions[i];
-                    
-                    // Створюємо хвилю з використанням синусоїди
-                    float wavePhase = phase + (float)idx / NUM_LEDS_STRIP;
-                    float waveFactor = 0.5 * (1 + sin(2 * PI * wavePhase));
-                    
-                    // Застосовуємо хвилю до яскравості
-                    uint8_t brightness = anim->startBrightness + 
-                                    (anim->endBrightness - anim->startBrightness) * waveFactor;
-                    
-                    // Застосовуємо кольор
-                    uint32_t c = anim->color;
-                    uint8_t r = ((c >> 16) & 0xFF) * brightness / 255;
-                    uint8_t g = ((c >>  8) & 0xFF) * brightness / 255;
-                    uint8_t b = ( c        & 0xFF) * brightness / 255;
-                    
-                    anim->strip->setPixelColor(idx, r, g, b);
-                }
-                anim->strip->show();
-                xSemaphoreGive(stripMutex);
-            }
-        }
 
         void cleanupAnimation(AnimationParams* anim, int index) {
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 for (int i = 0; i < anim->posCount; ++i) {
                     // Визначаємо дефолтний колір для стріпки
                     uint32_t defaultColor;
-                    if (anim->strip == strip1) {
-                        defaultColor = DefaultColors::STRIP1;
-                    } else if (anim->strip == strip2) {
-                        defaultColor = DefaultColors::STRIP2;
+                    if (anim->strip == strip_main) {
+                        defaultColor = DefaultColors::MAIN_STRIP;
+                    } else if (anim->strip == strip_bg) {
+                        defaultColor = DefaultColors::BG_STRIP;
                     } else {
-                        defaultColor = DefaultColors::STRIP3;
+                        defaultColor = DefaultColors::SERVICE_STRIP;
                     }
                     // Встановлюємо дефолтний колір
                     anim->strip->setPixelColor(anim->positions[i], defaultColor);
