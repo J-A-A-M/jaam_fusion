@@ -233,7 +233,9 @@ void AnimationManager::updateBlinkAnimation(AnimationParams* anim, float elapsed
 void AnimationManager::updateBlendBlinkAnimation(AnimationParams* anim, float elapsed) {
     float phase = elapsed - floor(elapsed);
     // Використовуємо синусоїду для плавного переходу
-    float factor = 0.5 * (1 + sin(2 * PI * phase));
+    //float factor = 0.5 * (1 + sin(2 * PI * phase));
+    float factor = 0.5 * (1 - cos(2 * PI * phase));
+    
     
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < anim->posCount; ++i) {
