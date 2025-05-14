@@ -1,11 +1,6 @@
 #pragma once
 
 
-// --- LED Configuration ---
-#define NUM_LEDS_MAIN 26
-#define NUM_LEDS_BG 26
-#define NUM_LEDS_SERVICE 5
-
 // --- Default Colors ---
 namespace DefaultColors {
     static const uint32_t MAIN_STRIP = 0x00FF00;  // Green

@@ -16,42 +16,41 @@
 #include "JaamLed.h"
 #include "JaamGlobals.h"
 
-char        chipID[13];
-char        currentFwVersion[25];
-int         currentIdx = 0;
-uint32_t    loopCount = 0;
-int         needRebootWithDelay = -1;
-uint8_t     homeDistrict = 18;
+char            chipID[13];
+char            currentFwVersion[25];
+int             currentIdx = 0;
+uint32_t        loopCount = 0;
+int             needRebootWithDelay = -1;
 
+Async           asyncEngine = Async(20);
+
+JaamSettings    settings;
+Firmware        currentFirmware;
+JaamWeb         webInterface;
+
+// --- LED Configuration ---
+Adafruit_NeoPixel*  strip_main = nullptr;
+Adafruit_NeoPixel*  strip_bg = nullptr;
+Adafruit_NeoPixel*  strip_service = nullptr;
+SemaphoreHandle_t   stripMutex = nullptr;
+uint16_t            num_leds_main = 26;
+uint16_t            num_leds_service = 5;
+uint8_t             homeDistrict = 18;
+
+bool                strip_main_initialized = false;
+bool                strip_bg_initialized = false;
+bool                strip_service_initialized = false;
+
+AnimationManager    animManager;
+
+uint32_t            testColor1 = 0;
+uint32_t            testColor2 = 0;
+uint32_t            testColor3 = 0;
+
+// --- WIFI Configuration ---
 WiFiManager wm;
 WiFiClient  client;
-
-Async       asyncEngine = Async(20);
-
-JaamSettings settings;
-Firmware currentFirmware;
-JaamWeb webInterface;
-
-// Глобальні змінні для стріпок
-Adafruit_NeoPixel* strip_main = nullptr;
-Adafruit_NeoPixel* strip_bg = nullptr;
-Adafruit_NeoPixel* strip_service = nullptr;
-SemaphoreHandle_t stripMutex = nullptr;
-
-// Глобальні змінні для стану стріпок
-bool strip_main_initialized = false;
-bool strip_bg_initialized = false;
-bool strip_service_initialized = false;
-
-// Глобальний менеджер анімацій
-AnimationManager animManager;
-
-// Зберігаємо тестові кольори
-uint32_t testColor1 = 0;
-uint32_t testColor2 = 0;
-uint32_t testColor3 = 0;
-
-uint32_t lastWifiConnectTime = 0;  // Track when WiFi was last connected
+uint32_t    lastWifiConnectTime = 0;  // Track when WiFi was last connected
 
 // Функція для створення стріпки з обробкою помилок
 ErrorCode createStrip(Adafruit_NeoPixel*& strip, int pin, uint8_t count, uint8_t brightness, uint8_t type) {
@@ -425,7 +424,7 @@ void cleanup() {
         safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
-            for(int i = 0; i < NUM_LEDS_MAIN; i++) {
+            for(int i = 0; i < num_leds_main; i++) {
                 strip->setPixelColor(i, DefaultColors::MAIN_STRIP);
             }
             strip->show();
@@ -439,7 +438,7 @@ void cleanup() {
         safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
-            for(int i = 0; i < NUM_LEDS_BG; i++) {
+            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
                 strip->setPixelColor(i, DefaultColors::BG_STRIP);
             }
             strip->show();
@@ -453,7 +452,7 @@ void cleanup() {
         safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
-            for(int i = 0; i < NUM_LEDS_SERVICE; i++) {
+            for(int i = 0; i < num_leds_service; i++) {
                 strip->setPixelColor(i, DefaultColors::SERVICE_STRIP);
             }
             strip->show();
