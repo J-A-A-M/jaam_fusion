@@ -269,7 +269,7 @@ void initStrip() {
         strip_main_initialized = true;
     }
     
-    status = createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), settings.getInt(BRIGHTNESS), DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
+    status = createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), settings.getInt(BRIGHTNESS_BG), DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
         LOG.printf("ERROR: Не вдалося створити strip_bg: %d\n", status);
     } else {
@@ -277,7 +277,7 @@ void initStrip() {
         strip_bg_initialized = true;
     }
 
-    status = createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, settings.getInt(BRIGHTNESS), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
+    status = createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, settings.getInt(BRIGHTNESS_SERVICE), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
         LOG.printf("ERROR: Не вдалося створити strip_service: %d\n", status);
     } else {

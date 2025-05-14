@@ -41,7 +41,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness_alert_over", 0, 255, settings->getInt(BRIGHTNESS_ALERT_OVER), "Яскравість завершення тривоги");
     html += getParameterHtml("brightness_explosion", 0, 255, settings->getInt(BRIGHTNESS_EXPLOSION), "Яскравість вибуху");
     html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Яскравість домашнього району");
-    html += getParameterHtml("brightness_bg", 0, 255, settings->getInt(BRIGHTNESS_BG), "Яскравість фону");
+    html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Яскравість фону");
     html += getParameterHtml("brightness_service", 0, 255, settings->getInt(BRIGHTNESS_SERVICE), "Яскравість сервісу");
     
     html += "</div>";
@@ -67,21 +67,15 @@ void JaamWeb::handleParameter() {
         // Знаходимо відповідний тип параметра за ім'ям
         if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, value);
-            // Оновлюємо яскравість всіх стрічок
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness: raw=%d, converted=%d\n", value, brightnessMapped(value));
+                LOG.printf("Setting brightness main: raw=%d, converted=%d\n", value, brightnessMapped(value));
                 uint8_t homeBrightness = brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
-                safeStripOperation(strip_main, [value, homeBrightness](Adafruit_NeoPixel* strip) {
-                    uint32_t defaultColor = DefaultColors::MAIN_STRIP;
+                safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     strip->setBrightness(brightnessMapped(value));
-                    // Відновлюємо дефолтний колір для всіх LED
                     for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t defaultColor = animManager.ledActualColor(strip, i);
                         strip->setPixelColor(i, defaultColor);
                     }
-                    uint8_t r = ((defaultColor >> 16) & 0xFF) * homeBrightness / 255;
-                    uint8_t g = ((defaultColor >> 8) & 0xFF) * homeBrightness / 255;
-                    uint8_t b = (defaultColor & 0xFF) * homeBrightness / 255;
-                    strip->setPixelColor(homeDistrict, r, g, b);
                     strip->show();
                 });
             }
@@ -104,19 +98,26 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting home district brightness: raw=%d, converted=%d\n", value, brightnessAbsolute(value));
+                LOG.printf("Setting brightness home district: raw=%d, converted=%d\n", value, brightnessAbsolute(value));
                 safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    uint32_t defaultColor = DefaultColors::MAIN_STRIP;
-                    uint8_t homeBrightness = brightnessAbsolute(value);
-                    uint8_t r = ((defaultColor >> 16) & 0xFF) * homeBrightness / 255;
-                    uint8_t g = ((defaultColor >> 8) & 0xFF) * homeBrightness / 255;
-                    uint8_t b = (defaultColor & 0xFF) * homeBrightness / 255;
-                    strip->setPixelColor(homeDistrict, r, g, b);
+                    uint32_t color = animManager.ledActualColor(strip, homeDistrict);
+                    strip->setPixelColor(homeDistrict, color);
                     strip->show();
                 });
             }
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, value);
+            if (strip_bg_initialized) {
+                LOG.printf("Setting home brightness bg: raw=%d, converted=%d\n", value, brightnessMapped(value));
+                safeStripOperation(strip_bg, [this, value](Adafruit_NeoPixel* strip) {
+                    strip->setBrightness(brightnessMapped(value));
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animManager.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, value);
         }
@@ -135,6 +136,8 @@ void JaamWeb::begin(JaamSettings* settings, Adafruit_NeoPixel* strip_main, Adafr
 
     // Налаштування WiFi через WiFiManager
     WiFiManager wifiManager;
+
+    animManager.setSettings(settings); 
     wifiManager.autoConnect("JAAM_LED_Setup");
 
     // Налаштування веб-сервера
