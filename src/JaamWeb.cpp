@@ -69,11 +69,11 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS, value);
             // Оновлюємо яскравість всіх стріпок
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness: raw=%d, converted=%d\n", value, brightnessVal(value));
-                uint8_t homeBrightness = brightnessVal(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+                LOG.printf("Setting brightness: raw=%d, converted=%d\n", value, brightnessMapped(value));
+                uint8_t homeBrightness = brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                 safeStripOperation(strip_main, [value, homeBrightness](Adafruit_NeoPixel* strip) {
                     uint32_t defaultColor = DefaultColors::MAIN_STRIP;
-                    strip->setBrightness(brightnessVal(value));
+                    strip->setBrightness(brightnessMapped(value));
                     // Відновлюємо дефолтний колір для всіх LED
                     for (int i = 0; i < strip->numPixels(); i++) {
                         strip->setPixelColor(i, defaultColor);
@@ -104,10 +104,10 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting home district brightness: raw=%d, converted=%d\n", value, brightnessVal(value));
+                LOG.printf("Setting home district brightness: raw=%d, converted=%d\n", value, brightnessAbsolute(value));
                 safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     uint32_t defaultColor = DefaultColors::MAIN_STRIP;
-                    uint8_t homeBrightness = brightnessVal(value);
+                    uint8_t homeBrightness = brightnessAbsolute(value);
                     uint8_t r = ((defaultColor >> 16) & 0xFF) * homeBrightness / 255;
                     uint8_t g = ((defaultColor >> 8) & 0xFF) * homeBrightness / 255;
                     uint8_t b = (defaultColor & 0xFF) * homeBrightness / 255;

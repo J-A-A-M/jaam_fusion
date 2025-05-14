@@ -15,8 +15,12 @@ extern bool strip_bg_initialized;
 extern bool strip_service_initialized;
 
 // Convert percentage to 0-255 scale
-inline uint8_t brightnessVal(uint8_t percent) {
+inline uint8_t brightnessAbsolute(uint8_t percent) {
   return map(percent, 0, 100, 0, 255);
+}
+
+inline uint8_t brightnessMapped(uint8_t percent) {
+  return map(percent, 0, 100, 0, 100);
 }
 
 // Перевірка ініціалізації стріпки

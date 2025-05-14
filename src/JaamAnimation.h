@@ -355,7 +355,7 @@ class AnimationManager {
                         // Перевіряємо чи це LED домашнього району
                         if (anim->positions[i] == homeDistrict) {
                             // Встановлюємо спеціальну яскравість для домашнього району
-                            uint8_t homeBrightness = brightnessVal(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+                            uint8_t homeBrightness = brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                             uint8_t r = ((defaultColor >> 16) & 0xFF) * homeBrightness / 255;
                             uint8_t g = ((defaultColor >> 8) & 0xFF) * homeBrightness / 255;
                             uint8_t b = (defaultColor & 0xFF) * homeBrightness / 255;

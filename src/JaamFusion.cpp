@@ -67,7 +67,7 @@ ErrorCode createStrip(Adafruit_NeoPixel*& strip, int pin, uint8_t count, uint8_t
     }
     
     strip->begin();
-    strip->setBrightness(brightnessVal(brightness));
+    strip->setBrightness(brightnessMapped(brightness));
     strip->clear();
     
     // Встановлюємо дефолтний колір для всіх LED
@@ -327,7 +327,7 @@ void initStrip() {
             for(int i = 0; i < 26; i++) {
                 if (i == homeDistrict) {
                     // Встановлюємо спеціальну яскравість для домашнього району
-                    uint8_t homeBrightness = brightnessVal(settings.getInt(BRIGHTNESS_HOME_DISTRICT));
+                    uint8_t homeBrightness = brightnessAbsolute(settings.getInt(BRIGHTNESS_HOME_DISTRICT));
                     uint8_t r = ((testColor1 >> 16) & 0xFF) * homeBrightness / 255;
                     uint8_t g = ((testColor1 >> 8) & 0xFF) * homeBrightness / 255;
                     uint8_t b = (testColor1 & 0xFF) * homeBrightness / 255;
