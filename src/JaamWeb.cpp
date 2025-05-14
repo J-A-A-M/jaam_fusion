@@ -3,6 +3,10 @@
 #include "JaamLogs.h"
 #include "JaamGlobals.h"
 
+void JaamWeb::setSettings(JaamSettings* settings) {
+    this->settings = settings;
+}
+
 
 String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, const char* label) {
     String html = "<div class='slider-container'>";
@@ -138,8 +142,7 @@ void JaamWeb::handleParameter() {
     }
 }
 
-void JaamWeb::begin(JaamSettings* settings, Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
-    this->settings = settings;
+void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
     this->strip_main = strip_main;
     this->strip_bg = strip_bg;
     this->strip_service = strip_service;

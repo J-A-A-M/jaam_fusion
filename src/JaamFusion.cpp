@@ -364,7 +364,8 @@ void setup() {
     asyncEngine.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
 
     // Ініціалізація веб-інтерфейсу
-    web.begin(&settings, strip_main, strip_bg, strip_service);
+    web.begin(strip_main, strip_bg, strip_service);
+    web.setSettings(&settings);
 }
 
 void loop() {
