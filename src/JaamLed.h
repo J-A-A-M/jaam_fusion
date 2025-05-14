@@ -26,58 +26,27 @@ enum class StripStatus {
     MUTEX_CREATION_FAILED
 };
 
-// Convert percentage to 0-255 scale
-static inline uint8_t brightnessAbsolute(uint8_t percent) {
-  return map(percent, 0, 100, 0, 255);
-}
+class JaamLed {
+private:
+    JaamSettings* settings;
 
-static inline uint8_t brightnessMapped(uint8_t percent) {
-  return map(percent, 0, 100, 0, 100);
-}
-
-// Перевірка ініціалізації стрічки
-static inline bool isStripInitialized(Adafruit_NeoPixel* strip) {
-    return strip != nullptr;
-}
-
-// Безпечний доступ до стрічки
-static inline bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation) {
-    if (!isStripInitialized(strip)) {
-        return false;
-    }
+public:
+    JaamLed();
+    void setSettings(JaamSettings* settings);
     
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        operation(strip);
-        xSemaphoreGive(stripMutex);
-        return true;
-    }
-    return false;
-}
+    // Convert percentage to 0-255 scale
+    static uint8_t brightnessAbsolute(uint8_t percent);
+    static uint8_t brightnessMapped(uint8_t percent);
 
-// Функція для створення стрічки з обробкою помилок
-static inline StripStatus createStrip(Adafruit_NeoPixel*& strip, 
+    // Перевірка ініціалізації стрічки
+    static bool isStripInitialized(Adafruit_NeoPixel* strip);
+
+    // Функція для створення стрічки з обробкою помилок
+    static StripStatus createStrip(Adafruit_NeoPixel*& strip, 
                         int pin, 
                         uint8_t count, 
                         uint8_t brightness,
                         uint32_t defaultColor, 
-                        uint8_t type) {
-    if (pin <= 0) {
-        return StripStatus::STRIP_PIN_NOT_SET;
-    }
-    
-    strip = new Adafruit_NeoPixel(count, pin, type);
-    if (strip == nullptr) {
-        return StripStatus::STRIP_CREATION_FAILED;
-    }
-    
-    strip->begin();
-    strip->setBrightness(brightnessMapped(brightness));
-    strip->clear();
-    
-    for(int i = 0; i < count; i++) {
-        strip->setPixelColor(i, defaultColor);
-    }
-    strip->show();
-    return StripStatus::SUCCESS;
-}
+                        uint8_t type);
+};
 

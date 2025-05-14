@@ -35,8 +35,6 @@ struct AnimationParams {
     uint32_t startTime;
 };
 
-// Функція для змішування кольорів
-uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
 
 class AnimationManager {
     private:
@@ -45,6 +43,7 @@ class AnimationManager {
         SemaphoreHandle_t animMutex;
         int activeCount;
         JaamSettings* settings;
+        JaamLed led;
 
         // Структура для відстеження активних анімацій
         struct ActiveAnimation {
@@ -64,6 +63,7 @@ class AnimationManager {
         void cleanupAnimation(AnimationParams* anim, int index);
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         
+        
 
     public:
         AnimationManager();
@@ -82,6 +82,7 @@ class AnimationManager {
         void logActiveAnimations();
         uint32_t stripDefaultColor(Adafruit_NeoPixel* strip);
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position);
+        bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation);
 };
 
 

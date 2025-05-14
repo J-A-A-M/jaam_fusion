@@ -306,7 +306,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     if (strip == strip_main) {
         color = DefaultColors::MAIN_STRIP;
         if (position == homeDistrict) {
-            uint8_t homeBrightness = brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+            uint8_t homeBrightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
             uint8_t r = ((color >> 16) & 0xFF) * homeBrightness / 255;
             uint8_t g = ((color >> 8) & 0xFF) * homeBrightness / 255;
             uint8_t b = (color & 0xFF) * homeBrightness / 255;
@@ -319,6 +319,19 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     }
     return color;
 }
+
+bool AnimationManager::safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation) {
+            if (strip == nullptr) {
+                return false;
+            }
+            
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                operation(strip);
+                xSemaphoreGive(stripMutex);
+                return true;
+            }
+            return false;
+        }
 
 
 void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
