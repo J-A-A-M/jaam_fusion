@@ -193,7 +193,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
 
 void AnimationManager::updateFadeAnimation(AnimationParams* anim, float elapsed) {
     float phase = elapsed - floor(elapsed);
-    float factor = 0.5 * (1 - cos(2 * PI * phase));
+    float factor = 1.0f - (0.5 * (1 - cos(2 * PI * phase)));
     
     uint8_t scale = anim->startBrightness + 
                 (anim->endBrightness - anim->startBrightness) * factor;

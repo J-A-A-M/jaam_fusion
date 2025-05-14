@@ -81,8 +81,8 @@ void animations() {
         LOG.println("ERROR: Немає доступних ініціалізованих стріпок");
         return;
     }
-    r = 0;
-    g = 255;
+    r = 255;
+    g = 0;
     b = 0;
     
     uint32_t color = strip->Color(r, g, b);
@@ -103,7 +103,7 @@ void animations() {
         default:
             animType = AnimationParams::Type::FADE;
     }
-    animType = AnimationParams::Type::FADE;
+    animType = AnimationParams::Type::BLEND_BLINK;
 
     // Випадкові параметри для анімації з використанням конфігурації
     uint32_t period = 3000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
