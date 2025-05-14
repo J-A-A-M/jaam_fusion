@@ -2,7 +2,6 @@
 #include "JaamLed.h" 
 #include "JaamConfig.h"
 #include "JaamLogs.h"
-#include "JaamGlobals.h"
 
 // Зовнішні змінні для стрічок
 extern Adafruit_NeoPixel* strip_main;

@@ -1,7 +1,6 @@
 #include "JaamWeb.h"
 #include "JaamLed.h"
 #include "JaamLogs.h"
-#include "JaamGlobals.h"
 
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;

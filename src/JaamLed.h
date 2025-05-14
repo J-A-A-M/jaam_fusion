@@ -3,7 +3,6 @@
 #include "JaamSettings.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
-#include "JaamGlobals.h"
 
 
 // Глобальні змінні для стрічок

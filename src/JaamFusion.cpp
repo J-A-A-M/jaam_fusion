@@ -14,7 +14,6 @@
 #include "JaamSettings.h"
 #include "JaamWeb.h"
 #include "JaamLed.h"
-#include "JaamGlobals.h"
 
 char            chipID[13];
 char            currentFwVersion[25];
@@ -78,15 +77,15 @@ void animations() {
         LOG.println("ERROR: Немає доступних ініціалізованих стрічок");
         return;
     }
-    r = 255;
-    g = 0;
-    b = 0;
+    // r = 255;
+    // g = 0;
+    // b = 0;
     
     uint32_t color = strip->Color(r, g, b);
 
     // Випадковий вибір типу анімації
     AnimationParams::Type animType;
-    int typeRand = random(0, 3); // 0, 1 або 2 для FADE, BLINK або BLEND_BLINK
+    int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_BLINK
     switch(typeRand) {
         case 0:
             animType = AnimationParams::Type::FADE;
@@ -97,13 +96,16 @@ void animations() {
         case 2:
             animType = AnimationParams::Type::BLEND_BLINK;
             break;
+        case 3:
+            animType = AnimationParams::Type::PULSE;
+            break;
         default:
             animType = AnimationParams::Type::FADE;
     }
     animType = AnimationParams::Type::BLEND_BLINK;
 
     // Випадкові параметри для анімації з використанням конфігурації
-    uint32_t period = 3000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
+    uint32_t period = 2000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
     uint8_t cycles = 3; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
     uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
