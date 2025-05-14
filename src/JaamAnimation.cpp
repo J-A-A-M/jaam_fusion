@@ -1,7 +1,7 @@
 #include "JaamAnimation.h"
 
 // Функція для змішування кольорів
-uint32_t blendColors(uint32_t color1, uint32_t color2, float factor) {
+uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float factor) {
     uint8_t r1 = (color1 >> 16) & 0xFF;
     uint8_t g1 = (color1 >> 8) & 0xFF;
     uint8_t b1 = color1 & 0xFF;

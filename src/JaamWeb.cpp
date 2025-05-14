@@ -120,6 +120,17 @@ void JaamWeb::handleParameter() {
             }
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, value);
+            if (strip_service_initialized) {
+                LOG.printf("Setting home brightness service: raw=%d, converted=%d\n", value, brightnessMapped(value));
+                safeStripOperation(strip_service, [this, value](Adafruit_NeoPixel* strip) {
+                    strip->setBrightness(brightnessMapped(value));
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animManager.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         }
         
         server.send(200, "text/plain", "OK");

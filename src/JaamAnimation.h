@@ -62,6 +62,7 @@ class AnimationManager {
         void updatePulseAnimation(AnimationParams* anim, float elapsed);
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
+        uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         
 
     public:
