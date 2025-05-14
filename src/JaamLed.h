@@ -1,18 +1,18 @@
 #pragma once
-#include <Adafruit_NeoPixel.h>// Оголошуємо стріпки як покажчики
+#include <Adafruit_NeoPixel.h>// Оголошуємо стрічки як покажчики
 #include "JaamSettings.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
 #include "JaamGlobals.h"
 
 
-// Глобальні змінні для стріпок
+// Глобальні змінні для стрічок
 extern Adafruit_NeoPixel* strip_main;
 extern Adafruit_NeoPixel* strip_bg;
 extern Adafruit_NeoPixel* strip_service;
 extern SemaphoreHandle_t stripMutex;
 
-// Флаги ініціалізації стріпок
+// Флаги ініціалізації стрічок
 extern bool strip_main_initialized;
 extern bool strip_bg_initialized;
 extern bool strip_service_initialized;
@@ -35,12 +35,12 @@ static inline uint8_t brightnessMapped(uint8_t percent) {
   return map(percent, 0, 100, 0, 100);
 }
 
-// Перевірка ініціалізації стріпки
+// Перевірка ініціалізації стрічки
 static inline bool isStripInitialized(Adafruit_NeoPixel* strip) {
     return strip != nullptr;
 }
 
-// Безпечний доступ до стріпки
+// Безпечний доступ до стрічки
 static inline bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation) {
     if (!isStripInitialized(strip)) {
         return false;
@@ -54,7 +54,7 @@ static inline bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<vo
     return false;
 }
 
-// Функція для створення стріпки з обробкою помилок
+// Функція для створення стрічки з обробкою помилок
 static inline StripStatus createStrip(Adafruit_NeoPixel*& strip, 
                         int pin, 
                         uint8_t count, 

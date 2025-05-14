@@ -4,7 +4,7 @@
 #include "JaamLogs.h"
 #include "JaamGlobals.h"
 
-// Зовнішні змінні для стріпок
+// Зовнішні змінні для стрічок
 extern Adafruit_NeoPixel* strip_main;
 extern Adafruit_NeoPixel* strip_bg;
 extern Adafruit_NeoPixel* strip_service;
@@ -62,6 +62,7 @@ class AnimationManager {
         void updatePulseAnimation(AnimationParams* anim, float elapsed);
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
+        uint32_t stripDefaultColor(AnimationParams* anim);
 
     public:
         AnimationManager();

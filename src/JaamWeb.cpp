@@ -67,7 +67,7 @@ void JaamWeb::handleParameter() {
         // Знаходимо відповідний тип параметра за ім'ям
         if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, value);
-            // Оновлюємо яскравість всіх стріпок
+            // Оновлюємо яскравість всіх стрічок
             if (strip_main_initialized) {
                 LOG.printf("Setting brightness: raw=%d, converted=%d\n", value, brightnessMapped(value));
                 uint8_t homeBrightness = brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));

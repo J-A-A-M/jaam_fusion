@@ -58,7 +58,7 @@ void animations() {
     int ledsIdx[1] = { currentIdx };
     uint8_t r = random(256), g = random(256), b = random(256);
     
-    // Випадковий вибір стріпки
+    // Випадковий вибір стрічки
     Adafruit_NeoPixel* strip = nullptr;
     int stripRand = random(0, 2);
     switch(stripRand) {
@@ -78,7 +78,7 @@ void animations() {
     strip = strip_main;
 
     if (!strip) {
-        LOG.println("ERROR: Немає доступних ініціалізованих стріпок");
+        LOG.println("ERROR: Немає доступних ініціалізованих стрічок");
         return;
     }
     r = 255;
@@ -255,14 +255,14 @@ void initWifi() {
 }
 
 void initStrip() {
-    // Створюємо м'ютекс для захисту доступу до стріпів
+    // Створюємо м'ютекс для захисту доступу до стрічок
     stripMutex = xSemaphoreCreateMutex();
     if (stripMutex == NULL) {
         LOG.println("ERROR: Не вдалося створити семафор stripMutex");
         return;
     }
 
-    // Ініціалізуємо стріпки з бажаними пінами
+    // Ініціалізуємо стрічки з бажаними пінами
     StripStatus status;
     
     status = createStrip(strip_main, settings.getInt(MAIN_LED_PIN), 26, settings.getInt(BRIGHTNESS), DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
