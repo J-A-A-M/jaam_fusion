@@ -34,18 +34,7 @@ static const uint32_t ANIMATION_INTERVAL = 1000;    // 1 second
 static const uint32_t MEMORY_CHECK_INTERVAL = 60000;  // 1 minute
 static const uint32_t WIFI_CHECK_INTERVAL = 300000;   // 5 minutes
 
-// Strip configuration
-#define DEFAULT_BRIGHTNESS_PERCENT 10
 
-// Error codes
-enum class ErrorCode {
-    SUCCESS = 0,
-    STRIP_PIN_NOT_SET,
-    STRIP_CREATION_FAILED,
-    ANIMATION_CREATION_FAILED,
-    NULL_STRIP_POINTER,
-    MUTEX_CREATION_FAILED
-}; 
 
 enum Type {
     UNKNOWN = 0,

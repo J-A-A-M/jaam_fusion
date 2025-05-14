@@ -52,39 +52,6 @@ WiFiManager wm;
 WiFiClient  client;
 uint32_t    lastWifiConnectTime = 0;  // Track when WiFi was last connected
 
-// Функція для створення стріпки з обробкою помилок
-ErrorCode createStrip(Adafruit_NeoPixel*& strip, int pin, uint8_t count, uint8_t brightness, uint8_t type) {
-    if (pin <= 0) {
-        LOG.printf("ERROR: пін не вказано: %d\n", pin);
-        return ErrorCode::STRIP_PIN_NOT_SET;
-    }
-    
-    strip = new Adafruit_NeoPixel(count, pin, type);
-    if (strip == nullptr) {
-        LOG.println("ERROR: Не вдалося створити стріпку");
-        return ErrorCode::STRIP_CREATION_FAILED;
-    }
-    
-    strip->begin();
-    strip->setBrightness(brightnessMapped(brightness));
-    strip->clear();
-    
-    // Встановлюємо дефолтний колір для всіх LED
-    uint32_t defaultColor;
-    if (pin == settings.getInt(MAIN_LED_PIN)) {
-        defaultColor = DefaultColors::MAIN_STRIP;
-    } else if (pin == settings.getInt(BG_LED_PIN)) {
-        defaultColor = DefaultColors::BG_STRIP;
-    } else {
-        defaultColor = DefaultColors::SERVICE_STRIP;
-    }
-    
-    for(int i = 0; i < count; i++) {
-        strip->setPixelColor(i, defaultColor);
-    }
-    strip->show();
-    return ErrorCode::SUCCESS;
-}
 
 void animations() {
     loopCount++;
@@ -114,6 +81,9 @@ void animations() {
         LOG.println("ERROR: Немає доступних ініціалізованих стріпок");
         return;
     }
+    r = 0;
+    g = 255;
+    b = 0;
     
     uint32_t color = strip->Color(r, g, b);
 
@@ -133,10 +103,10 @@ void animations() {
         default:
             animType = AnimationParams::Type::FADE;
     }
-    animType = AnimationParams::Type::PULSE;
+    animType = AnimationParams::Type::FADE;
 
     // Випадкові параметри для анімації з використанням конфігурації
-    uint32_t period = 1000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
+    uint32_t period = 3000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
     uint8_t cycles = 3; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
     uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
@@ -293,33 +263,32 @@ void initStrip() {
     }
 
     // Ініціалізуємо стріпки з бажаними пінами
-    ErrorCode error;
+    StripStatus status;
     
-    error = createStrip(strip_main, settings.getInt(MAIN_LED_PIN), 26, settings.getInt(BRIGHTNESS), NEO_GRB + NEO_KHZ800);
-    if (error != ErrorCode::SUCCESS) {
-        LOG.println("ERROR: Не вдалося створити strip_main");
+    status = createStrip(strip_main, settings.getInt(MAIN_LED_PIN), 26, settings.getInt(BRIGHTNESS), DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
+    if (status != StripStatus::SUCCESS) {
+        LOG.printf("ERROR: Не вдалося створити strip_main: %d\n", status);
     } else {
         LOG.println("SUCCESS: strip_main");
         strip_main_initialized = true;
     }
     
-    error = createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), settings.getInt(BRIGHTNESS), NEO_GRB + NEO_KHZ800);
-    if (error != ErrorCode::SUCCESS) {
-        LOG.println("ERROR: Не вдалося створити strip_bg");
+    status = createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), settings.getInt(BRIGHTNESS), DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
+    if (status != StripStatus::SUCCESS) {
+        LOG.printf("ERROR: Не вдалося створити strip_bg: %d\n", status);
     } else {
         LOG.println("SUCCESS: strip_bg");
         strip_bg_initialized = true;
     }
 
-    
-    error = createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), 5, settings.getInt(BRIGHTNESS), NEO_GRB + NEO_KHZ800);
-    if (error != ErrorCode::SUCCESS) {
-        LOG.println("ERROR: Не вдалося створити strip_service");
+    status = createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), 5, settings.getInt(BRIGHTNESS), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
+    if (status != StripStatus::SUCCESS) {
+        LOG.printf("ERROR: Не вдалося створити strip_service: %d\n", status);
     } else {
         LOG.println("SUCCESS: strip_service");
         strip_service_initialized = true;
     }
-    // Тестовий патерн
+
     if (strip_main_initialized) {
         safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             testColor1 = strip->Color(0, 255, 0);    // Зелений
@@ -390,15 +359,15 @@ void setup() {
 
     initChipID();
     initSettings();
-    initStrip();
     initWifi();
+    initStrip();
+
+    // Ініціалізуємо генератор випадкових чисел
+    randomSeed(esp_random());
     
     // Передаємо settings в AnimationManager
     animManager.setSettings(&settings);
     
-    // Ініціалізуємо генератор випадкових чисел
-    randomSeed(esp_random());
-
     // Налаштовуємо асинхронні задачі
     asyncEngine.setInterval(animations, ANIMATION_INTERVAL);
     //asyncEngine.setInterval(get_pixel_color, ANIMATION_INTERVAL);
@@ -413,12 +382,10 @@ void loop() {
     wm.process();
     animManager.update();
     asyncEngine.run();
-
-    // Обробка веб-клієнтів
     webInterface.handleClient();
 }
 
-// Оновлена функція очищення
+// функція очищення
 void cleanup() {
     if (strip_main_initialized) {
         safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
