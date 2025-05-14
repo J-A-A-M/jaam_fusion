@@ -289,16 +289,35 @@ void AnimationManager::updatePulseAnimation(AnimationParams* anim, float elapsed
     }
 }
 
-uint32_t AnimationManager::stripDefaultColor(AnimationParams* anim) {
-    uint32_t defaultColor;
-    if (anim->strip == strip_main) {
-        defaultColor = DefaultColors::MAIN_STRIP;
-    } else if (anim->strip == strip_bg) {
-        defaultColor = DefaultColors::BG_STRIP;
-    } else if (anim->strip == strip_service) {
-        defaultColor = DefaultColors::SERVICE_STRIP;
+uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
+    uint32_t color;
+    if (strip == strip_main) {
+        color = DefaultColors::MAIN_STRIP;
+    } else if (strip == strip_bg) {
+        color = DefaultColors::BG_STRIP;
+    } else if (strip == strip_service) {
+        color = DefaultColors::SERVICE_STRIP;
     }
-    return defaultColor;
+    return color;
+}
+
+uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position) {
+    uint32_t color;
+    if (strip == strip_main) {
+        color = DefaultColors::MAIN_STRIP;
+        if (position == homeDistrict) {
+            uint8_t homeBrightness = brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+            uint8_t r = ((color >> 16) & 0xFF) * homeBrightness / 255;
+            uint8_t g = ((color >> 8) & 0xFF) * homeBrightness / 255;
+            uint8_t b = (color & 0xFF) * homeBrightness / 255;
+            color = strip->Color(r, g, b); //r << 16 | g << 8 | b;
+        }
+    } else if (strip == strip_bg) {
+        color = DefaultColors::BG_STRIP;
+    } else if (strip == strip_service) {
+        color = DefaultColors::SERVICE_STRIP;
+    }
+    return color;
 }
 
 
@@ -306,21 +325,8 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < anim->posCount; ++i) {
             // Визначаємо дефолтний колір для стрічки
-            uint32_t defaultColor;
-            defaultColor = stripDefaultColor(anim);
-            // Перевіряємо чи це LED домашнього району
-            if (anim->positions[i] == homeDistrict) {
-                // Встановлюємо спеціальну яскравість для домашнього району
-                uint8_t homeBrightness = brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
-                uint8_t r = ((defaultColor >> 16) & 0xFF) * homeBrightness / 255;
-                uint8_t g = ((defaultColor >> 8) & 0xFF) * homeBrightness / 255;
-                uint8_t b = (defaultColor & 0xFF) * homeBrightness / 255;
-                LOG.printf("Setting home district brightness after animation: raw=%d, converted=%d, color=0x%02X%02X%02X\n", 
-                            settings->getInt(BRIGHTNESS_HOME_DISTRICT), homeBrightness, r, g, b);
-                anim->strip->setPixelColor(anim->positions[i], r, g, b);
-                continue;
-            }
-            anim->strip->setPixelColor(anim->positions[i], defaultColor);
+            uint32_t color = ledActualColor(anim->strip, anim->positions[i]);
+            anim->strip->setPixelColor(anim->positions[i], color);
         }
         anim->strip->show();
         xSemaphoreGive(stripMutex);

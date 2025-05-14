@@ -43,10 +43,6 @@ bool                strip_service_initialized = false;
 
 AnimationManager    animManager;
 
-uint32_t            testColor1 = 0;
-uint32_t            testColor2 = 0;
-uint32_t            testColor3 = 0;
-
 // --- WIFI Configuration ---
 WiFiManager wm;
 WiFiClient  client;
@@ -128,7 +124,7 @@ void animations() {
     }
 
     currentIdx++;
-    if (currentIdx >= 26) {
+    if (currentIdx >= num_leds_main) {
         currentIdx = 0;
     }
 }
@@ -265,7 +261,7 @@ void initStrip() {
     // Ініціалізуємо стрічки з бажаними пінами
     StripStatus status;
     
-    status = createStrip(strip_main, settings.getInt(MAIN_LED_PIN), 26, settings.getInt(BRIGHTNESS), DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
+    status = createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, settings.getInt(BRIGHTNESS), DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
         LOG.printf("ERROR: Не вдалося створити strip_main: %d\n", status);
     } else {
@@ -281,7 +277,7 @@ void initStrip() {
         strip_bg_initialized = true;
     }
 
-    status = createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), 5, settings.getInt(BRIGHTNESS), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
+    status = createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, settings.getInt(BRIGHTNESS), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
         LOG.printf("ERROR: Не вдалося створити strip_service: %d\n", status);
     } else {
@@ -291,20 +287,9 @@ void initStrip() {
 
     if (strip_main_initialized) {
         safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-            testColor1 = strip->Color(0, 255, 0);    // Зелений
-            for(int i = 0; i < 26; i++) {
-                if (i == homeDistrict) {
-                    // Встановлюємо спеціальну яскравість для домашнього району
-                    uint8_t homeBrightness = brightnessAbsolute(settings.getInt(BRIGHTNESS_HOME_DISTRICT));
-                    uint8_t r = ((testColor1 >> 16) & 0xFF) * homeBrightness / 255;
-                    uint8_t g = ((testColor1 >> 8) & 0xFF) * homeBrightness / 255;
-                    uint8_t b = (testColor1 & 0xFF) * homeBrightness / 255;
-                    LOG.printf("Setting home district brightness at init: raw=%d, converted=%d, color=0x%02X%02X%02X\n", 
-                             settings.getInt(BRIGHTNESS_HOME_DISTRICT), homeBrightness, r, g, b);
-                    strip->setPixelColor(i, r, g, b);
-                } else {
-                    strip->setPixelColor(i, testColor1);
-                }
+            for(uint16_t i = 0; i < num_leds_main; i++) {
+                uint32_t color = animManager.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
             }
             strip->show();
         });
@@ -312,9 +297,9 @@ void initStrip() {
     
     if (strip_bg_initialized) {
         safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-            testColor2 = strip->Color(255, 0, 0);    // Червоний
             for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
-                strip->setPixelColor(i, testColor2);
+                uint32_t color = animManager.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
             }
             strip->show();
         });
@@ -322,9 +307,9 @@ void initStrip() {
     
     if (strip_service_initialized) {
         safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-            testColor3 = strip->Color(0, 0, 255);    // Синій
-            for(int i = 0; i < 5; i++) {
-                strip->setPixelColor(i, testColor3);
+            for(int i = 0; i < num_leds_service; i++) {
+                uint32_t color = animManager.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
             }
             strip->show();
         });

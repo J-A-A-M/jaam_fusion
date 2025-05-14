@@ -62,7 +62,7 @@ class AnimationManager {
         void updatePulseAnimation(AnimationParams* anim, float elapsed);
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
-        uint32_t stripDefaultColor(AnimationParams* anim);
+        
 
     public:
         AnimationManager();
@@ -79,6 +79,8 @@ class AnimationManager {
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
+        uint32_t stripDefaultColor(Adafruit_NeoPixel* strip);
+        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position);
 };
 
 
