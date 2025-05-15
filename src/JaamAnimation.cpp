@@ -1,4 +1,6 @@
 #include "JaamAnimation.h"
+#include <set> // Для std::set
+#include <utility> // Для std::pair
 
 // Функція для змішування кольорів
 uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float factor) {
@@ -361,4 +363,29 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     delete anim;
     animations[index] = nullptr;
     activeCount--;
-} 
+}
+
+std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds) {
+    std::vector<FreeLedInfo> freeLedsResult;
+    std::set<int> animatedLeds;
+
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < MAX_ANIMATIONS; i++) {
+            if (animations[i] != nullptr && animations[i]->isActive && animations[i]->strip == strip) {
+                AnimationParams* anim = animations[i];
+                for (int k = 0; k < anim->posCount; ++k) {
+                    animatedLeds.insert(anim->positions[k]);
+                }
+            }
+        }
+        xSemaphoreGive(animMutex);
+    }
+
+    for (uint16_t j = 0; j < num_leds; ++j) {
+        if (animatedLeds.find(j) == animatedLeds.end()) {
+            freeLedsResult.push_back({(int)j});
+        }
+    }
+
+    return freeLedsResult;
+}

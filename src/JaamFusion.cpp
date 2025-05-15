@@ -21,7 +21,7 @@ int             currentIdx = 0;
 uint32_t        loopCount = 0;
 int             needRebootWithDelay = -1;
 
-Async           asyncEngine = Async(20);
+Async           async = Async(20);
 
 JaamSettings    settings;
 Firmware        currentFirmware;
@@ -345,6 +345,20 @@ void get_pixel_color() {
   animation.logActiveAnimations();
 }
 
+void logFreeMainLeds() {
+    if (!strip_main_initialized) {
+        LOG.println("strip_main не ініціалізовано");
+        return;
+    }
+    auto freeLeds = animation.getFreeLeds(strip_main, num_leds_main);
+    LOG.printf("Вільних LED на strip_main: %d\n", (int)freeLeds.size());
+    LOG.print("Список: ");
+    for (const auto& led : freeLeds) {
+        LOG.printf("%d ", led.ledIdx);
+    }
+    LOG.println();
+}
+
 void setup() {
     LOG.begin(115200);
 
@@ -360,10 +374,11 @@ void setup() {
     animation.setSettings(&settings);
     led.setSettings(&settings);
     // Налаштовуємо асинхронні задачі
-    asyncEngine.setInterval(animations, ANIMATION_INTERVAL);
-    //asyncEngine.setInterval(get_pixel_color, ANIMATION_INTERVAL);
-    asyncEngine.setInterval(memory, MEMORY_CHECK_INTERVAL);
-    asyncEngine.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
+    async.setInterval(animations, ANIMATION_INTERVAL);
+    //async.setInterval(get_pixel_color, ANIMATION_INTERVAL);
+    async.setInterval(memory, MEMORY_CHECK_INTERVAL);
+    async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
+    //async.setInterval(logFreeMainLeds, 5000); // 5000 мс = 5 секунд, змініть інтервал за потреби
 
     // Ініціалізація веб-інтерфейсу
     web.begin(strip_main, strip_bg, strip_service);
@@ -373,7 +388,7 @@ void setup() {
 void loop() {
     wm.process();
     animation.update();
-    asyncEngine.run();
+    async.run();
     web.handleClient();
 }
 

@@ -2,6 +2,7 @@
 #include "JaamLed.h" 
 #include "JaamConfig.h"
 #include "JaamLogs.h"
+#include <vector> // Додано для std::vector
 
 // Зовнішні змінні для стрічок
 extern Adafruit_NeoPixel* strip_main;
@@ -34,6 +35,10 @@ struct AnimationParams {
     uint32_t startTime;
 };
 
+// Структура для інформації про вільний LED
+struct FreeLedInfo {
+    int ledIdx;
+};
 
 class AnimationManager {
     private:
@@ -43,6 +48,7 @@ class AnimationManager {
         int activeCount;
         JaamSettings* settings;
         JaamLed led;
+        u_int16_t num_leds_main;
 
         // Структура для відстеження активних анімацій
         struct ActiveAnimation {
@@ -82,6 +88,7 @@ class AnimationManager {
         uint32_t stripDefaultColor(Adafruit_NeoPixel* strip);
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position);
         bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation);
+        std::vector<FreeLedInfo> getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds);
 };
 
 
