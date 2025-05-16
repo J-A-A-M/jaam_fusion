@@ -23,8 +23,8 @@ namespace AnimationConfig {
 // --- WiFi Configuration ---
 namespace WiFiConfig {
     static const bool ENABLED = true;
-    static const uint32_t CONNECT_TIMEOUT = 10000;  // 10 seconds
-    static const uint32_t CONNECT_RETRIES = 3;
+    static const uint32_t CONNECT_TIMEOUT = 3000;  // 10 seconds
+    static const uint32_t CONNECT_RETRIES = 10;
     static const uint32_t PORTAL_TIMEOUT = 180000;  // 3 minutes
     static const uint16_t WEB_PORT = 8080;
 }
@@ -32,7 +32,8 @@ namespace WiFiConfig {
 // --- Timing Configuration ---
 static const uint32_t ANIMATION_INTERVAL = 1000;    // 1 second
 static const uint32_t MEMORY_CHECK_INTERVAL = 60000;  // 1 minute
-static const uint32_t WIFI_CHECK_INTERVAL = 300000;   // 5 minutes
+static const uint32_t WIFI_CHECK_INTERVAL = 1000;   // 1 second
+static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;   // 3 seconds
 
 
 

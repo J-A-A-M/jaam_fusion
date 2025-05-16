@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include <ArduinoWebsockets.h>
 
 #include <WiFiManager.h>
 #include <math.h>
@@ -15,6 +17,8 @@
 #include "JaamWeb.h"
 #include "JaamLed.h"
 
+using namespace websockets;
+
 char            chipID[13];
 char            currentFwVersion[25];
 int             currentIdx = 0;
@@ -24,7 +28,7 @@ int             needRebootWithDelay = -1;
 Async           async = Async(20);
 
 JaamSettings    settings;
-Firmware        currentFirmware;
+Firmware        firmware;
 JaamWeb         web;
 JaamLed         led;
 
@@ -44,9 +48,143 @@ bool                strip_service_initialized = false;
 AnimationManager    animation;
 
 // --- WIFI Configuration ---
-WiFiManager wm;
-WiFiClient  client;
-uint32_t    lastWifiConnectTime = 0;  // Track when WiFi was last connected
+WiFiManager         wm;
+WiFiClient          client;
+WebsocketsClient    client_websocket;
+uint32_t            lastWifiConnectTime = 0;  // Track when WiFi was last connected
+
+time_t  websocketLastPingTime = 0;
+bool    isFirstDataFetchCompleted = false;
+bool    apiConnected;
+uint8_t     legacy = 4;
+bool    websocketReconnect = false;
+uint32_t     lastWebsocketConnectTime = 0;
+
+
+void rebootDevice(int time = 2000, bool async = false) {
+  if (async) {
+    needRebootWithDelay = time;
+    return;
+  }
+  //showServiceMessage("Перезавантаження..", "", time);
+  delay(time);
+  //display.clearDisplay();
+  //display.display();
+  ESP.restart();
+}
+
+
+static JsonDocument parseJson(const char* payload) {
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, payload);
+  if (error) {
+    LOG.printf("Deserialization error: $s\n", error.f_str());
+    return doc;
+  } else {
+    return doc;
+  }
+}
+
+
+//--Websocket process start
+
+void onMessageCallback(WebsocketsMessage message) {
+  LOG.print("Got Message: ");
+  LOG.println(message.data());
+  JsonDocument data = parseJson(message.data().c_str());
+  String payload = data["payload"];
+  if (!payload.isEmpty()) {
+    if (payload == "ping") {
+      LOG.println("Heartbeat from server");
+      websocketLastPingTime = millis();
+    }
+  }
+  isFirstDataFetchCompleted = true;
+}
+
+void onEventsCallback(WebsocketsEvent event, String data) {
+  if (event == WebsocketsEvent::ConnectionOpened) {
+    apiConnected = true;
+    LOG.println("connnection opened");
+    //servicePin(DATA, HIGH, false);
+    websocketLastPingTime = millis();
+    //ha.setMapApiConnect(apiConnected);
+  } else if (event == WebsocketsEvent::ConnectionClosed) {
+    apiConnected = false;
+    LOG.println("connnection closed");
+    //servicePin(DATA, LOW, false);
+    //ha.setMapApiConnect(apiConnected);
+  } else if (event == WebsocketsEvent::GotPing) {
+    LOG.println("websocket ping");
+    websocketLastPingTime = millis();
+    client_websocket.pong();
+  } else if (event == WebsocketsEvent::GotPong) {
+    LOG.println("websocket pong");
+  }
+}
+
+void socketConnect() {
+  LOG.println("connection start...");
+  //showServiceMessage("підключення...", "Сервер даних");
+  client_websocket.onMessage(onMessageCallback);
+  client_websocket.onEvent(onEventsCallback);
+  long startTime = millis();
+  char webSocketUrl[100];
+  sprintf(
+    webSocketUrl,
+    "ws://%s:%d/data_v4",
+    settings.getString(WS_SERVER_HOST),
+    settings.getInt(WS_SERVER_PORT)
+  );
+  LOG.println(webSocketUrl);
+  client_websocket.connect(webSocketUrl);
+  if (client_websocket.available()) {
+    LOG.print("connection time - ");
+    LOG.print(millis() - startTime);
+    LOG.println("ms");
+    char chipIdInfo[25];
+    sprintf(chipIdInfo, "chip_id:%s", chipID);
+    LOG.println(chipIdInfo);
+    client_websocket.send(chipIdInfo);
+    char firmwareInfo[100];
+    sprintf(firmwareInfo, "firmware:%s_%s", currentFwVersion, settings.getString(ID));
+    LOG.println(firmwareInfo);
+    client_websocket.send(firmwareInfo);
+
+    char userInfo[250];
+    JsonDocument userInfoJson;
+    userInfoJson["legacy"] = legacy;
+    sprintf(userInfo, "user_info:%s", userInfoJson.as<String>().c_str());
+    LOG.println(userInfo);
+    client_websocket.send(userInfo);
+    client_websocket.ping();
+    websocketReconnect = false;
+    lastWebsocketConnectTime  = millis();
+    //showServiceMessage("підключено!", "Сервер даних", 3000);
+  } else {
+    //showServiceMessage("недоступний", "Сервер даних", 3000);
+  }
+}
+
+void websocketProcess() {
+  if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME)) {
+    websocketReconnect = true;
+  }
+  if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME)) {
+    rebootDevice(3000, true);
+  }
+  if (!client_websocket.available() or websocketReconnect) {
+    LOG.println("Reconnecting...");
+    socketConnect();
+  }
+}
+//--Websocket process end
+
+
+
+
+
+
 
 
 void animations() {
@@ -140,27 +278,33 @@ void memory() {
   
   // WiFi status information
   bool wifiConnected = WiFi.status() == WL_CONNECTED;
-  uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0;  // in seconds
+  uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0; 
+  uint32_t websocketUptime = client_websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0; // in seconds
   String wifiStatus = wifiConnected ? "Connected" : "Disconnected";
+  String websocketStatus = client_websocket.available() ? "Connected" : "Disconnected";
   String wifiIP = wifiConnected ? WiFi.localIP().toString() : "N/A";
 
   LOG.printf(
-    "Loop %u: LED %d, used heap %u B, free heap %u B, uptime %u min. WiFi: %s, uptime: %u min\n",
+    "Loop %u: LED %d, used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
     loopCount,
     currentIdx,
     usedHeap,
     freeHeap,
     uptimeMin,
     wifiStatus.c_str(),
-    wifiUptime
+    wifiUptime,
+    websocketStatus.c_str(),
+    websocketUptime
   );
 }
 
 void initSettings() {
   LOG.println("Init settings");
   settings.init();
-  currentFirmware = parseFirmwareVersion(VERSION);
-  fillFwVersion(currentFwVersion, currentFirmware);
+  firmware = parseFirmwareVersion(VERSION);
+  LOG.printf("major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
+           firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
+  fillFwVersion(currentFwVersion, firmware);
   LOG.printf("Current firmware version: %s\n", currentFwVersion);
 }
 
@@ -185,17 +329,6 @@ static void wifiEvents(WiFiEvent_t event) {
   }
 }
 
-void rebootDevice(int time = 2000, bool async = false) {
-  if (async) {
-    needRebootWithDelay = time;
-    return;
-  }
-  //showServiceMessage("Перезавантаження..", "", time);
-  delay(time);
-  //display.clearDisplay();
-  //display.display();
-  ESP.restart();
-}
 
 void apCallback(WiFiManager* wifiManager) {
   const char* message = wifiManager->getConfigPortalSSID().c_str();
@@ -250,6 +383,7 @@ void initWifi() {
     wm.setHttpPort(WiFiConfig::WEB_PORT);
     wm.startWebPortal();
     LOG.println("Web portal started on port 8080");
+    socketConnect();
     delay(5000);
 }
 
@@ -378,6 +512,7 @@ void setup() {
     //async.setInterval(get_pixel_color, ANIMATION_INTERVAL);
     async.setInterval(memory, MEMORY_CHECK_INTERVAL);
     async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
+    async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);
     //async.setInterval(logFreeMainLeds, 5000); // 5000 мс = 5 секунд, змініть інтервал за потреби
 
     // Ініціалізація веб-інтерфейсу
@@ -387,6 +522,7 @@ void setup() {
 
 void loop() {
     wm.process();
+    client_websocket.poll();
     animation.update();
     async.run();
     web.handleClient();

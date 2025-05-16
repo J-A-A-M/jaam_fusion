@@ -49,4 +49,23 @@ static void fillFwVersion(char* result, Firmware firmware) {
     if (firmware.isBeta) {
       version += "-b" + std::to_string(firmware.betaBuild);
     }
+    #if ARDUINO_ESP32S3_DEV
+    version += "-s3";
+    #elif ARDUINO_ESP32C3_DEV
+    version += "-c3";
+    #endif
+
+    #if LITE
+    version += "-lite";
+    #endif
+
+    #if TEST_MODE
+    version += "-test";
+    #endif
+
+    #if FUSION
+    version += "-fusion";
+    #endif
+
+    strcpy(result, version.c_str());
 }
