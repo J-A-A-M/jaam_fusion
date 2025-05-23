@@ -1,6 +1,7 @@
 #pragma once
 #include "JaamLogs.h"
 #include <string>
+#include <map>
 
 struct Firmware {
     int major = 0;
