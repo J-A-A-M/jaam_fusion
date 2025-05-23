@@ -42,16 +42,20 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
                                     uint8_t cycles,
                                     uint8_t startBrightness,
                                     uint8_t endBrightness) {
-    
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        // Перевіряємо чи є вже анімація на цьому LED цієї стрічки
-        for (int i = 0; i < activeAnimationsCount; i++) {
-            if (activeAnimations[i].strip == strip && 
-                activeAnimations[i].ledIndex == positions[0]) {
-                // Примусово завершуємо попередню анімацію
-                cleanupAnimation(animations[activeAnimations[i].animationIndex], 
-                              activeAnimations[i].animationIndex);
-                break;
+        // Для кожного LED видаляємо його зі старої анімації (якщо є)
+        for (int posIdx = 0; posIdx < posCount; ++posIdx) {
+            int ledPos = positions[posIdx];
+            for (int i = 0; i < activeAnimationsCount; ++i) {
+                if (activeAnimations[i].strip == strip &&
+                    activeAnimations[i].ledIndex == ledPos) {
+                    int animIdx = activeAnimations[i].animationIndex;
+                    if (animations[animIdx] != nullptr) {
+                        removeLedFromAnimation(animations[animIdx], ledPos, animIdx);
+                        // Після видалення масив зсувається, тому треба зменшити i
+                        i--;
+                    }
+                }
             }
         }
 
@@ -83,17 +87,19 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
             animations[slot]->positions = new int[posCount];
             memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
 
-            // Зберігаємо початковий колір
+            // Зберігаємо початковий колір для першого LED
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 animations[slot]->initialColor = strip->getPixelColor(positions[0]);
                 xSemaphoreGive(stripMutex);
             }
 
-            // Додаємо в список активних анімацій
-            activeAnimations[activeAnimationsCount].strip = strip;
-            activeAnimations[activeAnimationsCount].ledIndex = positions[0];
-            activeAnimations[activeAnimationsCount].animationIndex = slot;
-            activeAnimationsCount++;
+            // Додаємо в список активних анімацій для кожного LED
+            for (int posIdx = 0; posIdx < posCount; ++posIdx) {
+                activeAnimations[activeAnimationsCount].strip = strip;
+                activeAnimations[activeAnimationsCount].ledIndex = positions[posIdx];
+                activeAnimations[activeAnimationsCount].animationIndex = slot;
+                activeAnimationsCount++;
+            }
 
             activeCount++;
             xSemaphoreGive(animMutex);
@@ -335,6 +341,33 @@ bool AnimationManager::safeStripOperation(Adafruit_NeoPixel* strip, std::functio
             return false;
         }
 
+void AnimationManager::removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex) {
+    // Видаляємо ledIdx з positions
+    int newCount = 0;
+    for (int i = 0; i < anim->posCount; ++i) {
+        if (anim->positions[i] != ledIdx) {
+            anim->positions[newCount++] = anim->positions[i];
+        }
+    }
+    anim->posCount = newCount;
+
+    // Видаляємо з activeAnimations
+    for (int i = 0; i < activeAnimationsCount; ++i) {
+        if (activeAnimations[i].animationIndex == animIndex &&
+            activeAnimations[i].ledIndex == ledIdx) {
+            for (int j = i; j < activeAnimationsCount - 1; ++j) {
+                activeAnimations[j] = activeAnimations[j + 1];
+            }
+            activeAnimationsCount--;
+            break;
+        }
+    }
+
+    // Якщо не залишилось LED — видалити всю анімацію
+    if (anim->posCount == 0) {
+        cleanupAnimation(anim, animIndex);
+    }
+}
 
 void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {

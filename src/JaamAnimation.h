@@ -67,7 +67,7 @@ class AnimationManager {
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
-        
+        void removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex);
         
 
     public:
