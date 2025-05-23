@@ -203,7 +203,13 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // 8) Розбираємо count записів по RECORD_SZ
     const uint8_t* ptr = data + HEADER_SZ;
-    std::vector<int> ledsIdx; 
+    uint8_t r = random(256), g = random(256), b = random(256);
+    animType = AnimationParams::Type::FADE;
+    uint32_t color = strip_main->Color(r, g, b);
+    uint32_t period = 1500;
+    uint8_t cycles = 10;
+    uint8_t startBrightness = 50;
+    uint8_t endBrightness = 255;
     for (size_t i = 0; i < count; ++i) {
         uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
         uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
@@ -227,35 +233,25 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         // Додаємо тільки ті region_id, де активна повітряна тривога (біт 0)
         if (airAlertsMap[region_id]) {
-            ledsIdx.push_back(region_id);
+            int ledsIdx[1] = { region_id };
+            if (!animation.createAnimation(
+                animType,
+                strip_main,
+                ledsIdx,
+                1,
+                color,
+                period,
+                cycles,
+                startBrightness,
+                endBrightness
+            )) {
+                LOG.println("ERROR: Не вдалося створити анімацію");
+                return;
+            }
         }
-    }
-    // Створення анімації для всіх активних region_id з повітряною тривогою
-    uint8_t r = random(256), g = random(256), b = random(256);
-    if (!ledsIdx.empty()) {
-        animType = AnimationParams::Type::FADE;
-        uint32_t color = strip_main->Color(r, g, b);
-        uint32_t period = 2000;
-        uint8_t cycles = 7;
-        uint8_t startBrightness = 50;
-        uint8_t endBrightness = 255;
 
-        if (!animation.createAnimation(
-            animType,
-            strip_main,
-            ledsIdx.data(),
-            ledsIdx.size(),
-            color,
-            period,
-            cycles,
-            startBrightness,
-            endBrightness
-        )) {
-            LOG.println("ERROR: Не вдалося створити анімацію");
-            return;
-        }
-    }
 
+    }
 }
 
 void logWebsocketCloseReason(websockets::CloseReason reason) {
