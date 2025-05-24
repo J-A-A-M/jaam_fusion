@@ -2,8 +2,6 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <JaamUtils.h>
-#include <stdexcept>
-#include <map>
 
 JaamSettings::JaamSettings() {
 }

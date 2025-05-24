@@ -1,6 +1,7 @@
 #include "JaamWeb.h"
 #include "JaamLed.h"
 #include "JaamLogs.h"
+#include "JaamUtils.h"
 
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -74,10 +75,6 @@ void JaamWeb::handleParameter() {
                 uint8_t homeBrightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     strip->setBrightness(led.brightnessMapped(value));
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t defaultColor = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, defaultColor);
-                    }
                     strip->show();
                 });
             }
@@ -100,10 +97,16 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness home district: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));
+                LOG.printf("Setting brightness home district: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    uint32_t color = animation.ledActualColor(strip, homeDistrict);
-                    strip->setPixelColor(homeDistrict, color);
+                    uint32_t color;
+                    int count;
+                    const int* leds = getLedsForRegion(homeDistrict, count);
+                    for (int i = 0; i < count; ++i) {
+                        int ledsIdx[1] = { leds[i] };
+                        color = animation.ledActualColor(strip, leds[i]);
+                        strip->setPixelColor(leds[i], color);
+                    }
                     strip->show();
                 });
             }
@@ -156,4 +159,4 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
 
 void JaamWeb::handleClient() {
     server.handleClient();
-} 
+}

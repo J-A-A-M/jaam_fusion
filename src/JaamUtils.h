@@ -1,7 +1,11 @@
 #pragma once
 #include "JaamLogs.h"
+#include <math.h>
 #include <string>
 #include <map>
+#include <set>
+#include <utility> 
+#include <vector>
 
 struct Firmware {
     int major = 0;
@@ -69,4 +73,39 @@ static void fillFwVersion(char* result, Firmware firmware) {
     #endif
 
     strcpy(result, version.c_str());
+}
+
+// Пошук entry по region_id
+inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
+    for (int i = 0; i < MAX_REGIONS; ++i) {
+        if (regionLedMap[i].region_id == region_id) {
+            return &regionLedMap[i];
+        }
+    }
+    return nullptr;
+}
+
+// Отримати список LED для region_id
+inline const int* getLedsForRegion(uint16_t region_id, int& count) {
+    const RegionLedMapEntry* entry = getRegionEntry(region_id);
+    if (entry) {
+        count = entry->led_count;
+        return entry->led_positions;
+    }
+    count = 0;
+    return nullptr;
+}
+
+// Пошук усіх region_id по led_position
+inline std::vector<uint16_t> getRegionsForLed(int led_position) {
+    std::vector<uint16_t> regions;
+    for (int i = 0; i < MAX_REGIONS; ++i) {
+        const RegionLedMapEntry& entry = regionLedMap[i];
+        for (int j = 0; j < entry.led_count; ++j) {
+            if (entry.led_positions[j] == led_position) {
+                regions.push_back(entry.region_id);
+            }
+        }
+    }
+    return regions;
 }

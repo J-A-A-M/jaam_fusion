@@ -2,7 +2,7 @@
 #include "JaamLed.h" 
 #include "JaamConfig.h"
 #include "JaamLogs.h"
-#include <vector> // Додано для std::vector
+#include "JaamUtils.h"
 
 // Зовнішні змінні для стрічок
 extern Adafruit_NeoPixel* strip_main;
@@ -18,7 +18,8 @@ struct AnimationParams {
         FADE,
         BLINK,
         BLEND_BLINK,
-        PULSE
+        PULSE,
+        ONE_WAY_BLEND
     };
 
     Adafruit_NeoPixel* strip;
@@ -33,6 +34,7 @@ struct AnimationParams {
     uint8_t endBrightness;
     bool isActive;
     uint32_t startTime;
+    uint16_t region_id;
 };
 
 // Структура для інформації про вільний LED
@@ -65,6 +67,7 @@ class AnimationManager {
         void updateBlendBlinkAnimation(AnimationParams* anim, float elapsed);
         void updatePulseAnimation(AnimationParams* anim, float elapsed);
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
+        void updateOneWayBlendAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         void removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex);
@@ -81,14 +84,16 @@ class AnimationManager {
                            uint32_t period = 1000,
                            uint8_t cycles = 5,
                            uint8_t startBrightness = 50,
-                           uint8_t endBrightness = 150);
+                           uint8_t endBrightness = 150,
+                           uint16_t region_id = 0);
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
         uint32_t stripDefaultColor(Adafruit_NeoPixel* strip);
-        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position);
+        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t region_id);
         bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation);
         std::vector<FreeLedInfo> getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds);
+        bool isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx);
 };
 
 

@@ -1,6 +1,9 @@
 #include "JaamAnimation.h"
-#include <set> // Для std::set
-#include <utility> // Для std::pair
+#include "JaamConfig.h"
+#include "JaamUtils.h"
+
+
+extern std::map<uint16_t, bool> airAlertsMap;
 
 // Функція для змішування кольорів
 uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float factor) {
@@ -41,7 +44,9 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
                                     uint32_t period,
                                     uint8_t cycles,
                                     uint8_t startBrightness,
-                                    uint8_t endBrightness) {
+                                    uint8_t endBrightness,
+                                    uint16_t region_id)
+{
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         // Для кожного LED видаляємо його зі старої анімації (якщо є)
         for (int posIdx = 0; posIdx < posCount; ++posIdx) {
@@ -86,6 +91,7 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
             animations[slot]->startTime = millis();
             animations[slot]->positions = new int[posCount];
             memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
+            animations[slot]->region_id = region_id;
 
             // Зберігаємо початковий колір для першого LED
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
@@ -163,6 +169,9 @@ void AnimationManager::logActiveAnimations() {
                     case AnimationParams::Type::PULSE:
                         typeName = "PULSE";
                         break;
+                    case AnimationParams::Type::ONE_WAY_BLEND:
+                        typeName = "ONE_WAY_BLEND";
+                        break;
                 }
 
                 LOG.printf("Animation %d: strip=%s, LED=%d, type=%s, color=0x%06X, period=%u, cycles=%u\n",
@@ -195,6 +204,9 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
             break;
         case AnimationParams::Type::PULSE:
             updatePulseAnimation(anim, elapsed);
+            break;
+        case AnimationParams::Type::ONE_WAY_BLEND:
+            updateOneWayBlendAnimation(anim, elapsed);
             break;
     }
 }
@@ -257,6 +269,22 @@ void AnimationManager::updateBlendBlinkAnimation(AnimationParams* anim, float el
     }
 }
 
+void AnimationManager::updateOneWayBlendAnimation(AnimationParams* anim, float elapsed) {
+    float phase = elapsed - floor(elapsed);
+    float factor = phase;
+
+    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < anim->posCount; ++i) {
+            int idx = anim->positions[i];
+            // Змішуємо початковий колір з кольором анімації в одному напрямку
+            uint32_t blendedColor = blendColors(anim->initialColor, anim->color, factor);
+            anim->strip->setPixelColor(idx, blendedColor);
+        }
+        anim->strip->show();
+        xSemaphoreGive(stripMutex);
+    }
+}
+
 void AnimationManager::updatePulseAnimation(AnimationParams* anim, float elapsed) {
     float phase = elapsed - floor(elapsed);
     float factor;
@@ -297,6 +325,8 @@ void AnimationManager::updatePulseAnimation(AnimationParams* anim, float elapsed
     }
 }
 
+
+
 uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
     uint32_t color;
     if (strip == strip_main) {
@@ -312,13 +342,28 @@ uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
 uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position) {
     uint32_t color;
     if (strip == strip_main) {
-        color = DefaultColors::MAIN_STRIP;
-        if (position == homeDistrict) {
-            uint8_t homeBrightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
-            uint8_t r = ((color >> 16) & 0xFF) * homeBrightness / 255;
-            uint8_t g = ((color >> 8) & 0xFF) * homeBrightness / 255;
-            uint8_t b = (color & 0xFF) * homeBrightness / 255;
-            color = strip->Color(r, g, b); //r << 16 | g << 8 | b;
+        // Якщо активна тривога — червоний, інакше зелений
+        auto regions = getRegionsForLed(position);
+        for (uint16_t region_id : regions) {
+            // ... працюємо з region_id ...
+            bool alert = false;
+            auto it = airAlertsMap.find(region_id);
+            if (it != airAlertsMap.end()) {
+                alert = it->second;
+            }
+            //LOG.printf("ledActualColor: region_id=%u, airAlert=%d\n", region_id, alert);
+            if (alert) {
+                color = strip->Color(255, 0, 0); // Червоний
+            } else {
+                color = strip->Color(0, 255, 0); // Зелений
+                if (region_id == homeDistrict) {
+                    uint8_t homeBrightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+                    uint8_t r = ((color >> 16) & 0xFF) * homeBrightness / 255;
+                    uint8_t g = ((color >> 8) & 0xFF) * homeBrightness / 255;
+                    uint8_t b = (color & 0xFF) * homeBrightness / 255;
+                    color = strip->Color(r, g, b); //r << 16 | g << 8 | b;
+                }
+            }
         }
     } else if (strip == strip_bg) {
         color = DefaultColors::BG_STRIP;
@@ -332,7 +377,6 @@ bool AnimationManager::safeStripOperation(Adafruit_NeoPixel* strip, std::functio
             if (strip == nullptr) {
                 return false;
             }
-            
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 operation(strip);
                 xSemaphoreGive(stripMutex);
@@ -421,4 +465,17 @@ std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip,
     }
 
     return freeLedsResult;
+}
+
+bool AnimationManager::isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx) {
+    for (int i = 0; i < MAX_ANIMATIONS; ++i) {
+        if (animations[i] && animations[i]->isActive && animations[i]->strip == strip) {
+            for (int j = 0; j < animations[i]->posCount; ++j) {
+                if (animations[i]->positions[j] == ledIdx) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }

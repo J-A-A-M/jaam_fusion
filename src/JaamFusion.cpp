@@ -3,7 +3,6 @@
 #include <ArduinoWebsockets.h>
 
 #include <WiFiManager.h>
-#include <math.h>
 #include <esp_system.h>
 #include <async.h>
 #include <freertos/FreeRTOS.h>
@@ -12,7 +11,6 @@
 #include "JaamAnimation.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
-#include "JaamUtils.h"
 #include "JaamSettings.h"
 #include "JaamWeb.h"
 #include "JaamLed.h"
@@ -39,7 +37,7 @@ Adafruit_NeoPixel*  strip_service = nullptr;
 SemaphoreHandle_t   stripMutex = nullptr;
 uint16_t            num_leds_main = 26;
 uint16_t            num_leds_service = 5;
-uint8_t             homeDistrict = 18;
+uint8_t             homeDistrict = 25;
 
 bool                strip_main_initialized = false;
 bool                strip_bg_initialized = false;
@@ -203,11 +201,9 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // 8) Розбираємо count записів по RECORD_SZ
     const uint8_t* ptr = data + HEADER_SZ;
-    uint8_t r = random(256), g = random(256), b = random(256);
-    animType = AnimationParams::Type::BLEND_BLINK;
-    uint32_t color = strip_main->Color(r, g, b);
-    uint32_t period = 3000;
-    uint8_t cycles = 5;
+    uint32_t color;
+    uint32_t period;
+    uint8_t cycles;
     uint8_t startBrightness = 50;
     uint8_t endBrightness = 255;
     std::vector<int> ledsIdx;
@@ -234,7 +230,21 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         // Додаємо тільки ті region_id, де активна повітряна тривога (біт 0)
         if (airAlertsMap[region_id]) {
-            int ledsIdx[1] = { region_id };
+            color = strip_main->Color(255, 0, 0);
+            period = 1000;
+            cycles = 5;
+            animType = AnimationParams::Type::FADE;
+        } else {
+            color = strip_main->Color(0, 255, 0);
+            period = 1000;
+            cycles = 1;
+            animType = AnimationParams::Type::ONE_WAY_BLEND;
+        }
+
+        int count;
+        const int* leds = getLedsForRegion(region_id, count);
+        for (int i = 0; i < count; ++i) {
+            int ledsIdx[1] = { leds[i] };
             if (!animation.createAnimation(
                 animType,
                 strip_main,
@@ -244,7 +254,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                 period,
                 cycles,
                 startBrightness,
-                endBrightness
+                endBrightness,
+                region_id
             )) {
                 LOG.println("ERROR: Не вдалося створити анімацію");
                 return;
@@ -268,7 +279,8 @@ void onMessageCallback(WebsocketsMessage msg) {
     //         period,
     //         cycles,
     //         startBrightness,
-    //         endBrightness
+    //         endBrightness,
+    //         1
     //     )) {
     //         LOG.println("ERROR: Не вдалося створити анімацію");
     //         return;
@@ -472,26 +484,26 @@ void animations() {
     animType = AnimationParams::Type::BLEND_BLINK;
 
     // Випадкові параметри для анімації з використанням конфігурації
-    uint32_t period = 2000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
-    uint8_t cycles = 3; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
+    uint32_t period = 1000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
+    uint8_t cycles = 12; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
     uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
     
     // Створення анімації з обробкою помилок
-    if (!animation.createAnimation(
-        animType,
-        strip,
-        ledsIdx,
-        1,
-        color,
-        period,
-        cycles,
-        startBrightness,
-        endBrightness
-    )) {
-        LOG.println("ERROR: Не вдалося створити анімацію");
-        return;
-    }
+    // if (!animation.createAnimation(
+    //     animType,
+    //     strip,
+    //     ledsIdx,
+    //     1,
+    //     color,
+    //     period,
+    //     cycles,
+    //     startBrightness,
+    //     endBrightness
+    // )) {
+    //     LOG.println("ERROR: Не вдалося створити анімацію");
+    //     return;
+    // }
 
     currentIdx++;
     if (currentIdx >= num_leds_main) {
