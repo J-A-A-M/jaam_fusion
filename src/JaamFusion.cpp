@@ -106,44 +106,44 @@ void printHex(const String& data) {
     LOG.println();
 }
 
-void parseAlertPayload(const uint8_t* buf) {
-    // Розбираємо 27 байт:
-    uint16_t regionID = uint16_t(buf[0]) | (uint16_t(buf[1]) << 8);
-    uint16_t flags16  = uint16_t(buf[2]) | (uint16_t(buf[3]) << 8);
-    uint16_t radiation= uint16_t(buf[4]) | (uint16_t(buf[5]) << 8);
+// void parseAlertPayload(const uint8_t* buf) {
+//     // Розбираємо 27 байт:
+//     uint16_t regionID = uint16_t(buf[0]) | (uint16_t(buf[1]) << 8);
+//     uint16_t flags16  = uint16_t(buf[2]) | (uint16_t(buf[3]) << 8);
+//     uint16_t radiation= uint16_t(buf[4]) | (uint16_t(buf[5]) << 8);
 
-    // --- Розбір flags16 на окремі тривоги ---
-    bool air           = flags16 & (1 << 0);   // bit0
-    bool artillery     = flags16 & (1 << 1);   // bit1
-    bool urbanFights   = flags16 & (1 << 2);   // bit2
-    bool chemical      = flags16 & (1 << 3);   // bit3
-    bool nuclear       = flags16 & (1 << 4);   // bit4
-    bool missiles      = flags16 & (1 << 5);   // bit5
-    bool kab           = flags16 & (1 << 6);   // bit6
-    bool drones        = flags16 & (1 << 7);   // bit7
+//     // --- Розбір flags16 на окремі тривоги ---
+//     bool air           = flags16 & (1 << 0);   // bit0
+//     bool artillery     = flags16 & (1 << 1);   // bit1
+//     bool urbanFights   = flags16 & (1 << 2);   // bit2
+//     bool chemical      = flags16 & (1 << 3);   // bit3
+//     bool nuclear       = flags16 & (1 << 4);   // bit4
+//     bool missiles      = flags16 & (1 << 5);   // bit5
+//     bool kab           = flags16 & (1 << 6);   // bit6
+//     bool drones        = flags16 & (1 << 7);   // bit7
 
-    float    weather;
-    memcpy(&weather, buf + 6, 4);
+//     float    weather;
+//     memcpy(&weather, buf + 6, 4);
 
-    uint8_t  gridState = buf[10];
+//     uint8_t  gridState = buf[10];
 
-    uint32_t ts_expl, ts_miss, ts_dron, ts_kab;
-    memcpy(&ts_expl, buf + 11, 4);
-    memcpy(&ts_miss, buf + 15, 4);
-    memcpy(&ts_dron, buf + 19, 4);
-    memcpy(&ts_kab,  buf + 23, 4);
-    // Serial.printf(
-    //   "R %u: gridState=%d\n",
-    //   regionID, gridState
-    // );
+//     uint32_t ts_expl, ts_miss, ts_dron, ts_kab;
+//     memcpy(&ts_expl, buf + 11, 4);
+//     memcpy(&ts_miss, buf + 15, 4);
+//     memcpy(&ts_dron, buf + 19, 4);
+//     memcpy(&ts_kab,  buf + 23, 4);
+//     // Serial.printf(
+//     //   "R %u: gridState=%d\n",
+//     //   regionID, gridState
+//     // );
 
-    // TODO: оновити внутрішні дані/викликати remap(), display тощо
-    // Serial.printf(
-    //   "R%u: flags=0x%04X rad=%u weather=%.1f grid=%u ts_expl=%u ts_miss=%u ts_dron=%u ts_kab=%u\n",
-    //   regionID, flags16, radiation, weather, gridState,
-    //   ts_expl, ts_miss, ts_dron, ts_kab
-    // );
-}
+//     // TODO: оновити внутрішні дані/викликати remap(), display тощо
+//     // Serial.printf(
+//     //   "R%u: flags=0x%04X rad=%u weather=%.1f grid=%u ts_expl=%u ts_miss=%u ts_dron=%u ts_kab=%u\n",
+//     //   regionID, flags16, radiation, weather, gridState,
+//     //   ts_expl, ts_miss, ts_dron, ts_kab
+//     // );
+// }
 
 void onMessageCallback(WebsocketsMessage msg) {
     LOG.print("Got Message: ");
@@ -219,6 +219,10 @@ void onMessageCallback(WebsocketsMessage msg) {
         bool airCompleted = false;
         bool dronesStarted = false;
         bool dronesCompleted = false;
+        bool missilesStarted = false;
+        bool missilesCompleted = false;
+        bool kabStarted = false;
+        bool kabCompleted = false;
         
 
         // Зберігаємо
@@ -229,17 +233,26 @@ void onMessageCallback(WebsocketsMessage msg) {
         urban       = flags16 & (1 << 2);
         chemical    = flags16 & (1 << 3);
         nuclear     = flags16 & (1 << 4);
-        missiles    = flags16 & (1 << 5);
-        kab         = flags16 & (1 << 6);
-        drones      = flags16 & (1 << 7);
+        drones      = flags16 & (1 << 5);
+        missiles    = flags16 & (1 << 6);
+        kab         = flags16 & (1 << 7);
         ballistic   = flags16 & (1 << 8);
 
         if (!airAlertsMap[region_id]    &&   air) { airStarted = true; }
         if (airAlertsMap[region_id]    &&   !air) { airCompleted = true; }
         if (!dronesAlertsMap[region_id]    &&   drones) { dronesStarted = true; }
         if (dronesAlertsMap[region_id]    &&   !drones) { dronesCompleted = true; }
+        if (!missilesAlertsMap[region_id]    &&   missiles) { missilesStarted = true; }
+        if (missilesAlertsMap[region_id]    &&   !missiles) { missilesCompleted = true; }
+        if (!kabAlertsMap[region_id]    &&   kab) { kabStarted = true; }
+        if (kabAlertsMap[region_id]    &&   !kab) { kabCompleted = true; }
 
-        LOG.printf("Region %d airAlertsMap %d air %d airStarted %d airCompleted %d\n", region_id, airAlertsMap[region_id], air, airStarted, airCompleted);
+        LOG.printf("Region %d airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d\n", 
+            region_id, airAlertsMap[region_id], air, 
+            airStarted, airCompleted,
+            dronesStarted, dronesCompleted,
+            missilesStarted, missilesCompleted, 
+            kabStarted,kabCompleted);
 
         // Розкладаємо по окремих тривогах
         airAlertsMap[region_id]                   = air;
@@ -253,24 +266,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         ballisticAlertsMap[region_id]             = ballistic;
 
         const int* leds = getLedsForRegion(region_id, ledCount);
-        if (airStarted) {
-            animate = true;
-            color = color = strip_main->Color(255, 128, 0); //animation.ledActualColor(strip_main, leds[0], false);
-            period = 1000;
-            cycles = 5;
-            endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
-            animType = AnimationParams::Type::FADE;
-        }
-        if (dronesStarted) {
-            animate = true;
-            color = animation.ledActualColor(strip_main, leds[0], false);
-            period = 1000;
-            cycles = 5;
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50;
-            animType = AnimationParams::Type::PULSE;
-        }
-        if (airCompleted || dronesCompleted) {
+        if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted) {
             animate = true;
             color = animation.ledActualColor(strip_main, leds[0]);
             period = 1000;
@@ -281,14 +277,33 @@ void onMessageCallback(WebsocketsMessage msg) {
                 endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
                 animType = AnimationParams::Type::ONE_WAY_BLEND;
             }
-            if (dronesCompleted) {
-                cycles = 3;
+            if (dronesCompleted || missilesCompleted || kabCompleted) {
+                cycles = 1;
+                period = 3000;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
                 endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-                animType = AnimationParams::Type::BLEND_BLINK;
+                animType = AnimationParams::Type::ONE_WAY_BLEND;
             }
             
         }
+        if (airStarted) {
+            animate = true;
+            color = color = strip_main->Color(255, 128, 0); //animation.ledActualColor(strip_main, leds[0], false);
+            period = 1000;
+            cycles = 5;
+            endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
+            animType = AnimationParams::Type::FADE;
+        }
+        if (dronesStarted || kabStarted || missilesStarted) {
+            animate = true;
+            color = animation.ledActualColor(strip_main, leds[0], false);
+            period = 1000;
+            cycles = 5;
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 50;
+            animType = AnimationParams::Type::PULSE;
+        }
+        
         if(animate) {
             for (int i = 0; i < ledCount; ++i) {
                 int ledsIdx[1] = { leds[i] };

@@ -5,6 +5,8 @@
 
 extern std::map<uint16_t, bool> airAlertsMap;
 extern std::map<uint16_t, bool> dronesAlertsMap;
+extern std::map<uint16_t, bool> missilesAlertsMap;
+extern std::map<uint16_t, bool> kabAlertsMap;
 
 // Функція для змішування кольорів
 uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float factor) {
@@ -354,6 +356,8 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         auto regions = getRegionsForLed(position);
         bool alert = false;
         bool drones = false;
+        bool missiles = false;
+        bool kab = false;
         uint8_t brightness = 0;
         for (uint16_t region_id : regions) {
             auto it = airAlertsMap.find(region_id);
@@ -369,11 +373,33 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 break; // Достатньо одного true
             }
         }
+        for (uint16_t region_id : regions) {
+            auto it = missilesAlertsMap.find(region_id);
+            if (it != missilesAlertsMap.end() && it->second) {
+                missiles = true;
+                break; // Достатньо одного true
+            }
+        }
+        for (uint16_t region_id : regions) {
+            auto it = kabAlertsMap.find(region_id);
+            if (it != kabAlertsMap.end() && it->second) {
+                kab = true;
+                break; // Достатньо одного true
+            }
+        }
         if (alert) {
             color = strip->Color(255, 0, 0); // Червоний
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
             if (drones) {
                 color = strip->Color(255, 0, 255);
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            }
+            if (missiles) {
+                color = strip->Color(86, 130, 208);
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            }
+            if (kab) {
+                color = strip->Color(255, 255, 0);
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
         } else {
