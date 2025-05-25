@@ -174,8 +174,8 @@ void AnimationManager::logActiveAnimations() {
                         break;
                 }
 
-                LOG.printf("Animation %d: strip=%s, LED=%d, type=%s, color=0x%06X, period=%u, cycles=%u\n",
-                         i, stripName, anim->positions[0], typeName, anim->color, anim->period, anim->cycles);
+                LOG.printf("Animation %d: strip=%s, LED=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
+                         i, stripName, anim->positions[0], typeName, anim->startBrightness, anim->endBrightness, anim->period, anim->cycles);
             }
         }
         xSemaphoreGive(animMutex);
@@ -339,31 +339,43 @@ uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
     return color;
 }
 
-uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position) {
+uint32_t AnimationManager::adaptColorBrightness(Adafruit_NeoPixel* strip, uint32_t color, uint8_t brightness) {
+    uint8_t r = ((color >> 16)  & 0xFF) * brightness / 255;
+    uint8_t g = ((color >> 8)   & 0xFF) * brightness / 255;
+    uint8_t b = ( color         & 0xFF) * brightness / 255;
+    color = strip->Color(r, g, b); 
+    return color;
+}
+
+uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted) {
     uint32_t color;
     if (strip == strip_main) {
-        // Якщо активна тривога — червоний, інакше зелений
         auto regions = getRegionsForLed(position);
+        bool alert = false;
+        uint8_t brightness = 0;
         for (uint16_t region_id : regions) {
-            // ... працюємо з region_id ...
-            bool alert = false;
             auto it = airAlertsMap.find(region_id);
-            if (it != airAlertsMap.end()) {
-                alert = it->second;
+            if (it != airAlertsMap.end() && it->second) {
+                alert = true;
+                break; // Достатньо одного true
             }
-            //LOG.printf("ledActualColor: region_id=%u, airAlert=%d\n", region_id, alert);
-            if (alert) {
-                color = strip->Color(255, 0, 0); // Червоний
-            } else {
-                color = strip->Color(0, 255, 0); // Зелений
+        }
+        if (alert) {
+            color = strip->Color(255, 0, 0); // Червоний
+            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
+        } else {
+            color = strip->Color(0, 255, 0); // Зелений
+            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
+            // Якщо є домашній район — окремий brightness
+            for (uint16_t region_id : regions) {
                 if (region_id == homeDistrict) {
-                    uint8_t homeBrightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
-                    uint8_t r = ((color >> 16) & 0xFF) * homeBrightness / 255;
-                    uint8_t g = ((color >> 8) & 0xFF) * homeBrightness / 255;
-                    uint8_t b = (color & 0xFF) * homeBrightness / 255;
-                    color = strip->Color(r, g, b); //r << 16 | g << 8 | b;
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+                    break;
                 }
             }
+        }
+        if (adapted) {
+            color = adaptColorBrightness(strip, color, brightness);
         }
     } else if (strip == strip_bg) {
         color = DefaultColors::BG_STRIP;

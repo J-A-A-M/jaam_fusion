@@ -25,7 +25,7 @@ StripStatus JaamLed::createStrip(Adafruit_NeoPixel*& strip,
                     int pin, 
                     uint8_t count, 
                     uint8_t brightness,
-                    uint32_t defaultColor, 
+                    uint32_t color, 
                     uint8_t type) {
     if (pin <= 0) {
         return StripStatus::STRIP_PIN_NOT_SET;
@@ -41,7 +41,7 @@ StripStatus JaamLed::createStrip(Adafruit_NeoPixel*& strip,
     strip->clear();
     
     for(int i = 0; i < count; i++) {
-        strip->setPixelColor(i, defaultColor);
+        strip->setPixelColor(i, color);
     }
     strip->show();
     return StripStatus::SUCCESS;

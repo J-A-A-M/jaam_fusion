@@ -206,6 +206,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     uint8_t cycles;
     uint8_t startBrightness = 50;
     uint8_t endBrightness = 255;
+    uint8_t ledCount;
     std::vector<int> ledsIdx;
     for (size_t i = 0; i < count; ++i) {
         uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
@@ -228,22 +229,22 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         //LOG.printf("Region %d alert %d\n", region_id, airAlertsMap[region_id]);
 
-        // Додаємо тільки ті region_id, де активна повітряна тривога (біт 0)
+        const int* leds = getLedsForRegion(region_id, ledCount);
         if (airAlertsMap[region_id]) {
-            color = strip_main->Color(255, 0, 0);
+            color = animation.ledActualColor(strip_main, leds[0], false);
             period = 1000;
             cycles = 5;
+            endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
             animType = AnimationParams::Type::FADE;
         } else {
-            color = strip_main->Color(0, 255, 0);
+            color = animation.ledActualColor(strip_main, leds[0]);
             period = 1000;
             cycles = 1;
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+            endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
             animType = AnimationParams::Type::ONE_WAY_BLEND;
         }
-
-        int count;
-        const int* leds = getLedsForRegion(region_id, count);
-        for (int i = 0; i < count; ++i) {
+        for (int i = 0; i < ledCount; ++i) {
             int ledsIdx[1] = { leds[i] };
             if (!animation.createAnimation(
                 animType,
@@ -705,16 +706,16 @@ void wifiReconnect() {
 }
 
 void get_pixel_color() {
-  if (strip_main_initialized) {
-    animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-      uint32_t color = strip->getPixelColor(currentIdx);
-      uint8_t r = (color >> 16) & 0xFF;
-      uint8_t g = (color >> 8) & 0xFF;
-      uint8_t b = color & 0xFF;
-      LOG.printf("Pixel %d color: R=%d, G=%d, B=%d (0x%06X)\n", 
-                currentIdx, r, g, b, color);
-    });
-  }
+//   if (strip_main_initialized) {
+//     animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+//       uint32_t color = strip->getPixelColor(currentIdx);
+//       uint8_t r = (color >> 16) & 0xFF;
+//       uint8_t g = (color >> 8)  & 0xFF;
+//       uint8_t b =  color        & 0xFF;
+//       LOG.printf("Pixel %d color: R=%d, G=%d, B=%d (0x%06X)\n", 
+//                 currentIdx, r, g, b, color);
+//     });
+//   }
 
   // Виводимо інформацію про активні анімації
   animation.logActiveAnimations();

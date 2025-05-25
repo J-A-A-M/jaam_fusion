@@ -86,7 +86,7 @@ inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
 }
 
 // Отримати список LED для region_id
-inline const int* getLedsForRegion(uint16_t region_id, int& count) {
+inline const int* getLedsForRegion(uint16_t region_id, uint8_t& count) {
     const RegionLedMapEntry* entry = getRegionEntry(region_id);
     if (entry) {
         count = entry->led_count;

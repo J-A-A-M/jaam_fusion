@@ -71,6 +71,7 @@ class AnimationManager {
         void cleanupAnimation(AnimationParams* anim, int index);
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         void removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex);
+        uint32_t adaptColorBrightness(Adafruit_NeoPixel* strip, uint32_t color, uint8_t brightness);
         
 
     public:
@@ -90,7 +91,7 @@ class AnimationManager {
         void clearAllAnimations();
         void logActiveAnimations();
         uint32_t stripDefaultColor(Adafruit_NeoPixel* strip);
-        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t region_id);
+        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t region_id, bool adapted = true);
         bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation);
         std::vector<FreeLedInfo> getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds);
         bool isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx);

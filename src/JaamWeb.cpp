@@ -35,17 +35,17 @@ String JaamWeb::getHtmlTemplate() {
     
     // Додаємо слайдери для всіх параметрів
     html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна яскравість");
-    html += getParameterHtml("brightness_day", 0, 255, settings->getInt(BRIGHTNESS_DAY), "Яскравість дня");
-    html += getParameterHtml("brightness_night", 0, 255, settings->getInt(BRIGHTNESS_NIGHT), "Яскравість ночі");
+    html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "Яскравість дня");
+    html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Яскравість ночі");
     html += getParameterHtml("brightness_mode", 0, 2, settings->getInt(BRIGHTNESS_MODE), "Режим яскравості");
-    html += getParameterHtml("brightness_alert", 0, 255, settings->getInt(BRIGHTNESS_ALERT), "Яскравість тривоги");
-    html += getParameterHtml("brightness_clear", 0, 255, settings->getInt(BRIGHTNESS_CLEAR), "Яскравість очищення");
-    html += getParameterHtml("brightness_new_alert", 0, 255, settings->getInt(BRIGHTNESS_NEW_ALERT), "Яскравість нової тривоги");
-    html += getParameterHtml("brightness_alert_over", 0, 255, settings->getInt(BRIGHTNESS_ALERT_OVER), "Яскравість завершення тривоги");
-    html += getParameterHtml("brightness_explosion", 0, 255, settings->getInt(BRIGHTNESS_EXPLOSION), "Яскравість вибуху");
+    html += getParameterHtml("brightness_alert", 0, 100, settings->getInt(BRIGHTNESS_ALERT), "Яскравість тривоги");
+    html += getParameterHtml("brightness_clear", 0, 100, settings->getInt(BRIGHTNESS_CLEAR), "Яскравість очищення");
+    html += getParameterHtml("brightness_new_alert", 0, 100, settings->getInt(BRIGHTNESS_NEW_ALERT), "Яскравість нової тривоги");
+    html += getParameterHtml("brightness_alert_over", 0, 100, settings->getInt(BRIGHTNESS_ALERT_OVER), "Яскравість завершення тривоги");
+    html += getParameterHtml("brightness_explosion", 0, 100, settings->getInt(BRIGHTNESS_EXPLOSION), "Яскравість вибуху");
     html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Яскравість домашнього району");
     html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Яскравість фону");
-    html += getParameterHtml("brightness_service", 0, 255, settings->getInt(BRIGHTNESS_SERVICE), "Яскравість сервісу");
+    html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Яскравість сервісу");
     
     html += "</div>";
     html += "<script>";
@@ -72,9 +72,12 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS, value);
             if (strip_main_initialized) {
                 LOG.printf("Setting brightness main: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
-                uint8_t homeBrightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     strip->setBrightness(led.brightnessMapped(value));
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
                     strip->show();
                 });
             }
@@ -86,12 +89,52 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_MODE, value);
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, value);
+            if (strip_main_initialized) {
+                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, value);
+            if (strip_main_initialized) {
+                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         } else if (name == "brightness_new_alert") {
             settings->saveInt(BRIGHTNESS_NEW_ALERT, value);
+            if (strip_main_initialized) {
+                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         } else if (name == "brightness_alert_over") {
             settings->saveInt(BRIGHTNESS_ALERT_OVER, value);
+            if (strip_main_initialized) {
+                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, value);
         } else if (name == "brightness_home_district") {
@@ -100,7 +143,7 @@ void JaamWeb::handleParameter() {
                 LOG.printf("Setting brightness home district: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     uint32_t color;
-                    int count;
+                    uint8_t count;
                     const int* leds = getLedsForRegion(homeDistrict, count);
                     for (int i = 0; i < count; ++i) {
                         int ledsIdx[1] = { leds[i] };

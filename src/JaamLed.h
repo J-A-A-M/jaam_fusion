@@ -45,7 +45,7 @@ public:
                         int pin, 
                         uint8_t count, 
                         uint8_t brightness,
-                        uint32_t defaultColor, 
+                        uint32_t color, 
                         uint8_t type);
 };
 
