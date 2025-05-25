@@ -137,6 +137,16 @@ void JaamWeb::handleParameter() {
             }
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, value);
+            if (strip_main_initialized) {
+                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, value);
             if (strip_main_initialized) {

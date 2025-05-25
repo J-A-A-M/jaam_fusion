@@ -197,7 +197,6 @@ void onMessageCallback(WebsocketsMessage msg) {
     // 7) Обчислюємо кількість записів
     size_t count = bodyLen / RECORD_SZ;
     //LOG.printf("count %d\n", count);
-    
 
     // 8) Розбираємо count записів по RECORD_SZ
     const uint8_t* ptr = data + HEADER_SZ;
@@ -218,6 +217,8 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         bool airStarted = false;
         bool airCompleted = false;
+        bool dronesStarted = false;
+        bool dronesCompleted = false;
         
 
         // Зберігаємо
@@ -235,6 +236,8 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         if (!airAlertsMap[region_id]    &&   air) { airStarted = true; }
         if (airAlertsMap[region_id]    &&   !air) { airCompleted = true; }
+        if (!dronesAlertsMap[region_id]    &&   drones) { dronesStarted = true; }
+        if (dronesAlertsMap[region_id]    &&   !drones) { dronesCompleted = true; }
 
         LOG.printf("Region %d airAlertsMap %d air %d airStarted %d airCompleted %d\n", region_id, airAlertsMap[region_id], air, airStarted, airCompleted);
 
@@ -252,20 +255,39 @@ void onMessageCallback(WebsocketsMessage msg) {
         const int* leds = getLedsForRegion(region_id, ledCount);
         if (airStarted) {
             animate = true;
-            color = animation.ledActualColor(strip_main, leds[0], false);
+            color = color = strip_main->Color(255, 128, 0); //animation.ledActualColor(strip_main, leds[0], false);
             period = 1000;
             cycles = 5;
             endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
             animType = AnimationParams::Type::FADE;
         }
-        if (airCompleted) {
+        if (dronesStarted) {
+            animate = true;
+            color = animation.ledActualColor(strip_main, leds[0], false);
+            period = 1000;
+            cycles = 5;
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 50;
+            animType = AnimationParams::Type::PULSE;
+        }
+        if (airCompleted || dronesCompleted) {
             animate = true;
             color = animation.ledActualColor(strip_main, leds[0]);
             period = 1000;
-            cycles = 1;
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-            endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
-            animType = AnimationParams::Type::ONE_WAY_BLEND;
+            
+            if (airCompleted) {
+                cycles = 1;
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+                endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
+                animType = AnimationParams::Type::ONE_WAY_BLEND;
+            }
+            if (dronesCompleted) {
+                cycles = 3;
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+                animType = AnimationParams::Type::BLEND_BLINK;
+            }
+            
         }
         if(animate) {
             for (int i = 0; i < ledCount; ++i) {
@@ -440,13 +462,6 @@ void websocketProcess() {
   }
 }
 //--Websocket process end
-
-
-
-
-
-
-
 
 void animations() {
     loopCount++;

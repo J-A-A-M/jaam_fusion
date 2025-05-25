@@ -7,6 +7,8 @@
 #include <utility> 
 #include <vector>
 
+extern std::map<uint16_t, uint16_t> alertsMap;
+
 struct Firmware {
     int major = 0;
     int minor = 0;
@@ -75,7 +77,7 @@ static void fillFwVersion(char* result, Firmware firmware) {
     strcpy(result, version.c_str());
 }
 
-// Пошук entry по region_id
+// Отримати регіон по region_id
 inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
     for (int i = 0; i < MAX_REGIONS; ++i) {
         if (regionLedMap[i].region_id == region_id) {
@@ -108,4 +110,18 @@ inline std::vector<uint16_t> getRegionsForLed(int led_position) {
         }
     }
     return regions;
+}
+
+// Перевірка чи є тривога на леді:
+inline bool isAlertForLed(int led_position) {
+    std::vector<uint16_t> regions = getRegionsForLed(led_position);
+    for (uint16_t region_id : regions) {
+        auto it = alertsMap.find(region_id);
+        if (it != alertsMap.end() && it->second != 0) {
+            return true;
+            LOG.printf("Region %d led_position %d true\n", region_id, led_position);
+        }
+    }
+    LOG.printf("Region led_position %d false\n", led_position);
+    return false;
 }

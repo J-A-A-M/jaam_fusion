@@ -4,6 +4,7 @@
 
 
 extern std::map<uint16_t, bool> airAlertsMap;
+extern std::map<uint16_t, bool> dronesAlertsMap;
 
 // Функція для змішування кольорів
 uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float factor) {
@@ -352,6 +353,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     if (strip == strip_main) {
         auto regions = getRegionsForLed(position);
         bool alert = false;
+        bool drones = false;
         uint8_t brightness = 0;
         for (uint16_t region_id : regions) {
             auto it = airAlertsMap.find(region_id);
@@ -360,9 +362,20 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 break; // Достатньо одного true
             }
         }
+        for (uint16_t region_id : regions) {
+            auto it = dronesAlertsMap.find(region_id);
+            if (it != dronesAlertsMap.end() && it->second) {
+                drones = true;
+                break; // Достатньо одного true
+            }
+        }
         if (alert) {
             color = strip->Color(255, 0, 0); // Червоний
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
+            if (drones) {
+                color = strip->Color(255, 0, 255);
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            }
         } else {
             color = strip->Color(0, 255, 0); // Зелений
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
