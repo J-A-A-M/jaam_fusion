@@ -208,35 +208,58 @@ void onMessageCallback(WebsocketsMessage msg) {
     uint8_t endBrightness = 255;
     uint8_t ledCount;
     std::vector<int> ledsIdx;
+    bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic;
     for (size_t i = 0; i < count; ++i) {
         uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
         uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
         ptr += RECORD_SZ;
+
+        bool animate = false;
+
+        bool airStarted = false;
+        bool airCompleted = false;
         
 
         // Зберігаємо
         alertsMap[region_id] = flags16;
         // Розкладаємо по окремих тривогах
-        airAlertsMap[region_id]                   = flags16 & (1 << 0);
-        artilleryAlertsMap[region_id]             = flags16 & (1 << 1);
-        urbanFightsAlertsMap[region_id]           = flags16 & (1 << 2);
-        chemicalAlertsMap[region_id]              = flags16 & (1 << 3);
-        nuclearAlertsMap[region_id]               = flags16 & (1 << 4);
-        missilesAlertsMap[region_id]              = flags16 & (1 << 5);
-        kabAlertsMap[region_id]                   = flags16 & (1 << 6);
-        dronesAlertsMap[region_id]                = flags16 & (1 << 7);
-        ballisticAlertsMap[region_id]             = flags16 & (1 << 8);
+        air         = flags16 & (1 << 0);
+        artillery   = flags16 & (1 << 1);
+        urban       = flags16 & (1 << 2);
+        chemical    = flags16 & (1 << 3);
+        nuclear     = flags16 & (1 << 4);
+        missiles    = flags16 & (1 << 5);
+        kab         = flags16 & (1 << 6);
+        drones      = flags16 & (1 << 7);
+        ballistic   = flags16 & (1 << 8);
 
-        //LOG.printf("Region %d alert %d\n", region_id, airAlertsMap[region_id]);
+        if (!airAlertsMap[region_id]    &&   air) { airStarted = true; }
+        if (airAlertsMap[region_id]    &&   !air) { airCompleted = true; }
+
+        LOG.printf("Region %d airAlertsMap %d air %d airStarted %d airCompleted %d\n", region_id, airAlertsMap[region_id], air, airStarted, airCompleted);
+
+        // Розкладаємо по окремих тривогах
+        airAlertsMap[region_id]                   = air;
+        artilleryAlertsMap[region_id]             = artillery;
+        urbanFightsAlertsMap[region_id]           = urban;
+        chemicalAlertsMap[region_id]              = chemical;
+        nuclearAlertsMap[region_id]               = nuclear;
+        missilesAlertsMap[region_id]              = missiles;
+        kabAlertsMap[region_id]                   = kab;
+        dronesAlertsMap[region_id]                = drones;
+        ballisticAlertsMap[region_id]             = ballistic;
 
         const int* leds = getLedsForRegion(region_id, ledCount);
-        if (airAlertsMap[region_id]) {
+        if (airStarted) {
+            animate = true;
             color = animation.ledActualColor(strip_main, leds[0], false);
             period = 1000;
             cycles = 5;
             endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
             animType = AnimationParams::Type::FADE;
-        } else {
+        }
+        if (airCompleted) {
+            animate = true;
             color = animation.ledActualColor(strip_main, leds[0]);
             period = 1000;
             cycles = 1;
@@ -244,30 +267,26 @@ void onMessageCallback(WebsocketsMessage msg) {
             endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
             animType = AnimationParams::Type::ONE_WAY_BLEND;
         }
-        for (int i = 0; i < ledCount; ++i) {
-            int ledsIdx[1] = { leds[i] };
-            if (!animation.createAnimation(
-                animType,
-                strip_main,
-                ledsIdx,
-                1,
-                color,
-                period,
-                cycles,
-                startBrightness,
-                endBrightness,
-                region_id
-            )) {
-                LOG.println("ERROR: Не вдалося створити анімацію");
-                return;
+        if(animate) {
+            for (int i = 0; i < ledCount; ++i) {
+                int ledsIdx[1] = { leds[i] };
+                if (!animation.createAnimation(
+                    animType,
+                    strip_main,
+                    ledsIdx,
+                    1,
+                    color,
+                    period,
+                    cycles,
+                    startBrightness,
+                    endBrightness,
+                    region_id
+                )) {
+                    LOG.println("ERROR: Не вдалося створити анімацію");
+                    return;
+                }
             }
         }
-        // Додаємо тільки ті region_id, де активна повітряна тривога (біт 0)
-        // if (airAlertsMap[region_id]) {
-        //     ledsIdx.push_back(region_id);
-        // }
-
-
     }
     // Викликаємо createAnimation один раз для всіх активних region_id
     // if (!ledsIdx.empty()) {
@@ -751,7 +770,7 @@ void setup() {
     led.setSettings(&settings);
     // Налаштовуємо асинхронні задачі
     //async.setInterval(animations, ANIMATION_INTERVAL);
-    //async.setInterval(get_pixel_color, ANIMATION_INTERVAL);
+    async.setInterval(get_pixel_color, ANIMATION_INTERVAL);
     async.setInterval(memory, MEMORY_CHECK_INTERVAL);
     async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
     async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);

@@ -174,8 +174,8 @@ void AnimationManager::logActiveAnimations() {
                         break;
                 }
 
-                LOG.printf("Animation %d: strip=%s, LED=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
-                         i, stripName, anim->positions[0], typeName, anim->startBrightness, anim->endBrightness, anim->period, anim->cycles);
+                LOG.printf("Animation %d: strip=%s, LED=%d, region=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
+                         i, stripName, anim->positions, anim->region_id, typeName, anim->startBrightness, anim->endBrightness, anim->period, anim->cycles);
             }
         }
         xSemaphoreGive(animMutex);
