@@ -41,7 +41,7 @@ void AnimationManager::setSettings(JaamSettings* settings) {
 
 bool AnimationManager::createAnimation(AnimationParams::Type type, 
                                     Adafruit_NeoPixel* strip,
-                                    const int* positions, 
+                                    int* positions, 
                                     int posCount,
                                     uint32_t color,
                                     uint32_t period,
@@ -211,6 +211,9 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
         case AnimationParams::Type::ONE_WAY_BLEND:
             updateOneWayBlendAnimation(anim, elapsed);
             break;
+        case AnimationParams::Type::RUNNING_LIGHT:
+            updateRunningLightAnimation(anim, elapsed);
+            break;
     }
 }
 
@@ -323,6 +326,33 @@ void AnimationManager::updatePulseAnimation(AnimationParams* anim, float elapsed
             uint8_t b = ( c        & 0xFF) * scale / 255;
             anim->strip->setPixelColor(idx, r, g, b);
         }
+        anim->strip->show();
+        xSemaphoreGive(stripMutex);
+    }
+}
+
+void AnimationManager::updateRunningLightAnimation(AnimationParams* anim, float elapsed) {
+    // elapsed: 0.0 ... 1.0 ... cycles
+    int ledCount = anim->posCount;
+    if (ledCount == 0) return;
+
+    // Який LED зараз активний
+    int activeLed = int((elapsed - floor(elapsed)) * ledCount);
+
+    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        // Гасимо всі
+        for (int i = 0; i < ledCount; ++i) {
+            int idx = anim->positions[i];
+            anim->strip->setPixelColor(idx, ledActualColor(anim->strip, anim->positions[i])); // чорний
+        }
+        // Вмикаємо активний
+        int idx = anim->positions[activeLed];
+        uint32_t c = anim->color;
+        uint8_t r = ((c >> 16) & 0xFF) * anim->endBrightness / 255;
+        uint8_t g = ((c >>  8) & 0xFF) * anim->endBrightness / 255;
+        uint8_t b = ( c        & 0xFF) * anim->endBrightness / 255;
+        anim->strip->setPixelColor(idx, r, g, b);
+
         anim->strip->show();
         xSemaphoreGive(stripMutex);
     }

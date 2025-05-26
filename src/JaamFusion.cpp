@@ -38,6 +38,8 @@ SemaphoreHandle_t   stripMutex = nullptr;
 uint16_t            num_leds_main = 26;
 uint16_t            num_leds_service = 5;
 uint8_t             homeDistrict = 25;
+std::vector<int>    allLedsMain;
+std::vector<int>    allLedsBg;
 
 bool                strip_main_initialized = false;
 bool                strip_bg_initialized = false;
@@ -122,7 +124,7 @@ void printHex(const String& data) {
 void onMessageCallback(WebsocketsMessage msg) {
     LOG.print("Got Message: ");
 
-    isFirstDataFetchCompleted = true;
+    
 
     // Ігноруємо текстові повідомлення
     if (!msg.isBinary()) {
@@ -240,65 +242,79 @@ void onMessageCallback(WebsocketsMessage msg) {
         ballisticAlertsMap[region_id]             = ballistic;
 
         const int* leds = getLedsForRegion(region_id, ledCount);
-        if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted) {
-            animate = true;
-            color = animation.ledActualColor(strip_main, leds[0]);
-            period = 1000;
-            
-            if (airCompleted) {
-                cycles = 1;
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-                endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
-                animType = AnimationParams::Type::ONE_WAY_BLEND;
+        if (isFirstDataFetchCompleted) {
+            if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted) {
+                animate = true;
+                color = animation.ledActualColor(strip_main, leds[0]);
+                period = 1000;
+                
+                if (airCompleted) {
+                    cycles = 1;
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+                    endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
+                    animType = AnimationParams::Type::ONE_WAY_BLEND;
+                }
+                if (dronesCompleted || missilesCompleted || kabCompleted) {
+                    cycles = 1;
+                    period = 3000;
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                    endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+                    animType = AnimationParams::Type::ONE_WAY_BLEND;
+                }
+                
             }
-            if (dronesCompleted || missilesCompleted || kabCompleted) {
-                cycles = 1;
-                period = 3000;
+            if (airStarted) {
+                animate = true;
+                color = strip_main->Color(255, 128, 0); //animation.ledActualColor(strip_main, leds[0], false);
+                period = 1000;
+                cycles = 5;
+                endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
+                animType = AnimationParams::Type::FADE;
+            }
+            if (dronesStarted || kabStarted || missilesStarted) {
+                animate = true;
+                color = animation.ledActualColor(strip_main, leds[0], false);
+                period = 1000;
+                cycles = 5;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-                animType = AnimationParams::Type::ONE_WAY_BLEND;
+                endBrightness = 50;
+                animType = AnimationParams::Type::PULSE;
             }
             
-        }
-        if (airStarted) {
-            animate = true;
-            color = color = strip_main->Color(255, 128, 0); //animation.ledActualColor(strip_main, leds[0], false);
-            period = 1000;
-            cycles = 5;
-            endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
-            animType = AnimationParams::Type::FADE;
-        }
-        if (dronesStarted || kabStarted || missilesStarted) {
-            animate = true;
-            color = animation.ledActualColor(strip_main, leds[0], false);
-            period = 1000;
-            cycles = 5;
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50;
-            animType = AnimationParams::Type::PULSE;
-        }
-        
-        if(animate) {
-            for (int i = 0; i < ledCount; ++i) {
-                int ledsIdx[1] = { leds[i] };
-                if (!animation.createAnimation(
-                    animType,
-                    strip_main,
-                    ledsIdx,
-                    1,
-                    color,
-                    period,
-                    cycles,
-                    startBrightness,
-                    endBrightness,
-                    region_id
-                )) {
-                    LOG.println("ERROR: Не вдалося створити анімацію");
-                    return;
+            if(animate) {
+                for (int i = 0; i < ledCount; ++i) {
+                    int ledsIdx[1] = { leds[i] };
+                    if (!animation.createAnimation(
+                        animType,
+                        strip_main,
+                        ledsIdx,
+                        1,
+                        color,
+                        period,
+                        cycles,
+                        startBrightness,
+                        endBrightness,
+                        region_id
+                    )) {
+                        LOG.println("ERROR: Не вдалося створити анімацію");
+                        return;
+                    }
                 }
             }
+        } else {
+            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+                for(uint16_t i = 0; i < num_leds_main; i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
+                strip->show();
+            });
+
         }
     }
+
+    isFirstDataFetchCompleted = true;
+
     // Викликаємо createAnimation один раз для всіх активних region_id
     // if (!ledsIdx.empty()) {
     //     if (!animation.createAnimation(
@@ -370,6 +386,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
   } else if (event == WebsocketsEvent::ConnectionClosed) {
     apiConnected = false;
     LOG.println("connnection closed");
+    isFirstDataFetchCompleted = false;
     LOG.printf("Heap before close: %u\n", ESP.getFreeHeap());
     //websocket.close();
     auto reason = websocket.getCloseReason();
@@ -406,6 +423,7 @@ void socketConnect() {
   websocket.connect(webSocketUrl);
   if (websocket.available()) {
     clearAllAlertsMaps();
+    animation.clearAllAnimations();
     animation.paintStripDefault(strip_main, num_leds_main);
     LOG.print("connection time - ");
     LOG.print(millis() - startTime);
@@ -425,7 +443,7 @@ void socketConnect() {
     sprintf(userInfo, "user_info:%s", userInfoJson.as<String>().c_str());
     LOG.println(userInfo);
     websocket.send(userInfo);
-    websocket.ping();
+    websocket.ping("A");
     websocketReconnect = false;
     lastWebsocketConnectTime  = millis();
     //showServiceMessage("підключено!", "Сервер даних", 3000);
@@ -566,13 +584,23 @@ void memory() {
 }
 
 void initSettings() {
-  LOG.println("Init settings");
-  settings.init();
-  firmware = parseFirmwareVersion(VERSION);
-  LOG.printf("major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
-           firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
-  fillFwVersion(currentFwVersion, firmware);
-  LOG.printf("Current firmware version: %s\n", currentFwVersion);
+    LOG.println("Init settings");
+    settings.init();
+    firmware = parseFirmwareVersion(VERSION);
+    LOG.printf("major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
+            firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
+    fillFwVersion(currentFwVersion, firmware);
+    LOG.printf("Current firmware version: %s\n", currentFwVersion);
+
+    // Заповнюємо allLedsMain згідно з num_leds_main
+    allLedsMain.clear();
+    for (uint16_t i = 0; i < num_leds_main; ++i) {
+        allLedsMain.push_back(i);
+    }
+    allLedsBg.clear();
+    for (uint16_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
+        allLedsBg.push_back(i);
+    }
 }
 
 
@@ -700,6 +728,17 @@ void initStrip() {
             }
             strip->show();
         });
+        animation.createAnimation(
+            AnimationParams::Type::RUNNING_LIGHT, 
+            strip_main, 
+            allLedsMain.data(), 
+            num_leds_main,
+            strip_main->Color(255, 128, 0),
+            2000,
+            90,
+            50,
+            255
+        );
     }
     
     if (strip_bg_initialized) {
@@ -765,8 +804,8 @@ void setup() {
 
     initChipID();
     initSettings();
-    initWifi();
     initStrip();
+    initWifi();
 
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());

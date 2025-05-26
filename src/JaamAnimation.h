@@ -19,7 +19,8 @@ struct AnimationParams {
         BLINK,
         BLEND_BLINK,
         PULSE,
-        ONE_WAY_BLEND
+        ONE_WAY_BLEND,
+        RUNNING_LIGHT
     };
 
     Adafruit_NeoPixel* strip;
@@ -68,6 +69,7 @@ class AnimationManager {
         void updatePulseAnimation(AnimationParams* anim, float elapsed);
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
         void updateOneWayBlendAnimation(AnimationParams* anim, float elapsed);
+        void updateRunningLightAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         void removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex);
@@ -79,7 +81,7 @@ class AnimationManager {
         void setSettings(JaamSettings* settings);
         bool createAnimation(AnimationParams::Type type, 
                            Adafruit_NeoPixel* strip,
-                           const int* positions, 
+                           int* positions, 
                            int posCount,
                            uint32_t color,
                            uint32_t period = 1000,
