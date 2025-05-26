@@ -17,18 +17,18 @@
 
 using namespace websockets;
 
-char            chipID[13];
-char            currentFwVersion[25];
-int             currentIdx = 0;
-uint32_t        loopCount = 0;
-int             needRebootWithDelay = -1;
+char                chipID[13];
+char                currentFwVersion[25];
+int                 currentIdx = 0;
+uint32_t            loopCount = 0;
+int                 needRebootWithDelay = -1;
 
-Async           async = Async(20);
+Async               async = Async(20);
 
-JaamSettings    settings;
-Firmware        firmware;
-JaamWeb         web;
-JaamLed         led;
+JaamSettings        settings;
+Firmware            firmware;
+JaamWeb             web;
+JaamLed             led;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -48,28 +48,41 @@ AnimationParams::Type animType;
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
-//WiFiClient          client;
 WebsocketsClient    websocket;
 uint32_t            lastWifiConnectTime = 0;  // Track when WiFi was last connected
 
-time_t  websocketLastPingTime = 0;
-bool    isFirstDataFetchCompleted = false;
-bool    apiConnected;
-uint8_t     legacy = 4;
-bool    websocketReconnect = false;
-uint32_t     lastWebsocketConnectTime = 0;
+time_t              websocketLastPingTime = 0;
+bool                isFirstDataFetchCompleted = false;
+bool                apiConnected;
+uint8_t             legacy = 4;
+bool                websocketReconnect = false;
+uint32_t            lastWebsocketConnectTime = 0;
 
 
-std::map<uint16_t, uint16_t> alertsMap;
-std::map<uint16_t, bool> airAlertsMap;
-std::map<uint16_t, bool> artilleryAlertsMap;
-std::map<uint16_t, bool> urbanFightsAlertsMap;
-std::map<uint16_t, bool> chemicalAlertsMap;
-std::map<uint16_t, bool> nuclearAlertsMap;
-std::map<uint16_t, bool> missilesAlertsMap;
-std::map<uint16_t, bool> kabAlertsMap;
-std::map<uint16_t, bool> dronesAlertsMap;
-std::map<uint16_t, bool> ballisticAlertsMap;
+std::map<uint16_t, uint16_t>    alertsMap;
+std::map<uint16_t, bool>        airAlertsMap;
+std::map<uint16_t, bool>        artilleryAlertsMap;
+std::map<uint16_t, bool>        urbanFightsAlertsMap;
+std::map<uint16_t, bool>        chemicalAlertsMap;
+std::map<uint16_t, bool>        nuclearAlertsMap;
+std::map<uint16_t, bool>        missilesAlertsMap;
+std::map<uint16_t, bool>        kabAlertsMap;
+std::map<uint16_t, bool>        dronesAlertsMap;
+std::map<uint16_t, bool>        ballisticAlertsMap;
+
+
+void clearAllAlertsMaps() {
+    alertsMap.clear();
+    airAlertsMap.clear();
+    artilleryAlertsMap.clear();
+    urbanFightsAlertsMap.clear();
+    chemicalAlertsMap.clear();
+    nuclearAlertsMap.clear();
+    missilesAlertsMap.clear();
+    kabAlertsMap.clear();
+    dronesAlertsMap.clear();
+    ballisticAlertsMap.clear();
+}
 
 
 void rebootDevice(int time = 2000, bool async = false) {
@@ -105,45 +118,6 @@ void printHex(const String& data) {
     }
     LOG.println();
 }
-
-// void parseAlertPayload(const uint8_t* buf) {
-//     // Розбираємо 27 байт:
-//     uint16_t regionID = uint16_t(buf[0]) | (uint16_t(buf[1]) << 8);
-//     uint16_t flags16  = uint16_t(buf[2]) | (uint16_t(buf[3]) << 8);
-//     uint16_t radiation= uint16_t(buf[4]) | (uint16_t(buf[5]) << 8);
-
-//     // --- Розбір flags16 на окремі тривоги ---
-//     bool air           = flags16 & (1 << 0);   // bit0
-//     bool artillery     = flags16 & (1 << 1);   // bit1
-//     bool urbanFights   = flags16 & (1 << 2);   // bit2
-//     bool chemical      = flags16 & (1 << 3);   // bit3
-//     bool nuclear       = flags16 & (1 << 4);   // bit4
-//     bool missiles      = flags16 & (1 << 5);   // bit5
-//     bool kab           = flags16 & (1 << 6);   // bit6
-//     bool drones        = flags16 & (1 << 7);   // bit7
-
-//     float    weather;
-//     memcpy(&weather, buf + 6, 4);
-
-//     uint8_t  gridState = buf[10];
-
-//     uint32_t ts_expl, ts_miss, ts_dron, ts_kab;
-//     memcpy(&ts_expl, buf + 11, 4);
-//     memcpy(&ts_miss, buf + 15, 4);
-//     memcpy(&ts_dron, buf + 19, 4);
-//     memcpy(&ts_kab,  buf + 23, 4);
-//     // Serial.printf(
-//     //   "R %u: gridState=%d\n",
-//     //   regionID, gridState
-//     // );
-
-//     // TODO: оновити внутрішні дані/викликати remap(), display тощо
-//     // Serial.printf(
-//     //   "R%u: flags=0x%04X rad=%u weather=%.1f grid=%u ts_expl=%u ts_miss=%u ts_dron=%u ts_kab=%u\n",
-//     //   regionID, flags16, radiation, weather, gridState,
-//     //   ts_expl, ts_miss, ts_dron, ts_kab
-//     // );
-// }
 
 void onMessageCallback(WebsocketsMessage msg) {
     LOG.print("Got Message: ");
@@ -247,12 +221,12 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (!kabAlertsMap[region_id]    &&   kab) { kabStarted = true; }
         if (kabAlertsMap[region_id]    &&   !kab) { kabCompleted = true; }
 
-        LOG.printf("Region %d airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d\n", 
-            region_id, airAlertsMap[region_id], air, 
-            airStarted, airCompleted,
-            dronesStarted, dronesCompleted,
-            missilesStarted, missilesCompleted, 
-            kabStarted,kabCompleted);
+        // LOG.printf("Region %d airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d\n", 
+        //     region_id, airAlertsMap[region_id], air, 
+        //     airStarted, airCompleted,
+        //     dronesStarted, dronesCompleted,
+        //     missilesStarted, missilesCompleted, 
+        //     kabStarted,kabCompleted);
 
         // Розкладаємо по окремих тривогах
         airAlertsMap[region_id]                   = air;
@@ -397,7 +371,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
     apiConnected = false;
     LOG.println("connnection closed");
     LOG.printf("Heap before close: %u\n", ESP.getFreeHeap());
-    websocket.close();
+    //websocket.close();
     auto reason = websocket.getCloseReason();
     logWebsocketCloseReason(reason);
     delay(500);
@@ -431,6 +405,8 @@ void socketConnect() {
   LOG.println(webSocketUrl);
   websocket.connect(webSocketUrl);
   if (websocket.available()) {
+    clearAllAlertsMaps();
+    animation.paintStripDefault(strip_main, num_leds_main);
     LOG.print("connection time - ");
     LOG.print(millis() - startTime);
     LOG.println("ms");
@@ -800,7 +776,7 @@ void setup() {
     led.setSettings(&settings);
     // Налаштовуємо асинхронні задачі
     //async.setInterval(animations, ANIMATION_INTERVAL);
-    async.setInterval(get_pixel_color, ANIMATION_INTERVAL);
+    //async.setInterval(get_pixel_color, ANIMATION_INTERVAL);
     async.setInterval(memory, MEMORY_CHECK_INTERVAL);
     async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
     async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);

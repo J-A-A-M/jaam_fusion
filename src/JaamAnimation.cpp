@@ -530,3 +530,15 @@ bool AnimationManager::isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx) {
     }
     return false;
 }
+
+void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip, uint16_t num_leds) {
+    if (strip == nullptr) return;
+    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        for (uint16_t i = 0; i < num_leds; ++i) {
+            uint32_t color = ledActualColor(strip, i, true);
+            strip->setPixelColor(i, color);
+        }
+        strip->show();
+        xSemaphoreGive(stripMutex);
+    }
+}

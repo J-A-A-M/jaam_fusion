@@ -37,15 +37,14 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна яскравість");
     html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "Яскравість дня");
     html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Яскравість ночі");
-    html += getParameterHtml("brightness_mode", 0, 2, settings->getInt(BRIGHTNESS_MODE), "Режим яскравості");
     html += getParameterHtml("brightness_alert", 0, 100, settings->getInt(BRIGHTNESS_ALERT), "Яскравість тривоги");
     html += getParameterHtml("brightness_clear", 0, 100, settings->getInt(BRIGHTNESS_CLEAR), "Яскравість очищення");
-    html += getParameterHtml("brightness_new_alert", 0, 100, settings->getInt(BRIGHTNESS_NEW_ALERT), "Яскравість нової тривоги");
+    html += getParameterHtml("brightness_new_alert", 0, 100, settings->getInt(BRIGHTNESS_NEW_ALERT), "Яскравість початку тривоги");
     html += getParameterHtml("brightness_alert_over", 0, 100, settings->getInt(BRIGHTNESS_ALERT_OVER), "Яскравість завершення тривоги");
-    html += getParameterHtml("brightness_explosion", 0, 100, settings->getInt(BRIGHTNESS_EXPLOSION), "Яскравість вибуху");
+    html += getParameterHtml("brightness_explosion", 0, 100, settings->getInt(BRIGHTNESS_EXPLOSION), "Яскравість вибухів, дронів, ракет");
     html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Яскравість домашнього району");
     html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Яскравість фону");
-    html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Яскравість сервісу");
+    html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Яскравість сервісних ледів");
     
     html += "</div>";
     html += "<script>";
@@ -85,8 +84,6 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_DAY, value);
         } else if (name == "brightness_night") {
             settings->saveInt(BRIGHTNESS_NIGHT, value);
-        } else if (name == "brightness_mode") {
-            settings->saveInt(BRIGHTNESS_MODE, value);
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, value);
             if (strip_main_initialized) {
