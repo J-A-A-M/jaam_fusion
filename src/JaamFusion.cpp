@@ -242,6 +242,10 @@ void onMessageCallback(WebsocketsMessage msg) {
         ballisticAlertsMap[region_id]             = ballistic;
 
         const int* leds = getLedsForRegion(region_id, ledCount);
+        if (leds == nullptr) {
+            // Якщо такого регіону немає — пропускаємо цей запис
+            continue;
+        }
         if (isFirstDataFetchCompleted) {
             if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted) {
                 animate = true;
@@ -415,7 +419,7 @@ void socketConnect() {
   char webSocketUrl[100];
   sprintf(
     webSocketUrl,
-    "ws://%s:%d/data_v5",
+    "ws://%s:%d/data_fusion_v1",
     "10.2.0.156",
     settings.getInt(WS_SERVER_PORT)
   );
