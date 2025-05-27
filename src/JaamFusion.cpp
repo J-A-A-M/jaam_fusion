@@ -177,8 +177,9 @@ void onMessageCallback(WebsocketsMessage msg) {
     // 8) Розбираємо count записів по RECORD_SZ
     const uint8_t* ptr = data + HEADER_SZ;
     uint32_t color;
+    uint32_t initialColor = 0x000000; // Початковий колір для анімації
     uint32_t period;
-    uint8_t cycles;
+    uint32_t cycles;
     uint8_t startBrightness = 50;
     uint8_t endBrightness = 255;
     uint8_t ledCount;
@@ -188,6 +189,12 @@ void onMessageCallback(WebsocketsMessage msg) {
         uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
         uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
         ptr += RECORD_SZ;
+
+        const int* leds = getLedsForRegion(region_id, ledCount);
+        if (leds == nullptr) {
+            // Якщо такого регіону немає — пропускаємо цей запис
+            continue;
+        }
 
         bool animate = false;
 
@@ -223,13 +230,6 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (!kabAlertsMap[region_id]    &&   kab) { kabStarted = true; }
         if (kabAlertsMap[region_id]    &&   !kab) { kabCompleted = true; }
 
-        // LOG.printf("Region %d airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d\n", 
-        //     region_id, airAlertsMap[region_id], air, 
-        //     airStarted, airCompleted,
-        //     dronesStarted, dronesCompleted,
-        //     missilesStarted, missilesCompleted, 
-        //     kabStarted,kabCompleted);
-
         // Розкладаємо по окремих тривогах
         airAlertsMap[region_id]                   = air;
         artilleryAlertsMap[region_id]             = artillery;
@@ -241,29 +241,28 @@ void onMessageCallback(WebsocketsMessage msg) {
         dronesAlertsMap[region_id]                = drones;
         ballisticAlertsMap[region_id]             = ballistic;
 
-        const int* leds = getLedsForRegion(region_id, ledCount);
-        if (leds == nullptr) {
-            // Якщо такого регіону немає — пропускаємо цей запис
-            continue;
-        }
+        // LOG.printf("airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d Region %d led %d \n", 
+        //     airAlertsMap[region_id], air, 
+        //     airStarted, airCompleted,
+        //     dronesStarted, dronesCompleted,
+        //     missilesStarted, missilesCompleted, 
+        //     kabStarted,kabCompleted, region_id, leds[0]);
+
+        
         if (isFirstDataFetchCompleted) {
             if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted) {
                 animate = true;
                 color = animation.ledActualColor(strip_main, leds[0]);
-                period = 1000;
-                
+                cycles = 1;
+                period = 10000;
+                animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
+                if (dronesCompleted || missilesCompleted || kabCompleted) {
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                    endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));                 
+                }
                 if (airCompleted) {
-                    cycles = 1;
                     startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
                     endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
-                    animType = AnimationParams::Type::ONE_WAY_BLEND;
-                }
-                if (dronesCompleted || missilesCompleted || kabCompleted) {
-                    cycles = 1;
-                    period = 3000;
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                    endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-                    animType = AnimationParams::Type::ONE_WAY_BLEND;
                 }
                 
             }
@@ -271,15 +270,22 @@ void onMessageCallback(WebsocketsMessage msg) {
                 animate = true;
                 color = strip_main->Color(255, 128, 0); //animation.ledActualColor(strip_main, leds[0], false);
                 period = 1000;
-                cycles = 5;
+                cycles = 300;
                 endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
                 animType = AnimationParams::Type::FADE;
             }
-            if (dronesStarted || kabStarted || missilesStarted) {
+            if (airAlertsMap[region_id] && (dronesStarted || kabStarted || missilesStarted)) {
                 animate = true;
-                color = animation.ledActualColor(strip_main, leds[0], false);
+                if (dronesStarted) {
+                    color = strip_main->Color(255, 0, 255); //animation.ledActualColor(strip_main, leds[0], false);
+                } else if (missilesStarted) {
+                    color = strip_main->Color(160, 0, 200); //animation.ledActualColor(strip_main, leds[0], false);
+                } else if (kabStarted) {
+                    color = strip_main->Color(255, 255, 50); //animation.ledActualColor(strip_main, leds[0], false);
+                }
+                //color = animation.ledActualColor(strip_main, leds[0], false);
                 period = 1000;
-                cycles = 5;
+                cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
                 endBrightness = 50;
                 animType = AnimationParams::Type::PULSE;
@@ -288,12 +294,18 @@ void onMessageCallback(WebsocketsMessage msg) {
             if(animate) {
                 for (int i = 0; i < ledCount; ++i) {
                     int ledsIdx[1] = { leds[i] };
+                    // LOG.printf("check active alerts for led %d\n", leds[i]);
+                    // if (isAlertForLed(leds[i])) {
+                    //     animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
+                    //     cycles = 1;
+                    // }
                     if (!animation.createAnimation(
                         animType,
                         strip_main,
                         ledsIdx,
                         1,
                         color,
+                        initialColor,
                         period,
                         cycles,
                         startBrightness,
@@ -512,7 +524,7 @@ void animations() {
 
     // Випадковий вибір типу анімації
     
-    int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_BLINK
+    int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
     switch(typeRand) {
         case 0:
             animType = AnimationParams::Type::FADE;
@@ -521,7 +533,7 @@ void animations() {
             animType = AnimationParams::Type::BLINK;
             break;
         case 2:
-            animType = AnimationParams::Type::BLEND_BLINK;
+            animType = AnimationParams::Type::BLEND_FADE;
             break;
         case 3:
             animType = AnimationParams::Type::PULSE;
@@ -529,7 +541,7 @@ void animations() {
         default:
             animType = AnimationParams::Type::FADE;
     }
-    animType = AnimationParams::Type::BLEND_BLINK;
+    animType = AnimationParams::Type::BLEND_FADE;
 
     // Випадкові параметри для анімації з використанням конфігурації
     uint32_t period = 1000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);

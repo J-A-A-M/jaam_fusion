@@ -118,8 +118,8 @@ inline bool isAlertForLed(int led_position) {
     for (uint16_t region_id : regions) {
         auto it = alertsMap.find(region_id);
         if (it != alertsMap.end() && it->second != 0) {
-            return true;
             LOG.printf("Region %d led_position %d true\n", region_id, led_position);
+            return true;            
         }
     }
     LOG.printf("Region led_position %d false\n", led_position);

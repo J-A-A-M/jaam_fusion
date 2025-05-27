@@ -17,9 +17,9 @@ struct AnimationParams {
     enum class Type {
         FADE,
         BLINK,
-        BLEND_BLINK,
+        BLEND_FADE,
         PULSE,
-        ONE_WAY_BLEND,
+        ONE_WAY_BLEND_FADE,
         RUNNING_LIGHT
     };
 
@@ -30,12 +30,13 @@ struct AnimationParams {
     uint32_t color;
     uint32_t initialColor;
     uint32_t period;
-    uint8_t cycles;
+    uint32_t cycles;
     uint8_t startBrightness;
     uint8_t endBrightness;
     bool isActive;
     uint32_t startTime;
     uint16_t region_id;
+    uint32_t lastLogTime = 0;
 };
 
 // Структура для інформації про вільний LED
@@ -84,8 +85,9 @@ class AnimationManager {
                            int* positions, 
                            int posCount,
                            uint32_t color,
+                           uint32_t initialColor = 0x000000,
                            uint32_t period = 1000,
-                           uint8_t cycles = 5,
+                           uint32_t cycles = 5,
                            uint8_t startBrightness = 50,
                            uint8_t endBrightness = 150,
                            uint16_t region_id = 0);

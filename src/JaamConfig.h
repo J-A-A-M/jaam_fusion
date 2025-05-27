@@ -13,7 +13,7 @@ namespace AnimationConfig {
     static const uint32_t MIN_PERIOD = 100;
     static const uint32_t MAX_PERIOD = 1000;
     static const uint8_t MIN_CYCLES = 1;
-    static const uint8_t MAX_CYCLES = 20;
+    static const uint32_t MAX_CYCLES = 600;
     static const uint8_t MIN_START_BRIGHTNESS = 0;
     static const uint8_t MAX_START_BRIGHTNESS = 255;
     static const uint8_t MIN_END_BRIGHTNESS = 0;
@@ -41,7 +41,7 @@ static constexpr size_t   RECORD_SZ         = 4;  // 2B region_id + 2B flags16
 
 
 // --- Region to LED mapping (fixed, задається один раз) ---
-constexpr int MAX_REGIONS = 26;           // Кількість регіонів (змініть під свою задачу)
+constexpr int MAX_REGIONS = 37;           // Кількість регіонів (змініть під свою задачу)
 constexpr int MAX_LEDS_PER_REGION = 7;    // Максимум LED на регіон
 
 struct RegionLedMapEntry {
@@ -70,9 +70,24 @@ const RegionLedMapEntry regionLedMap[MAX_REGIONS] = {
     {9999,  { 25 }, 1 },    // Автономна Республіка Крим
     { 18,   { 0 },  1 },    // Одеська область
     { 17,   { 1 },  1 },    // Миколаївська область
+            
     { 9,    { 2 },  1 },    // Дніпропетровська область
+    { 43,   { 2 },  1 },    // Новомосковський район
+    { 44,   { 2 },  1 },    // Дніпровський район
+    { 47,   { 2 },  1 },    // Нікопольський район
+    { 48,   { 2 },  1 },    // Синельниківський район
+    { 42,   { 2 },  1 },    // Кам’янський район
+    { 45,   { 2 },  1 },    // Павлоградський район
+    { 46,   { 2 },  1 },    // Криворізький район
+
     { 19,   { 3 },  1 },    // Полтавська область
+
     { 24,   { 4 },  1 },    // Черкаська область
+    {153,   { 4 },  1 },    // Золотоніський район
+    {152,   { 4 },  1 },    // Черкаський район
+    {150,   { 4 },  1 },    // Звенигородський район
+    {151,   { 4 },  1 },    // Уманський район
+
     { 15,   { 5 },  1 },    // Кіровоградська область
     { 4,    { 6 },  1 },    // Вінницька область
     { 3,    { 7 },  1 },    // Хмельницька область

@@ -44,8 +44,9 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
                                     int* positions, 
                                     int posCount,
                                     uint32_t color,
+                                    uint32_t initialColor,
                                     uint32_t period,
-                                    uint8_t cycles,
+                                    uint32_t cycles,
                                     uint8_t startBrightness,
                                     uint8_t endBrightness,
                                     uint16_t region_id)
@@ -86,6 +87,7 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
             animations[slot]->strip = strip;
             animations[slot]->posCount = posCount;
             animations[slot]->color = color;
+            animations[slot]->initialColor = initialColor;
             animations[slot]->period = period;
             animations[slot]->cycles = cycles;
             animations[slot]->startBrightness = startBrightness;
@@ -96,9 +98,27 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
             memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
             animations[slot]->region_id = region_id;
 
+            // LOG: Початок анімації
+            const char* typeName = "unknown";
+            switch (type) {
+                case AnimationParams::Type::FADE: typeName = "FADE"; break;
+                case AnimationParams::Type::BLINK: typeName = "BLINK"; break;
+                case AnimationParams::Type::BLEND_FADE: typeName = "BLEND_FADE"; break;
+                case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
+                case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
+                case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
+            }
+            LOG.printf("[ANIMATION START] type=%s, region=%d, leds=", typeName, region_id);
+            for (int i = 0; i < posCount; ++i) {
+                LOG.printf("%d ", positions[i]);
+            }
+            LOG.printf(" period=%u, cycles=%u, startBrightness=%u, endBrightness=%u\n", period, cycles, startBrightness, endBrightness);
+
             // Зберігаємо початковий колір для першого LED
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-                animations[slot]->initialColor = strip->getPixelColor(positions[0]);
+                if (animations[slot]->initialColor == 0x000000) {
+                    animations[slot]->initialColor = strip->getPixelColor(positions[0]);
+                }
                 xSemaphoreGive(stripMutex);
             }
 
@@ -166,14 +186,14 @@ void AnimationManager::logActiveAnimations() {
                     case AnimationParams::Type::BLINK:
                         typeName = "BLINK";
                         break;
-                    case AnimationParams::Type::BLEND_BLINK:
-                        typeName = "BLEND_BLINK";
+                    case AnimationParams::Type::BLEND_FADE:
+                        typeName = "BLEND_FADE";
                         break;
                     case AnimationParams::Type::PULSE:
                         typeName = "PULSE";
                         break;
-                    case AnimationParams::Type::ONE_WAY_BLEND:
-                        typeName = "ONE_WAY_BLEND";
+                    case AnimationParams::Type::ONE_WAY_BLEND_FADE:
+                        typeName = "ONE_WAY_BLEND_FADE";
                         break;
                 }
 
@@ -189,8 +209,31 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
     uint32_t currentTime = millis();
     float elapsed = (currentTime - anim->startTime) / float(anim->period);
     
+
+    // Логування раз на секунду
+    // if (currentTime - anim->lastLogTime >= 1000) {
+    //     LOG.printf("[ANIMATION PROGRESS] type=%s, region=%d, period=%u, cycles=%u, elapsed=%d\n", typeName, anim->region_id, anim->period, anim->cycles, (int)elapsed);
+    //     anim->lastLogTime = currentTime;
+    // }
     if (elapsed >= anim->cycles) {
         anim->isActive = false;
+        // LOG: Кінець анімації
+        uint32_t duration = millis() - anim->startTime;
+        const char* typeName = "unknown";
+        switch (anim->type) {
+            case AnimationParams::Type::FADE: typeName = "FADE"; break;
+            case AnimationParams::Type::BLINK: typeName = "BLINK"; break;
+            case AnimationParams::Type::BLEND_FADE: typeName = "BLEND_FADE"; break;
+            case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
+            case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
+            case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
+        }
+        
+        LOG.printf("[ANIMATION END] type=%s, region=%d, leds=", typeName, anim->region_id);
+        for (int i = 0; i < anim->posCount; ++i) {
+            LOG.printf("%d ", anim->positions[i]);
+        }
+        LOG.printf(" period=%u, cycles=%u, duration=%u ms, elapsed=%u\n", anim->period, anim->cycles, duration, elapsed);
         cleanupAnimation(anim, index);
         return;
     }
@@ -202,13 +245,13 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
         case AnimationParams::Type::BLINK:
             updateBlinkAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::BLEND_BLINK:
+        case AnimationParams::Type::BLEND_FADE:
             updateBlendBlinkAnimation(anim, elapsed);
             break;
         case AnimationParams::Type::PULSE:
             updatePulseAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::ONE_WAY_BLEND:
+        case AnimationParams::Type::ONE_WAY_BLEND_FADE:
             updateOneWayBlendAnimation(anim, elapsed);
             break;
         case AnimationParams::Type::RUNNING_LIGHT:
