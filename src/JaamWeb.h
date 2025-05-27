@@ -25,4 +25,5 @@ private:
     void handleRoot();
     void handleParameter();
     String getParameterHtml(const char* name, int min, int max, int value, const char* label);
+    String getBoolParameterHtml(const char* name, bool value, const char* label);
 }; 

@@ -212,6 +212,11 @@ void onMessageCallback(WebsocketsMessage msg) {
         bool missilesCompleted = false;
         bool kabStarted = false;
         bool kabCompleted = false;
+
+        bool notificationExplosion = false;
+        bool notificationKab = false;
+        bool notificationMissiles = false;
+        bool notificationDrones = false;
         
 
         // Зберігаємо
@@ -280,17 +285,36 @@ void onMessageCallback(WebsocketsMessage msg) {
                 endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
                 animType = AnimationParams::Type::FADE;
             }
-            if (airAlertsMap[region_id] && (dronesStarted || kabStarted || missilesStarted)) {
+            if (airAlertsMap[region_id] && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
                 animate = true;
-                if (dronesStarted) {
-                    color = strip_main->Color(255, 0, 170); //animation.ledActualColor(strip_main, leds[0], false);
-                } else if (missilesStarted) {
-                    color = strip_main->Color(170, 0, 255); //animation.ledActualColor(strip_main, leds[0], false);
-                } else if (kabStarted) {
-                    color = strip_main->Color(255, 255, 51); //animation.ledActualColor(strip_main, leds[0], false);
-                }
-                // explosion strip_main->Color(0, 255, 255);
-                //color = animation.ledActualColor(strip_main, leds[0], false);
+                color = strip_main->Color(255, 0, 170); 
+                period = 1000;
+                cycles = 180;
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                endBrightness = 50;
+                animType = AnimationParams::Type::PULSE;
+            }
+            if (airAlertsMap[region_id] && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
+                animate = true;
+                color = strip_main->Color(255, 0, 170); 
+                period = 1000;
+                cycles = 180;
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                endBrightness = 50;
+                animType = AnimationParams::Type::PULSE;
+            }
+            if (airAlertsMap[region_id] && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
+                animate = true;
+                color = strip_main->Color(255, 0, 170); 
+                period = 1000;
+                cycles = 180;
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                endBrightness = 50;
+                animType = AnimationParams::Type::PULSE;
+            }
+            if (airAlertsMap[region_id] && notificationExplosion && settings.getBool(ENABLE_EXPLOSIONS)) {
+                animate = true;
+                color = strip_main->Color(0, 255, 255); 
                 period = 1000;
                 cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));

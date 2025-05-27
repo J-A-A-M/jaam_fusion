@@ -431,6 +431,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         bool drones = false;
         bool missiles = false;
         bool kab = false;
+        bool explosion = false;
         uint8_t brightness = 0;
         for (uint16_t region_id : regions) {
             auto it = airAlertsMap.find(region_id);
@@ -463,16 +464,20 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         if (alert) {
             color = strip->Color(255, 0, 0); // Червоний
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
-            if (drones) {
-                color = strip->Color(255, 0, 255);
+            if (drones && settings->getBool(ENABLE_DRONES)) {
+                color = strip->Color(255, 0, 170);
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
-            if (missiles) {
-                color = strip->Color(86, 130, 208);
+            if (missiles && settings->getBool(ENABLE_MISSILES)) {
+                color = strip->Color(255, 0, 170);
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
-            if (kab) {
-                color = strip->Color(255, 255, 0);
+            if (kab && settings->getBool(ENABLE_KABS)) {
+                color = strip->Color(255, 0, 170);
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            }
+            if (explosion && settings->getBool(ENABLE_KABS)) {
+                color = strip->Color(0, 255, 255);
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
         } else {

@@ -17,6 +17,16 @@ String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, 
     return html;
 }
 
+String JaamWeb::getBoolParameterHtml(const char* name, bool value, const char* label) {
+    String html = "<div class='switch-container'>";
+    html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
+    html += "<input type='checkbox' id='" + String(name) + "' class='switch' ";
+    if (value) html += "checked ";
+    html += "onchange='updateBoolParameter(\"" + String(name) + "\", this.checked)'>";
+    html += "</div>";
+    return html;
+}
+
 String JaamWeb::getHtmlTemplate() {
     String html = "<!DOCTYPE html><html><head>";
     html += "<meta charset='UTF-8'>";
@@ -45,12 +55,22 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Яскравість домашнього району");
     html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Яскравість фону");
     html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Яскравість сервісних ледів");
+    html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Показувати загрозу КАБ");
+    html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Показувати ракетну небезпеку");
+    html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Показувати загрозу БПЛА");
     
     html += "</div>";
     html += "<script>";
     html += "function updateParameter(name, value) {";
     html += "  document.getElementById(name + 'Value').textContent = value;";
     html += "  fetch('/parameter?name=' + name + '&value=' + value);";
+    html += "}";
+    html += "function updateParameter(name, value) {";
+    html += "  document.getElementById(name + 'Value').textContent = value;";
+    html += "  fetch('/parameter?name=' + name + '&value=' + value);";
+    html += "}";
+    html += "function updateBoolParameter(name, checked) {";
+    html += "  fetch('/parameter?name=' + name + '&value=' + (checked ? 1 : 0));";
     html += "}";
     html += "</script></body></html>";
     return html;
@@ -179,6 +199,39 @@ void JaamWeb::handleParameter() {
                 LOG.printf("Setting home brightness service: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
                 animation.safeStripOperation(strip_service, [this, value](Adafruit_NeoPixel* strip) {
                     strip->setBrightness(led.brightnessMapped(value));
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
+        } else if (name == "enable_kabs") {
+            settings->saveBool(ENABLE_KABS, value != 0);
+            if (strip_main_initialized) {
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
+        } else if (name == "enable_missiles") {
+            settings->saveBool(ENABLE_MISSILES, value != 0);
+            if (strip_main_initialized) {
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
+        } else if (name == "enable_drones") {
+            settings->saveBool(ENABLE_DRONES, value != 0);
+            if (strip_main_initialized) {
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
                         strip->setPixelColor(i, color);
