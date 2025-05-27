@@ -31,7 +31,7 @@ namespace WiFiConfig {
 
 // --- Timing Configuration ---
 static const uint32_t ANIMATION_INTERVAL = 1000;    // 1 second
-static const uint32_t MEMORY_CHECK_INTERVAL = 60000;  // 1 minute
+static const uint32_t MEMORY_CHECK_INTERVAL = 5000;  // 1 minute
 static const uint32_t WIFI_CHECK_INTERVAL = 1000;   // 1 second
 static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;   // 3 seconds
 

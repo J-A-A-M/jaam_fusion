@@ -61,6 +61,12 @@ bool                websocketReconnect = false;
 uint32_t            lastWebsocketConnectTime = 0;
 
 
+// --- FreeRTOS Task Handles ---
+// TaskHandle_t memoryTaskHandle = nullptr;
+// TaskHandle_t wifiReconnectTaskHandle = nullptr;
+// TaskHandle_t websocketProcessTaskHandle = nullptr;
+
+
 std::map<uint16_t, uint16_t>    alertsMap;
 std::map<uint16_t, bool>        airAlertsMap;
 std::map<uint16_t, bool>        artilleryAlertsMap;
@@ -268,7 +274,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airStarted) {
                 animate = true;
-                color = strip_main->Color(255, 128, 0); //animation.ledActualColor(strip_main, leds[0], false);
+                color = strip_main->Color(255, 127, 0); //animation.ledActualColor(strip_main, leds[0], false);
                 period = 1000;
                 cycles = 300;
                 endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
@@ -277,12 +283,13 @@ void onMessageCallback(WebsocketsMessage msg) {
             if (airAlertsMap[region_id] && (dronesStarted || kabStarted || missilesStarted)) {
                 animate = true;
                 if (dronesStarted) {
-                    color = strip_main->Color(255, 0, 255); //animation.ledActualColor(strip_main, leds[0], false);
+                    color = strip_main->Color(255, 0, 170); //animation.ledActualColor(strip_main, leds[0], false);
                 } else if (missilesStarted) {
-                    color = strip_main->Color(160, 0, 200); //animation.ledActualColor(strip_main, leds[0], false);
+                    color = strip_main->Color(170, 0, 255); //animation.ledActualColor(strip_main, leds[0], false);
                 } else if (kabStarted) {
-                    color = strip_main->Color(255, 255, 50); //animation.ledActualColor(strip_main, leds[0], false);
+                    color = strip_main->Color(255, 255, 51); //animation.ledActualColor(strip_main, leds[0], false);
                 }
+                // explosion strip_main->Color(0, 255, 255);
                 //color = animation.ledActualColor(strip_main, leds[0], false);
                 period = 1000;
                 cycles = 180;
@@ -815,6 +822,31 @@ void logFreeMainLeds() {
     LOG.println();
 }
 
+// --- FreeRTOS Task Functions ---
+// void memoryTask(void* pvParameters) {
+//     const TickType_t xDelay = pdMS_TO_TICKS(MEMORY_CHECK_INTERVAL);
+//     while (true) {
+//         memory();
+//         vTaskDelay(xDelay);
+//     }
+// }
+
+// void wifiReconnectTask(void* pvParameters) {
+//     const TickType_t xDelay = pdMS_TO_TICKS(WIFI_CHECK_INTERVAL);
+//     while (true) {
+//         wifiReconnect();
+//         vTaskDelay(xDelay);
+//     }
+// }
+
+// void websocketProcessTask(void* pvParameters) {
+//     const TickType_t xDelay = pdMS_TO_TICKS(WEBSOCKET_CHECK_INTERVAL);
+//     while (true) {
+//         websocketProcess();
+//         vTaskDelay(xDelay);
+//     }
+// }
+
 void setup() {
     LOG.begin(115200);
 
@@ -836,6 +868,10 @@ void setup() {
     async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
     async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);
     //async.setInterval(logFreeMainLeds, 5000); // 5000 мс = 5 секунд, змініть інтервал за потреби
+
+    // xTaskCreatePinnedToCore(memoryTask, "MemoryTask", 2048, nullptr, 1, &memoryTaskHandle, 1);
+    // xTaskCreatePinnedToCore(wifiReconnectTask, "WiFiReconnectTask", 2048, nullptr, 1, &wifiReconnectTaskHandle, 1);
+    // xTaskCreatePinnedToCore(websocketProcessTask, "WebsocketProcessTask", 2048, nullptr, 1, &websocketProcessTaskHandle, 1);
 
     // Ініціалізація веб-інтерфейсу
     web.begin(strip_main, strip_bg, strip_service);
