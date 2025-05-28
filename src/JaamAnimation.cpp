@@ -182,7 +182,7 @@ void AnimationManager::clearAllAnimations() {
 
 void AnimationManager::logActiveAnimations() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        LOG.printf("Active animations count: %d\n", activeCount);
+        LOG.printf("[ANIMATION] Active animations count: %d\n", activeCount);
         for (int i = 0; i < MAX_ANIMATIONS; i++) {
             if (animations[i] != nullptr && animations[i]->isActive) {
                 AnimationParams* anim = animations[i];
@@ -214,7 +214,7 @@ void AnimationManager::logActiveAnimations() {
                         break;
                 }
 
-                LOG.printf("Animation %d: strip=%s, LED=%d, region=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
+                LOG.printf("[DEBUG] Animation %d: strip=%s, LED=%d, region=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
                          i, stripName, anim->positions, anim->region_id, typeName, anim->startBrightness, anim->endBrightness, anim->period, anim->cycles);
             }
         }
@@ -438,6 +438,26 @@ uint32_t AnimationManager::adaptColorBrightness(Adafruit_NeoPixel* strip, uint32
     uint8_t b = ( color         & 0xFF) * brightness / 255;
     color = strip->Color(r, g, b); 
     return color;
+}
+
+void AnimationManager::adaptAllAnimationColors() {
+    // Захист від багатопотокового доступу, якщо потрібно
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        LOG.printf("[ANIMATION] Active animations count: %d\n", activeCount);
+        for (int i = 0; i < MAX_ANIMATIONS; i++) {
+            if (animations[i] != nullptr && animations[i]->isActive) {
+                LOG.printf("[DEBUG] enter animation %d\n", i);
+                AnimationParams* anim = animations[i];
+                for (int k = 0; k < anim->posCount; ++k) {
+                    int ledIdx = anim->positions[k];
+                    // Адаптуємо колір для кожного LED
+                    LOG.printf("[DEBUG] changed color for animations led %d ", ledIdx);
+                    anim->color = ledActualColor(anim->strip, ledIdx, true);
+                }
+            }
+        }
+        xSemaphoreGive(animMutex);
+    }
 }
 
 uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted) {

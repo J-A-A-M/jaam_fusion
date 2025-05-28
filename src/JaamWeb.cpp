@@ -3,6 +3,9 @@
 #include "JaamLogs.h"
 #include "JaamUtils.h"
 
+extern volatile bool needAdaptAnimationColors;
+
+
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
@@ -153,6 +156,7 @@ void JaamWeb::handleColorParameter() {
                 strip->show();
             });
         }
+        needAdaptAnimationColors = true;
 
         server.send(200, "text/plain", "OK");
     } else {

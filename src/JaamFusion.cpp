@@ -51,6 +51,7 @@ bool                strip_service_initialized = false;
 
 AnimationManager    animation;
 AnimationParams::Type animType;
+bool                needAdaptAnimationColors = false;
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -530,20 +531,20 @@ void animations() {
     
     // Випадковий вибір стрічки
     Adafruit_NeoPixel* strip = nullptr;
-    int stripRand = random(0, 2);
-    switch(stripRand) {
-        case 0:
-            if (strip_main_initialized) strip = strip_main;
-            break;
-        case 1:
-            if (strip_bg_initialized) strip = strip_bg;
-            break;
-        case 2:
-            if (strip_service_initialized) strip = strip_service;
-            break;
-        default:
-            if (strip_main_initialized) strip = strip_main;
-    }
+    // int stripRand = random(0, 2);
+    // switch(stripRand) {
+    //     case 0:
+    //         if (strip_main_initialized) strip = strip_main;
+    //         break;
+    //     case 1:
+    //         if (strip_bg_initialized) strip = strip_bg;
+    //         break;
+    //     case 2:
+    //         if (strip_service_initialized) strip = strip_service;
+    //         break;
+    //     default:
+    //         if (strip_main_initialized) strip = strip_main;
+    // }
 
     strip = strip_main;
 
@@ -559,46 +560,50 @@ void animations() {
 
     // Випадковий вибір типу анімації
     
-    int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
-    switch(typeRand) {
-        case 0:
-            animType = AnimationParams::Type::FADE;
-            break;
-        case 1:
-            animType = AnimationParams::Type::BLINK;
-            break;
-        case 2:
-            animType = AnimationParams::Type::BLEND_FADE;
-            break;
-        case 3:
-            animType = AnimationParams::Type::PULSE;
-            break;
-        default:
-            animType = AnimationParams::Type::FADE;
-    }
+    // int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
+    // switch(typeRand) {
+    //     case 0:
+    //         animType = AnimationParams::Type::FADE;
+    //         break;
+    //     case 1:
+    //         animType = AnimationParams::Type::BLINK;
+    //         break;
+    //     case 2:
+    //         animType = AnimationParams::Type::BLEND_FADE;
+    //         break;
+    //     case 3:
+    //         animType = AnimationParams::Type::PULSE;
+    //         break;
+    //     default:
+    //         animType = AnimationParams::Type::FADE;
+    // }
     animType = AnimationParams::Type::BLEND_FADE;
 
     // Випадкові параметри для анімації з використанням конфігурації
     uint32_t period = 1000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
-    uint8_t cycles = 12; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
+    uint32_t cycles = 12; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
     uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
     
+
+
+    
     // Створення анімації з обробкою помилок
-    // if (!animation.createAnimation(
-    //     animType,
-    //     strip,
-    //     ledsIdx,
-    //     1,
-    //     color,
-    //     period,
-    //     cycles,
-    //     startBrightness,
-    //     endBrightness
-    // )) {
-    //     LOG.println("ERROR: Не вдалося створити анімацію");
-    //     return;
-    // }
+    if (!animation.createAnimation(
+        animType,
+        strip,
+        ledsIdx,
+        1,
+        animation.colorFromHex(settings.getString(COLOR_ALERT)),
+        animation.colorFromHex(settings.getString(COLOR_EXPLOSION)),
+        period,
+        cycles,
+        startBrightness,
+        endBrightness
+    )) {
+        LOG.println("ERROR: Не вдалося створити анімацію");
+        return;
+    }
 
     currentIdx++;
     if (currentIdx >= num_leds_main) {
@@ -729,7 +734,9 @@ void initWifi() {
     wm.setHttpPort(WiFiConfig::WEB_PORT);
     wm.startWebPortal();
     LOG.println("[WEB] Web portal started on port 8080");
+#if !defined(TEST_ANIMATION)
     socketConnect();
+#endif
     delay(1000);
 }
 
@@ -948,6 +955,15 @@ void logFreeMainLeds() {
 //     }
 // }
 
+void mainThreadProcess() {
+    // Ця функція виконується в основному циклі
+    // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
+    if (needAdaptAnimationColors) {
+        animation.adaptAllAnimationColors();
+        needAdaptAnimationColors = false;
+    }
+}
+
 void setup() {
     LOG.begin(115200);
 
@@ -964,12 +980,17 @@ void setup() {
     animation.setSettings(&settings);
     led.setSettings(&settings);
     // Налаштовуємо асинхронні задачі
-    //async.setInterval(animations, ANIMATION_INTERVAL);
-    //async.setInterval(get_pixel_color, ANIMATION_INTERVAL);
+#if defined(TEST_ANIMATION)
+    async.setInterval(animations, ANIMATION_INTERVAL);
+#endif
+    //async.setInterval(get_pixel_color, 1000);
     async.setInterval(memory, MEMORY_CHECK_INTERVAL);
     async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
-    async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);
+#if !defined(TEST_ANIMATION)
+    async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);;
+#endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
+    async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
     //async.setInterval(logFreeMainLeds, 5000); // 5000 мс = 5 секунд, змініть інтервал за потреби
 
     // xTaskCreatePinnedToCore(memoryTask, "MemoryTask", 2048, nullptr, 1, &memoryTaskHandle, 1);
@@ -983,7 +1004,9 @@ void setup() {
 
 void loop() {
     wm.process();
+#if !defined(TEST_ANIMATION)
     websocket.poll();
+#endif
     animation.update();
     async.run();
     web.handleClient();

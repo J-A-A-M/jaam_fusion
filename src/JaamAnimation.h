@@ -101,6 +101,7 @@ class AnimationManager {
         std::vector<FreeLedInfo> getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds);
         bool isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx);
         void paintStripDefault(Adafruit_NeoPixel* strip, uint16_t num_leds);
+        void adaptAllAnimationColors();
 };
 
 
