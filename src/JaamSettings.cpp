@@ -217,7 +217,7 @@ const char* JaamSettings::getKey(Type type) {
     } else if (floatSettings.find(type) != floatSettings.end()) {
         return floatSettings[type].key;
     }
-    LOG.println("Unknown setting type");
+    LOG.println("[SETTINGS] Unknown setting type");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -225,7 +225,7 @@ int JaamSettings::getInt(Type type) {
     if (intSettings.find(type) != intSettings.end()) {
         return intSettings[type].value;
     }
-    LOG.println("Unknown setting type");
+    LOG.println("[SETTINGS] Unknown setting type");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -239,10 +239,10 @@ void JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         }
         setting.value = value;
         intSettings[type] = setting;
-        LOG.printf("Saved setting %s: %d (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
+        LOG.printf("[SETTINGS] Saved setting %s: %d (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
         return;
     }
-    LOG.println("Unknown setting type");
+    LOG.println("[SETTINGS] Unknown setting type");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -250,7 +250,7 @@ const char* JaamSettings::getString(Type type) {
     if (stringSettings.find(type) != stringSettings.end()) {
         return stringSettings[type].value.c_str();
     }
-    LOG.println("Unknown setting type");
+    LOG.println("[SETTINGS] Unknown setting type");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -264,10 +264,10 @@ void JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
         }
         setting.value = value;
         stringSettings[type] = setting;
-        LOG.printf("Saved setting %s: '%s' (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
+        LOG.printf("[SETTINGS] Saved setting %s: '%s' (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
         return;
     }
-    LOG.println("Unknown setting type");
+    LOG.println("[SETTINGS] Unknown setting type");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -275,7 +275,7 @@ float JaamSettings::getFloat(Type type) {
     if (floatSettings.find(type) != floatSettings.end()) {
         return floatSettings[type].value;
     }
-    LOG.println("Unknown setting type");
+    LOG.println("[SETTINGS] Unknown setting type");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -289,10 +289,10 @@ void JaamSettings::saveFloat(Type type, float value, bool saveToPrefs) {
         }
         setting.value = value;
         floatSettings[type] = setting;
-        LOG.printf("Saved setting %s: %.1f (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
+        LOG.printf("[SETTINGS] Saved setting %s: %.1f (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
         return;
     }
-    LOG.println("Unknown setting type");
+    LOG.println("[SETTINGS] Unknown setting type");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -367,15 +367,15 @@ bool JaamSettings::restoreSettingsBackup(const char* settings) {
         if (strcmp(type, PF_STRING) == 0) {
             String valueString = settingObj["value"].as<String>();
             preferences.putString(key, valueString);
-            LOG.printf("Restored setting: '%s' with value '%s'\n", key, valueString.c_str());
+            LOG.printf("[SETTINGS] Restored setting: '%s' with value '%s'\n", key, valueString.c_str());
         } else if (strcmp(type, PF_INT) == 0) {
             int valueInt = settingObj["value"].as<int>();
             preferences.putInt(key, valueInt);
-            LOG.printf("Restored setting: '%s' with value '%d'\n", key, valueInt);
+            LOG.printf("[SETTINGS] Restored setting: '%s' with value '%d'\n", key, valueInt);
         } else if (strcmp(type, PF_FLOAT) == 0) {
             float valueFloat = settingObj["value"].as<float>();
             preferences.putFloat(key, valueFloat);
-            LOG.printf("Restored setting: '%s' with value '%.1f'\n", key, valueFloat);
+            LOG.printf("[SETTINGS] Restored setting: '%s' with value '%.1f'\n", key, valueFloat);
         }
         restored = true;
     }

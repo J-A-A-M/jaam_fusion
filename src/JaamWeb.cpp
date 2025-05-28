@@ -90,7 +90,7 @@ void JaamWeb::handleParameter() {
         if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness main: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
+                LOG.printf("[WEB] Setting brightness main: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     strip->setBrightness(led.brightnessMapped(value));
                     for (int i = 0; i < strip->numPixels(); i++) {
@@ -107,7 +107,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -119,7 +119,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -131,7 +131,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_new_alert") {
             settings->saveInt(BRIGHTNESS_NEW_ALERT, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -143,7 +143,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_alert_over") {
             settings->saveInt(BRIGHTNESS_ALERT_OVER, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -155,7 +155,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -167,7 +167,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, value);
             if (strip_main_initialized) {
-                LOG.printf("Setting brightness home district: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                LOG.printf("[WEB] Setting brightness home district: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     uint32_t color;
                     uint8_t count;
@@ -183,7 +183,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, value);
             if (strip_bg_initialized) {
-                LOG.printf("Setting home brightness bg: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
+                LOG.printf("[WEB] Setting home brightness bg: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
                 animation.safeStripOperation(strip_bg, [this, value](Adafruit_NeoPixel* strip) {
                     strip->setBrightness(led.brightnessMapped(value));
                     for (int i = 0; i < strip->numPixels(); i++) {
@@ -196,7 +196,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, value);
             if (strip_service_initialized) {
-                LOG.printf("Setting home brightness service: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
+                LOG.printf("[WEB] Setting home brightness service: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
                 animation.safeStripOperation(strip_service, [this, value](Adafruit_NeoPixel* strip) {
                     strip->setBrightness(led.brightnessMapped(value));
                     for (int i = 0; i < strip->numPixels(); i++) {

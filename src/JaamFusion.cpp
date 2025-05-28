@@ -114,7 +114,7 @@ static JsonDocument parseJson(const char* payload) {
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, payload);
   if (error) {
-    LOG.printf("Deserialization error: $s\n", error.f_str());
+    LOG.printf("[ERROR] Deserialization error: $s\n", error.f_str());
     return doc;
   } else {
     return doc;
@@ -124,7 +124,7 @@ static JsonDocument parseJson(const char* payload) {
 
 //--Websocket process start
 void printHex(const String& data) {
-    LOG.print("HEX: ");
+    LOG.print("[WEBSOCKET] HEX: ");
     for (size_t i = 0; i < data.length(); ++i) {
         LOG.printf("%02X ", static_cast<uint8_t>(data[i]));
     }
@@ -132,13 +132,13 @@ void printHex(const String& data) {
 }
 
 void onMessageCallback(WebsocketsMessage msg) {
-    LOG.print("Got Message: ");
+    LOG.print("[WEBSOCKET] Got Message: ");
 
     
 
     // Ігноруємо текстові повідомлення
     if (!msg.isBinary()) {
-        LOG.println("message in not binary");
+        LOG.println("Message in not binary");
         LOG.println(msg.data());
         JsonDocument data = parseJson(msg.data().c_str());
         String payload = data["payload"];
@@ -149,7 +149,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         }
         return;
     } else {
-        LOG.printf("len: %d processing\n", msg.length());
+        LOG.printf("payload. len: %d processing\n", msg.length());
     }
     websocketLastPingTime = millis();
 
@@ -159,14 +159,14 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // 3) Мінімальна довжина — хоча б 1B на type
     if (len < HEADER_SZ) {
-        LOG.printf("len < HEADER_SZ\n");
+        LOG.printf("[ERROR] len < HEADER_SZ\n");
         return;
     }
 
     // 4) Перевіряємо тип пакета
     uint8_t type = data[0];
     if (type != TYPE_ALERTS_BATCH) {
-        LOG.printf("type != TYPE_ALERTS_BATCH\n");
+        LOG.printf("[ERROR] type != TYPE_ALERTS_BATCH\n");
         return;
     }
 
@@ -176,7 +176,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     // 6) payloadLen має ділитися на RECORD_SZ
     if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
         // некоректний фрейм — пропускаємо
-        LOG.printf("bodyLen == 0 || (bodyLen % RECORD_SZ\n");
+        LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
         return;
     }
 
@@ -347,7 +347,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                         endBrightness,
                         region_id
                     )) {
-                        LOG.println("ERROR: Не вдалося створити анімацію");
+                        LOG.println("[ERROR] Не вдалося створити анімацію");
                         return;
                     }
                 }
@@ -389,40 +389,40 @@ void onMessageCallback(WebsocketsMessage msg) {
 void logWebsocketCloseReason(websockets::CloseReason reason) {
     switch (reason) {
         case websockets::CloseReason_None:
-            LOG.println("WebSocket CloseReason: None (-1)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: None (-1)");
             break;
         case websockets::CloseReason_NormalClosure:
-            LOG.println("WebSocket CloseReason: Normal Closure (1000)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Normal Closure (1000)");
             break;
         case websockets::CloseReason_GoingAway:
-            LOG.println("WebSocket CloseReason: Going Away (1001)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Going Away (1001)");
             break;
         case websockets::CloseReason_ProtocolError:
-            LOG.println("WebSocket CloseReason: Protocol Error (1002)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Protocol Error (1002)");
             break;
         case websockets::CloseReason_UnsupportedData:
-            LOG.println("WebSocket CloseReason: Unsupported Data (1003)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Unsupported Data (1003)");
             break;
         case websockets::CloseReason_NoStatusRcvd:
-            LOG.println("WebSocket CloseReason: No Status Received (1005)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: No Status Received (1005)");
             break;
         case websockets::CloseReason_AbnormalClosure:
-            LOG.println("WebSocket CloseReason: Abnormal Closure (1006)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Abnormal Closure (1006)");
             break;
         case websockets::CloseReason_InvalidPayloadData:
-            LOG.println("WebSocket CloseReason: Invalid Payload Data (1007)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Invalid Payload Data (1007)");
             break;
         case websockets::CloseReason_PolicyViolation:
-            LOG.println("WebSocket CloseReason: Policy Violation (1008)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Policy Violation (1008)");
             break;
         case websockets::CloseReason_MessageTooBig:
-            LOG.println("WebSocket CloseReason: Message Too Big (1009)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Message Too Big (1009)");
             break;
         case websockets::CloseReason_InternalServerError:
-            LOG.println("WebSocket CloseReason: Internal Server Error (1011)");
+            LOG.println("[WEBSOCKET] WebSocket CloseReason: Internal Server Error (1011)");
             break;
         default:
-            LOG.printf("WebSocket CloseReason: Unknown (%d)\n", static_cast<int>(reason));
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Unknown (%d)\n", static_cast<int>(reason));
             break;
     }
 }
@@ -430,34 +430,34 @@ void logWebsocketCloseReason(websockets::CloseReason reason) {
 void onEventsCallback(WebsocketsEvent event, String data) {
   if (event == WebsocketsEvent::ConnectionOpened) {
     apiConnected = true;
-    LOG.println("connnection opened");
+    LOG.println("[WEBSOCKET] connnection opened");
     //servicePin(DATA, HIGH, false);
     websocketLastPingTime = millis();
     //ha.setMapApiConnect(apiConnected);
   } else if (event == WebsocketsEvent::ConnectionClosed) {
     apiConnected = false;
-    LOG.println("connnection closed");
+    LOG.println("[WEBSOCKET] connnection closed");
     isFirstDataFetchCompleted = false;
-    LOG.printf("Heap before close: %u\n", ESP.getFreeHeap());
+    LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
     //websocket.close();
     auto reason = websocket.getCloseReason();
     logWebsocketCloseReason(reason);
     delay(500);
-    LOG.printf("Heap after close: %u\n", ESP.getFreeHeap());
+    LOG.printf("[MEMORY] Heap after close: %u\n", ESP.getFreeHeap());
     //servicePin(DATA, LOW, false);
     //ha.setMapApiConnect(apiConnected);
   } else if (event == WebsocketsEvent::GotPing) {
-    LOG.printf("websocket ping, payload: [%s], len: %d\n", data.c_str(), data.length());
-    printHex(data);
+    LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
+    //printHex(data);
     websocketLastPingTime = millis();
   } else if (event == WebsocketsEvent::GotPong) {
-    LOG.printf("websocket pong, payload: [%s], len: %d\n", data.c_str(), data.length());
-    printHex(data);
+    LOG.printf("[WEBSOCKET] pong, payload: [%s], len: %d\n", data.c_str(), data.length());
+    //printHex(data);
   }
 }
 
 void socketConnect() {
-  LOG.println("connection start...");
+  LOG.println("[WEBSOCKET] connection start...");
   //showServiceMessage("підключення...", "Сервер даних");
   
   websocket.onMessage(onMessageCallback);
@@ -470,29 +470,29 @@ void socketConnect() {
     "10.2.0.156",
     settings.getInt(WS_SERVER_PORT)
   );
-  LOG.println(webSocketUrl);
+  LOG.printf("[WEBSOCKET] url:%s\n", webSocketUrl);
   websocket.connect(webSocketUrl);
   if (websocket.available()) {
     clearAllAlertsMaps();
     animation.clearAllAnimations();
     animation.paintStripDefault(strip_main, num_leds_main);
-    LOG.print("connection time - ");
+    LOG.print("[WEBSOCKET] connection time - ");
     LOG.print(millis() - startTime);
     LOG.println("ms");
     char chipIdInfo[25];
     sprintf(chipIdInfo, "chip_id:%s", chipID);
-    LOG.println(chipIdInfo);
+    LOG.printf("[WEBSOCKET] %s\n", chipIdInfo);
     websocket.send(chipIdInfo);
     char firmwareInfo[100];
     sprintf(firmwareInfo, "firmware:%s_%s", currentFwVersion, settings.getString(ID));
-    LOG.println(firmwareInfo);
+    LOG.printf("[WEBSOCKET] %s\n", firmwareInfo);
     websocket.send(firmwareInfo);
 
     char userInfo[250];
     JsonDocument userInfoJson;
     userInfoJson["legacy"] = legacy;
     sprintf(userInfo, "user_info:%s", userInfoJson.as<String>().c_str());
-    LOG.println(userInfo);
+    LOG.printf("[WEBSOCKET] %s\n", userInfo);
     websocket.send(userInfo);
     websocket.ping("A");
     websocketReconnect = false;
@@ -505,19 +505,19 @@ void socketConnect() {
 
 void websocketProcess() {
   if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME)) {
-    LOG.println("websocketReconnect = true; Причина: не було ping/pong від сервера (WS_ALERT_TIME)");
+    LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: не було ping/pong від сервера (WS_ALERT_TIME)");
     websocketReconnect = true;
   }
   if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME)) {
-    LOG.println("websocketReconnect = true; Причина: перевищено WS_REBOOT_TIME, буде перезавантаження");
+    LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: перевищено WS_REBOOT_TIME, буде перезавантаження");
     rebootDevice(3000, true);
   }
   if (!websocket.available()) {
-    LOG.println("Reconnecting... websocket.available() == false");
+    LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
     socketConnect();
   }
   if (websocketReconnect) {
-    LOG.println("Reconnecting... websocketReconnect == true");
+    LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
     socketConnect();
   }
 }
@@ -548,7 +548,7 @@ void animations() {
     strip = strip_main;
 
     if (!strip) {
-        LOG.println("ERROR: Немає доступних ініціалізованих стрічок");
+        LOG.println("[ERROR] Немає доступних ініціалізованих стрічок");
         return;
     }
     // r = 255;
@@ -621,7 +621,7 @@ void memory() {
   String wifiIP = wifiConnected ? WiFi.localIP().toString() : "N/A";
 
   LOG.printf(
-    "Loop %u: LED %d, used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
+    "[DEBUG] Loop %u: LED %d, used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
     loopCount,
     currentIdx,
     usedHeap,
@@ -635,13 +635,13 @@ void memory() {
 }
 
 void initSettings() {
-    LOG.println("Init settings");
+    LOG.println("[INIT] Init settings");
     settings.init();
     firmware = parseFirmwareVersion(VERSION);
-    LOG.printf("major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
+    LOG.printf("[INIT] major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
             firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
     fillFwVersion(currentFwVersion, firmware);
-    LOG.printf("Current firmware version: %s\n", currentFwVersion);
+    LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
 
     // Заповнюємо allLedsMain згідно з num_leds_main
     allLedsMain.clear();
@@ -658,7 +658,7 @@ void initSettings() {
 void initChipID() {
   uint64_t chipid = ESP.getEfuseMac();
   sprintf(chipID, "%04x%04x", (uint32_t)(chipid >> 32), (uint32_t)chipid);
-  LOG.printf("ChipID Inited: '%s'\n", chipID);
+  LOG.printf("[INIT] ChipID Inited: '%s'\n", chipID);
 }
 
 static void wifiEvents(WiFiEvent_t event) {
@@ -690,11 +690,11 @@ void saveConfigCallback() {
 
 void initWifi() {
     if (!WiFiConfig::ENABLED) {
-        LOG.println("WiFi is disabled in configuration");
+        LOG.println("[WIFI] WiFi is disabled in configuration");
         return;
     }
 
-    LOG.println("Initializing WiFi...");
+    LOG.println("[WIFI] Initializing WiFi...");
     
     // Set WiFi to station mode
     WiFi.mode(WIFI_STA);
@@ -714,21 +714,21 @@ void initWifi() {
     snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
     
     // Try to connect to saved WiFi
-    LOG.println("Attempting to connect to saved WiFi...");
+    LOG.println("[WIFI] Attempting to connect to saved WiFi...");
     if (!wm.autoConnect(apName)) {
-        LOG.println("Reboot");
+        LOG.println("[WIFI] Reboot");
         rebootDevice(5000);
         return;
     }
     
     lastWifiConnectTime = millis();  // Record connection time
-    LOG.println("Connected to WiFi");
-    LOG.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
+    LOG.println("[WIFI] Connected to WiFi");
+    LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
     
     // Start web portal
     wm.setHttpPort(WiFiConfig::WEB_PORT);
     wm.startWebPortal();
-    LOG.println("Web portal started on port 8080");
+    LOG.println("[WEB] Web portal started on port 8080");
     socketConnect();
     delay(1000);
 }
@@ -737,7 +737,7 @@ void initStrip() {
     // Створюємо м'ютекс для захисту доступу до стрічок
     stripMutex = xSemaphoreCreateMutex();
     if (stripMutex == NULL) {
-        LOG.println("ERROR: Не вдалося створити семафор stripMutex");
+        LOG.println("[ERROR] Не вдалося створити семафор stripMutex");
         return;
     }
 
@@ -749,25 +749,25 @@ void initStrip() {
     
     status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, settings.getInt(BRIGHTNESS), DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
-        LOG.printf("ERROR: Не вдалося створити strip_main: %d\n", status);
+        LOG.printf("[LED] ERROR: Не вдалося створити strip_main: %d\n", status);
     } else {
-        LOG.println("SUCCESS: strip_main");
+        LOG.println("[LED] SUCCESS: strip_main");
         strip_main_initialized = true;
     }
     
     status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), settings.getInt(BRIGHTNESS_BG), DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
-        LOG.printf("ERROR: Не вдалося створити strip_bg: %d\n", status);
+        LOG.printf("[LED] ERROR: Не вдалося створити strip_bg: %d\n", status);
     } else {
-        LOG.println("SUCCESS: strip_bg");
+        LOG.println("[LED] SUCCESS: strip_bg");
         strip_bg_initialized = true;
     }
 
     status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, settings.getInt(BRIGHTNESS_SERVICE), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
-        LOG.printf("ERROR: Не вдалося створити strip_service: %d\n", status);
+        LOG.printf("[LED] ERROR: Не вдалося створити strip_service: %d\n", status);
     } else {
-        LOG.println("SUCCESS: strip_service");
+        LOG.println("[LED] SUCCESS: strip_service");
         strip_service_initialized = true;
     }
 
@@ -814,39 +814,39 @@ void initStrip() {
 }
 
 static void printNtpStatus(NTPtime* timeClient) {
-  LOG.print("NTP status: ");
+  LOG.print("[TIME] NTP status: ");
     switch (timeClient->NTPstatus()) {
       case 0:
-        LOG.println("OK");
-        LOG.print("Current date and time: ");
+        LOG.println("[TIME] OK");
+        LOG.print("[TIME] Current date and time: ");
         LOG.println(timeClient->unixToString("DD.MM.YYYY hh:mm:ss"));
         break;
       case 1:
-        LOG.println("NOT_STARTED");
+        LOG.println("[TIME] NOT_STARTED");
         break;
       case 2:
-        LOG.println("NOT_CONNECTED_WIFI");
+        LOG.println("[TIME] NOT_CONNECTED_WIFI");
         break;
       case 3:
-        LOG.println("NOT_CONNECTED_TO_SERVER");
+        LOG.println("[TIME] NOT_CONNECTED_TO_SERVER");
         break;
       case 4:
-        LOG.println("NOT_SENT_PACKET");
+        LOG.println("[TIME] NOT_SENT_PACKET");
         break;
       case 5:
-        LOG.println("WAITING_REPLY");
+        LOG.println("[TIME] WAITING_REPLY");
         break;
       case 6:
-        LOG.println("TIMEOUT");
+        LOG.println("[TIME] TIMEOUT");
         break;
       case 7:
-        LOG.println("REPLY_ERROR");
+        LOG.println("[TIME] REPLY_ERROR");
         break;
       case 8:
-        LOG.println("NOT_CONNECTED_ETHERNET");
+        LOG.println("[TIME] NOT_CONNECTED_ETHERNET");
         break;
       default:
-        LOG.println("UNKNOWN_STATUS");
+        LOG.println("[TIME] UNKNOWN_STATUS");
         break;
     }
 }
@@ -854,13 +854,13 @@ static void printNtpStatus(NTPtime* timeClient) {
 void syncTime(int8_t attempts) {
   timeClient.tick();
   if (timeClient.status() == UNIX_OK) return;
-  LOG.println("Time not synced yet!");
+  LOG.println("[TIME] Time not synced yet!");
   printNtpStatus(&timeClient);
   int8_t count = 1;
   while (timeClient.NTPstatus() != NTP_OK && count <= attempts) {
-    LOG.printf("Attempt #%d of %d\n", count, attempts);
+    LOG.printf("[TIME] Attempt #%d of %d\n", count, attempts);
     if (timeClient.NTPstatus() != NTP_WAITING_REPLY) {
-      LOG.println("Force update!");
+      LOG.println("[TIME] Force update!");
       timeClient.updateNow();
     }
     timeClient.tick();
@@ -875,8 +875,8 @@ void timeProcess() {
 }
 
 void initTime() {
-  LOG.println("Init time");
-  LOG.printf("NTP host: %s\n", settings.getString(NTP_HOST));
+  LOG.println("[TIME] Init time");
+  LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
   timeClient.setHost(settings.getString(NTP_HOST));
   timeClient.setTimeZone(settings.getInt(TIME_ZONE));
   timeClient.setDSTauto(&dst); // auto update on summer/winter time.
@@ -888,7 +888,7 @@ void initTime() {
 
 void wifiReconnect() {
   if (WiFi.status() != WL_CONNECTED) {
-    LOG.println("WiFI Reconnect");
+    LOG.println("[WIFI] Reconnect");
     initWifi();
   }
 }
@@ -911,12 +911,12 @@ void get_pixel_color() {
 
 void logFreeMainLeds() {
     if (!strip_main_initialized) {
-        LOG.println("strip_main не ініціалізовано");
+        LOG.println("[LED] strip_main not initialized");
         return;
     }
     auto freeLeds = animation.getFreeLeds(strip_main, num_leds_main);
-    LOG.printf("Вільних LED на strip_main: %d\n", (int)freeLeds.size());
-    LOG.print("Список: ");
+    LOG.printf("[LED] Free LEDs on strip_main: %d\n", (int)freeLeds.size());
+    LOG.print("[LED] List: ");
     for (const auto& led : freeLeds) {
         LOG.printf("%d ", led.ledIdx);
     }
