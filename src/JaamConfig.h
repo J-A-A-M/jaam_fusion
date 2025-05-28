@@ -34,6 +34,7 @@ static const uint32_t ANIMATION_INTERVAL = 1000;    // 1 second
 static const uint32_t MEMORY_CHECK_INTERVAL = 60000;  // 1 minute
 static const uint32_t WIFI_CHECK_INTERVAL = 1000;   // 1 second
 static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;   // 3 seconds
+static const uint32_t TIME_CHECK_INTERVAL = 60000;   // 3 seconds
 
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
 static constexpr size_t   HEADER_SZ         = 1;  // лише 1 байт – type

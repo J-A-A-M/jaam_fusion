@@ -3,6 +3,7 @@
 #include <ArduinoWebsockets.h>
 
 #include <WiFiManager.h>
+#include <NTPtime.h>
 #include <esp_system.h>
 #include <async.h>
 #include <freertos/FreeRTOS.h>
@@ -24,6 +25,9 @@ uint32_t            loopCount = 0;
 int                 needRebootWithDelay = -1;
 
 Async               async = Async(20);
+
+NTPtime             timeClient(2);
+DSTime              dst(3, 0, 7, 3, 10, 0, 7, 4); //https://en.wikipedia.org/wiki/Eastern_European_Summer_Time
 
 JaamSettings        settings;
 Firmware            firmware;
@@ -809,6 +813,79 @@ void initStrip() {
     }
 }
 
+static void printNtpStatus(NTPtime* timeClient) {
+  LOG.print("NTP status: ");
+    switch (timeClient->NTPstatus()) {
+      case 0:
+        LOG.println("OK");
+        LOG.print("Current date and time: ");
+        LOG.println(timeClient->unixToString("DD.MM.YYYY hh:mm:ss"));
+        break;
+      case 1:
+        LOG.println("NOT_STARTED");
+        break;
+      case 2:
+        LOG.println("NOT_CONNECTED_WIFI");
+        break;
+      case 3:
+        LOG.println("NOT_CONNECTED_TO_SERVER");
+        break;
+      case 4:
+        LOG.println("NOT_SENT_PACKET");
+        break;
+      case 5:
+        LOG.println("WAITING_REPLY");
+        break;
+      case 6:
+        LOG.println("TIMEOUT");
+        break;
+      case 7:
+        LOG.println("REPLY_ERROR");
+        break;
+      case 8:
+        LOG.println("NOT_CONNECTED_ETHERNET");
+        break;
+      default:
+        LOG.println("UNKNOWN_STATUS");
+        break;
+    }
+}
+
+void syncTime(int8_t attempts) {
+  timeClient.tick();
+  if (timeClient.status() == UNIX_OK) return;
+  LOG.println("Time not synced yet!");
+  printNtpStatus(&timeClient);
+  int8_t count = 1;
+  while (timeClient.NTPstatus() != NTP_OK && count <= attempts) {
+    LOG.printf("Attempt #%d of %d\n", count, attempts);
+    if (timeClient.NTPstatus() != NTP_WAITING_REPLY) {
+      LOG.println("Force update!");
+      timeClient.updateNow();
+    }
+    timeClient.tick();
+    if (count < attempts) delay(1000);
+    count++;
+    printNtpStatus(&timeClient);
+  }
+}
+
+void timeProcess() {
+  syncTime(2);
+}
+
+void initTime() {
+  LOG.println("Init time");
+  LOG.printf("NTP host: %s\n", settings.getString(NTP_HOST));
+  timeClient.setHost(settings.getString(NTP_HOST));
+  timeClient.setTimeZone(settings.getInt(TIME_ZONE));
+  timeClient.setDSTauto(&dst); // auto update on summer/winter time.
+  timeClient.setTimeout(5000); // 5 seconds waiting for reply
+  timeClient.begin();
+  syncTime(7);
+}
+
+
 void wifiReconnect() {
   if (WiFi.status() != WL_CONNECTED) {
     LOG.println("WiFI Reconnect");
@@ -878,6 +955,7 @@ void setup() {
     initSettings();
     initStrip();
     initWifi();
+    initTime();
 
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
@@ -891,6 +969,7 @@ void setup() {
     async.setInterval(memory, MEMORY_CHECK_INTERVAL);
     async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
     async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);
+    async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     //async.setInterval(logFreeMainLeds, 5000); // 5000 мс = 5 секунд, змініть інтервал за потреби
 
     // xTaskCreatePinnedToCore(memoryTask, "MemoryTask", 2048, nullptr, 1, &memoryTaskHandle, 1);
