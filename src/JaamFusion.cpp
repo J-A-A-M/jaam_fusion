@@ -99,28 +99,28 @@ void clearAllAlertsMaps() {
 
 
 void rebootDevice(int time = 2000, bool async = false) {
-  if (async) {
-    needRebootWithDelay = time;
-    return;
-  }
-  //showServiceMessage("Перезавантаження..", "", time);
-  delay(time);
-  //display.clearDisplay();
-  //display.display();
-  ESP.restart();
+    if (async) {
+        needRebootWithDelay = time;
+        return;
+    }
+    //showServiceMessage("Перезавантаження..", "", time);
+    delay(time);
+    //display.clearDisplay();
+    //display.display();
+    ESP.restart();
 }
 
 
 static JsonDocument parseJson(const char* payload) {
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, payload);
-  if (error) {
-    LOG.printf("[ERROR] Deserialization error: $s\n", error.f_str());
-    return doc;
-  } else {
-    return doc;
-  }
-}
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (error) {
+        LOG.printf("[ERROR] Deserialization error: $s\n", error.f_str());
+        return doc;
+    } else {
+        return doc;
+    }
+    }
 
 
 //--Websocket process start
@@ -268,73 +268,62 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (isFirstDataFetchCompleted) {
             if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted) {
                 animate = true;
-                color = animation.ledActualColor(strip_main, leds[0]);
-                cycles = 1;
-                period = 10000;
+                initialColor = strip_main->getPixelColor(leds[0]);
+                color = animation.ledActualColor(strip_main, leds[0], true);
                 animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
-                if (dronesCompleted || missilesCompleted || kabCompleted) {
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                    endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));                 
-                }
-                if (airCompleted) {
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-                    endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));
-                }
-                
+                cycles = 1;
+                period = 5000;
             }
-            if (airStarted) {
+            if (airStarted) {   
                 animate = true;
-                color = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)); //animation.ledActualColor(strip_main, leds[0], false);
+                initialColor = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT));
+                color = animation.colorFromHex(settings.getString(COLOR_ALERT));
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+                endBrightness = 100;
+                animType = AnimationParams::Type::BLEND_FADE;
                 period = 1000;
-                cycles = 300;
-                endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
-                animType = AnimationParams::Type::FADE;
+                cycles = 5;
             }
             if (airAlertsMap[region_id] && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_DRONES));
-                period = 1000;
-                cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 50;
+                endBrightness = 100; 
                 animType = AnimationParams::Type::PULSE;
+                period = 1000;
+                cycles = 5;              
             }
             if (airAlertsMap[region_id] && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
-                period = 1000;
-                cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 50;
+                endBrightness = 100; 
                 animType = AnimationParams::Type::PULSE;
+                period = 1000;
+                cycles = 5;
             }
             if (airAlertsMap[region_id] && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_KABS));
-                period = 1000;
-                cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 50;
+                endBrightness = 100; 
                 animType = AnimationParams::Type::PULSE;
+                period = 1000;
+                cycles = 5;
             }
             if (airAlertsMap[region_id] && notificationExplosion && settings.getBool(ENABLE_EXPLOSIONS)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
-                period = 1000;
-                cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 50;
+                endBrightness = 100;
                 animType = AnimationParams::Type::PULSE;
+                period = 1000;
+                cycles = 5;
             }
             
             if(animate) {
                 for (int i = 0; i < ledCount; ++i) {
                     int ledsIdx[1] = { leds[i] };
-                    // LOG.printf("check active alerts for led %d\n", leds[i]);
-                    // if (isAlertForLed(leds[i])) {
-                    //     animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
-                    //     cycles = 1;
-                    // }
                     if (!animation.createAnimation(
                         animType,
                         strip_main,
@@ -429,98 +418,98 @@ void logWebsocketCloseReason(websockets::CloseReason reason) {
 }
 
 void onEventsCallback(WebsocketsEvent event, String data) {
-  if (event == WebsocketsEvent::ConnectionOpened) {
-    apiConnected = true;
-    LOG.println("[WEBSOCKET] connnection opened");
-    //servicePin(DATA, HIGH, false);
-    websocketLastPingTime = millis();
-    //ha.setMapApiConnect(apiConnected);
-  } else if (event == WebsocketsEvent::ConnectionClosed) {
-    apiConnected = false;
-    LOG.println("[WEBSOCKET] connnection closed");
-    isFirstDataFetchCompleted = false;
-    LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
-    //websocket.close();
-    auto reason = websocket.getCloseReason();
-    logWebsocketCloseReason(reason);
-    delay(500);
-    LOG.printf("[MEMORY] Heap after close: %u\n", ESP.getFreeHeap());
-    //servicePin(DATA, LOW, false);
-    //ha.setMapApiConnect(apiConnected);
-  } else if (event == WebsocketsEvent::GotPing) {
-    LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
-    //printHex(data);
-    websocketLastPingTime = millis();
-  } else if (event == WebsocketsEvent::GotPong) {
-    LOG.printf("[WEBSOCKET] pong, payload: [%s], len: %d\n", data.c_str(), data.length());
-    //printHex(data);
-  }
+    if (event == WebsocketsEvent::ConnectionOpened) {
+        apiConnected = true;
+        LOG.println("[WEBSOCKET] connnection opened");
+        //servicePin(DATA, HIGH, false);
+        websocketLastPingTime = millis();
+        //ha.setMapApiConnect(apiConnected);
+    } else if (event == WebsocketsEvent::ConnectionClosed) {
+        apiConnected = false;
+        LOG.println("[WEBSOCKET] connnection closed");
+        isFirstDataFetchCompleted = false;
+        LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
+        //websocket.close();
+        auto reason = websocket.getCloseReason();
+        logWebsocketCloseReason(reason);
+        delay(500);
+        LOG.printf("[MEMORY] Heap after close: %u\n", ESP.getFreeHeap());
+        //servicePin(DATA, LOW, false);
+        //ha.setMapApiConnect(apiConnected);
+    } else if (event == WebsocketsEvent::GotPing) {
+        LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
+        //printHex(data);
+        websocketLastPingTime = millis();
+    } else if (event == WebsocketsEvent::GotPong) {
+        LOG.printf("[WEBSOCKET] pong, payload: [%s], len: %d\n", data.c_str(), data.length());
+        //printHex(data);
+    }
 }
 
 void socketConnect() {
-  LOG.println("[WEBSOCKET] connection start...");
-  //showServiceMessage("підключення...", "Сервер даних");
-  
-  websocket.onMessage(onMessageCallback);
-  websocket.onEvent(onEventsCallback);
-  long startTime = millis();
-  char webSocketUrl[100];
-  sprintf(
-    webSocketUrl,
-    "ws://%s:%d/data_fusion_v1",
-    "10.2.0.156",
-    settings.getInt(WS_SERVER_PORT)
-  );
-  LOG.printf("[WEBSOCKET] url:%s\n", webSocketUrl);
-  websocket.connect(webSocketUrl);
-  if (websocket.available()) {
-    clearAllAlertsMaps();
-    animation.clearAllAnimations();
-    animation.paintStripDefault(strip_main, num_leds_main);
-    LOG.print("[WEBSOCKET] connection time - ");
-    LOG.print(millis() - startTime);
-    LOG.println("ms");
-    char chipIdInfo[25];
-    sprintf(chipIdInfo, "chip_id:%s", chipID);
-    LOG.printf("[WEBSOCKET] %s\n", chipIdInfo);
-    websocket.send(chipIdInfo);
-    char firmwareInfo[100];
-    sprintf(firmwareInfo, "firmware:%s_%s", currentFwVersion, settings.getString(ID));
-    LOG.printf("[WEBSOCKET] %s\n", firmwareInfo);
-    websocket.send(firmwareInfo);
+    LOG.println("[WEBSOCKET] connection start...");
+    //showServiceMessage("підключення...", "Сервер даних");
+    
+    websocket.onMessage(onMessageCallback);
+    websocket.onEvent(onEventsCallback);
+    long startTime = millis();
+    char webSocketUrl[100];
+    sprintf(
+        webSocketUrl,
+        "ws://%s:%d/data_fusion_v1",
+        "10.2.0.156",
+        settings.getInt(WS_SERVER_PORT)
+    );
+    LOG.printf("[WEBSOCKET] url:%s\n", webSocketUrl);
+    websocket.connect(webSocketUrl);
+    if (websocket.available()) {
+        clearAllAlertsMaps();
+        animation.clearAllAnimations();
+        animation.paintStripDefault(strip_main, num_leds_main);
+        LOG.print("[WEBSOCKET] connection time - ");
+        LOG.print(millis() - startTime);
+        LOG.println("ms");
+        char chipIdInfo[25];
+        sprintf(chipIdInfo, "chip_id:%s", chipID);
+        LOG.printf("[WEBSOCKET] %s\n", chipIdInfo);
+        websocket.send(chipIdInfo);
+        char firmwareInfo[100];
+        sprintf(firmwareInfo, "firmware:%s_%s", currentFwVersion, settings.getString(ID));
+        LOG.printf("[WEBSOCKET] %s\n", firmwareInfo);
+        websocket.send(firmwareInfo);
 
-    char userInfo[250];
-    JsonDocument userInfoJson;
-    userInfoJson["legacy"] = legacy;
-    sprintf(userInfo, "user_info:%s", userInfoJson.as<String>().c_str());
-    LOG.printf("[WEBSOCKET] %s\n", userInfo);
-    websocket.send(userInfo);
-    websocket.ping("A");
-    websocketReconnect = false;
-    lastWebsocketConnectTime  = millis();
-    //showServiceMessage("підключено!", "Сервер даних", 3000);
-  } else {
-    //showServiceMessage("недоступний", "Сервер даних", 3000);
-  }
+        char userInfo[250];
+        JsonDocument userInfoJson;
+        userInfoJson["legacy"] = legacy;
+        sprintf(userInfo, "user_info:%s", userInfoJson.as<String>().c_str());
+        LOG.printf("[WEBSOCKET] %s\n", userInfo);
+        websocket.send(userInfo);
+        websocket.ping("A");
+        websocketReconnect = false;
+        lastWebsocketConnectTime  = millis();
+        //showServiceMessage("підключено!", "Сервер даних", 3000);
+    } else {
+        //showServiceMessage("недоступний", "Сервер даних", 3000);
+    }
 }
 
 void websocketProcess() {
-  if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME)) {
-    LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: не було ping/pong від сервера (WS_ALERT_TIME)");
-    websocketReconnect = true;
-  }
-  if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME)) {
-    LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: перевищено WS_REBOOT_TIME, буде перезавантаження");
-    rebootDevice(3000, true);
-  }
-  if (!websocket.available()) {
-    LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
-    socketConnect();
-  }
-  if (websocketReconnect) {
-    LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
-    socketConnect();
-  }
+    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME)) {
+        LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: не було ping/pong від сервера (WS_ALERT_TIME)");
+        websocketReconnect = true;
+    }
+    if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME)) {
+        LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: перевищено WS_REBOOT_TIME, буде перезавантаження");
+        rebootDevice(3000, true);
+    }
+    if (!websocket.available()) {
+        LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
+        socketConnect();
+    }
+    if (websocketReconnect) {
+        LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
+        socketConnect();
+    }
 }
 //--Websocket process end
 
@@ -585,9 +574,6 @@ void animations() {
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
     uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
     
-
-
-    
     // Створення анімації з обробкою помилок
     if (!animation.createAnimation(
         animType,
@@ -612,31 +598,32 @@ void animations() {
 }
 
 void memory() {
-  size_t freeHeap    = ESP.getFreeHeap();
-  size_t usedHeap    = ESP.getHeapSize() - freeHeap;
-  size_t maxAlloc    = ESP.getMaxAllocHeap();
-  uint32_t uptimeMin = millis() / 60000;
-  
-  // WiFi status information
-  bool wifiConnected = WiFi.status() == WL_CONNECTED;
-  uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0; 
-  uint32_t websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0; // in seconds
-  String wifiStatus = wifiConnected ? "Connected" : "Disconnected";
-  String websocketStatus = websocket.available() ? "Connected" : "Disconnected";
-  String wifiIP = wifiConnected ? WiFi.localIP().toString() : "N/A";
+    loopCount++;
+    size_t freeHeap    = ESP.getFreeHeap();
+    size_t usedHeap    = ESP.getHeapSize() - freeHeap;
+    size_t maxAlloc    = ESP.getMaxAllocHeap();
+    uint32_t uptimeMin = millis() / 60000;
 
-  LOG.printf(
-    "[DEBUG] Loop %u: LED %d, used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
-    loopCount,
-    currentIdx,
-    usedHeap,
-    freeHeap,
-    uptimeMin,
-    wifiStatus.c_str(),
-    wifiUptime,
-    websocketStatus.c_str(),
-    websocketUptime
-  );
+    // WiFi status information
+    bool wifiConnected = WiFi.status() == WL_CONNECTED;
+    uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0; 
+    uint32_t websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0; // in seconds
+    String wifiStatus = wifiConnected ? "Connected" : "Disconnected";
+    String websocketStatus = websocket.available() ? "Connected" : "Disconnected";
+    String wifiIP = wifiConnected ? WiFi.localIP().toString() : "N/A";
+
+    LOG.printf(
+        "[DEBUG] Loop %u: LED %d, used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
+        loopCount,
+        currentIdx,
+        usedHeap,
+        freeHeap,
+        uptimeMin,
+        wifiStatus.c_str(),
+        wifiUptime,
+        websocketStatus.c_str(),
+        websocketUptime
+    );
 }
 
 void initSettings() {
@@ -669,28 +656,28 @@ void initChipID() {
 static void wifiEvents(WiFiEvent_t event) {
   switch (event) {
     case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
-      char softApIp[16];
-      strcpy(softApIp, WiFi.softAPIP().toString().c_str());
-      //displayMessage(softApIp, "Введіть у браузері:");
-      WiFi.removeEvent(wifiEvents);
-      break;
+        char softApIp[16];
+        strcpy(softApIp, WiFi.softAPIP().toString().c_str());
+        //displayMessage(softApIp, "Введіть у браузері:");
+        WiFi.removeEvent(wifiEvents);
+        break;
     }
     default:
-      break;
+        break;
   }
 }
 
 
 void apCallback(WiFiManager* wifiManager) {
-  const char* message = wifiManager->getConfigPortalSSID().c_str();
-  //displayMessage(message, "Підключіться до WiFi:");
-  WiFi.onEvent(wifiEvents);
+    const char* message = wifiManager->getConfigPortalSSID().c_str();
+    //displayMessage(message, "Підключіться до WiFi:");
+    WiFi.onEvent(wifiEvents);
 }
 
 void saveConfigCallback() {
-  //showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
-  delay(2000);
-  rebootDevice();
+    //showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
+    delay(2000);
+    rebootDevice();
 }
 
 void initWifi() {
@@ -823,81 +810,81 @@ void initStrip() {
 static void printNtpStatus(NTPtime* timeClient) {
   LOG.print("[TIME] NTP status: ");
     switch (timeClient->NTPstatus()) {
-      case 0:
-        LOG.println("[TIME] OK");
-        LOG.print("[TIME] Current date and time: ");
-        LOG.println(timeClient->unixToString("DD.MM.YYYY hh:mm:ss"));
-        break;
-      case 1:
-        LOG.println("[TIME] NOT_STARTED");
-        break;
-      case 2:
-        LOG.println("[TIME] NOT_CONNECTED_WIFI");
-        break;
-      case 3:
-        LOG.println("[TIME] NOT_CONNECTED_TO_SERVER");
-        break;
-      case 4:
-        LOG.println("[TIME] NOT_SENT_PACKET");
-        break;
-      case 5:
-        LOG.println("[TIME] WAITING_REPLY");
-        break;
-      case 6:
-        LOG.println("[TIME] TIMEOUT");
-        break;
-      case 7:
-        LOG.println("[TIME] REPLY_ERROR");
-        break;
-      case 8:
-        LOG.println("[TIME] NOT_CONNECTED_ETHERNET");
-        break;
-      default:
-        LOG.println("[TIME] UNKNOWN_STATUS");
-        break;
+        case 0:
+            LOG.println("[TIME] OK");
+            LOG.print("[TIME] Current date and time: ");
+            LOG.println(timeClient->unixToString("DD.MM.YYYY hh:mm:ss"));
+            break;
+        case 1:
+            LOG.println("[TIME] NOT_STARTED");
+            break;
+        case 2:
+            LOG.println("[TIME] NOT_CONNECTED_WIFI");
+            break;
+        case 3:
+            LOG.println("[TIME] NOT_CONNECTED_TO_SERVER");
+            break;
+        case 4:
+            LOG.println("[TIME] NOT_SENT_PACKET");
+            break;
+        case 5:
+            LOG.println("[TIME] WAITING_REPLY");
+            break;
+        case 6:
+            LOG.println("[TIME] TIMEOUT");
+            break;
+        case 7:
+            LOG.println("[TIME] REPLY_ERROR");
+            break;
+        case 8:
+            LOG.println("[TIME] NOT_CONNECTED_ETHERNET");
+            break;
+        default:
+            LOG.println("[TIME] UNKNOWN_STATUS");
+            break;
     }
 }
 
 void syncTime(int8_t attempts) {
-  timeClient.tick();
-  if (timeClient.status() == UNIX_OK) return;
-  LOG.println("[TIME] Time not synced yet!");
-  printNtpStatus(&timeClient);
-  int8_t count = 1;
-  while (timeClient.NTPstatus() != NTP_OK && count <= attempts) {
-    LOG.printf("[TIME] Attempt #%d of %d\n", count, attempts);
-    if (timeClient.NTPstatus() != NTP_WAITING_REPLY) {
-      LOG.println("[TIME] Force update!");
-      timeClient.updateNow();
-    }
     timeClient.tick();
-    if (count < attempts) delay(1000);
-    count++;
+    if (timeClient.status() == UNIX_OK) return;
+    LOG.println("[TIME] Time not synced yet!");
     printNtpStatus(&timeClient);
-  }
+    int8_t count = 1;
+    while (timeClient.NTPstatus() != NTP_OK && count <= attempts) {
+        LOG.printf("[TIME] Attempt #%d of %d\n", count, attempts);
+        if (timeClient.NTPstatus() != NTP_WAITING_REPLY) {
+        LOG.println("[TIME] Force update!");
+        timeClient.updateNow();
+        }
+        timeClient.tick();
+        if (count < attempts) delay(1000);
+        count++;
+        printNtpStatus(&timeClient);
+    }
 }
 
 void timeProcess() {
-  syncTime(2);
+    syncTime(2);
 }
 
 void initTime() {
-  LOG.println("[TIME] Init time");
-  LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
-  timeClient.setHost(settings.getString(NTP_HOST));
-  timeClient.setTimeZone(settings.getInt(TIME_ZONE));
-  timeClient.setDSTauto(&dst); // auto update on summer/winter time.
-  timeClient.setTimeout(5000); // 5 seconds waiting for reply
-  timeClient.begin();
-  syncTime(7);
+    LOG.println("[TIME] Init time");
+    LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
+    timeClient.setHost(settings.getString(NTP_HOST));
+    timeClient.setTimeZone(settings.getInt(TIME_ZONE));
+    timeClient.setDSTauto(&dst); // auto update on summer/winter time.
+    timeClient.setTimeout(5000); // 5 seconds waiting for reply
+    timeClient.begin();
+    syncTime(7);
 }
 
 
 void wifiReconnect() {
-  if (WiFi.status() != WL_CONNECTED) {
-    LOG.println("[WIFI] Reconnect");
-    initWifi();
-  }
+    if (WiFi.status() != WL_CONNECTED) {
+        LOG.println("[WIFI] Reconnect");
+        initWifi();
+    }
 }
 
 void get_pixel_color() {

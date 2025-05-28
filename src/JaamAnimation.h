@@ -66,7 +66,7 @@ class AnimationManager {
         void updateAnimation(AnimationParams* anim, int index);
         void updateFadeAnimation(AnimationParams* anim, float elapsed);
         void updateBlinkAnimation(AnimationParams* anim, float elapsed);
-        void updateBlendBlinkAnimation(AnimationParams* anim, float elapsed);
+        void updateBlendFadeAnimation(AnimationParams* anim, float elapsed);
         void updatePulseAnimation(AnimationParams* anim, float elapsed);
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
         void updateOneWayBlendAnimation(AnimationParams* anim, float elapsed);

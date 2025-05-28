@@ -263,7 +263,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
             updateBlinkAnimation(anim, elapsed);
             break;
         case AnimationParams::Type::BLEND_FADE:
-            updateBlendBlinkAnimation(anim, elapsed);
+            updateBlendFadeAnimation(anim, elapsed);
             break;
         case AnimationParams::Type::PULSE:
             updatePulseAnimation(anim, elapsed);
@@ -316,7 +316,7 @@ void AnimationManager::updateBlinkAnimation(AnimationParams* anim, float elapsed
     }
 }
 
-void AnimationManager::updateBlendBlinkAnimation(AnimationParams* anim, float elapsed) {
+void AnimationManager::updateBlendFadeAnimation(AnimationParams* anim, float elapsed) {
     float phase = elapsed - floor(elapsed);
     // Використовуємо синусоїду для плавного переходу
     //float factor = 0.5 * (1 + sin(2 * PI * phase));
@@ -327,7 +327,7 @@ void AnimationManager::updateBlendBlinkAnimation(AnimationParams* anim, float el
         for (int i = 0; i < anim->posCount; ++i) {
             int idx = anim->positions[i];
             // Змішуємо початковий колір з кольором анімації
-            uint32_t blendedColor = blendColors(anim->initialColor, anim->color, factor);
+            uint32_t blendedColor = blendColors(anim->color, anim->initialColor, factor);
             anim->strip->setPixelColor(idx, blendedColor);
         }
         anim->strip->show();
