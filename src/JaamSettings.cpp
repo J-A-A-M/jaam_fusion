@@ -172,6 +172,15 @@ std::map<Type, SettingItemString> stringSettings = {
     {HA_MQTT_USER, {"ha_mqttuser", ""}},
     {HA_MQTT_PASSWORD, {"ha_mqttpass", ""}},
     {HA_BROKER_ADDRESS, {"ha_brokeraddr", ""}},
+    {COLOR_ALERT, {"rgbcal", "#FF0000"}},
+    {COLOR_CLEAR, {"rgbccl", "#00FF00"}},
+    {COLOR_NEW_ALERT, {"rgbcna", "#FF7F00"}},
+    {COLOR_ALERT_OVER, {"rgbcao", "#00FF3C"}},
+    {COLOR_EXPLOSION, {"rgbcex", "#00FFFF"}},
+    {COLOR_MISSILES, {"rgbcmi", "#AA00FF"}},
+    {COLOR_DRONES, {"rgbcdr", "#FF00AA"}},
+    {COLOR_KABS, {"rgbckab", "#FFFF00"}},
+    {COLOR_HOME_DISTRICT, {"rgbchd", "#00FF50"}},
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {

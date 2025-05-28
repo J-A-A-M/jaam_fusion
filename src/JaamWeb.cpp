@@ -10,19 +10,28 @@ void JaamWeb::setSettings(JaamSettings* settings) {
 
 String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, const char* label) {
     String html = "<div class='slider-container'>";
+    html += "<span class='value' id='" + String(name) + "Value'>[" + String(value) + "]</span>";
     html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
     html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' class='slider' id='" + String(name) + "' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
-    html += "<span class='value' id='" + String(name) + "Value'>" + String(value) + "</span>";
     html += "</div>";
     return html;
 }
 
 String JaamWeb::getBoolParameterHtml(const char* name, bool value, const char* label) {
     String html = "<div class='switch-container'>";
-    html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
+    
     html += "<input type='checkbox' id='" + String(name) + "' class='switch' ";
     if (value) html += "checked ";
     html += "onchange='updateBoolParameter(\"" + String(name) + "\", this.checked)'>";
+    html += "<label for='" + String(name) + "'>" + String(label) + "</label>";
+    html += "</div>";
+    return html;
+}
+
+String JaamWeb::getColorPickerHtml(const char* name, const char* value, const char* label) {
+    String html = "<div class='color-picker-container'>";
+    html += "<input class='value' type='color' id='" + String(name) + "' value='" + String(value) + "' onchange='updateColor(\"" + String(name) + "\", this.value)'>";
+    html += "<label for='" + String(name) + "'>" + String(label) + "</label>";
     html += "</div>";
     return html;
 }
@@ -38,12 +47,24 @@ String JaamWeb::getHtmlTemplate() {
     html += ".slider-container{margin:20px 0}";
     html += ".slider{width:100%;height:25px;background:#d3d3d3;outline:none;opacity:0.7;transition:opacity .2s}";
     html += ".slider:hover{opacity:1}";
-    html += ".value{font-size:18px;margin-left:10px}";
+    html += ".value{font-size:18px;margin-right:10px}";
+    html += ".color-picker-container{margin:20px 0}";
     html += "</style></head><body>";
     html += "<div class='container'>";
     html += "<h1>JAAM LED Control</h1>";
+
+
     
     // Додаємо слайдери для всіх параметрів
+    html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Колір тривоги");
+    html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Колір відбою");
+    html += getColorPickerHtml("color_new_alert", settings->getString(COLOR_NEW_ALERT), "Колір початку тривоги");
+    html += getColorPickerHtml("color_alert_over", settings->getString(COLOR_ALERT_OVER), "Колір завершення тривоги");
+    html += getColorPickerHtml("color_explosion", settings->getString(COLOR_EXPLOSION), "Колір вибухів");
+    html += getColorPickerHtml("color_missiles", settings->getString(COLOR_MISSILES), "Колір ракет");
+    html += getColorPickerHtml("color_drones", settings->getString(COLOR_DRONES), "Колір БПЛА");
+    html += getColorPickerHtml("color_kab", settings->getString(COLOR_KABS), "Колір КАБ");
+    html += getColorPickerHtml("color_home", settings->getString(COLOR_HOME_DISTRICT), "Колір домашнього регіону");
     html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна яскравість");
     html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "Яскравість дня");
     html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Яскравість ночі");
@@ -65,12 +86,11 @@ String JaamWeb::getHtmlTemplate() {
     html += "  document.getElementById(name + 'Value').textContent = value;";
     html += "  fetch('/parameter?name=' + name + '&value=' + value);";
     html += "}";
-    html += "function updateParameter(name, value) {";
-    html += "  document.getElementById(name + 'Value').textContent = value;";
-    html += "  fetch('/parameter?name=' + name + '&value=' + value);";
-    html += "}";
     html += "function updateBoolParameter(name, checked) {";
     html += "  fetch('/parameter?name=' + name + '&value=' + (checked ? 1 : 0));";
+    html += "}";
+    html += "function updateColor(name, value) {";
+    html += "  fetch('/color?name=' + name + '&value=' + encodeURIComponent(value));";
     html += "}";
     html += "</script></body></html>";
     return html;
@@ -79,6 +99,65 @@ String JaamWeb::getHtmlTemplate() {
 void JaamWeb::handleRoot() {
     server.sendHeader("Content-Type", "text/html; charset=UTF-8");
     server.send(200, "text/html", getHtmlTemplate());
+}
+
+void JaamWeb::handleColorParameter() {
+    if (server.hasArg("name") && server.hasArg("value")) {
+        String name = server.arg("name");
+        String value = server.arg("value");
+        const char* paramValue = value.c_str();
+
+        if (name == "color_alert") {
+            settings->saveString(COLOR_ALERT, paramValue);
+            LOG.printf("[WEB] Setting color_alert: raw=%s\n", paramValue);
+        }
+        if (name == "color_clear") {
+            settings->saveString(COLOR_CLEAR, paramValue);
+            LOG.printf("[WEB] Setting color_clear: raw=%s\n", paramValue);
+        }
+        if (name == "color_new_alert") {
+            settings->saveString(COLOR_NEW_ALERT, paramValue);
+            LOG.printf("[WEB] Setting color_new_alert: raw=%s\n", paramValue);
+        }
+        if (name == "color_alert_over") {
+            settings->saveString(COLOR_ALERT_OVER, paramValue);
+            LOG.printf("[WEB] Setting color_alert_over: raw=%s\n", paramValue);
+        }
+        if (name == "color_explosion") {
+            settings->saveString(COLOR_EXPLOSION, paramValue);
+            LOG.printf("[WEB] Setting color_explosion: raw=%s\n", paramValue);
+        }
+        if (name == "color_missiles") {
+            settings->saveString(COLOR_MISSILES, paramValue);
+            LOG.printf("[WEB] Setting color_ccolor_missileslear: raw=%s\n", paramValue);
+        }
+        if (name == "color_drones") {
+            settings->saveString(COLOR_DRONES, paramValue);
+            LOG.printf("[WEB] Setting color_drones: raw=%s\n", paramValue);
+        }
+        if (name == "color_kab") {
+            settings->saveString(COLOR_KABS, paramValue);
+            LOG.printf("[WEB] Setting color_kab: raw=%s\n", paramValue);
+        }
+        if (name == "color_home") {
+            settings->saveString(COLOR_HOME_DISTRICT, paramValue);
+            LOG.printf("[WEB] Setting color_home: raw=%s\n", paramValue);
+        }
+        if (strip_main_initialized) {
+            LOG.printf("[WEB] Adjusting colors\n");               
+            animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                for (int i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
+                strip->show();
+            });
+        }
+
+        server.send(200, "text/plain", "OK");
+    } else {
+        server.send(400, "text/plain", "Missing parameters");
+    }
 }
 
 void JaamWeb::handleParameter() {
@@ -256,6 +335,7 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     // Налаштування веб-сервера
     server.on("/", HTTP_GET, [this]() { this->handleRoot(); });
     server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
+    server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
 
     server.begin();
 }

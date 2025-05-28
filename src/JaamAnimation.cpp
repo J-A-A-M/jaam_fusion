@@ -8,6 +8,23 @@ extern std::map<uint16_t, bool> dronesAlertsMap;
 extern std::map<uint16_t, bool> missilesAlertsMap;
 extern std::map<uint16_t, bool> kabAlertsMap;
 
+
+// Трансформує "#RRGGBB" у uint32_t для setPixelColor
+uint32_t AnimationManager::colorFromHex(const char* hex) {
+    if (!hex || hex[0] != '#' || strlen(hex) != 7) {
+        return 0;
+    }
+    char buf[3] = {0};
+    buf[0] = hex[1]; buf[1] = hex[2];
+    uint8_t r = strtoul(buf, nullptr, 16);
+    buf[0] = hex[3]; buf[1] = hex[4];
+    uint8_t g = strtoul(buf, nullptr, 16);
+    buf[0] = hex[5]; buf[1] = hex[6];
+    uint8_t b = strtoul(buf, nullptr, 16);
+    uint32_t color = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+    return color;
+}
+
 // Функція для змішування кольорів
 uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float factor) {
     uint8_t r1 = (color1 >> 16) & 0xFF;
@@ -462,30 +479,31 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             }
         }
         if (alert) {
-            color = strip->Color(255, 0, 0); // Червоний
+            color = colorFromHex(settings->getString(COLOR_ALERT));
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
             if (drones && settings->getBool(ENABLE_DRONES)) {
-                color = strip->Color(255, 0, 170);
+                color = colorFromHex(settings->getString(COLOR_DRONES));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
             if (missiles && settings->getBool(ENABLE_MISSILES)) {
-                color = strip->Color(255, 0, 170);
+                color = colorFromHex(settings->getString(COLOR_MISSILES));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
             if (kab && settings->getBool(ENABLE_KABS)) {
-                color = strip->Color(255, 0, 170);
+                color = colorFromHex(settings->getString(COLOR_KABS));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
-            if (explosion && settings->getBool(ENABLE_KABS)) {
-                color = strip->Color(0, 255, 255);
+            if (explosion && settings->getBool(ENABLE_EXPLOSIONS)) {
+                color = colorFromHex(settings->getString(COLOR_EXPLOSION));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
         } else {
-            color = strip->Color(0, 255, 0); // Зелений
+            color = colorFromHex(settings->getString(COLOR_CLEAR));
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
             // Якщо є домашній район — окремий brightness
             for (uint16_t region_id : regions) {
                 if (region_id == homeDistrict) {
+                    color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
                     brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                     break;
                 }

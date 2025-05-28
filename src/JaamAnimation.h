@@ -94,6 +94,7 @@ class AnimationManager {
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
+        uint32_t colorFromHex(const char* hex);
         uint32_t stripDefaultColor(Adafruit_NeoPixel* strip);
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t region_id, bool adapted = true);
         bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation);

@@ -283,7 +283,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airStarted) {
                 animate = true;
-                color = strip_main->Color(255, 127, 0); //animation.ledActualColor(strip_main, leds[0], false);
+                color = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)); //animation.ledActualColor(strip_main, leds[0], false);
                 period = 1000;
                 cycles = 300;
                 endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
@@ -291,7 +291,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airAlertsMap[region_id] && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
                 animate = true;
-                color = strip_main->Color(255, 0, 170); 
+                color = animation.colorFromHex(settings.getString(COLOR_DRONES));
                 period = 1000;
                 cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -300,7 +300,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airAlertsMap[region_id] && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
                 animate = true;
-                color = strip_main->Color(255, 0, 170); 
+                color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
                 period = 1000;
                 cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -309,7 +309,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airAlertsMap[region_id] && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
                 animate = true;
-                color = strip_main->Color(255, 0, 170); 
+                color = animation.colorFromHex(settings.getString(COLOR_KABS));
                 period = 1000;
                 cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -318,7 +318,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airAlertsMap[region_id] && notificationExplosion && settings.getBool(ENABLE_EXPLOSIONS)) {
                 animate = true;
-                color = strip_main->Color(0, 255, 255); 
+                color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
                 period = 1000;
                 cycles = 180;
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -784,7 +784,7 @@ void initStrip() {
             strip_main, 
             allLedsMain.data(), 
             num_leds_main,
-            strip_main->Color(255, 128, 0),
+            animation.colorFromHex(settings.getString(COLOR_ALERT)),
             2000,
             90,
             50,

@@ -24,6 +24,8 @@ private:
     String getHtmlTemplate();
     void handleRoot();
     void handleParameter();
+    void handleColorParameter();
     String getParameterHtml(const char* name, int min, int max, int value, const char* label);
     String getBoolParameterHtml(const char* name, bool value, const char* label);
+    String getColorPickerHtml(const char* name, const char* value, const char* label);
 }; 
