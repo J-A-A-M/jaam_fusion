@@ -65,6 +65,7 @@ bool                apiConnected;
 uint8_t             legacy = 4;
 bool                websocketReconnect = false;
 uint32_t            lastWebsocketConnectTime = 0;
+size_t              lastUsedHeap = 0; 
 
 
 // --- FreeRTOS Task Handles ---
@@ -683,49 +684,121 @@ void saveConfigCallback() {
 
 void initWifi() {
     if (!WiFiConfig::ENABLED) {
-        LOG.println("[WIFI] WiFi is disabled in configuration");
+        LOG.println("[WIFI] WiFi вимкнено в конфігурації");
         return;
     }
 
-    LOG.println("[WIFI] Initializing WiFi...");
+    LOG.println("[WIFI] Ініціалізація WiFi...");
     
-    // Set WiFi to station mode
+    // Встановлюємо режим станції
     WiFi.mode(WIFI_STA);
     
-    // Configure WiFiManager
-    wm.setHostname("jaam_fusion");
-    wm.setTitle("JAAM Fusion WiFi Setup");
-    wm.setConfigPortalBlocking(true);
-    wm.setConnectTimeout(WiFiConfig::CONNECT_TIMEOUT / 1000);
-    wm.setConnectRetries(WiFiConfig::CONNECT_RETRIES);
-    wm.setAPCallback(apCallback);
-    wm.setSaveConfigCallback(saveConfigCallback);
-    wm.setConfigPortalTimeout(WiFiConfig::PORTAL_TIMEOUT / 1000); 
+    // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
+    WiFi.begin();
     
-    // Create AP name with chip ID
-    char apName[32];
-    snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
+    // Чекаємо підключення 10 секунд
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        attempts++;
+        LOG.print(".");
+    }
     
-    // Try to connect to saved WiFi
-    LOG.println("[WIFI] Attempting to connect to saved WiFi...");
-    if (!wm.autoConnect(apName)) {
-        LOG.println("[WIFI] Reboot");
-        rebootDevice(5000);
+    if (WiFi.status() == WL_CONNECTED) {
+        lastWifiConnectTime = millis();
+        LOG.println("\n[WIFI] Підключено до збереженої WiFi");
+        LOG.printf("[WIFI] IP адреса: %s\n", WiFi.localIP().toString().c_str());
         return;
     }
     
-    lastWifiConnectTime = millis();  // Record connection time
-    LOG.println("[WIFI] Connected to WiFi");
-    LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+    LOG.println("\n[WIFI] Не вдалося підключитися до збереженої мережі");
+    LOG.println("[WIFI] Запуск WiFiManager...");
     
-    // Start web portal
-    wm.setHttpPort(WiFiConfig::WEB_PORT);
-    wm.startWebPortal();
-    LOG.println("[WEB] Web portal started on port 8080");
+    // Тільки якщо не вдалося підключитися - використовуємо WiFiManager
+    WiFiManager wm_temp; // Локальна змінна замість глобальної
+    
+    // Мінімальні налаштування для економії пам'яті
+    wm_temp.setHostname("jaam_fusion");
+    wm_temp.setConfigPortalBlocking(true);
+    wm_temp.setConnectTimeout(15); // Зменшено з 30 до 15 секунд
+    wm_temp.setConnectRetries(2);  // Зменшено кількість спроб
+    wm_temp.setConfigPortalTimeout(120); // 2 хвилини замість більшого значення
+    
+    // Простий колбек без додаткових операцій
+    wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
+        LOG.printf("[WIFI] Підключіться до WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
+    });
+    
+    // Створюємо ім'я AP з chip ID
+    char apName[32];
+    snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
+    
+    // Спроба підключення
+    if (!wm_temp.autoConnect(apName)) {
+        LOG.println("[WIFI] Не вдалося підключитися. Перезавантаження...");
+        rebootDevice(3000);
+        return;
+    }
+    
+    lastWifiConnectTime = millis();
+    LOG.println("[WIFI] Підключено до WiFi через WiFiManager");
+    LOG.printf("[WIFI] IP адреса: %s\n", WiFi.localIP().toString().c_str());
+    
+    // НЕ запускаємо web portal одразу - тільки за потреби
+    LOG.println("[WIFI] WiFi ініціалізацію завершено");
+    
+    // wm_temp автоматично знищиться при виході з функції
+}
+
+// void initWifi() {
+//     if (!WiFiConfig::ENABLED) {
+//         LOG.println("[WIFI] WiFi is disabled in configuration");
+//         return;
+//     }
+
+//     LOG.println("[WIFI] Initializing WiFi...");
+    
+//     // Set WiFi to station mode
+//     WiFi.mode(WIFI_STA);
+    
+//     // Configure WiFiManager
+//     wm.setHostname("jaam_fusion");
+//     wm.setTitle("JAAM Fusion WiFi Setup");
+//     wm.setConfigPortalBlocking(true);
+//     wm.setConnectTimeout(WiFiConfig::CONNECT_TIMEOUT / 1000);
+//     wm.setConnectRetries(WiFiConfig::CONNECT_RETRIES);
+//     wm.setAPCallback(apCallback);
+//     wm.setSaveConfigCallback(saveConfigCallback);
+//     wm.setConfigPortalTimeout(WiFiConfig::PORTAL_TIMEOUT / 1000); 
+    
+//     // Create AP name with chip ID
+//     char apName[32];
+//     snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
+    
+//     // Try to connect to saved WiFi
+//     LOG.println("[WIFI] Attempting to connect to saved WiFi...");
+//     if (!wm.autoConnect(apName)) {
+//         LOG.println("[WIFI] Reboot");
+//         rebootDevice(5000);
+//         return;
+//     }
+    
+//     lastWifiConnectTime = millis();  // Record connection time
+//     LOG.println("[WIFI] Connected to WiFi");
+//     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+    
+//     // Start web portal
+//     wm.setHttpPort(WiFiConfig::WEB_PORT);
+//     wm.startWebPortal();
+//     LOG.println("[WEB] Web portal started on port 8080");
+
+//     delay(1000);
+// }
+
+void initWebsocket() {
 #if !defined(TEST_ANIMATION)
     socketConnect();
 #endif
-    delay(1000);
 }
 
 void initStrip() {
@@ -971,12 +1044,25 @@ void mainThreadProcess() {
 
 void setup() {
     LOG.begin(115200);
+    checkFreeHeap("LOG initialization");
 
     initChipID();
+    checkFreeHeap("chipID initialization");
+
     initSettings();
+    checkFreeHeap("settings initialization");
+
     initStrip();
+    checkFreeHeap("LED strips initialization");
+
     initWifi();
+    checkFreeHeap("WiFi initialization");
+
+    initWebsocket();
+    checkFreeHeap("WebSocket initialization");
+
     initTime();
+    checkFreeHeap("time initialization");
 
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
@@ -984,6 +1070,8 @@ void setup() {
     // Передаємо settings в AnimationManager
     animation.setSettings(&settings);
     led.setSettings(&settings);
+    checkFreeHeap("animation and LED settings");
+    
     // Налаштовуємо асинхронні задачі
 #if defined(TEST_ANIMATION)
     async.setInterval(animations, ANIMATION_INTERVAL);
@@ -996,15 +1084,15 @@ void setup() {
 #endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
-    //async.setInterval(logFreeMainLeds, 5000); // 5000 мс = 5 секунд, змініть інтервал за потреби
-
-    // xTaskCreatePinnedToCore(memoryTask, "MemoryTask", 2048, nullptr, 1, &memoryTaskHandle, 1);
-    // xTaskCreatePinnedToCore(wifiReconnectTask, "WiFiReconnectTask", 2048, nullptr, 1, &wifiReconnectTaskHandle, 1);
-    // xTaskCreatePinnedToCore(websocketProcessTask, "WebsocketProcessTask", 2048, nullptr, 1, &websocketProcessTaskHandle, 1);
+    checkFreeHeap("async tasks configuration");
 
     // Ініціалізація веб-інтерфейсу
     web.begin(strip_main, strip_bg, strip_service);
     web.setSettings(&settings);
+    checkFreeHeap("web interface initialization");
+    
+    LOG.println("[SETUP] Initialization complete");
+    checkFreeHeap("full setup");
 }
 
 void loop() {

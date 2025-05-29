@@ -9,6 +9,8 @@
 
 extern std::map<uint16_t, uint16_t> alertsMap;
 
+extern size_t  lastUsedHeap;
+
 struct Firmware {
     int major = 0;
     int minor = 0;
@@ -80,8 +82,8 @@ static void fillFwVersion(char* result, Firmware firmware) {
 // Отримати регіон по region_id
 inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
     for (int i = 0; i < MAX_REGIONS; ++i) {
-        if (regionLedMap[i].region_id == region_id) {
-            return &regionLedMap[i];
+        if (REGION_MAP_LED[i].region_id == region_id) {
+            return &REGION_MAP_LED[i];
         }
     }
     return nullptr;
@@ -102,7 +104,7 @@ inline const int* getLedsForRegion(uint16_t region_id, uint8_t& count) {
 inline std::vector<uint16_t> getRegionsForLed(int led_position) {
     std::vector<uint16_t> regions;
     for (int i = 0; i < MAX_REGIONS; ++i) {
-        const RegionLedMapEntry& entry = regionLedMap[i];
+        const RegionLedMapEntry& entry = REGION_MAP_LED[i];
         for (int j = 0; j < entry.led_count; ++j) {
             if (entry.led_positions[j] == led_position) {
                 regions.push_back(entry.region_id);
@@ -124,4 +126,18 @@ inline bool isAlertForLed(int led_position) {
     }
     LOG.printf("[REGION] Region led_position %d false\n", led_position);
     return false;
+}
+
+inline void checkFreeHeap(const char* label) {
+    size_t usedHeap = ESP.getHeapSize() - ESP.getFreeHeap();
+    int heapDiff = lastUsedHeap > 0 ? (int)usedHeap - (int)lastUsedHeap : 0;
+    
+    if (lastUsedHeap > 0) {
+        LOG.printf("[MEMORY] Used heap after %s: %u bytes (change: %+d bytes)\n", 
+                  label, usedHeap, heapDiff);
+    } else {
+        LOG.printf("[MEMORY] Used heap after %s: %u bytes\n", label, usedHeap);
+    }
+    
+    lastUsedHeap = usedHeap;
 }
