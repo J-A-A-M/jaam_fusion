@@ -543,7 +543,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
             // Якщо є домашній район — окремий brightness
             for (uint16_t region_id : regions) {
-                if (region_id == homeDistrict) {
+                if (region_id == settings->getInt(HOME_DISTRICT)) {
                     color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
                     brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                     break;

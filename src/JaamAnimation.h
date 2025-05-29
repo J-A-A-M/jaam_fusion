@@ -9,9 +9,6 @@ extern Adafruit_NeoPixel* strip_main;
 extern Adafruit_NeoPixel* strip_bg;
 extern Adafruit_NeoPixel* strip_service;
 
-// Зовнішня змінна для індексу домашнього району
-extern uint8_t homeDistrict;
-
 // Структура для параметрів анімації
 struct AnimationParams {
     enum class Type {

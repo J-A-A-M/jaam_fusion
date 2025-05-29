@@ -40,6 +40,35 @@ String JaamWeb::getColorPickerHtml(const char* name, const char* value, const ch
     return html;
 }
 
+String JaamWeb::getDropdownHtml(const String& name, const String& label, Type settingKey, SettingListItem items[], int itemCount) {
+    String html = "<div class=\"form-group\">";
+    html += "<label for=\"" + name + "\">" + label + ":</label>";
+    html += "<select class=\"form-control\" id=\"" + name + "\" name=\"" + name + "\" onchange='console.log(\"Dropdown changed:\", this.value); updateParameter(\"" + name + "\", this.value);'>";
+    
+    uint16_t currentValue = settings->getInt(settingKey);
+    
+    // Додаємо опцію "Не вибрано"
+    html += "<option value=\"0\"";
+    if (currentValue == 0) html += " selected";
+    html += ">Не вибрано</option>";
+    
+    // Проходимо по масиву items і додаємо тільки ті, що мають ignore=false
+    for (int i = 0; i < itemCount; i++) {
+        if (!items[i].ignore) {
+            html += "<option value=\"" + String(items[i].id) + "\"";
+            if (currentValue == items[i].id) {
+                html += " selected";
+            }
+            html += ">" + String(items[i].name) + "</option>";
+        }
+    }
+    
+    html += "</select>";
+    html += "</div>";
+    
+    return html;
+}
+
 String JaamWeb::getHtmlTemplate() {
     String html = "<!DOCTYPE html><html><head>";
     html += "<meta charset='UTF-8'>";
@@ -53,6 +82,10 @@ String JaamWeb::getHtmlTemplate() {
     html += ".slider:hover{opacity:1}";
     html += ".value{font-size:18px;margin-right:10px}";
     html += ".color-picker-container{margin:20px 0}";
+    html += ".form-group{margin:20px 0}";
+    html += ".form-control{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white}";
+    html += ".form-group label{display:block;margin-bottom:5px;font-weight:bold}";
+    html += ".label{display:block;margin-bottom:5px;font-weight:bold}";
     html += "</style></head><body>";
     html += "<div class='container'>";
     html += "<h1>JAAM LED Control</h1>";
@@ -60,6 +93,8 @@ String JaamWeb::getHtmlTemplate() {
 
     
     // Додаємо слайдери для всіх параметрів
+    html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
+    html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Колір тривоги");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Колір відбою");
     html += getColorPickerHtml("color_new_alert", settings->getString(COLOR_NEW_ALERT), "Колір початку тривоги");
@@ -69,17 +104,19 @@ String JaamWeb::getHtmlTemplate() {
     html += getColorPickerHtml("color_drones", settings->getString(COLOR_DRONES), "Колір БПЛА");
     html += getColorPickerHtml("color_kab", settings->getString(COLOR_KABS), "Колір КАБ");
     html += getColorPickerHtml("color_home", settings->getString(COLOR_HOME_DISTRICT), "Колір домашнього регіону");
-    html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна яскравість");
-    html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "Яскравість дня");
-    html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Яскравість ночі");
-    html += getParameterHtml("brightness_alert", 0, 100, settings->getInt(BRIGHTNESS_ALERT), "Яскравість тривоги");
-    html += getParameterHtml("brightness_clear", 0, 100, settings->getInt(BRIGHTNESS_CLEAR), "Яскравість очищення");
-    html += getParameterHtml("brightness_new_alert", 0, 100, settings->getInt(BRIGHTNESS_NEW_ALERT), "Яскравість початку тривоги");
-    html += getParameterHtml("brightness_alert_over", 0, 100, settings->getInt(BRIGHTNESS_ALERT_OVER), "Яскравість завершення тривоги");
-    html += getParameterHtml("brightness_explosion", 0, 100, settings->getInt(BRIGHTNESS_EXPLOSION), "Яскравість вибухів, дронів, ракет");
-    html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Яскравість домашнього району");
-    html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Яскравість фону");
-    html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Яскравість сервісних ледів");
+    html += "<label class=\"label\">Налаштування яскравості</label>";
+    html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна");
+    html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "День");
+    html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Нічь");
+    html += getParameterHtml("brightness_alert", 0, 100, settings->getInt(BRIGHTNESS_ALERT), "Тривога");
+    html += getParameterHtml("brightness_clear", 0, 100, settings->getInt(BRIGHTNESS_CLEAR), "Без тривоги");
+    html += getParameterHtml("brightness_new_alert", 0, 100, settings->getInt(BRIGHTNESS_NEW_ALERT), "Початок тривоги");
+    html += getParameterHtml("brightness_alert_over", 0, 100, settings->getInt(BRIGHTNESS_ALERT_OVER), "Відбій тривоги");
+    html += getParameterHtml("brightness_explosion", 0, 100, settings->getInt(BRIGHTNESS_EXPLOSION), "Вибухи, дрони, ракети");
+    html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Домашній регіон");
+    html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Фонова стрічка");
+    html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Сервісні діоди");
+    html += "<label class=\"label\">Налаштування тривог</label>";
     html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Показувати загрозу КАБ");
     html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Показувати ракетну небезпеку");
     html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Показувати загрозу БПЛА");
@@ -87,8 +124,19 @@ String JaamWeb::getHtmlTemplate() {
     html += "</div>";
     html += "<script>";
     html += "function updateParameter(name, value) {";
-    html += "  document.getElementById(name + 'Value').textContent = value;";
-    html += "  fetch('/parameter?name=' + name + '&value=' + value);";
+    html += "  var valueElement = document.getElementById(name + 'Value');";
+    html += "  if (valueElement) {"; // Перевіряємо чи існує елемент (для слайдерів)
+    html += "    valueElement.textContent = '[' + value + ']';";
+    html += "  }";
+    html += "  fetch('/parameter?name=' + name + '&value=' + value)";
+    html += "    .then(response => {";
+    html += "      if (!response.ok) {";
+    html += "        console.error('Error updating parameter:', name, value);";
+    html += "      }";
+    html += "    })";
+    html += "    .catch(error => {";
+    html += "      console.error('Network error:', error);";
+    html += "    });";
     html += "}";
     html += "function updateBoolParameter(name, checked) {";
     html += "  fetch('/parameter?name=' + name + '&value=' + (checked ? 1 : 0));";
@@ -248,7 +296,7 @@ void JaamWeb::handleParameter() {
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     uint32_t color;
                     uint8_t count;
-                    const int* leds = getLedsForRegion(homeDistrict, count);
+                    const int* leds = getLedsForRegion(settings->getInt(HOME_DISTRICT), count);
                     for (int i = 0; i < count; ++i) {
                         int ledsIdx[1] = { leds[i] };
                         color = animation.ledActualColor(strip, leds[i]);
@@ -317,6 +365,38 @@ void JaamWeb::handleParameter() {
                 });
             }
         }
+
+        // Додаємо обробку home_district
+        else if (name == "home_district") {
+            // Перевіряємо чи є такий ID в списку DISTRICTS
+            bool validId = false;
+            if (value == 0) {
+                validId = true; // "Не вибрано" - валідний варіант
+            } else {
+                for (int i = 0; i < MAX_REGIONS; i++) {
+                    if (DISTRICTS[i].id == value && !DISTRICTS[i].ignore) {
+                        validId = true;
+                        break;
+                    }
+                }
+            }
+            if (validId) {
+                settings->saveInt(HOME_DISTRICT, value);
+                LOG.printf("[WEB] Домашній район встановлено: %d\n", value);
+                if (strip_main_initialized) {
+                    animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                        for (int i = 0; i < strip->numPixels(); i++) {
+                            uint32_t color = animation.ledActualColor(strip, i);
+                            strip->setPixelColor(i, color);
+                        }
+                        strip->show();
+                    });
+                }
+            } else {
+                LOG.printf("[WEB] Помилка: неправильний ID району: %d\n", value);
+            }
+        }
+
         
         server.send(200, "text/plain", "OK");
     } else {
