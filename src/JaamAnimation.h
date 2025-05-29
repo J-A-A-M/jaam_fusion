@@ -20,7 +20,8 @@ struct AnimationParams {
         BLEND_FADE,
         PULSE,
         ONE_WAY_BLEND_FADE,
-        RUNNING_LIGHT
+        RUNNING_LIGHT,
+        SET_BRIGHTNESS
     };
 
     Adafruit_NeoPixel* strip;
@@ -46,8 +47,7 @@ struct FreeLedInfo {
 
 class AnimationManager {
     private:
-        static const int MAX_ANIMATIONS = 50;
-        AnimationParams* animations[MAX_ANIMATIONS];
+        static const int MAX_ANIMATIONS = 150;     
         SemaphoreHandle_t animMutex;
         int activeCount;
         JaamSettings* settings;
@@ -71,6 +71,7 @@ class AnimationManager {
         void updateRainbowAnimation(AnimationParams* anim, float elapsed);
         void updateOneWayBlendAnimation(AnimationParams* anim, float elapsed);
         void updateRunningLightAnimation(AnimationParams* anim, float elapsed);
+        void updateSetBrightnessAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         void removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex);
@@ -79,6 +80,7 @@ class AnimationManager {
 
     public:
         AnimationManager();
+        AnimationParams* animations[MAX_ANIMATIONS];
         void setSettings(JaamSettings* settings);
         bool createAnimation(AnimationParams::Type type, 
                            Adafruit_NeoPixel* strip,

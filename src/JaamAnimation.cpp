@@ -244,6 +244,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
             case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
             case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
             case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
+            case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
         }
         
         LOG.printf("[ANIMATION END] type=%s, region=%d, leds=", typeName, anim->region_id);
@@ -274,6 +275,26 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
         case AnimationParams::Type::RUNNING_LIGHT:
             updateRunningLightAnimation(anim, elapsed);
             break;
+        case AnimationParams::Type::SET_BRIGHTNESS:
+            updateSetBrightnessAnimation(anim, elapsed);
+            break;
+    }
+}
+
+void AnimationManager::updateSetBrightnessAnimation(AnimationParams* anim, float elapsed) {
+    // Linear interpolation between startBrightness and endBrightness
+    float phase = elapsed - floor(elapsed); // 0.0 to 1.0
+    uint8_t currentBrightness = anim->startBrightness + 
+                (anim->endBrightness - anim->startBrightness) * phase;
+    
+    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        anim->strip->setBrightness(led.brightnessMapped(currentBrightness));
+        for (int i = 0; i < anim->strip->numPixels(); i++) {
+            uint32_t color = ledActualColor(anim->strip, i);
+            anim->strip->setPixelColor(i, color);
+        }
+        anim->strip->show();
+        xSemaphoreGive(stripMutex);
     }
 }
 
@@ -451,7 +472,7 @@ void AnimationManager::adaptAllAnimationColors() {
                 for (int k = 0; k < anim->posCount; ++k) {
                     int ledIdx = anim->positions[k];
                     // Адаптуємо колір для кожного LED
-                    LOG.printf("[DEBUG] changed color for animations led %d ", ledIdx);
+                    LOG.printf("[DEBUG] changed color for led %d\n", ledIdx);
                     anim->color = ledActualColor(anim->strip, ledIdx, true);
                 }
             }

@@ -50,8 +50,9 @@ bool                strip_bg_initialized = false;
 bool                strip_service_initialized = false;
 
 AnimationManager    animation;
-AnimationParams::Type animType;
+AnimationParams::Type   animType;
 bool                needAdaptAnimationColors = false;
+bool                needAdaptStripBrightness = false;
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -272,7 +273,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 color = animation.ledActualColor(strip_main, leds[0], true);
                 animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
                 cycles = 1;
-                period = 5000;
+                period = 10000;
             }
             if (airStarted) {   
                 animate = true;
@@ -282,7 +283,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 endBrightness = 100;
                 animType = AnimationParams::Type::BLEND_FADE;
                 period = 1000;
-                cycles = 5;
+                cycles = 300;
             }
             if (airAlertsMap[region_id] && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
                 animate = true;
@@ -291,7 +292,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 endBrightness = 100; 
                 animType = AnimationParams::Type::PULSE;
                 period = 1000;
-                cycles = 5;              
+                cycles = 180;              
             }
             if (airAlertsMap[region_id] && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
                 animate = true;
@@ -300,7 +301,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 endBrightness = 100; 
                 animType = AnimationParams::Type::PULSE;
                 period = 1000;
-                cycles = 5;
+                cycles = 180;
             }
             if (airAlertsMap[region_id] && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
                 animate = true;
@@ -309,7 +310,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 endBrightness = 100; 
                 animType = AnimationParams::Type::PULSE;
                 period = 1000;
-                cycles = 5;
+                cycles = 180;
             }
             if (airAlertsMap[region_id] && notificationExplosion && settings.getBool(ENABLE_EXPLOSIONS)) {
                 animate = true;
@@ -318,7 +319,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 endBrightness = 100;
                 animType = AnimationParams::Type::PULSE;
                 period = 1000;
-                cycles = 5;
+                cycles = 180;
             }
             
             if(animate) {
@@ -735,9 +736,6 @@ void initStrip() {
         return;
     }
 
-    // Створюємо екземпляр JaamLed
-    
-
     // Ініціалізуємо стрічки з бажаними пінами
     StripStatus status;
     
@@ -773,17 +771,17 @@ void initStrip() {
             }
             strip->show();
         });
-        animation.createAnimation(
-            AnimationParams::Type::RUNNING_LIGHT, 
-            strip_main, 
-            allLedsMain.data(), 
-            num_leds_main,
-            animation.colorFromHex(settings.getString(COLOR_ALERT)),
-            2000,
-            90,
-            50,
-            255
-        );
+        // animation.createAnimation(
+        //     AnimationParams::Type::RUNNING_LIGHT, 
+        //     strip_main, 
+        //     allLedsMain.data(), 
+        //     num_leds_main,
+        //     animation.colorFromHex(settings.getString(COLOR_ALERT)),
+        //     2000,
+        //     90,
+        //     50,
+        //     255
+        // );
     }
     
     if (strip_bg_initialized) {
@@ -945,9 +943,29 @@ void logFreeMainLeds() {
 void mainThreadProcess() {
     // Ця функція виконується в основному циклі
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
+
     if (needAdaptAnimationColors) {
         animation.adaptAllAnimationColors();
         needAdaptAnimationColors = false;
+    }
+    if (needAdaptStripBrightness) {
+        int ledsIdx[1] = { 0 };
+        if (!animation.createAnimation(
+            AnimationParams::Type::SET_BRIGHTNESS,
+            strip_main,
+            ledsIdx,
+            1,
+            0x000000, // Колір не важливий для SET_BRIGHTNESS
+            0x000000, // Початковий колір не важливий
+            500,
+            1,
+            strip_main->getBrightness(),
+            settings.getInt(BRIGHTNESS)
+        )) {
+            LOG.println("[ERROR] Не вдалося створити анімацію");
+            return;
+        }
+        needAdaptStripBrightness = false;
     }
 }
 

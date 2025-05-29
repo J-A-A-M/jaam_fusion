@@ -4,6 +4,7 @@
 #include "JaamUtils.h"
 
 extern volatile bool needAdaptAnimationColors;
+extern volatile bool needAdaptStripBrightness;
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
@@ -174,14 +175,7 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS, value);
             if (strip_main_initialized) {
                 LOG.printf("[WEB] Setting brightness main: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    strip->setBrightness(led.brightnessMapped(value));
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
+                needAdaptStripBrightness = true;
             }
         } else if (name == "brightness_day") {
             settings->saveInt(BRIGHTNESS_DAY, value);
