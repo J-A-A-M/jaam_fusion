@@ -296,11 +296,11 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airStarted) {   
                 animate = true;
-                initialColor = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT));
+                //initialColor = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT));
                 color = animation.colorFromHex(settings.getString(COLOR_ALERT));
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
                 endBrightness = 100;
-                animType = AnimationParams::Type::BLEND_FADE;
+                animType = AnimationParams::Type::FADE;
                 period = 1000;
                 cycles = 300;
             }

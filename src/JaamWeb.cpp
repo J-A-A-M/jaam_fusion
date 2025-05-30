@@ -39,8 +39,16 @@ String JaamWeb::getBoolParameterHtml(const char* name, bool value, const char* l
 
 String JaamWeb::getColorPickerHtml(const char* name, const char* value, const char* label) {
     String html = "<div class='color-picker-container'>";
-    html += "<input class='value' type='color' id='" + String(name) + "' value='" + String(value) + "' onchange='updateColor(\"" + String(name) + "\", this.value)'>";
+    html += "<span class='value'><input type='color' id='" + String(name) + "' value='" + String(value) + "' onchange='updateColor(\"" + String(name) + "\", this.value)'></span>";
     html += "<label for='" + String(name) + "'>" + String(label) + "</label>";
+    html += "</div>";
+    return html;
+}
+
+String JaamWeb::getTextInputHtml(const char* name, const char* value, const char* label, const char* placeholder) {
+    String html = "<div class='text-input-container'>";
+    html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
+    html += "<input type='text' id='" + String(name) + "' value='" + String(value) + "' placeholder='" + String(placeholder) + "' class='text-input' onchange='updateTextParameter(\"" + String(name) + "\", this.value)'>";
     html += "</div>";
     return html;
 }
@@ -85,8 +93,11 @@ String JaamWeb::getHtmlTemplate() {
     html += ".slider-container{margin:20px 0}";
     html += ".slider{width:100%;height:25px;background:#d3d3d3;outline:none;opacity:0.7;transition:opacity .2s}";
     html += ".slider:hover{opacity:1}";
-    html += ".value{font-size:18px;margin-right:10px;width:40px;display:inline-block;text-align:right}";
+    html += ".value{font-size:18px;margin-right:10px;width:60px;display:inline-block;text-align:right}";
     html += ".color-picker-container{margin:20px 0}";
+    html += ".text-input-container{margin:20px 0}";
+    html += ".text-input{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white}";
+    html += ".text-input-container label{display:block;margin-bottom:5px;font-weight:bold}";
     html += ".form-group{margin:20px 0}";
     html += ".form-control{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white}";
     html += ".form-group label{display:block;margin-bottom:5px;font-weight:bold}";
@@ -98,7 +109,18 @@ String JaamWeb::getHtmlTemplate() {
 
     
     // Додаємо слайдери для всіх параметрів
-    html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
+    html += getDropdownHtml("home_district", "Домашний регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
+    html += "<label class=\"label\">Загальні налаштування</label>";
+    html += getTextInputHtml("device_name", settings->getString(DEVICE_NAME), "Назва пристрою", "JAAM");
+    html += getTextInputHtml("device_description", settings->getString(DEVICE_DESCRIPTION), "Опис пристрою", "JAAM Informer");
+    html += getTextInputHtml("broadcast_name", settings->getString(BROADCAST_NAME), "Ім'я в мережі", "jaam");
+    html += "<label class=\"label\">Мережеві налаштування</label>";
+    html += getTextInputHtml("ws_server_host", settings->getString(WS_SERVER_HOST), "Сервер WebSocket", "ws.jaam.net.ua");
+    html += getTextInputHtml("ntp_host", settings->getString(NTP_HOST), "NTP сервер", "time.google.com");
+    html += "<label class=\"label\">Home Assistant</label>";
+    html += getTextInputHtml("ha_mqtt_user", settings->getString(HA_MQTT_USER), "MQTT користувач", "");
+    html += getTextInputHtml("ha_mqtt_password", settings->getString(HA_MQTT_PASSWORD), "MQTT пароль", "");
+    html += getTextInputHtml("ha_broker_address", settings->getString(HA_BROKER_ADDRESS), "Адреса брокера", "");
     html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
@@ -157,6 +179,17 @@ String JaamWeb::getHtmlTemplate() {
     html += "}";
     html += "function updateColor(name, value) {";
     html += "  fetch('/color?name=' + name + '&value=' + encodeURIComponent(value));";
+    html += "}";
+    html += "function updateTextParameter(name, value) {";
+    html += "  fetch('/text?name=' + name + '&value=' + encodeURIComponent(value))";
+    html += "    .then(response => {";
+    html += "      if (!response.ok) {";
+    html += "        console.error('Error updating text parameter:', name, value);";
+    html += "      }";
+    html += "    })";
+    html += "    .catch(error => {";
+    html += "      console.error('Network error:', error);";
+    html += "    });";
     html += "}";
     html += "</script></body></html>";
     return html;
@@ -224,6 +257,44 @@ void JaamWeb::handleColorParameter() {
             });
         }
         needAdaptAnimationColors = true;
+
+        server.send(200, "text/plain", "OK");
+    } else {
+        server.send(400, "text/plain", "Missing parameters");
+    }
+}
+
+void JaamWeb::handleTextParameter() {
+    if (server.hasArg("name") && server.hasArg("value")) {
+        String name = server.arg("name");
+        String value = server.arg("value");
+        const char* paramValue = value.c_str();
+
+        if (name == "device_name") {
+            settings->saveString(DEVICE_NAME, paramValue);
+            LOG.printf("[WEB] Setting device_name: %s\n", paramValue);
+        } else if (name == "device_description") {
+            settings->saveString(DEVICE_DESCRIPTION, paramValue);
+            LOG.printf("[WEB] Setting device_description: %s\n", paramValue);
+        } else if (name == "broadcast_name") {
+            settings->saveString(BROADCAST_NAME, paramValue);
+            LOG.printf("[WEB] Setting broadcast_name: %s\n", paramValue);
+        } else if (name == "ws_server_host") {
+            settings->saveString(WS_SERVER_HOST, paramValue);
+            LOG.printf("[WEB] Setting ws_server_host: %s\n", paramValue);
+        } else if (name == "ntp_host") {
+            settings->saveString(NTP_HOST, paramValue);
+            LOG.printf("[WEB] Setting ntp_host: %s\n", paramValue);
+        } else if (name == "ha_mqtt_user") {
+            settings->saveString(HA_MQTT_USER, paramValue);
+            LOG.printf("[WEB] Setting ha_mqtt_user: %s\n", paramValue);
+        } else if (name == "ha_mqtt_password") {
+            settings->saveString(HA_MQTT_PASSWORD, paramValue);
+            LOG.printf("[WEB] Setting ha_mqtt_password: %s\n", paramValue);
+        } else if (name == "ha_broker_address") {
+            settings->saveString(HA_BROKER_ADDRESS, paramValue);
+            LOG.printf("[WEB] Setting ha_broker_address: %s\n", paramValue);
+        }
 
         server.send(200, "text/plain", "OK");
     } else {
@@ -445,6 +516,7 @@ void JaamWeb::handleParameter() {
             }
         }
 
+        needAdaptAnimationColors = true;
         
         server.send(200, "text/plain", "OK");
     } else {
@@ -462,6 +534,7 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/", HTTP_GET, [this]() { this->handleRoot(); });
     server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
     server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
+    server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
 
     server.begin();
 }
