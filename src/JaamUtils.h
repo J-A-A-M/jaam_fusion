@@ -164,7 +164,7 @@ inline uint8_t findHighestBit16(uint16_t value) {
 inline uint8_t findHighestBitForLed(int position) {
     auto regions = getRegionsForLed(position);
     if (regions.empty()) {
-        LOG.printf("[LED] LED %d не належить жодному регіону\n", position);
+        LOG.printf("[LED] LED %d does not belong to any region\n", position);
         return 255; // LED не належить жодному регіону
     }
 
@@ -195,7 +195,7 @@ inline uint8_t findHighestBitForLed(int position) {
                 break;
             }
         }
-        LOG.printf("[LED] LED %d: найстарший біт %d ([%d] %s)\n", 
+        LOG.printf("[LED] LED %d: highest bit %d ([%d] %s)\n", 
                   position, globalHighestBit, highestBitRegion, regionName);
         return globalHighestBit;
     }

@@ -430,7 +430,7 @@ void JaamWeb::handleParameter() {
             }
             if (validId) {
                 settings->saveInt(HOME_DISTRICT, value);
-                LOG.printf("[WEB] Домашній район встановлено: %d\n", value);
+                LOG.printf("[WEB] Home district set: %d\n", value);
                 if (strip_main_initialized) {
                     animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                         for (int i = 0; i < strip->numPixels(); i++) {
@@ -441,7 +441,7 @@ void JaamWeb::handleParameter() {
                     });
                 }
             } else {
-                LOG.printf("[WEB] Помилка: неправильний ID району: %d\n", value);
+                LOG.printf("[WEB] Error: invalid district ID: %d\n", value);
             }
         }
 

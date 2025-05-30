@@ -366,7 +366,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                         endBrightness,
                         region_id
                     )) {
-                        LOG.println("[ERROR] Не вдалося створити анімацію");
+                        LOG.println("[ERROR] Failed to create animation");
                         return;
                     }
                 }
@@ -399,7 +399,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     //         endBrightness,
     //         1
     //     )) {
-    //         LOG.println("ERROR: Не вдалося створити анімацію");
+    //         LOG.println("ERROR: Failed to create animation");
     //         return;
     //     }
     // }
@@ -524,11 +524,11 @@ void socketConnect() {
 
 void websocketProcess() {
     if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME)) {
-        LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: не було ping/pong від сервера (WS_ALERT_TIME)");
+        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
         websocketReconnect = true;
     }
     if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME)) {
-        LOG.println("[WEBSOCKET] websocketReconnect = true; Причина: перевищено WS_REBOOT_TIME, буде перезавантаження");
+        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot");
         rebootDevice(3000, true);
     }
     if (!websocket.available()) {
@@ -567,7 +567,7 @@ void animations() {
     strip = strip_main;
 
     if (!strip) {
-        LOG.println("[ERROR] Немає доступних ініціалізованих стрічок");
+        LOG.println("[ERROR] No available initialized strips");
         return;
     }
     // r = 255;
@@ -616,7 +616,7 @@ void animations() {
         startBrightness,
         endBrightness
     )) {
-        LOG.println("ERROR: Не вдалося створити анімацію");
+        LOG.println("ERROR: Failed to create animation");
         return;
     }
 
@@ -711,11 +711,11 @@ void saveConfigCallback() {
 
 void initWifi() {
     if (!WiFiConfig::ENABLED) {
-        LOG.println("[WIFI] WiFi вимкнено в конфігурації");
+        LOG.println("[WIFI] WiFi disabled in configuration");
         return;
     }
 
-    LOG.println("[WIFI] Ініціалізація WiFi...");
+    LOG.println("[WIFI] Initializing WiFi...");
     
     // Встановлюємо режим станції
     WiFi.mode(WIFI_STA);
@@ -733,13 +733,13 @@ void initWifi() {
     
     if (WiFi.status() == WL_CONNECTED) {
         lastWifiConnectTime = millis();
-        LOG.println("\n[WIFI] Підключено до збереженої WiFi");
-        LOG.printf("[WIFI] IP адреса: %s\n", WiFi.localIP().toString().c_str());
+        LOG.println("\n[WIFI] Connected to saved WiFi");
+        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
         return;
     }
     
-    LOG.println("\n[WIFI] Не вдалося підключитися до збереженої мережі");
-    LOG.println("[WIFI] Запуск WiFiManager...");
+    LOG.println("\n[WIFI] Failed to connect to saved network");
+    LOG.println("[WIFI] Starting WiFiManager...");
     
     // Тільки якщо не вдалося підключитися - використовуємо WiFiManager
     WiFiManager wm_temp; // Локальна змінна замість глобальної
@@ -753,7 +753,7 @@ void initWifi() {
     
     // Простий колбек без додаткових операцій
     wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
-        LOG.printf("[WIFI] Підключіться до WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
+        LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
     });
     
     // Створюємо ім'я AP з chip ID
@@ -762,17 +762,17 @@ void initWifi() {
     
     // Спроба підключення
     if (!wm_temp.autoConnect(apName)) {
-        LOG.println("[WIFI] Не вдалося підключитися. Перезавантаження...");
+        LOG.println("[WIFI] Failed to connect. Rebooting...");
         rebootDevice(3000);
         return;
     }
     
     lastWifiConnectTime = millis();
-    LOG.println("[WIFI] Підключено до WiFi через WiFiManager");
-    LOG.printf("[WIFI] IP адреса: %s\n", WiFi.localIP().toString().c_str());
+    LOG.println("[WIFI] Connected to WiFi via WiFiManager");
+    LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
     
     // НЕ запускаємо web portal одразу - тільки за потреби
-    LOG.println("[WIFI] WiFi ініціалізацію завершено");
+    LOG.println("[WIFI] WiFi initialization completed");
     
     // wm_temp автоматично знищиться при виході з функції
 }
@@ -832,7 +832,7 @@ void initStrip() {
     // Створюємо м'ютекс для захисту доступу до стрічок
     stripMutex = xSemaphoreCreateMutex();
     if (stripMutex == NULL) {
-        LOG.println("[ERROR] Не вдалося створити семафор stripMutex");
+        LOG.println("[ERROR] Failed to create stripMutex semaphore");
         return;
     }
 
@@ -841,7 +841,7 @@ void initStrip() {
     
     status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, settings.getInt(BRIGHTNESS), DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
-        LOG.printf("[LED] ERROR: Не вдалося створити strip_main: %d\n", status);
+        LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
     } else {
         LOG.println("[LED] SUCCESS: strip_main");
         strip_main_initialized = true;
@@ -849,7 +849,7 @@ void initStrip() {
     
     status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), settings.getInt(BRIGHTNESS_BG), DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
-        LOG.printf("[LED] ERROR: Не вдалося створити strip_bg: %d\n", status);
+        LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
     } else {
         LOG.println("[LED] SUCCESS: strip_bg");
         strip_bg_initialized = true;
@@ -857,7 +857,7 @@ void initStrip() {
 
     status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, settings.getInt(BRIGHTNESS_SERVICE), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
     if (status != StripStatus::SUCCESS) {
-        LOG.printf("[LED] ERROR: Не вдалося створити strip_service: %d\n", status);
+        LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
     } else {
         LOG.println("[LED] SUCCESS: strip_service");
         strip_service_initialized = true;
@@ -1063,7 +1063,7 @@ void mainThreadProcess() {
                 strip_main->getBrightness(),
                 settings.getInt(BRIGHTNESS)
             )) {
-                LOG.println("[ERROR] Не вдалося створити анімацію");
+                LOG.println("[ERROR] Failed to create animation");
                 return;
             }
         }
@@ -1100,7 +1100,7 @@ void mainThreadProcess() {
     //                 }
     //             }
     //             if (!freeLedsIdx.empty()) {
-    //                 LOG.printf("[ANIMATION] Оновлення кольорів для %d вільних LED\n", (int)freeLeds.size());
+    //                 LOG.printf("[ANIMATION] Updating colors for %d free LEDs\n", (int)freeLeds.size());
     //                 // Створюємо анімацію для оновлення кольорів вільних LED
     //                 // Всі леди одного типу, тому беремо колір з першого вільного LED
     //                 uint32_t initialColor = strip_main->getPixelColor(freeLedsIdx[0]); // Отримуємо початковий колір з першого вільного LED
@@ -1115,13 +1115,13 @@ void mainThreadProcess() {
     //                     500,      // Короткий період
     //                     1       // Один цикл
     //                 )) {
-    //                     LOG.println("[ERROR] Не вдалося створити анімацію для оновлення кольорів");
+    //                     LOG.println("[ERROR] Failed to create animation for color update");
     //                 }
     //             } else {
-    //                 LOG.println("[ANIMATION] Немає вільних LED потрібного типу для оновлення кольорів");
+    //                 LOG.println("[ANIMATION] No free LEDs of required type for color update");
     //             }
     //         } else {
-    //             LOG.println("[ANIMATION] Немає вільних LED для оновлення кольорів");
+    //             LOG.println("[ANIMATION] No free LEDs for color update");
     //         }
     //     }
     //     // Скидаємо прапорець після адаптації кольорів
