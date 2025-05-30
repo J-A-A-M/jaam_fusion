@@ -101,7 +101,7 @@ String JaamWeb::getHtmlTemplate() {
     html += ".value{font-size:18px;margin-right:10px;width:60px;display:inline-block;text-align:right}";
     html += ".color-picker-container{margin:20px 0}";
     html += ".text-input-container{margin:20px 0}";
-    html += ".text-input{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white}";
+    html += ".text-input{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white;box-sizing:border-box}";
     html += ".text-input-container label{display:block;margin-bottom:5px;font-weight:bold}";
     html += ".form-group{margin:20px 0}";
     html += ".form-control{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white}";

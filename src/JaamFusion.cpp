@@ -105,7 +105,7 @@ void clearAllAlertsMaps() {
     dronesAlertsMap.clear();
     ballisticAlertsMap.clear();
     explosionAlertsMap.clear();
-    LOG.println("[MAIN] Clearing all alerts maps");
+    LOG.printf("[MAIN] Clearing all alerts maps\n");
 }
 
 
