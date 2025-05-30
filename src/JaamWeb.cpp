@@ -5,11 +5,16 @@
 
 extern volatile bool needAdaptAnimationColors;
 extern volatile bool needAdaptStripBrightness;
+extern volatile bool needToReconnectWebsocket;
 // extern volatile bool needAdaptNonAnimationColors;
 // extern volatile bool needAdaptAlertClearColors;
 // extern volatile bool needAdaptAlertColors;
 // extern volatile bool needAdaptAlertExplosionColors;
 // extern volatile bool needAdaptAlertHomeDistrictColors;
+
+// Forward declaration for socketConnect function from JaamFusion.cpp
+extern void socketConnect();
+extern void clearAllAlertsMaps();
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
@@ -281,6 +286,7 @@ void JaamWeb::handleTextParameter() {
             LOG.printf("[WEB] Setting broadcast_name: %s\n", paramValue);
         } else if (name == "ws_server_host") {
             settings->saveString(WS_SERVER_HOST, paramValue);
+            needToReconnectWebsocket = true;
             LOG.printf("[WEB] Setting ws_server_host: %s\n", paramValue);
         } else if (name == "ntp_host") {
             settings->saveString(NTP_HOST, paramValue);

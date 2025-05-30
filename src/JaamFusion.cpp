@@ -53,6 +53,7 @@ AnimationManager    animation;
 AnimationParams::Type   animType;
 bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
+bool                needToReconnectWebsocket = false;
 // bool                needAdaptNonAnimationColors = false;
 // bool                needAdaptAlertClearColors = false;
 // bool                needAdaptAlertColors = false;
@@ -487,7 +488,7 @@ void socketConnect() {
     sprintf(
         webSocketUrl,
         "ws://%s:%d/data_fusion_v1",
-        "10.2.0.156",
+        settings.getString(WS_SERVER_HOST), //"10.2.0.156",
         settings.getInt(WS_SERVER_PORT)
     );
     LOG.printf("[WEBSOCKET] url:%s\n", webSocketUrl);
@@ -1064,6 +1065,12 @@ void logFreeMainLeds() {
 void mainThreadProcess() {
     // Ця функція виконується в основному циклі
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
+
+    if (needToReconnectWebsocket) {
+        LOG.println("[MAIN] Reconnecting WebSocket...");
+        needToReconnectWebsocket = false;
+        socketConnect();
+    }
 
     if (needAdaptAnimationColors) {
         animation.adaptAllAnimationColors();
