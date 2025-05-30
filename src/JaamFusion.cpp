@@ -53,6 +53,11 @@ AnimationManager    animation;
 AnimationParams::Type   animType;
 bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
+// bool                needAdaptNonAnimationColors = false;
+// bool                needAdaptAlertClearColors = false;
+// bool                needAdaptAlertColors = false;
+// bool                needAdaptAlertExplosionColors = false;
+// bool                needAdaptAlertHomeDistrictColors = false;
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -84,6 +89,7 @@ std::map<uint16_t, bool>        missilesAlertsMap;
 std::map<uint16_t, bool>        kabAlertsMap;
 std::map<uint16_t, bool>        dronesAlertsMap;
 std::map<uint16_t, bool>        ballisticAlertsMap;
+std::map<uint16_t, bool>        explosionAlertsMap;
 
 
 void clearAllAlertsMaps() {
@@ -97,6 +103,7 @@ void clearAllAlertsMaps() {
     kabAlertsMap.clear();
     dronesAlertsMap.clear();
     ballisticAlertsMap.clear();
+    explosionAlertsMap.clear();
 }
 
 
@@ -197,7 +204,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     uint8_t endBrightness = 255;
     uint8_t ledCount;
     std::vector<int> ledsIdx;
-    bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic;
+    bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic, explosion;
     for (size_t i = 0; i < count; ++i) {
         uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
         uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
@@ -219,11 +226,16 @@ void onMessageCallback(WebsocketsMessage msg) {
         bool missilesCompleted = false;
         bool kabStarted = false;
         bool kabCompleted = false;
+        bool explosionStarted = false;
+        bool explosionCompleted = false;
+        bool ballisticStarted = false;
+        bool ballisticCompleted = false;
 
         bool notificationExplosion = false;
         bool notificationKab = false;
         bool notificationMissiles = false;
         bool notificationDrones = false;
+        bool notificationBallistic = false;
         
 
         // Зберігаємо
@@ -238,6 +250,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         missiles    = flags16 & (1 << 6);
         kab         = flags16 & (1 << 7);
         ballistic   = flags16 & (1 << 8);
+        explosion   = flags16 & (1 << 9);
 
         if (!airAlertsMap[region_id]    &&   air) { airStarted = true; }
         if (airAlertsMap[region_id]    &&   !air) { airCompleted = true; }
@@ -247,6 +260,10 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (missilesAlertsMap[region_id]    &&   !missiles) { missilesCompleted = true; }
         if (!kabAlertsMap[region_id]    &&   kab) { kabStarted = true; }
         if (kabAlertsMap[region_id]    &&   !kab) { kabCompleted = true; }
+        if (!explosionAlertsMap[region_id]    &&   explosion) { explosionStarted = true; }
+        if (explosionAlertsMap[region_id]    &&   !explosion) { explosionCompleted = true; }
+        if (!ballisticAlertsMap[region_id]    &&   ballistic) { ballisticStarted = true; }
+        if (ballisticAlertsMap[region_id]    &&   !ballistic) { ballisticCompleted = true; }
 
         // Розкладаємо по окремих тривогах
         airAlertsMap[region_id]                   = air;
@@ -258,6 +275,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         kabAlertsMap[region_id]                   = kab;
         dronesAlertsMap[region_id]                = drones;
         ballisticAlertsMap[region_id]             = ballistic;
+        explosionAlertsMap[region_id]             = explosion;
 
         // LOG.printf("airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d Region %d led %d \n", 
         //     airAlertsMap[region_id], air, 
@@ -268,7 +286,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         
         if (isFirstDataFetchCompleted) {
-            if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted) {
+            if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted || explosionCompleted || ballisticCompleted) {
                 animate = true;
                 initialColor = strip_main->getPixelColor(leds[0]);
                 color = animation.ledActualColor(strip_main, leds[0], true);
@@ -313,7 +331,16 @@ void onMessageCallback(WebsocketsMessage msg) {
                 period = 1000;
                 cycles = 180;
             }
-            if (airAlertsMap[region_id] && notificationExplosion && settings.getBool(ENABLE_EXPLOSIONS)) {
+            if (airAlertsMap[region_id] && (ballisticStarted || notificationBallistic) && settings.getBool(ENABLE_BALLISTIC)) {
+                animate = true;
+                color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                endBrightness = 100;
+                animType = AnimationParams::Type::PULSE;
+                period = 1000;
+                cycles = 180;
+            }
+            if (airAlertsMap[region_id] && (explosionStarted || notificationExplosion) && settings.getBool(ENABLE_EXPLOSIONS)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -1022,24 +1049,88 @@ void mainThreadProcess() {
         needAdaptAnimationColors = false;
     }
     if (needAdaptStripBrightness) {
-        int ledsIdx[1] = { 0 };
-        if (!animation.createAnimation(
-            AnimationParams::Type::SET_BRIGHTNESS,
-            strip_main,
-            ledsIdx,
-            1,
-            0x000000, // Колір не важливий для SET_BRIGHTNESS
-            0x000000, // Початковий колір не важливий
-            500,
-            1,
-            strip_main->getBrightness(),
-            settings.getInt(BRIGHTNESS)
-        )) {
-            LOG.println("[ERROR] Не вдалося створити анімацію");
-            return;
+        if (strip_main_initialized) {
+            int ledsIdx[1] = { 0 };
+            if (!animation.createAnimation(
+                AnimationParams::Type::SET_BRIGHTNESS,
+                strip_main,
+                ledsIdx,
+                1,
+                0x000000, // Колір не важливий для SET_BRIGHTNESS
+                0x000000, // Початковий колір не важливий
+                500,
+                1,
+                strip_main->getBrightness(),
+                settings.getInt(BRIGHTNESS)
+            )) {
+                LOG.println("[ERROR] Не вдалося створити анімацію");
+                return;
+            }
         }
         needAdaptStripBrightness = false;
     }
+    // if (needAdaptNonAnimationColors) {
+    //     if (strip_main_initialized) {
+    //         // Отримуємо список вільних LED (тих, що не беруть участь в анімаціях)
+    //         auto freeLeds = animation.getFreeLeds(strip_main, num_leds_main);
+    //         if (!freeLeds.empty()) {
+    //             // Створюємо масив індексів вільних LED
+    //             std::vector<int> freeLedsIdx;
+    //             for (const auto& led : freeLeds) {
+    //                 uint8_t bit = findHighestBitForLed(led.ledIdx);
+    //                 if (needAdaptAlertClearColors) {
+    //                     if(bit == 255){
+    //                         freeLedsIdx.push_back(led.ledIdx);
+    //                     }
+    //                 }
+    //                 if (needAdaptAlertColors) {
+    //                     if(bit == 0){
+    //                         freeLedsIdx.push_back(led.ledIdx);
+    //                     }
+    //                 }
+    //                 if (needAdaptAlertExplosionColors) {
+    //                     if(bit == 5 || bit == 6 || bit == 7|| bit == 8){
+    //                         freeLedsIdx.push_back(led.ledIdx);
+    //                     }
+    //                 }
+    //                 if (needAdaptAlertHomeDistrictColors) {
+    //                     if(bit == 255){
+    //                         freeLedsIdx.push_back(led.ledIdx);
+    //                     }
+    //                 }
+    //             }
+    //             if (!freeLedsIdx.empty()) {
+    //                 LOG.printf("[ANIMATION] Оновлення кольорів для %d вільних LED\n", (int)freeLeds.size());
+    //                 // Створюємо анімацію для оновлення кольорів вільних LED
+    //                 // Всі леди одного типу, тому беремо колір з першого вільного LED
+    //                 uint32_t initialColor = strip_main->getPixelColor(freeLedsIdx[0]); // Отримуємо початковий колір з першого вільного LED
+    //                 uint32_t color = animation.ledActualColor(strip_main, freeLedsIdx[0], true); // Отримуємо колір з першого вільного LED
+    //                 if (!animation.createAnimation(
+    //                     AnimationParams::Type::ONE_WAY_BLEND_FADE,
+    //                     strip_main,
+    //                     freeLedsIdx.data(),
+    //                     freeLedsIdx.size(),
+    //                     color,
+    //                     initialColor,
+    //                     500,      // Короткий період
+    //                     1       // Один цикл
+    //                 )) {
+    //                     LOG.println("[ERROR] Не вдалося створити анімацію для оновлення кольорів");
+    //                 }
+    //             } else {
+    //                 LOG.println("[ANIMATION] Немає вільних LED потрібного типу для оновлення кольорів");
+    //             }
+    //         } else {
+    //             LOG.println("[ANIMATION] Немає вільних LED для оновлення кольорів");
+    //         }
+    //     }
+    //     // Скидаємо прапорець після адаптації кольорів
+    //     needAdaptNonAnimationColors = false;
+    //     needAdaptAlertClearColors = false; 
+    //     needAdaptAlertColors = false;
+    //     needAdaptAlertExplosionColors = false;
+    //     needAdaptAlertHomeDistrictColors = false;
+    // }
 }
 
 void setup() {

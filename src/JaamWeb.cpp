@@ -5,6 +5,11 @@
 
 extern volatile bool needAdaptAnimationColors;
 extern volatile bool needAdaptStripBrightness;
+// extern volatile bool needAdaptNonAnimationColors;
+// extern volatile bool needAdaptAlertClearColors;
+// extern volatile bool needAdaptAlertColors;
+// extern volatile bool needAdaptAlertExplosionColors;
+// extern volatile bool needAdaptAlertHomeDistrictColors;
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
@@ -95,15 +100,16 @@ String JaamWeb::getHtmlTemplate() {
     // Додаємо слайдери для всіх параметрів
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
     html += "<label class=\"label\">Налаштування кольорів</label>";
-    html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Колір тривоги");
-    html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Колір відбою");
-    html += getColorPickerHtml("color_new_alert", settings->getString(COLOR_NEW_ALERT), "Колір початку тривоги");
-    html += getColorPickerHtml("color_alert_over", settings->getString(COLOR_ALERT_OVER), "Колір завершення тривоги");
-    html += getColorPickerHtml("color_explosion", settings->getString(COLOR_EXPLOSION), "Колір вибухів");
-    html += getColorPickerHtml("color_missiles", settings->getString(COLOR_MISSILES), "Колір ракет");
-    html += getColorPickerHtml("color_drones", settings->getString(COLOR_DRONES), "Колір БПЛА");
-    html += getColorPickerHtml("color_kab", settings->getString(COLOR_KABS), "Колір КАБ");
-    html += getColorPickerHtml("color_home", settings->getString(COLOR_HOME_DISTRICT), "Колір домашнього регіону");
+    html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
+    html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
+    html += getColorPickerHtml("color_new_alert", settings->getString(COLOR_NEW_ALERT), "Початок тривоги");
+    html += getColorPickerHtml("color_alert_over", settings->getString(COLOR_ALERT_OVER), "Завершення тривоги");
+    html += getColorPickerHtml("color_explosion", settings->getString(COLOR_EXPLOSION), "Вибухи");
+    html += getColorPickerHtml("color_missiles", settings->getString(COLOR_MISSILES), "Ракети");
+    html += getColorPickerHtml("color_drones", settings->getString(COLOR_DRONES), "БПЛА");
+    html += getColorPickerHtml("color_kab", settings->getString(COLOR_KABS), "КАБ");
+    html += getColorPickerHtml("color_ballistic", settings->getString(COLOR_BALLISTIC), "Балістичні ракети");
+    html += getColorPickerHtml("color_home", settings->getString(COLOR_HOME_DISTRICT), "Домашній регіон");
     html += "<label class=\"label\">Налаштування яскравості</label>";
     html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна");
     html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "День");
@@ -117,9 +123,11 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Фонова стрічка");
     html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Сервісні діоди");
     html += "<label class=\"label\">Налаштування тривог</label>";
-    html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Показувати загрозу КАБ");
-    html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Показувати ракетну небезпеку");
-    html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Показувати загрозу БПЛА");
+    html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Загроза КАБ");
+    html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Ракетна небезпека");
+    html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Загроза БПЛА");
+    html += getBoolParameterHtml("enable_ballistic", settings->getBool(ENABLE_BALLISTIC), "Загроза балістичних ракет");
+    html += getBoolParameterHtml("enable_explosions", settings->getBool(ENABLE_EXPLOSIONS), "Вибухи");
     
     html += "</div>";
     html += "<script>";
@@ -191,6 +199,10 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_KABS, paramValue);
             LOG.printf("[WEB] Setting color_kab: raw=%s\n", paramValue);
         }
+        if (name == "color_ballistic") {
+            settings->saveString(COLOR_BALLISTIC, paramValue);
+            LOG.printf("[WEB] Setting color_ballistic: raw=%s\n", paramValue);
+        }
         if (name == "color_home") {
             settings->saveString(COLOR_HOME_DISTRICT, paramValue);
             LOG.printf("[WEB] Setting color_home: raw=%s\n", paramValue);
@@ -233,6 +245,8 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_ALERT, value);
             if (strip_main_initialized) {
                 LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                // needAdaptNonAnimationColors = true;
+                // needAdaptAlertColors = true; 
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -244,7 +258,9 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, value);
             if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));  
+                // needAdaptNonAnimationColors = true;
+                // needAdaptAlertClearColors = true;            
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -281,6 +297,8 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_EXPLOSION, value);
             if (strip_main_initialized) {
                 LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                // needAdaptNonAnimationColors = true;
+                // needAdaptAlertExplosionColors = true; 
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {
                         uint32_t color = animation.ledActualColor(strip, i);
@@ -293,6 +311,8 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, value);
             if (strip_main_initialized) {
                 LOG.printf("[WEB] Setting brightness home district: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
+                //needAdaptNonAnimationColors = true;
+                //needAdaptAlertHomeDistrictColors = true; 
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     uint32_t color;
                     uint8_t count;
@@ -355,6 +375,28 @@ void JaamWeb::handleParameter() {
             }
         } else if (name == "enable_drones") {
             settings->saveBool(ENABLE_DRONES, value != 0);
+            if (strip_main_initialized) {
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
+        } else if (name == "enable_ballistic") {
+            settings->saveBool(ENABLE_BALLISTIC, value != 0);
+            if (strip_main_initialized) {
+                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+                    for (int i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
+        } else if (name == "enable_explosions") {
+            settings->saveBool(ENABLE_EXPLOSIONS, value != 0);
             if (strip_main_initialized) {
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
                     for (int i = 0; i < strip->numPixels(); i++) {

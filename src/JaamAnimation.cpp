@@ -491,37 +491,56 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         bool kab = false;
         bool explosion = false;
         uint8_t brightness = 0;
-        for (uint16_t region_id : regions) {
-            auto it = airAlertsMap.find(region_id);
-            if (it != airAlertsMap.end() && it->second) {
-                alert = true;
-                break; // Достатньо одного true
-            }
+
+        uint8_t bit = findHighestBitForLed(position);
+        if(bit == 0){
+            alert = true;
         }
-        for (uint16_t region_id : regions) {
-            auto it = dronesAlertsMap.find(region_id);
-            if (it != dronesAlertsMap.end() && it->second) {
-                drones = true;
-                break; // Достатньо одного true
-            }
+        if(bit == 5){
+            drones = true;
         }
-        for (uint16_t region_id : regions) {
-            auto it = missilesAlertsMap.find(region_id);
-            if (it != missilesAlertsMap.end() && it->second) {
-                missiles = true;
-                break; // Достатньо одного true
-            }
+        if(bit == 6){
+            missiles = true;
         }
-        for (uint16_t region_id : regions) {
-            auto it = kabAlertsMap.find(region_id);
-            if (it != kabAlertsMap.end() && it->second) {
-                kab = true;
-                break; // Достатньо одного true
-            }
+        if(bit == 7){
+            kab = true;
         }
-        if (alert) {
-            color = colorFromHex(settings->getString(COLOR_ALERT));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
+
+        // for (uint16_t region_id : regions) {
+        //     auto it = airAlertsMap.find(region_id);
+        //     if (it != airAlertsMap.end() && it->second) {
+        //         alert = true;
+        //         break; // Достатньо одного true
+        //     }
+        // }
+        // for (uint16_t region_id : regions) {
+        //     auto it = dronesAlertsMap.find(region_id);
+        //     if (it != dronesAlertsMap.end() && it->second) {
+        //         drones = true;
+        //         break; // Достатньо одного true
+        //     }
+        // }
+        // for (uint16_t region_id : regions) {
+        //     auto it = missilesAlertsMap.find(region_id);
+        //     if (it != missilesAlertsMap.end() && it->second) {
+        //         missiles = true;
+        //         break; // Достатньо одного true
+        //     }
+        // }
+        // for (uint16_t region_id : regions) {
+        //     auto it = kabAlertsMap.find(region_id);
+        //     if (it != kabAlertsMap.end() && it->second) {
+        //         kab = true;
+        //         break; // Достатньо одного true
+        //     }
+        // }
+
+        
+        if (bit != 255) {
+            if (alert) {
+                color = colorFromHex(settings->getString(COLOR_ALERT));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
+            }
             if (drones && settings->getBool(ENABLE_DRONES)) {
                 color = colorFromHex(settings->getString(COLOR_DRONES));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));

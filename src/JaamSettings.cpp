@@ -68,6 +68,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ENABLE_MISSILES, {"emi", 1}},
     {ENABLE_DRONES, {"edr", 1}},
     {ENABLE_KABS, {"ekab", 1}},
+    {ENABLE_BALLISTIC, {"ebal", 1}},
     {BRIGHTNESS_ALERT, {"ba", 100}},
     {BRIGHTNESS_CLEAR, {"bc", 100}},
     {BRIGHTNESS_NEW_ALERT, {"bna", 100}},
@@ -180,6 +181,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_MISSILES, {"rgbcmi", "#AA00FF"}},
     {COLOR_DRONES, {"rgbcdr", "#FF00AA"}},
     {COLOR_KABS, {"rgbckab", "#FFFF00"}},
+    {COLOR_BALLISTIC, {"rgbcbal", "#FFFFFF"}},
     {COLOR_HOME_DISTRICT, {"rgbchd", "#00FF50"}},
 };
 
