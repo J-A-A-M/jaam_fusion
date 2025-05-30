@@ -414,26 +414,52 @@ void AnimationManager::updatePulseAnimation(AnimationParams* anim, float elapsed
 
 void AnimationManager::updateRunningLightAnimation(AnimationParams* anim, float elapsed) {
     // elapsed: 0.0 ... 1.0 ... cycles
-    int ledCount = anim->posCount;
-    if (ledCount == 0) return;
+    int totalLeds = anim->strip->numPixels();
+    if (totalLeds == 0) return;
 
-    // Який LED зараз активний
-    int activeLed = int((elapsed - floor(elapsed)) * ledCount);
-
+    // Розмір анімаційного вікна (9 ледів)
+    const int windowSize = 9;
+    
+    // Поточна позиція початку вікна анімації
+    int windowStart = int((elapsed - floor(elapsed)) * totalLeds);
+    
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        // Гасимо всі
-        for (int i = 0; i < ledCount; ++i) {
-            int idx = anim->positions[i];
-            anim->strip->setPixelColor(idx, ledActualColor(anim->strip, anim->positions[i])); // чорний
+        // Спочатку встановлюємо всі леди в дефолтний колір
+        for (int i = 0; i < totalLeds; ++i) {
+            anim->strip->setPixelColor(i, anim->initialColor);
         }
-        // Вмикаємо активний
-        int idx = anim->positions[activeLed];
-        uint32_t c = anim->color;
-        uint8_t r = ((c >> 16) & 0xFF) * anim->endBrightness / 255;
-        uint8_t g = ((c >>  8) & 0xFF) * anim->endBrightness / 255;
-        uint8_t b = ( c        & 0xFF) * anim->endBrightness / 255;
-        anim->strip->setPixelColor(idx, r, g, b);
-
+        
+        // Тепер застосовуємо анімаційне вікно
+        for (int windowPos = 0; windowPos < windowSize; ++windowPos) {
+            int ledIndex = (windowStart + windowPos) % totalLeds;
+            
+            uint32_t ledColor;
+            uint8_t brightness = anim->endBrightness;
+            
+            if (windowPos == 0) {
+                // LED 1: initialColor
+                ledColor = anim->initialColor;
+            } else if (windowPos >= 1 && windowPos <= 4) {
+                // LEDs 2-5: поступовий перехід від initialColor до color
+                float factor = (float)(windowPos - 1) / 3.0f; // 0.0 to 1.0
+                ledColor = blendColors(anim->initialColor, anim->color, factor);
+            } else if (windowPos == 4) {
+                // LED 5: повністю color
+                ledColor = anim->color;
+            } else if (windowPos >= 5 && windowPos <= 8) {
+                // LEDs 6-9: поступовий перехід від color до initialColor
+                float factor = (float)(windowPos - 5) / 3.0f; // 0.0 to 1.0
+                ledColor = blendColors(anim->color, anim->initialColor, factor);
+            }
+            
+            // Застосовуємо яскравість
+            uint8_t r = ((ledColor >> 16) & 0xFF) * brightness / 255;
+            uint8_t g = ((ledColor >> 8) & 0xFF) * brightness / 255;
+            uint8_t b = (ledColor & 0xFF) * brightness / 255;
+            
+            anim->strip->setPixelColor(ledIndex, r, g, b);
+        }
+        
         anim->strip->show();
         xSemaphoreGive(stripMutex);
     }

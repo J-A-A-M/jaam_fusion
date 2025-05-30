@@ -525,25 +525,28 @@ void socketConnect() {
 
 void websocketProcess() {
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
-    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME)) {
+    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
         LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
         websocketReconnect = true;
         clearAllAlertsMaps();
         animation.clearAllAnimations();
         animation.paintStripDefault(strip_main, num_leds_main);
+        int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
-            AnimationParams::Type::RUNNING_LIGHT, 
-            strip_main, 
-            allLedsMain.data(), 
-            num_leds_main,
-            animation.colorFromHex(settings.getString(COLOR_ALERT)),
-            0x000000,
-            5000,
-            100
+            AnimationParams::Type::RUNNING_LIGHT,
+            strip_main,         
+            positions,         
+            0,            
+            0xFF0000,      
+            0x001100,        
+            1000,
+            180,
+            50,
+            200
         );
     }
     //if (millis() - websocketLastPingTime > 40000 && websocketReconnect) {
-    if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME)) {
+    if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
         LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot");
         rebootDevice(3000, true);
     }
@@ -887,15 +890,18 @@ void initStrip() {
             }
             strip->show();
         });
+        int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
-            AnimationParams::Type::RUNNING_LIGHT, 
-            strip_main, 
-            allLedsMain.data(), 
-            num_leds_main,
-            animation.colorFromHex(settings.getString(COLOR_ALERT)),
-            0x000000,
-            5000,
-            100
+            AnimationParams::Type::RUNNING_LIGHT,
+            strip_main,         
+            positions,         
+            0,            
+            0xFF0000,      
+            0x001100,        
+            1000,
+            180,
+            50,
+            200
         );
     }
     
