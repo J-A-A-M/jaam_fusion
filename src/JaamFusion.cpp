@@ -578,28 +578,28 @@ void animations() {
 
     // Випадковий вибір типу анімації
     
-    // int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
-    // switch(typeRand) {
-    //     case 0:
-    //         animType = AnimationParams::Type::FADE;
-    //         break;
-    //     case 1:
-    //         animType = AnimationParams::Type::BLINK;
-    //         break;
-    //     case 2:
-    //         animType = AnimationParams::Type::BLEND_FADE;
-    //         break;
-    //     case 3:
-    //         animType = AnimationParams::Type::PULSE;
-    //         break;
-    //     default:
-    //         animType = AnimationParams::Type::FADE;
-    // }
-    animType = AnimationParams::Type::BLEND_FADE;
+    int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
+    switch(typeRand) {
+        case 0:
+            animType = AnimationParams::Type::FADE;
+            break;
+        case 1:
+            animType = AnimationParams::Type::BLINK;
+            break;
+        case 2:
+            animType = AnimationParams::Type::BLEND_FADE;
+            break;
+        case 3:
+            animType = AnimationParams::Type::PULSE;
+            break;
+        default:
+            animType = AnimationParams::Type::FADE;
+    }
+    //animType = AnimationParams::Type::BLEND_FADE;
 
     // Випадкові параметри для анімації з використанням конфігурації
-    uint32_t period = 1000; //random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
-    uint32_t cycles = 12; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
+    uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
+    uint32_t cycles = 30; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
     uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
     
@@ -609,8 +609,8 @@ void animations() {
         strip,
         ledsIdx,
         1,
-        animation.colorFromHex(settings.getString(COLOR_ALERT)),
-        animation.colorFromHex(settings.getString(COLOR_EXPLOSION)),
+        color,
+        color,
         period,
         cycles,
         startBrightness,

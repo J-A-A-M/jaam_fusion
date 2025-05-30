@@ -10,8 +10,8 @@ namespace DefaultColors {
 
 // --- Animation Configuration ---
 namespace AnimationConfig {
-    static const uint32_t MIN_PERIOD = 100;
-    static const uint32_t MAX_PERIOD = 1000;
+    static const uint32_t MIN_PERIOD = 1000;
+    static const uint32_t MAX_PERIOD = 2000;
     static const uint8_t MIN_CYCLES = 1;
     static const uint32_t MAX_CYCLES = 600;
     static const uint8_t MIN_START_BRIGHTNESS = 0;
@@ -30,7 +30,7 @@ namespace WiFiConfig {
 }
 
 // --- Timing Configuration ---
-static const uint32_t ANIMATION_INTERVAL = 10000;    // 1 second
+static const uint32_t ANIMATION_INTERVAL = 1000;    // 1 second
 static const uint32_t MEMORY_CHECK_INTERVAL = 60000;  // 1 minute
 static const uint32_t WIFI_CHECK_INTERVAL = 1000;   // 1 second
 static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;   // 3 seconds
