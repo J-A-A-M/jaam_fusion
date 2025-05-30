@@ -21,7 +21,7 @@ String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, 
     String html = "<div class='slider-container'>";
     html += "<span class='value' id='" + String(name) + "Value'>[" + String(value) + "]</span>";
     html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
-    html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' class='slider' id='" + String(name) + "' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
+    html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' class='slider' id='" + String(name) + "' oninput='updateSliderValue(\"" + String(name) + "\", this.value)' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
     html += "</div>";
     return html;
 }
@@ -85,7 +85,7 @@ String JaamWeb::getHtmlTemplate() {
     html += ".slider-container{margin:20px 0}";
     html += ".slider{width:100%;height:25px;background:#d3d3d3;outline:none;opacity:0.7;transition:opacity .2s}";
     html += ".slider:hover{opacity:1}";
-    html += ".value{font-size:18px;margin-right:10px}";
+    html += ".value{font-size:18px;margin-right:10px;width:40px;display:inline-block;text-align:right}";
     html += ".color-picker-container{margin:20px 0}";
     html += ".form-group{margin:20px 0}";
     html += ".form-control{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white}";
@@ -145,6 +145,12 @@ String JaamWeb::getHtmlTemplate() {
     html += "    .catch(error => {";
     html += "      console.error('Network error:', error);";
     html += "    });";
+    html += "}";
+    html += "function updateSliderValue(name, value) {";
+    html += "  var valueElement = document.getElementById(name + 'Value');";
+    html += "  if (valueElement) {";
+    html += "    valueElement.textContent = '[' + value + ']';";
+    html += "  }";
     html += "}";
     html += "function updateBoolParameter(name, checked) {";
     html += "  fetch('/parameter?name=' + name + '&value=' + (checked ? 1 : 0));";
