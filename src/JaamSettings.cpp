@@ -151,7 +151,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {DISPLAY_HEIGHT, {"dh", 32}},
     {DAY_START, {"ds", 8}},
     {NIGHT_START, {"ns", 22}},
-    {WS_ALERT_TIME, {"wsat", 150000}},
+    {WS_ALERT_TIME, {"wsat", 180000}},
     {WS_REBOOT_TIME, {"wsrt", 300000}},
     {MIN_OF_SILENCE, {"mos", 1}},
     {FW_UPDATE_CHANNEL, {"fwuc", 0}},

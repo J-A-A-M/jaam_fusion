@@ -108,11 +108,12 @@ void clearAllAlertsMaps() {
 
 
 void rebootDevice(int time = 2000, bool async = false) {
-    if (async) {
-        needRebootWithDelay = time;
-        return;
-    }
+    // if (async) {
+    //     needRebootWithDelay = time;
+    //     return;
+    // }
     //showServiceMessage("Перезавантаження..", "", time);
+    LOG.printf("[MAIN] Rebooting.....\n");
     delay(time);
     //display.clearDisplay();
     //display.display();
@@ -523,10 +524,25 @@ void socketConnect() {
 }
 
 void websocketProcess() {
+    //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME)) {
         LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
         websocketReconnect = true;
+        clearAllAlertsMaps();
+        animation.clearAllAnimations();
+        animation.paintStripDefault(strip_main, num_leds_main);
+        animation.createAnimation(
+            AnimationParams::Type::RUNNING_LIGHT, 
+            strip_main, 
+            allLedsMain.data(), 
+            num_leds_main,
+            animation.colorFromHex(settings.getString(COLOR_ALERT)),
+            0x000000,
+            5000,
+            100
+        );
     }
+    //if (millis() - websocketLastPingTime > 40000 && websocketReconnect) {
     if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME)) {
         LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot");
         rebootDevice(3000, true);
@@ -871,17 +887,16 @@ void initStrip() {
             }
             strip->show();
         });
-        // animation.createAnimation(
-        //     AnimationParams::Type::RUNNING_LIGHT, 
-        //     strip_main, 
-        //     allLedsMain.data(), 
-        //     num_leds_main,
-        //     animation.colorFromHex(settings.getString(COLOR_ALERT)),
-        //     2000,
-        //     90,
-        //     50,
-        //     255
-        // );
+        animation.createAnimation(
+            AnimationParams::Type::RUNNING_LIGHT, 
+            strip_main, 
+            allLedsMain.data(), 
+            num_leds_main,
+            animation.colorFromHex(settings.getString(COLOR_ALERT)),
+            0x000000,
+            5000,
+            100
+        );
     }
     
     if (strip_bg_initialized) {
