@@ -105,6 +105,7 @@ void clearAllAlertsMaps() {
     dronesAlertsMap.clear();
     ballisticAlertsMap.clear();
     explosionAlertsMap.clear();
+    LOG.println("[MAIN] Clearing all alerts maps");
 }
 
 
@@ -529,6 +530,7 @@ void websocketProcess() {
     if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
         LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
         websocketReconnect = true;
+        isFirstDataFetchCompleted = false;
         clearAllAlertsMaps();
         animation.clearAllAnimations();
         animation.paintStripDefault(strip_main, num_leds_main);
@@ -553,10 +555,12 @@ void websocketProcess() {
     }
     if (!websocket.available()) {
         LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
+        isFirstDataFetchCompleted = false;
         socketConnect();
     }
     if (websocketReconnect) {
         LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
+        isFirstDataFetchCompleted = false;
         socketConnect();
     }
 }

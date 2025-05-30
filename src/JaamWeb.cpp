@@ -121,6 +121,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getTextInputHtml("broadcast_name", settings->getString(BROADCAST_NAME), "Ім'я в мережі", "jaam");
     html += "<label class=\"label\">Мережеві налаштування</label>";
     html += getTextInputHtml("ws_server_host", settings->getString(WS_SERVER_HOST), "Сервер WebSocket", "ws.jaam.net.ua");
+    html += getTextInputHtml("ws_server_port", String(settings->getInt(WS_SERVER_PORT)).c_str(), "Порт WebSocket", "80");
     html += getTextInputHtml("ntp_host", settings->getString(NTP_HOST), "NTP сервер", "time.google.com");
     html += "<label class=\"label\">Home Assistant</label>";
     html += getTextInputHtml("ha_mqtt_user", settings->getString(HA_MQTT_USER), "MQTT користувач", "");
@@ -286,6 +287,10 @@ void JaamWeb::handleTextParameter() {
             LOG.printf("[WEB] Setting broadcast_name: %s\n", paramValue);
         } else if (name == "ws_server_host") {
             settings->saveString(WS_SERVER_HOST, paramValue);
+            needToReconnectWebsocket = true;
+            LOG.printf("[WEB] Setting ws_server_host: %s\n", paramValue);
+        } else if (name == "ws_server_port") {
+            settings->saveInt(WS_SERVER_PORT, value.toInt());
             needToReconnectWebsocket = true;
             LOG.printf("[WEB] Setting ws_server_host: %s\n", paramValue);
         } else if (name == "ntp_host") {
