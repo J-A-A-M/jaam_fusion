@@ -26,6 +26,8 @@ private:
     void handleParameter();
     void handleColorParameter();
     void handleTextParameter();
+    void handleSystemInfo();
+    float getCpuTemperature();
     String getParameterHtml(const char* name, int min, int max, int value, const char* label);
     String getBoolParameterHtml(const char* name, bool value, const char* label);
     String getColorPickerHtml(const char* name, const char* value, const char* label);

@@ -2,6 +2,17 @@
 #include "JaamLed.h"
 #include "JaamLogs.h"
 #include "JaamUtils.h"
+#include <esp_system.h>
+#include <ArduinoJson.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+// ESP32 temperature sensor function
+uint8_t temprature_sens_read();
+#ifdef __cplusplus
+}
+#endif
 
 extern volatile bool needAdaptAnimationColors;
 extern volatile bool needAdaptStripBrightness;
@@ -25,6 +36,15 @@ extern void reconnectStrips();
 
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
+}
+
+// Function to get CPU temperature in Celsius
+float JaamWeb::getCpuTemperature() {
+    // ESP32 internal temperature sensor
+    // Convert raw value to Celsius (approximate formula)
+    uint8_t raw_temp = temprature_sens_read();
+    float temp_celsius = (raw_temp - 32) / 1.8;
+    return temp_celsius;
 }
 
 
@@ -103,6 +123,13 @@ String JaamWeb::getHtmlTemplate() {
     html += "<style>";
     html += "body{font-family:Arial,sans-serif;margin:20px;background-color:#f0f0f0}";
     html += ".container{max-width:600px;margin:0 auto;background-color:white;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1)}";
+    html += ".system-panel{background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:15px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}";
+    html += ".system-metric{display:flex;align-items:center;margin:5px 0;min-width:120px}";
+    html += ".metric-icon{width:16px;height:16px;margin-right:8px;fill:currentColor}";
+    html += ".metric-label{font-size:12px;color:#6c757d;margin-right:5px}";
+    html += ".metric-value{font-weight:bold;font-size:14px}";
+    html += ".memory-bar{width:100px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden;margin-left:8px}";
+    html += ".memory-fill{height:100%;background:linear-gradient(90deg,#28a745,#ffc107,#dc3545);transition:width 0.3s ease}";
     html += ".slider-container{margin:20px 0}";
     html += ".slider{width:100%;height:25px;background:#d3d3d3;outline:none;opacity:0.7;transition:opacity .2s}";
     html += ".slider:hover{opacity:1}";
@@ -119,6 +146,26 @@ String JaamWeb::getHtmlTemplate() {
     html += "</style></head><body>";
     html += "<div class='container'>";
     html += "<h1>JAAM LED Control</h1>";
+    
+    // System Information Panel
+    html += "<div class='system-panel' id='systemPanel'>";
+    html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H11V20H7V22H17V20H13V18H20Z'/></svg>";
+    html += "<span class='metric-label'>Пам'ять:</span>";
+    html += "<span class='metric-value' id='memoryUsage'>--</span>";
+    html += "<div class='memory-bar'><div class='memory-fill' id='memoryBar' style='width:0%'></div></div>";
+    html += "</div>";
+    html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z'/></svg>";
+    html += "<span class='metric-label'>Процесор:</span>";
+    html += "<span class='metric-value' id='cpuTemp'>--°C</span>";
+    html += "</div>";
+    html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2Z'/></svg>";
+    html += "<span class='metric-label'>Час роботи:</span>";
+    html += "<span class='metric-value' id='uptime'>--</span>";
+    html += "</div>";
+    html += "</div>";
 
 
     
@@ -180,6 +227,27 @@ String JaamWeb::getHtmlTemplate() {
     
     html += "</div>";
     html += "<script>";
+    
+    // System info update functions
+    html += "function updateSystemInfo() {";
+    html += "  fetch('/system-info')";
+    html += "    .then(response => response.json())";
+    html += "    .then(data => {";
+    html += "      document.getElementById('memoryUsage').textContent = Math.round(data.usedHeap/1024) + '/' + Math.round(data.totalHeap/1024) + ' KB';";
+    html += "      document.getElementById('memoryBar').style.width = data.memoryUsagePercent + '%';";
+    html += "      document.getElementById('cpuTemp').textContent = data.cpuTemp.toFixed(1) + '°C';";
+    html += "      const hours = Math.floor(data.uptime / 3600);";
+    html += "      const minutes = Math.floor((data.uptime % 3600) / 60);";
+    html += "      document.getElementById('uptime').textContent = hours + 'г ' + minutes + 'хв';";
+    html += "    })";
+    html += "    .catch(error => console.error('Error fetching system info:', error));";
+    html += "}";
+    
+    // Auto-refresh system info every 5 seconds
+    html += "setInterval(updateSystemInfo, 5000);";
+    html += "updateSystemInfo();"; // Initial load
+    
+    // Existing functions
     html += "function updateParameter(name, value) {";
     html += "  var valueElement = document.getElementById(name + 'Value');";
     html += "  if (valueElement) {"; // Перевіряємо чи існує елемент (для слайдерів)
@@ -475,10 +543,38 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
     server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
     server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
+    server.on("/system-info", HTTP_GET, [this]() { this->handleSystemInfo(); });
 
     server.begin();
 }
 
 void JaamWeb::handleClient() {
     server.handleClient();
+}
+
+void JaamWeb::handleSystemInfo() {
+    // Get system information
+    size_t freeHeap = ESP.getFreeHeap();
+    size_t totalHeap = ESP.getHeapSize();
+    size_t usedHeap = totalHeap - freeHeap;
+    size_t maxBlock = ESP.getMaxAllocHeap();
+    float cpuTemp = getCpuTemperature();
+    uint32_t uptime = millis() / 1000; // uptime in seconds
+    
+    // Create JSON response
+    JsonDocument doc;
+    doc["freeHeap"] = freeHeap;
+    doc["totalHeap"] = totalHeap;
+    doc["usedHeap"] = usedHeap;
+    doc["maxBlock"] = maxBlock;
+    doc["cpuTemp"] = cpuTemp;
+    doc["uptime"] = uptime;
+    doc["memoryUsagePercent"] = (float)usedHeap / totalHeap * 100.0;
+    doc["fragmentationPercent"] = (1.0f - ((float)maxBlock / (float)freeHeap)) * 100.0;
+    
+    String response;
+    serializeJson(doc, response);
+    
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "application/json", response);
 }
