@@ -139,6 +139,10 @@ String JaamWeb::getHtmlTemplate() {
     html += ".form-group label{display:block;margin-bottom:5px;font-weight:bold}";
     html += ".label{display:block;margin-bottom:5px;font-weight:bold}";
     html += ".warning{background-color:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:10px;border-radius:4px;margin:10px 0;font-size:14px}";
+    html += ".alerts-details-panel{background:#fff5f5;border:1px solid #fed7d7;border-radius:8px;padding:15px;margin-bottom:20px;display:flex;flex-direction:column;gap:0;}";
+    html += ".alert-detail-row{display:flex;align-items:center;margin:0 0;min-width:120px;}";
+    html += ".alert-detail-region{font-size:12px;color:#6c757d;margin-right:5px;font-weight:bold;min-width:60px;}";
+    html += ".alert-detail-icon{width:16px;height:16px;fill:currentColor;margin-right:8px;}";
     html += "</style></head><body>";
     html += "<div class='container'>";
     html += "<h1>JAAM LED Control</h1>";
@@ -173,19 +177,19 @@ String JaamWeb::getHtmlTemplate() {
     html += "</div>";
     html += "</div>";
 
-    // Alerts Information Panel
+    // Alerts Information Panel (об'єднано)
     html += "<div class='alerts-panel' id='alertsPanel'>";
     html += "<div class='alert-metric'>";
     html += "<svg class='metric-icon' viewBox='0 0 24 24'>";
-    html += "<path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/>";
-    html += "</svg>";
+    html += "<path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/></svg>";
     html += "<span class='metric-label'>Активні тривоги:</span>";
     html += "<span class='metric-value' id='alertsContent'>";
     html += "<span class='alerts-loading'>Завантаження...</span>";
     html += "</span>";
     html += "</div>";
+    // Додаємо детальні рядки по регіонах прямо в цей же блок
+    html += "<div id='alertsDetailsPanel'></div>";
     html += "</div>";
-
     
     // Додаємо слайдери для всіх параметрів
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
@@ -290,6 +294,7 @@ String JaamWeb::getHtmlTemplate() {
     html += "      const alertsContent = document.getElementById('alertsContent');";
     html += "      if (!data.regions || data.regions.length === 0) {";
     html += "        alertsContent.innerHTML = '<span class=\"alerts-no-alerts\">Немає активних тривог</span>';";
+    html += "        document.getElementById('alertsDetailsPanel').innerHTML = '';";
     html += "        return;";
     html += "      }";
     html += "      let activeRegions = data.regions.length;";
@@ -300,10 +305,20 @@ String JaamWeb::getHtmlTemplate() {
     html += "        });";
     html += "      });";
     html += "      alertsContent.innerHTML = '<span class=\"alerts-error\">' + activeRegions + ' регіонів (' + totalAlerts + ' тривог)</span>';";
+    // Додаємо детальні рядки по регіонах
+    html += "      const alertsDetailsPanel = document.getElementById('alertsDetailsPanel');";
+    html += "      let detailsHtml = '';";
+    html += "      data.regions.forEach(region => {";
+    html += "        const icon1 = `<svg class=\"alert-detail-icon\" viewBox=\"0 0 24 24\"><path d=\"M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z\"/></svg>`;";
+    html += "        const icon2 = `<svg class=\"alert-detail-icon\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"#dc3545\"/></svg>`;";
+    html += "        detailsHtml += `<div class=\"alert-detail-row\"><span class=\"alert-detail-region\">${region.regionName}</span>${icon1}${icon2}</div>`;";
+    html += "      });";
+    html += "      alertsDetailsPanel.innerHTML = detailsHtml;";
     html += "    })";
     html += "    .catch(error => {";
     html += "      console.error('Error fetching alerts info:', error);";
     html += "      document.getElementById('alertsContent').innerHTML = '<span class=\"alerts-error\">Помилка завантаження</span>';";
+    html += "      document.getElementById('alertsDetailsPanel').innerHTML = '';";
     html += "    });";
     html += "}";
     
