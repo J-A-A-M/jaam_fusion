@@ -921,8 +921,11 @@ void initStripMain() {
     StripStatus status;
     
     if (settings.getInt(MAIN_LED_PIN) > 0) {
-        LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs\n", settings.getInt(MAIN_LED_PIN), num_leds_main);
-        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::OFF, NEO_GRB + NEO_KHZ800);
+        uint8_t ledType = settings.getInt(MAIN_LED_COLOR_FORMAT) + settings.getInt(MAIN_LED_FREQUENCY);
+        LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
+                   settings.getInt(MAIN_LED_PIN), num_leds_main, ledType, 
+                   settings.getInt(MAIN_LED_COLOR_FORMAT), settings.getInt(MAIN_LED_FREQUENCY));
+        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::OFF, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
@@ -951,8 +954,11 @@ void initStripBg() {
     StripStatus status;
     
     if (settings.getInt(BG_LED_PIN) > 0 && settings.getInt(BG_LED_COUNT) > 0) {
-        LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs\n", settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT));
-        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::OFF, NEO_GRB + NEO_KHZ800);
+        uint8_t ledType = settings.getInt(BG_LED_COLOR_FORMAT) + settings.getInt(BG_LED_FREQUENCY);
+        LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
+                   settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), ledType,
+                   settings.getInt(BG_LED_COLOR_FORMAT), settings.getInt(BG_LED_FREQUENCY));
+        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::OFF, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
@@ -980,8 +986,11 @@ void initStripService() {
     StripStatus status;
     
     if (settings.getInt(SERVICE_LED_PIN) > 0) {
-        LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs\n", settings.getInt(SERVICE_LED_PIN), num_leds_service);
-        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::OFF, NEO_GRB + NEO_KHZ800);
+        uint8_t ledType = settings.getInt(SERVICE_LED_COLOR_FORMAT) + settings.getInt(SERVICE_LED_FREQUENCY);
+        LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
+                   settings.getInt(SERVICE_LED_PIN), num_leds_service, ledType,
+                   settings.getInt(SERVICE_LED_COLOR_FORMAT), settings.getInt(SERVICE_LED_FREQUENCY));
+        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::OFF, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {

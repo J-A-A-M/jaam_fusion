@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Adafruit_NeoPixel.h>
+
 
 // --- Default Colors ---
 namespace DefaultColors {
@@ -42,10 +44,41 @@ static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
 static constexpr size_t   HEADER_SZ         = 1;  // лише 1 байт – type
 static constexpr size_t   RECORD_SZ         = 4;  // 2B region_id + 2B flags16
 
-
 // --- Region to LED mapping (fixed, задається один раз) ---
 constexpr int MAX_REGIONS = 150;          // Кількість регіонів
 constexpr int MAX_LEDS_PER_REGION = 7;    // Максимум LED на регіон
+
+struct RegionLedMapEntry {
+    uint16_t region_id;
+    int led_positions[MAX_LEDS_PER_REGION];
+    uint8_t led_count;
+};
+struct SettingListItem {
+  uint16_t id;
+  const char* name;
+  bool ignore;
+  bool sub;
+};
+
+static SettingListItem LED_COLOR_FORMATS[] = {
+    {NEO_RGB, "NEO_RGB", false, false},
+    {NEO_RBG, "NEO_RBG", false, false},
+    {NEO_GRB, "NEO_GRB (рекомендовано)", false, false},
+    {NEO_GBR, "NEO_GBR", false, false},
+    {NEO_BRG, "NEO_BRG", false, false},
+    {NEO_BGR, "NEO_BGR", false, false},
+    {NEO_WRGB, "NEO_WRGB", false, false},
+    {NEO_WGRB, "NEO_WGRB", false, false}
+};
+
+static SettingListItem LED_FREQUENCIES[] = {
+    {NEO_KHZ400, "400 КГц", false, false},
+    {NEO_KHZ800, "800 КГц (рекомендовано)", false, false}
+};
+
+constexpr int LED_COLOR_FORMATS_COUNT = 8;
+constexpr int LED_FREQUENCIES_COUNT = 2; 
+
 
 enum Type {
     UNKNOWN = 0,
@@ -201,19 +234,13 @@ enum Type {
     ALERT_OFF_TIME,
     EXPLOSION_TIME,
     ALERT_BLINK_TIME,
+    MAIN_LED_COLOR_FORMAT,
+    MAIN_LED_FREQUENCY,
+    BG_LED_COLOR_FORMAT,
+    BG_LED_FREQUENCY,
+    SERVICE_LED_COLOR_FORMAT,
+    SERVICE_LED_FREQUENCY
 };
-struct RegionLedMapEntry {
-    uint16_t region_id;
-    int led_positions[MAX_LEDS_PER_REGION];
-    uint8_t led_count;
-};
-struct SettingListItem {
-  uint16_t id;
-  const char* name;
-  bool ignore;
-  bool sub;
-};
-
 
 static SettingListItem DISTRICTS[MAX_REGIONS] = {
     // АР Крим
@@ -617,5 +644,5 @@ const RegionLedMapEntry REGION_MAP_LED[MAX_REGIONS] = {
     { 142,  { 18 }, 1 },    // Ніжинський район
     { 143,  { 18 }, 1 },    // Прилуцький район
     { 140,  { 18 }, 1 },    // Чернігівський район
-    { 144,  { 18 }, 1 },    // Корюківський район
+     { 144,  { 18 }, 1 },    // Корюківський район
 };

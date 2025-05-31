@@ -2,6 +2,7 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <JaamUtils.h>
+#include <Adafruit_NeoPixel.h>
 
 JaamSettings::JaamSettings() {
 }
@@ -160,7 +161,12 @@ std::map<Type, SettingItemInt> intSettings = {
     {ALERT_OFF_TIME, {"aoft", 5}},
     {EXPLOSION_TIME, {"ext", 3}},
     {ALERT_BLINK_TIME, {"abt", 3}},
-
+    {MAIN_LED_COLOR_FORMAT, {"mlcf", NEO_GRB}},
+    {MAIN_LED_FREQUENCY, {"mlfq", NEO_KHZ800}},
+    {BG_LED_COLOR_FORMAT, {"blcf", NEO_GRB}},
+    {BG_LED_FREQUENCY, {"blfq", NEO_KHZ800}},
+    {SERVICE_LED_COLOR_FORMAT, {"slcf", NEO_GRB}},
+    {SERVICE_LED_FREQUENCY, {"slfq", NEO_KHZ800}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {

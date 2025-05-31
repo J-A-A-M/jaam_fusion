@@ -72,9 +72,9 @@ String JaamWeb::getDropdownHtml(const String& name, const String& label, Type se
     uint16_t currentValue = settings->getInt(settingKey);
     
     // Додаємо опцію "Не вибрано"
-    html += "<option value=\"0\"";
-    if (currentValue == 0) html += " selected";
-    html += ">Не вибрано</option>";
+    // html += "<option value=\"0\"";
+    // if (currentValue == 0) html += " selected";
+    // html += ">Не вибрано</option>";
     
     // Проходимо по масиву items і додаємо тільки ті, що мають ignore=false
     for (int i = 0; i < itemCount; i++) {
@@ -137,11 +137,17 @@ String JaamWeb::getHtmlTemplate() {
     html += getTextInputHtml("ha_mqtt_password", settings->getString(HA_MQTT_PASSWORD), "MQTT пароль", "");
     html += getTextInputHtml("ha_broker_address", settings->getString(HA_BROKER_ADDRESS), "Адреса брокера", "");
     html += "<label class=\"label\">Піни LED стрічок</label>";
-    html += "<div class=\"warning\">⚠️ Увага: Зміна пінів призведе до повного перезапуску всіх LED стрічок!</div>";
+    html += "<div class=\"warning\">⚠️ Увага: Зміна пінів або типів призведе до повного перезапуску всіх LED стрічок!</div>";
     html += getTextInputHtml("main_led_pin", String(settings->getInt(MAIN_LED_PIN)).c_str(), "Основна стрічка (пін)", "13");
+    html += getDropdownHtml("main_led_color_format", "Основна стрічка (формат кольору)", MAIN_LED_COLOR_FORMAT, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
+    html += getDropdownHtml("main_led_frequency", "Основна стрічка (частота)", MAIN_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
     html += getTextInputHtml("bg_led_pin", String(settings->getInt(BG_LED_PIN)).c_str(), "Фонова стрічка (пін)", "-1");
     html += getTextInputHtml("bg_led_count", String(settings->getInt(BG_LED_COUNT)).c_str(), "Фонова стрічка (кількість)", "0");
+    html += getDropdownHtml("bg_led_color_format", "Фонова стрічка (формат кольору)", BG_LED_COLOR_FORMAT, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
+    html += getDropdownHtml("bg_led_frequency", "Фонова стрічка (частота)", BG_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
     html += getTextInputHtml("service_led_pin", String(settings->getInt(SERVICE_LED_PIN)).c_str(), "Сервісна стрічка (пін)", "-1");
+    html += getDropdownHtml("service_led_color_format", "Сервісна стрічка (формат кольору)", SERVICE_LED_COLOR_FORMAT, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
+    html += getDropdownHtml("service_led_frequency", "Сервісна стрічка (частота)", SERVICE_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
     html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
@@ -296,6 +302,106 @@ void JaamWeb::handleColorParameter() {
     }
 }
 
+void JaamWeb::handleParameter() {
+    if (server.hasArg("name") && server.hasArg("value")) {
+        String name = server.arg("name");
+        String value = server.arg("value");
+        
+        const char* namePtr = name.c_str();
+        const char* valuePtr = value.c_str();
+        int intValue = value.toInt();
+
+        if (name == "home_district") {
+            settings->saveInt(HOME_DISTRICT, intValue);
+            LOG.printf("[WEB] Setting home_district: %d\n", intValue);
+        } else if (name == "brightness") {
+            settings->saveInt(BRIGHTNESS, intValue);
+            LOG.printf("[WEB] Setting brightness: %d\n", intValue);
+            needAdaptStripBrightness = true;
+        } else if (name == "brightness_day") {
+            settings->saveInt(BRIGHTNESS_DAY, intValue);
+            LOG.printf("[WEB] Setting brightness_day: %d\n", intValue);
+        } else if (name == "brightness_night") {
+            settings->saveInt(BRIGHTNESS_NIGHT, intValue);
+            LOG.printf("[WEB] Setting brightness_night: %d\n", intValue);
+        } else if (name == "brightness_alert") {
+            settings->saveInt(BRIGHTNESS_ALERT, intValue);
+            LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);
+        } else if (name == "brightness_clear") {
+            settings->saveInt(BRIGHTNESS_CLEAR, intValue);
+            LOG.printf("[WEB] Setting brightness_clear: %d\n", intValue);
+        } else if (name == "brightness_new_alert") {
+            settings->saveInt(BRIGHTNESS_NEW_ALERT, intValue);
+            LOG.printf("[WEB] Setting brightness_new_alert: %d\n", intValue);
+        } else if (name == "brightness_alert_over") {
+            settings->saveInt(BRIGHTNESS_ALERT_OVER, intValue);
+            LOG.printf("[WEB] Setting brightness_alert_over: %d\n", intValue);
+        } else if (name == "brightness_explosion") {
+            settings->saveInt(BRIGHTNESS_EXPLOSION, intValue);
+            LOG.printf("[WEB] Setting brightness_explosion: %d\n", intValue);
+        } else if (name == "brightness_home_district") {
+            settings->saveInt(BRIGHTNESS_HOME_DISTRICT, intValue);
+            LOG.printf("[WEB] Setting brightness_home_district: %d\n", intValue);
+        } else if (name == "brightness_bg") {
+            settings->saveInt(BRIGHTNESS_BG, intValue);
+            LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);
+            needAdaptStripBrightness = true;
+        } else if (name == "brightness_service") {
+            settings->saveInt(BRIGHTNESS_SERVICE, intValue);
+            LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
+            needAdaptStripBrightness = true;
+        } else if (name == "main_led_color_format") {
+            settings->saveInt(MAIN_LED_COLOR_FORMAT, intValue);
+            LOG.printf("[WEB] Setting main_led_color_format: %d\n", intValue);
+            needReconnectMainStrip = true;
+        } else if (name == "main_led_frequency") {
+            settings->saveInt(MAIN_LED_FREQUENCY, intValue);
+            LOG.printf("[WEB] Setting main_led_frequency: %d\n", intValue);
+            needReconnectMainStrip = true;
+        } else if (name == "bg_led_color_format") {
+            settings->saveInt(BG_LED_COLOR_FORMAT, intValue);
+            LOG.printf("[WEB] Setting bg_led_color_format: %d\n", intValue);
+            needReconnectBgStrip = true;
+        } else if (name == "bg_led_frequency") {
+            settings->saveInt(BG_LED_FREQUENCY, intValue);
+            LOG.printf("[WEB] Setting bg_led_frequency: %d\n", intValue);
+            needReconnectBgStrip = true;
+        } else if (name == "service_led_color_format") {
+            settings->saveInt(SERVICE_LED_COLOR_FORMAT, intValue);
+            LOG.printf("[WEB] Setting service_led_color_format: %d\n", intValue);
+            needReconnectServiceStrip = true;
+        } else if (name == "service_led_frequency") {
+            settings->saveInt(SERVICE_LED_FREQUENCY, intValue);
+            LOG.printf("[WEB] Setting service_led_frequency: %d\n", intValue);
+            needReconnectServiceStrip = true;
+        } else if (name == "enable_kabs") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_KABS, boolValue);
+            LOG.printf("[WEB] Setting enable_kabs: %d\n", boolValue);
+        } else if (name == "enable_missiles") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_MISSILES, boolValue);
+            LOG.printf("[WEB] Setting enable_missiles: %d\n", boolValue);
+        } else if (name == "enable_drones") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_DRONES, boolValue);
+            LOG.printf("[WEB] Setting enable_drones: %d\n", boolValue);
+        } else if (name == "enable_ballistic") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_BALLISTIC, boolValue);
+            LOG.printf("[WEB] Setting enable_ballistic: %d\n", boolValue);
+        } else if (name == "enable_explosions") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_EXPLOSIONS, boolValue);
+            LOG.printf("[WEB] Setting enable_explosions: %d\n", boolValue);
+        }
+
+        server.send(200, "text/plain", "OK");
+    } else {
+        server.send(400, "text/plain", "Missing parameters");
+    }
+}
+
 void JaamWeb::handleTextParameter() {
     if (server.hasArg("name") && server.hasArg("value")) {
         String name = server.arg("name");
@@ -335,268 +441,23 @@ void JaamWeb::handleTextParameter() {
             settings->saveString(HA_BROKER_ADDRESS, valuePtr);
             LOG.printf("[WEB] Setting ha_broker_address: %s\n", valuePtr);
         } else if (name == "main_led_pin") {
-            int newPin = value.toInt();
-            int currentPin = settings->getInt(MAIN_LED_PIN);
-            if (newPin != currentPin) {
-                LOG.printf("[WEB] Changing main_led_pin from %d to %d\n", currentPin, newPin);
-                logMemoryUsage("before main_led_pin change");
-                settings->saveInt(MAIN_LED_PIN, newPin);
-                needReconnectMainStrip = true;
-                LOG.printf("[WEB] Setting main_led_pin: %d\n", newPin);
-            }
+            settings->saveInt(MAIN_LED_PIN, value.toInt());
+            LOG.printf("[WEB] Setting main_led_pin: %s\n", valuePtr);
+            needReconnectMainStrip = true;
         } else if (name == "bg_led_pin") {
-            int newPin = value.toInt();
-            int currentPin = settings->getInt(BG_LED_PIN);
-            if (newPin != currentPin) {
-                LOG.printf("[WEB] Changing bg_led_pin from %d to %d\n", currentPin, newPin);
-                logMemoryUsage("before bg_led_pin change");
-                settings->saveInt(BG_LED_PIN, newPin);
-                needReconnectBgStrip= true;
-                LOG.printf("[WEB] Setting bg_led_pin: %d\n", newPin);
-            }
+            settings->saveInt(BG_LED_PIN, value.toInt());
+            LOG.printf("[WEB] Setting bg_led_pin: %s\n", valuePtr);
+            needReconnectBgStrip = true;
         } else if (name == "bg_led_count") {
-            int newCount = value.toInt();
-            int currentCount = settings->getInt(BG_LED_COUNT);
-            if (newCount != currentCount) {
-                LOG.printf("[WEB] Changing bg_led_count from %d to %d\n", currentCount, newCount);
-                logMemoryUsage("before bg_led_count change");
-                settings->saveInt(BG_LED_COUNT, newCount);
-                needReconnectBgStrip = true;
-                LOG.printf("[WEB] Setting bg_led_count: %d\n", newCount);
-            }
+            settings->saveInt(BG_LED_COUNT, value.toInt());
+            LOG.printf("[WEB] Setting bg_led_count: %s\n", valuePtr);
+            needReconnectBgStrip = true;
         } else if (name == "service_led_pin") {
-            int newPin = value.toInt();
-            int currentPin = settings->getInt(SERVICE_LED_PIN);
-            if (newPin != currentPin) {
-                LOG.printf("[WEB] Changing service_led_pin from %d to %d\n", currentPin, newPin);
-                logMemoryUsage("before service_led_pin change");
-                settings->saveInt(SERVICE_LED_PIN, newPin);
-                needReconnectServiceStrip = true;
-                LOG.printf("[WEB] Setting service_led_pin: %d\n", newPin);
-            }
+            settings->saveInt(SERVICE_LED_PIN, value.toInt());
+            LOG.printf("[WEB] Setting service_led_pin: %s\n", valuePtr);
+            needReconnectServiceStrip = true;
         }
 
-        server.send(200, "text/plain", "OK");
-    } else {
-        server.send(400, "text/plain", "Missing parameters");
-    }
-}
-
-void JaamWeb::handleParameter() {
-    if (server.hasArg("name") && server.hasArg("value")) {
-        String name = server.arg("name");
-        int value = server.arg("value").toInt();
-        
-        // Знаходимо відповідний тип параметра за ім'ям
-        if (name == "brightness") {
-            settings->saveInt(BRIGHTNESS, value);
-            if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness main: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
-                needAdaptStripBrightness = true;
-            }
-        } else if (name == "brightness_day") {
-            settings->saveInt(BRIGHTNESS_DAY, value);
-        } else if (name == "brightness_night") {
-            settings->saveInt(BRIGHTNESS_NIGHT, value);
-        } else if (name == "brightness_alert") {
-            settings->saveInt(BRIGHTNESS_ALERT, value);
-            if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
-                // needAdaptNonAnimationColors = true;
-                // needAdaptAlertColors = true; 
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "brightness_clear") {
-            settings->saveInt(BRIGHTNESS_CLEAR, value);
-            if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));  
-                // needAdaptNonAnimationColors = true;
-                // needAdaptAlertClearColors = true;            
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "brightness_new_alert") {
-            settings->saveInt(BRIGHTNESS_NEW_ALERT, value);
-            if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "brightness_alert_over") {
-            settings->saveInt(BRIGHTNESS_ALERT_OVER, value);
-            if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "brightness_explosion") {
-            settings->saveInt(BRIGHTNESS_EXPLOSION, value);
-            if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness clear: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
-                // needAdaptNonAnimationColors = true;
-                // needAdaptAlertExplosionColors = true; 
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "brightness_home_district") {
-            settings->saveInt(BRIGHTNESS_HOME_DISTRICT, value);
-            if (strip_main_initialized) {
-                LOG.printf("[WEB] Setting brightness home district: raw=%d, converted=%d\n", value, led.brightnessAbsolute(value));               
-                //needAdaptNonAnimationColors = true;
-                //needAdaptAlertHomeDistrictColors = true; 
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    uint8_t count;
-                    const int* leds = getLedsForRegion(settings->getInt(HOME_DISTRICT), count);
-                    for (int i = 0; i < count; ++i) {
-                        int ledsIdx[1] = { leds[i] };
-                        uint32_t color = animation.ledActualColor(strip, leds[i]);
-                        strip->setPixelColor(leds[i], color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "brightness_bg") {
-            settings->saveInt(BRIGHTNESS_BG, value);
-            if (strip_bg_initialized) {
-                LOG.printf("[WEB] Setting home brightness bg: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
-                animation.safeStripOperation(strip_bg, [this, value](Adafruit_NeoPixel* strip) {
-                    strip->setBrightness(led.brightnessMapped(value));
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "brightness_service") {
-            settings->saveInt(BRIGHTNESS_SERVICE, value);
-            if (strip_service_initialized) {
-                LOG.printf("[WEB] Setting home brightness service: raw=%d, converted=%d\n", value, led.brightnessMapped(value));
-                animation.safeStripOperation(strip_service, [this, value](Adafruit_NeoPixel* strip) {
-                    strip->setBrightness(led.brightnessMapped(value));
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "enable_kabs") {
-            settings->saveBool(ENABLE_KABS, value != 0);
-            if (strip_main_initialized) {
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "enable_missiles") {
-            settings->saveBool(ENABLE_MISSILES, value != 0);
-            if (strip_main_initialized) {
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "enable_drones") {
-            settings->saveBool(ENABLE_DRONES, value != 0);
-            if (strip_main_initialized) {
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "enable_ballistic") {
-            settings->saveBool(ENABLE_BALLISTIC, value != 0);
-            if (strip_main_initialized) {
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        } else if (name == "enable_explosions") {
-            settings->saveBool(ENABLE_EXPLOSIONS, value != 0);
-            if (strip_main_initialized) {
-                animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    for (int i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    strip->show();
-                });
-            }
-        }
-
-        // Додаємо обробку home_district
-        else if (name == "home_district") {
-            // Перевіряємо чи є такий ID в списку DISTRICTS
-            bool validId = false;
-            if (value == 0) {
-                validId = true; // "Не вибрано" - валідний варіант
-            } else {
-                for (int i = 0; i < MAX_REGIONS; i++) {
-                    if (DISTRICTS[i].id == value && !DISTRICTS[i].ignore) {
-                        validId = true;
-                        break;
-                    }
-                }
-            }
-            if (validId) {
-                settings->saveInt(HOME_DISTRICT, value);
-                LOG.printf("[WEB] Home district set: %d\n", value);
-                if (strip_main_initialized) {
-                    animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                        for (int i = 0; i < strip->numPixels(); i++) {
-                            uint32_t color = animation.ledActualColor(strip, i);
-                            strip->setPixelColor(i, color);
-                        }
-                        strip->show();
-                    });
-                }
-            } else {
-                LOG.printf("[WEB] Error: invalid district ID: %d\n", value);
-            }
-        }
-
-        needAdaptAnimationColors = true;
-        
         server.send(200, "text/plain", "OK");
     } else {
         server.send(400, "text/plain", "Missing parameters");
