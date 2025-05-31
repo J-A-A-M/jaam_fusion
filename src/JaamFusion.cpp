@@ -86,32 +86,63 @@ size_t              lastUsedHeap = 0;
 
 
 std::map<uint16_t, uint16_t>    alertsMap;
-std::map<uint16_t, bool>        airAlertsMap;
-std::map<uint16_t, bool>        artilleryAlertsMap;
-std::map<uint16_t, bool>        urbanFightsAlertsMap;
-std::map<uint16_t, bool>        chemicalAlertsMap;
-std::map<uint16_t, bool>        nuclearAlertsMap;
-std::map<uint16_t, bool>        missilesAlertsMap;
-std::map<uint16_t, bool>        kabAlertsMap;
-std::map<uint16_t, bool>        dronesAlertsMap;
-std::map<uint16_t, bool>        ballisticAlertsMap;
-std::map<uint16_t, bool>        explosionAlertsMap;
+// std::map<uint16_t, bool>        airAlertsMap;
+// std::map<uint16_t, bool>        artilleryAlertsMap;
+// std::map<uint16_t, bool>        urbanFightsAlertsMap;
+// std::map<uint16_t, bool>        chemicalAlertsMap;
+// std::map<uint16_t, bool>        nuclearAlertsMap;
+// std::map<uint16_t, bool>        missilesAlertsMap;
+// std::map<uint16_t, bool>        kabAlertsMap;
+// std::map<uint16_t, bool>        dronesAlertsMap;
+// std::map<uint16_t, bool>        ballisticAlertsMap;
+// std::map<uint16_t, bool>        explosionAlertsMap;
 
 
 void clearAllAlertsMaps() {
-    alertsMap.clear();
-    airAlertsMap.clear();
-    artilleryAlertsMap.clear();
-    urbanFightsAlertsMap.clear();
-    chemicalAlertsMap.clear();
-    nuclearAlertsMap.clear();
-    missilesAlertsMap.clear();
-    kabAlertsMap.clear();
-    dronesAlertsMap.clear();
-    ballisticAlertsMap.clear();
-    explosionAlertsMap.clear();
+    // Логування стану пам'яті перед очищенням
+    size_t memBefore = ESP.getFreeHeap();
+    LOG.printf("[MEMORY] Free heap before clearing maps: %u bytes\n", memBefore);
     
-    LOG.printf("[MAIN] Clearing all alerts maps\n");
+    // Очищаємо всі map'и
+    alertsMap.clear();
+    // airAlertsMap.clear();
+    // artilleryAlertsMap.clear();
+    // urbanFightsAlertsMap.clear();
+    // chemicalAlertsMap.clear();
+    // nuclearAlertsMap.clear();
+    // missilesAlertsMap.clear();
+    // kabAlertsMap.clear();
+    // dronesAlertsMap.clear();
+    // ballisticAlertsMap.clear();
+    // explosionAlertsMap.clear();
+    
+    // Додаткове очищення пам'яті після clear()
+    // Для std::map викликаємо shrink_to_fit через swap з пустими контейнерами
+    std::map<uint16_t, uint16_t>().swap(alertsMap);
+    // std::map<uint16_t, bool>().swap(airAlertsMap);
+    // std::map<uint16_t, bool>().swap(artilleryAlertsMap);
+    // std::map<uint16_t, bool>().swap(urbanFightsAlertsMap);
+    // std::map<uint16_t, bool>().swap(chemicalAlertsMap);
+    // std::map<uint16_t, bool>().swap(nuclearAlertsMap);
+    // std::map<uint16_t, bool>().swap(missilesAlertsMap);
+    // std::map<uint16_t, bool>().swap(kabAlertsMap);
+    // std::map<uint16_t, bool>().swap(dronesAlertsMap);
+    // std::map<uint16_t, bool>().swap(ballisticAlertsMap);
+    // std::map<uint16_t, bool>().swap(explosionAlertsMap);
+    
+    // Принудове очищення пам'яті
+    forceMemoryCleanup("after maps clearing");
+    
+    // Дефрагментація пам'яті
+    defragmentMemory("after maps clearing");
+    
+    // Логування результату
+    size_t memAfter = ESP.getFreeHeap();
+    int memReclaimed = (int)(memAfter - memBefore);
+    
+    LOG.printf("[MAIN] Clearing all alerts maps completed\n");
+    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n", 
+               memReclaimed, memBefore, memAfter);
 }
 
 
@@ -221,6 +252,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     LOG.printf("[WEBSOCKET] data processing\n");
 
     bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic, explosion;
+    bool airPrevious, artilleryPrevious, urbanPrevious, chemicalPrevious, nuclearPrevious, missilesPrevious, kabPrevious, dronesPrevious, ballisticPrevious, explosionPrevious ;
     for (size_t i = 0; i < count; ++i) {
         uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
         uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
@@ -231,10 +263,10 @@ void onMessageCallback(WebsocketsMessage msg) {
         const int* leds = getLedsForRegion(region_id, ledCount);
         if (leds == nullptr) {
             // Якщо такого регіону немає — пропускаємо цей запис
-            LOG.printf("[WEBSOCKET] region %d: %d skipped - no leds associated", region_id, flags16);
+            LOG.printf("[WEBSOCKET] region %d: %d skipped - no leds associated\n", region_id, flags16);
             continue;
         } else {
-            LOG.printf("[WEBSOCKET] region %d: %d", region_id, flags16);
+            LOG.printf("[WEBSOCKET] region %d: %d\n", region_id, flags16);
         }
 
         bool animate = false;
@@ -257,11 +289,23 @@ void onMessageCallback(WebsocketsMessage msg) {
         bool notificationMissiles = false;
         bool notificationDrones = false;
         bool notificationBallistic = false;
-        
+
+        // Розкладаємо попередні тривоги
+        airPrevious         = alertsMap[region_id] & (1 << 0);
+        artilleryPrevious   = alertsMap[region_id] & (1 << 1);
+        urbanPrevious       = alertsMap[region_id] & (1 << 2);
+        chemicalPrevious    = alertsMap[region_id] & (1 << 3);
+        nuclearPrevious     = alertsMap[region_id] & (1 << 4);
+        dronesPrevious      = alertsMap[region_id] & (1 << 5);
+        missilesPrevious    = alertsMap[region_id] & (1 << 6);
+        kabPrevious         = alertsMap[region_id] & (1 << 7);
+        ballisticPrevious   = alertsMap[region_id] & (1 << 8);
+        explosionPrevious   = alertsMap[region_id] & (1 << 9);
 
         // Зберігаємо
         alertsMap[region_id] = flags16;
-        // Розкладаємо по окремих тривогах
+
+        // Розкладаємо актуальні тривоги
         air         = flags16 & (1 << 0);
         artillery   = flags16 & (1 << 1);
         urban       = flags16 & (1 << 2);
@@ -273,30 +317,33 @@ void onMessageCallback(WebsocketsMessage msg) {
         ballistic   = flags16 & (1 << 8);
         explosion   = flags16 & (1 << 9);
 
-        if (!airAlertsMap[region_id]    &&   air) { airStarted = true; }
-        if (airAlertsMap[region_id]    &&   !air) { airCompleted = true; }
-        if (!dronesAlertsMap[region_id]    &&   drones) { dronesStarted = true; }
-        if (dronesAlertsMap[region_id]    &&   !drones) { dronesCompleted = true; }
-        if (!missilesAlertsMap[region_id]    &&   missiles) { missilesStarted = true; }
-        if (missilesAlertsMap[region_id]    &&   !missiles) { missilesCompleted = true; }
-        if (!kabAlertsMap[region_id]    &&   kab) { kabStarted = true; }
-        if (kabAlertsMap[region_id]    &&   !kab) { kabCompleted = true; }
-        if (!explosionAlertsMap[region_id]    &&   explosion) { explosionStarted = true; }
-        if (explosionAlertsMap[region_id]    &&   !explosion) { explosionCompleted = true; }
-        if (!ballisticAlertsMap[region_id]    &&   ballistic) { ballisticStarted = true; }
-        if (ballisticAlertsMap[region_id]    &&   !ballistic) { ballisticCompleted = true; }
+        if (!airPrevious    &&   air) { airStarted = true; }
+        if (airPrevious    &&   !air) { 
+            airCompleted = true; 
+            alertsMap.erase(region_id);
+        }
+        if (!dronesPrevious    &&   drones) { dronesStarted = true; }
+        if (dronesPrevious    &&   !drones) { dronesCompleted = true; }
+        if (!missilesPrevious    &&   missiles) { missilesStarted = true; }
+        if (missilesPrevious    &&   !missiles) { missilesCompleted = true; }
+        if (!kabPrevious    &&   kab) { kabStarted = true; }
+        if (kabPrevious    &&   !kab) { kabCompleted = true; }
+        if (!ballisticPrevious    &&   ballistic) { ballisticStarted = true; }
+        if (ballisticPrevious    &&   !ballistic) { ballisticCompleted = true; }
+        if (!explosionPrevious    &&   explosion) { explosionStarted = true; }
+        if (explosionPrevious    &&   !explosion) { explosionCompleted = true; }
 
         // Розкладаємо по окремих тривогах
-        airAlertsMap[region_id]                   = air;
-        artilleryAlertsMap[region_id]             = artillery;
-        urbanFightsAlertsMap[region_id]           = urban;
-        chemicalAlertsMap[region_id]              = chemical;
-        nuclearAlertsMap[region_id]               = nuclear;
-        missilesAlertsMap[region_id]              = missiles;
-        kabAlertsMap[region_id]                   = kab;
-        dronesAlertsMap[region_id]                = drones;
-        ballisticAlertsMap[region_id]             = ballistic;
-        explosionAlertsMap[region_id]             = explosion;
+        // airAlertsMap[region_id]                   = air;
+        // artilleryAlertsMap[region_id]             = artillery;
+        // urbanFightsAlertsMap[region_id]           = urban;
+        // chemicalAlertsMap[region_id]              = chemical;
+        // nuclearAlertsMap[region_id]               = nuclear;
+        // missilesAlertsMap[region_id]              = missiles;
+        // kabAlertsMap[region_id]                   = kab;
+        // dronesAlertsMap[region_id]                = drones;
+        // ballisticAlertsMap[region_id]             = ballistic;
+        // explosionAlertsMap[region_id]             = explosion;
 
         // LOG.printf("airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d Region %d led %d \n", 
         //     airAlertsMap[region_id], air, 
@@ -325,7 +372,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 period = 1000;
                 cycles = 300;
             }
-            if (airAlertsMap[region_id] && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
+            if (air && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_DRONES));
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -334,7 +381,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 period = 1000;
                 cycles = 180;              
             }
-            if (airAlertsMap[region_id] && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
+            if (air && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -343,7 +390,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 period = 1000;
                 cycles = 180;
             }
-            if (airAlertsMap[region_id] && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
+            if (air && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_KABS));
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -352,7 +399,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 period = 1000;
                 cycles = 180;
             }
-            if (airAlertsMap[region_id] && (ballisticStarted || notificationBallistic) && settings.getBool(ENABLE_BALLISTIC)) {
+            if (air && (ballisticStarted || notificationBallistic) && settings.getBool(ENABLE_BALLISTIC)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
@@ -361,7 +408,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 period = 1000;
                 cycles = 180;
             }
-            if (airAlertsMap[region_id] && (explosionStarted || notificationExplosion) && settings.getBool(ENABLE_EXPLOSIONS)) {
+            if (air && (explosionStarted || notificationExplosion) && settings.getBool(ENABLE_EXPLOSIONS)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
                 startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
