@@ -86,6 +86,7 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
         }
 
         if (activeCount >= MAX_ANIMATIONS) {
+            LOG.printf("[ANIMATION] ERROR: Maximum animations reached (%d)\n", MAX_ANIMATIONS);
             xSemaphoreGive(animMutex);
             return false;
         }
@@ -99,7 +100,22 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
         }
 
         if (slot != -1) {
-            animations[slot] = new AnimationParams;
+            animations[slot] = new(std::nothrow) AnimationParams;
+            if (animations[slot] == nullptr) {
+                LOG.printf("[ANIMATION] ERROR: Failed to allocate memory for animation\n");
+                xSemaphoreGive(animMutex);
+                return false;
+            }
+            
+            animations[slot]->positions = new(std::nothrow) int[posCount];
+            if (animations[slot]->positions == nullptr) {
+                LOG.printf("[ANIMATION] ERROR: Failed to allocate memory for positions array\n");
+                delete animations[slot];
+                animations[slot] = nullptr;
+                xSemaphoreGive(animMutex);
+                return false;
+            }
+            
             animations[slot]->type = type;
             animations[slot]->strip = strip;
             animations[slot]->posCount = posCount;
@@ -111,9 +127,9 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
             animations[slot]->endBrightness = endBrightness;
             animations[slot]->isActive = true;
             animations[slot]->startTime = millis();
-            animations[slot]->positions = new int[posCount];
-            memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
             animations[slot]->region_id = region_id;
+            
+            memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
 
             // LOG: Початок анімації
             const char* typeName = "unknown";
@@ -124,6 +140,7 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
                 case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
                 case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
                 case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
+                case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
             }
             LOG.printf("[ANIMATION START] type=%s, region=%d, leds=", typeName, region_id);
             for (int i = 0; i < posCount; ++i) {
@@ -141,10 +158,15 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
 
             // Додаємо в список активних анімацій для кожного LED
             for (int posIdx = 0; posIdx < posCount; ++posIdx) {
-                activeAnimations[activeAnimationsCount].strip = strip;
-                activeAnimations[activeAnimationsCount].ledIndex = positions[posIdx];
-                activeAnimations[activeAnimationsCount].animationIndex = slot;
-                activeAnimationsCount++;
+                if (activeAnimationsCount < MAX_ANIMATIONS) {
+                    activeAnimations[activeAnimationsCount].strip = strip;
+                    activeAnimations[activeAnimationsCount].ledIndex = positions[posIdx];
+                    activeAnimations[activeAnimationsCount].animationIndex = slot;
+                    activeAnimationsCount++;
+                } else {
+                    LOG.printf("[ANIMATION] WARNING: activeAnimations array full\n");
+                    break;
+                }
             }
 
             activeCount++;
@@ -647,6 +669,8 @@ void AnimationManager::removeLedFromAnimation(AnimationParams* anim, int ledIdx,
 }
 
 void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
+    if (anim == nullptr) return;
+    
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < anim->posCount; ++i) {
             // Визначаємо дефолтний колір для стрічки
@@ -665,14 +689,21 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
                 activeAnimations[j] = activeAnimations[j + 1];
             }
             activeAnimationsCount--;
-            break;
+            i--; // Decrement i to check the shifted element
         }
     }
 
-    delete[] anim->positions;
+    // Proper memory cleanup
+    if (anim->positions != nullptr) {
+        delete[] anim->positions;
+        anim->positions = nullptr;
+    }
+    
     delete anim;
     animations[index] = nullptr;
     activeCount--;
+    
+    LOG.printf("[ANIMATION] Cleaned up animation slot %d, active count: %d\n", index, activeCount);
 }
 
 std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds) {

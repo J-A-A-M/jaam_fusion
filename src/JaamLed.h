@@ -47,5 +47,19 @@ public:
                         uint8_t brightness,
                         uint32_t color, 
                         uint8_t type);
+    
+    // Функція для безпечного видалення стрічки
+    static void destroyStrip(Adafruit_NeoPixel*& strip);
+    
+    // Add memory cleanup verification
+    static void verifyStripCleanup(Adafruit_NeoPixel* strip);
+    
+    // Add strip recreation with proper cleanup
+    static StripStatus recreateStrip(Adafruit_NeoPixel*& strip,
+                                   int pin,
+                                   uint8_t count,
+                                   uint8_t brightness,
+                                   uint32_t color,
+                                   uint8_t type);
 };
 

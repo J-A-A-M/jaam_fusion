@@ -15,6 +15,7 @@
 #include "JaamSettings.h"
 #include "JaamWeb.h"
 #include "JaamLed.h"
+#include "JaamUtils.h"
 
 using namespace websockets;
 
@@ -54,6 +55,10 @@ AnimationParams::Type   animType;
 bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
 bool                needToReconnectWebsocket = false;
+bool                needReconnectStrips = false;
+bool                needReconnectMainStrip;
+bool                needReconnectBgStrip;
+bool                needReconnectServiceStrip;
 // bool                needAdaptNonAnimationColors = false;
 // bool                needAdaptAlertClearColors = false;
 // bool                needAdaptAlertColors = false;
@@ -105,20 +110,27 @@ void clearAllAlertsMaps() {
     dronesAlertsMap.clear();
     ballisticAlertsMap.clear();
     explosionAlertsMap.clear();
+    
     LOG.printf("[MAIN] Clearing all alerts maps\n");
 }
 
 
 void rebootDevice(int time = 2000, bool async = false) {
-    // if (async) {
-    //     needRebootWithDelay = time;
-    //     return;
-    // }
-    //showServiceMessage("Перезавантаження..", "", time);
-    LOG.printf("[MAIN] Rebooting.....\n");
+    LOG.printf("[MAIN] Rebooting in %d ms...\n", time);
+    
+    // Clean up all resources before reboot
+    clearAllAlertsMaps();
+    animation.clearAllAnimations();
+    
+    // Close websocket connection properly
+    if (websocket.available()) {
+        websocket.close();
+    }
+    
+    // Add memory logging before reboot
+    LOG.printf("[MEMORY] Free heap before reboot: %u bytes\n", ESP.getFreeHeap());
+    
     delay(time);
-    //display.clearDisplay();
-    //display.display();
     ESP.restart();
 }
 
@@ -145,24 +157,22 @@ void printHex(const String& data) {
 }
 
 void onMessageCallback(WebsocketsMessage msg) {
-    LOG.print("[WEBSOCKET] Got Message: ");
-
-    
+    checkFreeHeap("Websockets onMessageCallback");
 
     // Ігноруємо текстові повідомлення
     if (!msg.isBinary()) {
-        LOG.println("Message in not binary");
+        LOG.println("[WEBSOCKET] Message in not binary");
         LOG.println(msg.data());
         JsonDocument data = parseJson(msg.data().c_str());
         String payload = data["payload"];
         if (!payload.isEmpty()) {
             if (payload == "ping") {
-                LOG.println("Heartbeat from server");
+                LOG.println("[WEBSOCKET] Heartbeat from server");
             }
         }
         return;
     } else {
-        LOG.printf("payload. len: %d processing\n", msg.length());
+        LOG.printf("[WEBSOCKET] bytes payload len: %d\n", msg.length());
     }
     websocketLastPingTime = millis();
 
@@ -207,16 +217,24 @@ void onMessageCallback(WebsocketsMessage msg) {
     uint8_t endBrightness = 255;
     uint8_t ledCount;
     std::vector<int> ledsIdx;
+
+    LOG.printf("[WEBSOCKET] data processing\n");
+
     bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic, explosion;
     for (size_t i = 0; i < count; ++i) {
         uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
         uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
         ptr += RECORD_SZ;
 
+        
+
         const int* leds = getLedsForRegion(region_id, ledCount);
         if (leds == nullptr) {
             // Якщо такого регіону немає — пропускаємо цей запис
+            LOG.printf("[WEBSOCKET] region %d: %d skipped - no leds associated", region_id, flags16);
             continue;
+        } else {
+            LOG.printf("[WEBSOCKET] region %d: %d", region_id, flags16);
         }
 
         bool animate = false;
@@ -354,58 +372,43 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             
             if(animate) {
-                for (int i = 0; i < ledCount; ++i) {
-                    int ledsIdx[1] = { leds[i] };
-                    if (!animation.createAnimation(
-                        animType,
-                        strip_main,
-                        ledsIdx,
-                        1,
-                        color,
-                        initialColor,
-                        period,
-                        cycles,
-                        startBrightness,
-                        endBrightness,
-                        region_id
-                    )) {
-                        LOG.println("[ERROR] Failed to create animation");
-                        return;
+                if (strip_main_initialized) {
+                    for (int i = 0; i < ledCount; ++i) {
+                        int ledsIdx[1] = { leds[i] };
+                        if (!animation.createAnimation(
+                            animType,
+                            strip_main,
+                            ledsIdx,
+                            1,
+                            color,
+                            initialColor,
+                            period,
+                            cycles,
+                            startBrightness,
+                            endBrightness,
+                            region_id
+                        )) {
+                            LOG.println("[ERROR] Failed to create animation");
+                            return;
+                        }
                     }
                 }
             }
         } else {
-            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for(uint16_t i = 0; i < num_leds_main; i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-
+            if (strip_main_initialized) {
+                animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+                    for(uint16_t i = 0; i < num_leds_main; i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
         }
     }
 
     isFirstDataFetchCompleted = true;
-
-    // Викликаємо createAnimation один раз для всіх активних region_id
-    // if (!ledsIdx.empty()) {
-    //     if (!animation.createAnimation(
-    //         animType,
-    //         strip_main,
-    //         ledsIdx.data(),
-    //         ledsIdx.size(),
-    //         color,
-    //         period,
-    //         cycles,
-    //         startBrightness,
-    //         endBrightness,
-    //         1
-    //     )) {
-    //         LOG.println("ERROR: Failed to create animation");
-    //         return;
-    //     }
-    // }
+    checkFreeHeap("Websockets data processing");
 }
 
 void logWebsocketCloseReason(websockets::CloseReason reason) {
@@ -765,91 +768,196 @@ void initWifi() {
     LOG.println("\n[WIFI] Failed to connect to saved network");
     LOG.println("[WIFI] Starting WiFiManager...");
     
-    // Тільки якщо не вдалося підключитися - використовуємо WiFiManager
-    WiFiManager wm_temp; // Локальна змінна замість глобальної
+    // Create local WiFiManager to avoid global memory usage
+    {
+        WiFiManager wm_temp;
+        
+        // Мінімальні налаштування для економії пам'яті
+        wm_temp.setHostname("jaam_fusion");
+        wm_temp.setConfigPortalBlocking(true);
+        wm_temp.setConnectTimeout(15);
+        wm_temp.setConnectRetries(2);
+        wm_temp.setConfigPortalTimeout(120);
+        
+        // Простий колбек без додаткових операцій
+        wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
+            LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
+        });
+        
+        // Створюємо ім'я AP з chip ID
+        char apName[32];
+        snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
+        
+        // Спроба підключення
+        if (!wm_temp.autoConnect(apName)) {
+            LOG.println("[WIFI] Failed to connect. Rebooting...");
+            rebootDevice(3000);
+            return;
+        }
+        
+        lastWifiConnectTime = millis();
+        LOG.println("[WIFI] Connected to WiFi via WiFiManager");
+        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+        
+    } // wm_temp destructor called here, freeing memory
     
-    // Мінімальні налаштування для економії пам'яті
-    wm_temp.setHostname("jaam_fusion");
-    wm_temp.setConfigPortalBlocking(true);
-    wm_temp.setConnectTimeout(15); // Зменшено з 30 до 15 секунд
-    wm_temp.setConnectRetries(2);  // Зменшено кількість спроб
-    wm_temp.setConfigPortalTimeout(120); // 2 хвилини замість більшого значення
-    
-    // Простий колбек без додаткових операцій
-    wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
-        LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
-    });
-    
-    // Створюємо ім'я AP з chip ID
-    char apName[32];
-    snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
-    
-    // Спроба підключення
-    if (!wm_temp.autoConnect(apName)) {
-        LOG.println("[WIFI] Failed to connect. Rebooting...");
-        rebootDevice(3000);
-        return;
-    }
-    
-    lastWifiConnectTime = millis();
-    LOG.println("[WIFI] Connected to WiFi via WiFiManager");
-    LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-    
-    // НЕ запускаємо web portal одразу - тільки за потреби
     LOG.println("[WIFI] WiFi initialization completed");
-    
-    // wm_temp автоматично знищиться при виході з функції
+    LOG.printf("[MEMORY] Free heap after WiFi init: %u bytes\n", ESP.getFreeHeap());
 }
-
-// void initWifi() {
-//     if (!WiFiConfig::ENABLED) {
-//         LOG.println("[WIFI] WiFi is disabled in configuration");
-//         return;
-//     }
-
-//     LOG.println("[WIFI] Initializing WiFi...");
-    
-//     // Set WiFi to station mode
-//     WiFi.mode(WIFI_STA);
-    
-//     // Configure WiFiManager
-//     wm.setHostname("jaam_fusion");
-//     wm.setTitle("JAAM Fusion WiFi Setup");
-//     wm.setConfigPortalBlocking(true);
-//     wm.setConnectTimeout(WiFiConfig::CONNECT_TIMEOUT / 1000);
-//     wm.setConnectRetries(WiFiConfig::CONNECT_RETRIES);
-//     wm.setAPCallback(apCallback);
-//     wm.setSaveConfigCallback(saveConfigCallback);
-//     wm.setConfigPortalTimeout(WiFiConfig::PORTAL_TIMEOUT / 1000); 
-    
-//     // Create AP name with chip ID
-//     char apName[32];
-//     snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
-    
-//     // Try to connect to saved WiFi
-//     LOG.println("[WIFI] Attempting to connect to saved WiFi...");
-//     if (!wm.autoConnect(apName)) {
-//         LOG.println("[WIFI] Reboot");
-//         rebootDevice(5000);
-//         return;
-//     }
-    
-//     lastWifiConnectTime = millis();  // Record connection time
-//     LOG.println("[WIFI] Connected to WiFi");
-//     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-    
-//     // Start web portal
-//     wm.setHttpPort(WiFiConfig::WEB_PORT);
-//     wm.startWebPortal();
-//     LOG.println("[WEB] Web portal started on port 8080");
-
-//     delay(1000);
-// }
 
 void initWebsocket() {
 #if !defined(TEST_ANIMATION)
     socketConnect();
 #endif
+}
+
+// функція очищення
+void cleanup() {
+    if (strip_main_initialized) {
+        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+            strip->clear();
+            // Встановлюємо дефолтний колір
+            for(int i = 0; i < num_leds_main; i++) {
+                strip->setPixelColor(i, DefaultColors::OFF);
+            }
+            strip->show();
+            delete strip;
+            strip_main = nullptr;
+            strip_main_initialized = false;
+        });
+    }
+    
+    if (strip_bg_initialized) {
+        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+            strip->clear();
+            // Встановлюємо дефолтний колір
+            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
+                strip->setPixelColor(i, DefaultColors::OFF);
+            }
+            strip->show();
+            delete strip;
+            strip_bg = nullptr;
+            strip_bg_initialized = false;
+        });
+    }
+    
+    if (strip_service_initialized) {
+        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+            strip->clear();
+            // Встановлюємо дефолтний колір
+            for(int i = 0; i < num_leds_service; i++) {
+                strip->setPixelColor(i, DefaultColors::OFF);
+            }
+            strip->show();
+            delete strip;
+            strip_service = nullptr;
+            strip_service_initialized = false;
+        });
+    }
+}
+
+void cleanupSingleStrip(Adafruit_NeoPixel*& strip, bool& initialized, uint16_t led_count, uint32_t defaultColor) {
+    if (initialized && strip != nullptr) {
+        animation.safeStripOperation(strip, [&strip, led_count, defaultColor](Adafruit_NeoPixel* stripPtr) {
+            stripPtr->clear();
+            // Встановлюємо дефолтний колір
+            for(uint16_t i = 0; i < led_count; i++) {
+                stripPtr->setPixelColor(i, defaultColor);
+            }
+            stripPtr->show();
+            delete stripPtr;
+        });
+        strip = nullptr;
+        initialized = false;
+    }
+}
+
+void initStripMain() {
+    StripStatus status;
+    
+    if (settings.getInt(MAIN_LED_PIN) > 0) {
+        LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs\n", settings.getInt(MAIN_LED_PIN), num_leds_main);
+        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
+        if (status != StripStatus::SUCCESS) {
+            LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
+        } else {
+            LOG.println("[LED] SUCCESS: strip_main");
+            strip_main_initialized = true;
+        }
+    }
+    else {
+        LOG.println("[LED] SKIP: strip_main (pin <= 0)");
+    }
+    if (strip_main_initialized) {
+        // Спочатку встановлюємо LEDs з мінімальною яскравістю
+        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(0));
+            for(uint16_t i = 0; i < num_leds_main; i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+        needAdaptStripBrightness = true;
+    }
+}
+
+void initStripBg() {
+    StripStatus status;
+    
+    if (settings.getInt(BG_LED_PIN) > 0 && settings.getInt(BG_LED_COUNT) > 0) {
+        LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs\n", settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT));
+        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
+        if (status != StripStatus::SUCCESS) {
+            LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
+        } else {
+            LOG.println("[LED] SUCCESS: strip_bg");
+            strip_bg_initialized = true;
+        }
+    } else {
+        LOG.println("[LED] SKIP: strip_bg (pin <= 0 or count <= 0)");
+    }
+    if (strip_bg_initialized) {
+        // Спочатку встановлюємо LEDs з мінімальною яскравістю
+        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(0));
+            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+        needAdaptStripBrightness = true;
+    }
+}
+
+void initStripService() {
+    StripStatus status;
+    
+    if (settings.getInt(SERVICE_LED_PIN) > 0) {
+        LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs\n", settings.getInt(SERVICE_LED_PIN), num_leds_service);
+        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
+        if (status != StripStatus::SUCCESS) {
+            LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
+        } else {
+            LOG.println("[LED] SUCCESS: strip_service");
+            strip_service_initialized = true;
+        }
+    } else {
+        LOG.println("[LED] SKIP: strip_service (pin <= 0)");
+    }
+    if (strip_service_initialized) {
+        // Спочатку встановлюємо LEDs з мінімальною яскравістю
+        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(0));
+            for(int i = 0; i < num_leds_service; i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+        needAdaptStripBrightness = true;
+    }
 }
 
 void initStrip() {
@@ -861,74 +969,77 @@ void initStrip() {
     }
 
     // Ініціалізуємо стрічки з бажаними пінами
-    StripStatus status;
-    
-    status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, settings.getInt(BRIGHTNESS), DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
-    if (status != StripStatus::SUCCESS) {
-        LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
-    } else {
-        LOG.println("[LED] SUCCESS: strip_main");
-        strip_main_initialized = true;
-    }
-    
-    status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), settings.getInt(BRIGHTNESS_BG), DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
-    if (status != StripStatus::SUCCESS) {
-        LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
-    } else {
-        LOG.println("[LED] SUCCESS: strip_bg");
-        strip_bg_initialized = true;
-    }
+    initStripMain();
+    initStripBg();
+    initStripService();    
+}
 
-    status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, settings.getInt(BRIGHTNESS_SERVICE), DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
-    if (status != StripStatus::SUCCESS) {
-        LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
-    } else {
-        LOG.println("[LED] SUCCESS: strip_service");
-        strip_service_initialized = true;
-    }
+void reconnectStripMain() {
+    LOG.println("[LED] Reconnecting strip_main with new pin configuration...");
+    //analyzeMemoryFragmentation("before strip_main reconnection");
+    animation.clearAllAnimations();
+    logMemoryUsage("after clearing animations");
+    //defragmentMemory("before strip_main cleanup");
+    cleanupSingleStrip(strip_main, strip_main_initialized, num_leds_main, DefaultColors::OFF);
+    //defragmentMemory("after strip_main cleanup");
+    led.verifyStripCleanup(strip_main);
+    //analyzeMemoryFragmentation("before strip_main recreation");
+    initStripMain();
+    LOG.println("[LED] strip_main reconnection completed.");
+    logMemoryUsage("after strip_main reconnection complete");
+}
 
-    if (strip_main_initialized) {
-        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-            for(uint16_t i = 0; i < num_leds_main; i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-        int positions[] = {}; // not used in RUNNING_LIGHT
-        animation.createAnimation(
-            AnimationParams::Type::RUNNING_LIGHT,
-            strip_main,         
-            positions,         
-            0,            
-            0xFF0000,      
-            0x001100,        
-            1000,
-            180,
-            50,
-            200
-        );
+void reconnectStripBg() {
+    LOG.println("[LED] Reconnecting strip_bg with new pin configuration...");
+    //analyzeMemoryFragmentation("before strip_bg reconnection");
+    animation.clearAllAnimations();
+    logMemoryUsage("after clearing animations");
+    //defragmentMemory("before strip_bg cleanup");
+    cleanupSingleStrip(strip_bg, strip_bg_initialized, settings.getInt(BG_LED_COUNT), DefaultColors::OFF);
+    //defragmentMemory("after strip_bg cleanup");
+    led.verifyStripCleanup(strip_bg);
+    //analyzeMemoryFragmentation("before strip_bg recreation");
+    initStripBg();
+    LOG.println("[LED] strip_bg reconnection completed.");
+    logMemoryUsage("after strip_bg reconnection complete");
+}
+
+void reconnectStripService() {
+    LOG.println("[LED] Reconnecting strip_service with new pin configuration...");
+    //analyzeMemoryFragmentation("before strip_service reconnection");
+    animation.clearAllAnimations();
+    logMemoryUsage("after clearing animations");
+    //defragmentMemory("before strip_service cleanup");
+    cleanupSingleStrip(strip_service, strip_service_initialized, num_leds_service, DefaultColors::OFF);
+    //defragmentMemory("after strip_service cleanup");
+    led.verifyStripCleanup(strip_service);
+    //analyzeMemoryFragmentation("before strip_service recreation");
+    initStripService();
+    LOG.println("[LED] strip_service reconnection completed.");
+    logMemoryUsage("after strip_service reconnection complete");
+}
+
+void reconnectStrips() {
+    LOG.println("[LED] Reconnecting strip");
+    
+    if (needReconnectMainStrip) {
+        reconnectStripMain();
+        needReconnectMainStrip = false;
+    }
+    if (needReconnectBgStrip) {
+        reconnectStripBg();
+        needReconnectBgStrip = false;
+    }
+    if (needReconnectServiceStrip) {
+        reconnectStripService();
+        needReconnectServiceStrip = false;
     }
     
-    if (strip_bg_initialized) {
-        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-    }
+    // Оновлюємо посилання в веб-інтерфейсі
+    web.begin(strip_main, strip_bg, strip_service);
     
-    if (strip_service_initialized) {
-        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-            for(int i = 0; i < num_leds_service; i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-    }
+    LOG.println("[LED] Strip reconnection completed.");
+    logMemoryUsage("after strip reconnection complete");
 }
 
 static void printNtpStatus(NTPtime* timeClient) {
@@ -1071,9 +1182,15 @@ void mainThreadProcess() {
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
 
     if (needToReconnectWebsocket) {
-        LOG.println("[MAIN] Reconnecting WebSocket...");
+        LOG.println("[MAIN] Reconnecting WebSocket");
         needToReconnectWebsocket = false;
         socketConnect();
+    }
+
+    if (needReconnectMainStrip || needReconnectBgStrip || needReconnectServiceStrip) {
+        LOG.println("[MAIN] Reconnecting LED strip");
+        needReconnectStrips = false;
+        reconnectStrips();
     }
 
     if (needAdaptAnimationColors) {
@@ -1094,6 +1211,42 @@ void mainThreadProcess() {
                 1,
                 strip_main->getBrightness(),
                 settings.getInt(BRIGHTNESS)
+            )) {
+                LOG.println("[ERROR] Failed to create animation");
+                return;
+            }
+        }
+        if (strip_bg_initialized) {
+            int ledsIdx[1] = { 0 };
+            if (!animation.createAnimation(
+                AnimationParams::Type::SET_BRIGHTNESS,
+                strip_bg,
+                ledsIdx,
+                1,
+                0x000000, // Колір не важливий для SET_BRIGHTNESS
+                0x000000, // Початковий колір не важливий
+                500,
+                1,
+                strip_bg->getBrightness(),
+                settings.getInt(BRIGHTNESS_BG)
+            )) {
+                LOG.println("[ERROR] Failed to create animation");
+                return;
+            }
+        }
+        if (strip_service_initialized) {
+            int ledsIdx[1] = { 0 };
+            if (!animation.createAnimation(
+                AnimationParams::Type::SET_BRIGHTNESS,
+                strip_service,
+                ledsIdx,
+                1,
+                0x000000, // Колір не важливий для SET_BRIGHTNESS
+                0x000000, // Початковий колір не важливий
+                500,
+                1,
+                strip_service->getBrightness(),
+                settings.getInt(BRIGHTNESS_SERVICE)
             )) {
                 LOG.println("[ERROR] Failed to create animation");
                 return;
@@ -1226,49 +1379,4 @@ void loop() {
     animation.update();
     async.run();
     web.handleClient();
-}
-
-// функція очищення
-void cleanup() {
-    if (strip_main_initialized) {
-        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-            strip->clear();
-            // Встановлюємо дефолтний колір
-            for(int i = 0; i < num_leds_main; i++) {
-                strip->setPixelColor(i, DefaultColors::MAIN_STRIP);
-            }
-            strip->show();
-            delete strip;
-            strip_main = nullptr;
-            strip_main_initialized = false;
-        });
-    }
-    
-    if (strip_bg_initialized) {
-        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-            strip->clear();
-            // Встановлюємо дефолтний колір
-            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
-                strip->setPixelColor(i, DefaultColors::BG_STRIP);
-            }
-            strip->show();
-            delete strip;
-            strip_bg = nullptr;
-            strip_bg_initialized = false;
-        });
-    }
-    
-    if (strip_service_initialized) {
-        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-            strip->clear();
-            // Встановлюємо дефолтний колір
-            for(int i = 0; i < num_leds_service; i++) {
-                strip->setPixelColor(i, DefaultColors::SERVICE_STRIP);
-            }
-            strip->show();
-            delete strip;
-            strip_service = nullptr;
-            strip_service_initialized = false;
-        });
-    }
 }

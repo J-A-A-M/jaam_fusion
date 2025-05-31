@@ -6,6 +6,11 @@
 extern volatile bool needAdaptAnimationColors;
 extern volatile bool needAdaptStripBrightness;
 extern volatile bool needToReconnectWebsocket;
+extern volatile bool needReconnectStrips;
+extern volatile bool needReconnectMainStrip;
+extern volatile bool needReconnectBgStrip;
+extern volatile bool needReconnectServiceStrip;
+
 // extern volatile bool needAdaptNonAnimationColors;
 // extern volatile bool needAdaptAlertClearColors;
 // extern volatile bool needAdaptAlertColors;
@@ -15,6 +20,7 @@ extern volatile bool needToReconnectWebsocket;
 // Forward declaration for socketConnect function from JaamFusion.cpp
 extern void socketConnect();
 extern void clearAllAlertsMaps();
+extern void reconnectStrips();
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
@@ -107,6 +113,7 @@ String JaamWeb::getHtmlTemplate() {
     html += ".form-control{width:100%;padding:8px;font-size:16px;border:1px solid #ddd;border-radius:4px;background-color:white}";
     html += ".form-group label{display:block;margin-bottom:5px;font-weight:bold}";
     html += ".label{display:block;margin-bottom:5px;font-weight:bold}";
+    html += ".warning{background-color:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:10px;border-radius:4px;margin:10px 0;font-size:14px}";
     html += "</style></head><body>";
     html += "<div class='container'>";
     html += "<h1>JAAM LED Control</h1>";
@@ -127,6 +134,12 @@ String JaamWeb::getHtmlTemplate() {
     html += getTextInputHtml("ha_mqtt_user", settings->getString(HA_MQTT_USER), "MQTT користувач", "");
     html += getTextInputHtml("ha_mqtt_password", settings->getString(HA_MQTT_PASSWORD), "MQTT пароль", "");
     html += getTextInputHtml("ha_broker_address", settings->getString(HA_BROKER_ADDRESS), "Адреса брокера", "");
+    html += "<label class=\"label\">Піни LED стрічок</label>";
+    html += "<div class=\"warning\">⚠️ Увага: Зміна пінів призведе до повного перезапуску всіх LED стрічок!</div>";
+    html += getTextInputHtml("main_led_pin", String(settings->getInt(MAIN_LED_PIN)).c_str(), "Основна стрічка (пін)", "13");
+    html += getTextInputHtml("bg_led_pin", String(settings->getInt(BG_LED_PIN)).c_str(), "Фонова стрічка (пін)", "-1");
+    html += getTextInputHtml("bg_led_count", String(settings->getInt(BG_LED_COUNT)).c_str(), "Фонова стрічка (кількість)", "0");
+    html += getTextInputHtml("service_led_pin", String(settings->getInt(SERVICE_LED_PIN)).c_str(), "Сервісна стрічка (пін)", "-1");
     html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
@@ -187,10 +200,18 @@ String JaamWeb::getHtmlTemplate() {
     html += "  fetch('/color?name=' + name + '&value=' + encodeURIComponent(value));";
     html += "}";
     html += "function updateTextParameter(name, value) {";
+    // html += "  // Перевіряємо чи це PIN стрічки";
+    // html += "  if (name.includes('_pin') || name === 'bg_led_count') {";
+    // html += "    if (!confirm('Ви впевнені, що хочете змінити цей параметр? Це призведе до перезапуску всіх LED стрічок!')) {";
+    // html += "      return;";
+    // html += "    }";
+    // html += "  }";
     html += "  fetch('/text?name=' + name + '&value=' + encodeURIComponent(value))";
     html += "    .then(response => {";
     html += "      if (!response.ok) {";
     html += "        console.error('Error updating text parameter:', name, value);";
+    // html += "      } else if (name.includes('_pin') || name === 'bg_led_count') {";
+    // html += "        alert('Параметр збережено. LED стрічки будуть перезапущені.');";
     html += "      }";
     html += "    })";
     html += "    .catch(error => {";
@@ -210,51 +231,54 @@ void JaamWeb::handleColorParameter() {
     if (server.hasArg("name") && server.hasArg("value")) {
         String name = server.arg("name");
         String value = server.arg("value");
-        const char* paramValue = value.c_str();
+        
+        // Use c_str() directly to avoid string copying
+        const char* namePtr = name.c_str();
+        const char* valuePtr = value.c_str();
 
         if (name == "color_alert") {
-            settings->saveString(COLOR_ALERT, paramValue);
-            LOG.printf("[WEB] Setting color_alert: raw=%s\n", paramValue);
+            settings->saveString(COLOR_ALERT, valuePtr);
+            LOG.printf("[WEB] Setting color_alert: raw=%s\n", valuePtr);
         }
         if (name == "color_clear") {
-            settings->saveString(COLOR_CLEAR, paramValue);
-            LOG.printf("[WEB] Setting color_clear: raw=%s\n", paramValue);
+            settings->saveString(COLOR_CLEAR, valuePtr);
+            LOG.printf("[WEB] Setting color_clear: raw=%s\n", valuePtr);
         }
         if (name == "color_new_alert") {
-            settings->saveString(COLOR_NEW_ALERT, paramValue);
-            LOG.printf("[WEB] Setting color_new_alert: raw=%s\n", paramValue);
+            settings->saveString(COLOR_NEW_ALERT, valuePtr);
+            LOG.printf("[WEB] Setting color_new_alert: raw=%s\n", valuePtr);
         }
         if (name == "color_alert_over") {
-            settings->saveString(COLOR_ALERT_OVER, paramValue);
-            LOG.printf("[WEB] Setting color_alert_over: raw=%s\n", paramValue);
+            settings->saveString(COLOR_ALERT_OVER, valuePtr);
+            LOG.printf("[WEB] Setting color_alert_over: raw=%s\n", valuePtr);
         }
         if (name == "color_explosion") {
-            settings->saveString(COLOR_EXPLOSION, paramValue);
-            LOG.printf("[WEB] Setting color_explosion: raw=%s\n", paramValue);
+            settings->saveString(COLOR_EXPLOSION, valuePtr);
+            LOG.printf("[WEB] Setting color_explosion: raw=%s\n", valuePtr);
         }
         if (name == "color_missiles") {
-            settings->saveString(COLOR_MISSILES, paramValue);
-            LOG.printf("[WEB] Setting color_ccolor_missileslear: raw=%s\n", paramValue);
+            settings->saveString(COLOR_MISSILES, valuePtr);
+            LOG.printf("[WEB] Setting color_ccolor_missileslear: raw=%s\n", valuePtr);
         }
         if (name == "color_drones") {
-            settings->saveString(COLOR_DRONES, paramValue);
-            LOG.printf("[WEB] Setting color_drones: raw=%s\n", paramValue);
+            settings->saveString(COLOR_DRONES, valuePtr);
+            LOG.printf("[WEB] Setting color_drones: raw=%s\n", valuePtr);
         }
         if (name == "color_kab") {
-            settings->saveString(COLOR_KABS, paramValue);
-            LOG.printf("[WEB] Setting color_kab: raw=%s\n", paramValue);
+            settings->saveString(COLOR_KABS, valuePtr);
+            LOG.printf("[WEB] Setting color_kab: raw=%s\n", valuePtr);
         }
         if (name == "color_ballistic") {
-            settings->saveString(COLOR_BALLISTIC, paramValue);
-            LOG.printf("[WEB] Setting color_ballistic: raw=%s\n", paramValue);
+            settings->saveString(COLOR_BALLISTIC, valuePtr);
+            LOG.printf("[WEB] Setting color_ballistic: raw=%s\n", valuePtr);
         }
         if (name == "color_home") {
-            settings->saveString(COLOR_HOME_DISTRICT, paramValue);
-            LOG.printf("[WEB] Setting color_home: raw=%s\n", paramValue);
+            settings->saveString(COLOR_HOME_DISTRICT, valuePtr);
+            LOG.printf("[WEB] Setting color_home: raw=%s\n", valuePtr);
         }
         if (strip_main_initialized) {
             LOG.printf("[WEB] Adjusting colors\n");               
-            animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
+            animation.safeStripOperation(strip_main, [this](Adafruit_NeoPixel* strip) {
                 for (int i = 0; i < strip->numPixels(); i++) {
                     uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
@@ -274,37 +298,80 @@ void JaamWeb::handleTextParameter() {
     if (server.hasArg("name") && server.hasArg("value")) {
         String name = server.arg("name");
         String value = server.arg("value");
-        const char* paramValue = value.c_str();
+        
+        // Use c_str() directly to avoid string copying
+        const char* namePtr = name.c_str();
+        const char* valuePtr = value.c_str();
 
         if (name == "device_name") {
-            settings->saveString(DEVICE_NAME, paramValue);
-            LOG.printf("[WEB] Setting device_name: %s\n", paramValue);
+            settings->saveString(DEVICE_NAME, valuePtr);
+            LOG.printf("[WEB] Setting device_name: %s\n", valuePtr);
         } else if (name == "device_description") {
-            settings->saveString(DEVICE_DESCRIPTION, paramValue);
-            LOG.printf("[WEB] Setting device_description: %s\n", paramValue);
+            settings->saveString(DEVICE_DESCRIPTION, valuePtr);
+            LOG.printf("[WEB] Setting device_description: %s\n", valuePtr);
         } else if (name == "broadcast_name") {
-            settings->saveString(BROADCAST_NAME, paramValue);
-            LOG.printf("[WEB] Setting broadcast_name: %s\n", paramValue);
+            settings->saveString(BROADCAST_NAME, valuePtr);
+            LOG.printf("[WEB] Setting broadcast_name: %s\n", valuePtr);
         } else if (name == "ws_server_host") {
-            settings->saveString(WS_SERVER_HOST, paramValue);
+            settings->saveString(WS_SERVER_HOST, valuePtr);
             needToReconnectWebsocket = true;
-            LOG.printf("[WEB] Setting ws_server_host: %s\n", paramValue);
+            LOG.printf("[WEB] Setting ws_server_host: %s\n", valuePtr);
         } else if (name == "ws_server_port") {
             settings->saveInt(WS_SERVER_PORT, value.toInt());
             needToReconnectWebsocket = true;
-            LOG.printf("[WEB] Setting ws_server_host: %s\n", paramValue);
+            LOG.printf("[WEB] Setting ws_server_port: %s\n", valuePtr);
         } else if (name == "ntp_host") {
-            settings->saveString(NTP_HOST, paramValue);
-            LOG.printf("[WEB] Setting ntp_host: %s\n", paramValue);
+            settings->saveString(NTP_HOST, valuePtr);
+            LOG.printf("[WEB] Setting ntp_host: %s\n", valuePtr);
         } else if (name == "ha_mqtt_user") {
-            settings->saveString(HA_MQTT_USER, paramValue);
-            LOG.printf("[WEB] Setting ha_mqtt_user: %s\n", paramValue);
+            settings->saveString(HA_MQTT_USER, valuePtr);
+            LOG.printf("[WEB] Setting ha_mqtt_user: %s\n", valuePtr);
         } else if (name == "ha_mqtt_password") {
-            settings->saveString(HA_MQTT_PASSWORD, paramValue);
-            LOG.printf("[WEB] Setting ha_mqtt_password: %s\n", paramValue);
+            settings->saveString(HA_MQTT_PASSWORD, valuePtr);
+            LOG.printf("[WEB] Setting ha_mqtt_password: %s\n", valuePtr);
         } else if (name == "ha_broker_address") {
-            settings->saveString(HA_BROKER_ADDRESS, paramValue);
-            LOG.printf("[WEB] Setting ha_broker_address: %s\n", paramValue);
+            settings->saveString(HA_BROKER_ADDRESS, valuePtr);
+            LOG.printf("[WEB] Setting ha_broker_address: %s\n", valuePtr);
+        } else if (name == "main_led_pin") {
+            int newPin = value.toInt();
+            int currentPin = settings->getInt(MAIN_LED_PIN);
+            if (newPin != currentPin) {
+                LOG.printf("[WEB] Changing main_led_pin from %d to %d\n", currentPin, newPin);
+                logMemoryUsage("before main_led_pin change");
+                settings->saveInt(MAIN_LED_PIN, newPin);
+                needReconnectMainStrip = true;
+                LOG.printf("[WEB] Setting main_led_pin: %d\n", newPin);
+            }
+        } else if (name == "bg_led_pin") {
+            int newPin = value.toInt();
+            int currentPin = settings->getInt(BG_LED_PIN);
+            if (newPin != currentPin) {
+                LOG.printf("[WEB] Changing bg_led_pin from %d to %d\n", currentPin, newPin);
+                logMemoryUsage("before bg_led_pin change");
+                settings->saveInt(BG_LED_PIN, newPin);
+                needReconnectBgStrip= true;
+                LOG.printf("[WEB] Setting bg_led_pin: %d\n", newPin);
+            }
+        } else if (name == "bg_led_count") {
+            int newCount = value.toInt();
+            int currentCount = settings->getInt(BG_LED_COUNT);
+            if (newCount != currentCount) {
+                LOG.printf("[WEB] Changing bg_led_count from %d to %d\n", currentCount, newCount);
+                logMemoryUsage("before bg_led_count change");
+                settings->saveInt(BG_LED_COUNT, newCount);
+                needReconnectBgStrip = true;
+                LOG.printf("[WEB] Setting bg_led_count: %d\n", newCount);
+            }
+        } else if (name == "service_led_pin") {
+            int newPin = value.toInt();
+            int currentPin = settings->getInt(SERVICE_LED_PIN);
+            if (newPin != currentPin) {
+                LOG.printf("[WEB] Changing service_led_pin from %d to %d\n", currentPin, newPin);
+                logMemoryUsage("before service_led_pin change");
+                settings->saveInt(SERVICE_LED_PIN, newPin);
+                needReconnectServiceStrip = true;
+                LOG.printf("[WEB] Setting service_led_pin: %d\n", newPin);
+            }
         }
 
         server.send(200, "text/plain", "OK");
@@ -402,12 +469,11 @@ void JaamWeb::handleParameter() {
                 //needAdaptNonAnimationColors = true;
                 //needAdaptAlertHomeDistrictColors = true; 
                 animation.safeStripOperation(strip_main, [this, value](Adafruit_NeoPixel* strip) {
-                    uint32_t color;
                     uint8_t count;
                     const int* leds = getLedsForRegion(settings->getInt(HOME_DISTRICT), count);
                     for (int i = 0; i < count; ++i) {
                         int ledsIdx[1] = { leds[i] };
-                        color = animation.ledActualColor(strip, leds[i]);
+                        uint32_t color = animation.ledActualColor(strip, leds[i]);
                         strip->setPixelColor(leds[i], color);
                     }
                     strip->show();

@@ -6,6 +6,7 @@ namespace DefaultColors {
     static const uint32_t MAIN_STRIP = 0x00FF00;  // Green
     static const uint32_t BG_STRIP = 0xFF0000;    // Red
     static const uint32_t SERVICE_STRIP = 0x0000FF;  // Blue
+    static const uint32_t OFF = 0x000000;  // Blue
 }
 
 // --- Animation Configuration ---
@@ -43,7 +44,7 @@ static constexpr size_t   RECORD_SZ         = 4;  // 2B region_id + 2B flags16
 
 
 // --- Region to LED mapping (fixed, задається один раз) ---
-constexpr int MAX_REGIONS = 39;           // Кількість регіонів (змініть під свою задачу)
+constexpr int MAX_REGIONS = 39;           // Кількість регіонів
 constexpr int MAX_LEDS_PER_REGION = 7;    // Максимум LED на регіон
 
 enum Type {

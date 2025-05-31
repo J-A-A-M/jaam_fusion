@@ -202,3 +202,120 @@ inline uint8_t findHighestBitForLed(int position) {
     
     return 255; // Немає активних бітів в жодному з регіонів
 }
+
+// Add memory monitoring function
+inline void logMemoryUsage(const char* context) {
+    size_t freeHeap = ESP.getFreeHeap();
+    size_t totalHeap = ESP.getHeapSize();
+    size_t usedHeap = totalHeap - freeHeap;
+    size_t maxBlock = ESP.getMaxAllocHeap();
+    
+    LOG.printf("[MEMORY] %s - Used: %u bytes, Free: %u bytes, Total: %u bytes, Max block: %u bytes\n", 
+              context, usedHeap, freeHeap, totalHeap, maxBlock);
+    
+    // Warning if free heap is getting low
+    if (freeHeap < 10000) {
+        LOG.printf("[MEMORY] WARNING: Low memory! Only %u bytes free\n", freeHeap);
+    }
+    
+    // Warning if fragmentation is high
+    // if (maxBlock < freeHeap * 0.7) {
+    //     LOG.printf("[MEMORY] WARNING: High fragmentation! Max block: %u, Free: %u\n", maxBlock, freeHeap);
+    // }
+}
+
+// Add function to force memory cleanup
+inline void forceMemoryCleanup(const char* context) {
+    LOG.printf("[MEMORY] Forcing cleanup at: %s\n", context);
+    size_t before = ESP.getFreeHeap();
+    
+    // Force yield to system
+    yield();
+    delay(50);
+    
+    // Check if memory was reclaimed
+    size_t after = ESP.getFreeHeap();
+    if (after > before) {
+        LOG.printf("[MEMORY] Cleanup successful: %d bytes reclaimed\n", (int)(after - before));
+    } else {
+        LOG.printf("[MEMORY] Cleanup completed: no additional memory reclaimed\n");
+    }
+}
+
+// Add function to defragment memory by forcing garbage collection
+inline void defragmentMemory(const char* context) {
+    LOG.printf("[MEMORY] Starting defragmentation at: %s\n", context);
+    size_t beforeFree = ESP.getFreeHeap();
+    size_t beforeMaxBlock = ESP.getMaxAllocHeap();
+    
+    // Multiple yields and delays to allow system cleanup
+    for (int i = 0; i < 5; i++) {
+        yield();
+        delay(20);
+    }
+    
+    // Try to trigger garbage collection by allocating and freeing small blocks
+    void* tempPtrs[10];
+    for (int i = 0; i < 10; i++) {
+        tempPtrs[i] = malloc(100);
+        if (tempPtrs[i]) {
+            free(tempPtrs[i]);
+            tempPtrs[i] = nullptr;
+        }
+        yield();
+    }
+    
+    size_t afterFree = ESP.getFreeHeap();
+    size_t afterMaxBlock = ESP.getMaxAllocHeap();
+    
+    LOG.printf("[MEMORY] Defrag result - Free: %u->%u (%+d), MaxBlock: %u->%u (%+d)\n", 
+              beforeFree, afterFree, (int)(afterFree - beforeFree),
+              beforeMaxBlock, afterMaxBlock, (int)(afterMaxBlock - beforeMaxBlock));
+}
+
+// Check if memory allocation is likely to succeed
+inline bool canAllocateMemory(size_t size, const char* context) {
+    size_t maxBlock = ESP.getMaxAllocHeap();
+    bool canAlloc = maxBlock >= size;
+    
+    if (!canAlloc) {
+        LOG.printf("[MEMORY] %s - Cannot allocate %u bytes, max block: %u\n", 
+                  context, size, maxBlock);
+        
+        // Try defragmentation if allocation would fail
+        defragmentMemory(context);
+        
+        // Check again after defragmentation
+        maxBlock = ESP.getMaxAllocHeap();
+        canAlloc = maxBlock >= size;
+        
+        if (canAlloc) {
+            LOG.printf("[MEMORY] %s - After defrag can allocate %u bytes, max block: %u\n", 
+                      context, size, maxBlock);
+        } else {
+            LOG.printf("[MEMORY] %s - Still cannot allocate %u bytes after defrag, max block: %u\n", 
+                      context, size, maxBlock);
+        }
+    }
+    
+    return canAlloc;
+}
+
+// Enhanced memory logging with fragmentation analysis
+inline void analyzeMemoryFragmentation(const char* context) {
+    size_t freeHeap = ESP.getFreeHeap();
+    size_t maxBlock = ESP.getMaxAllocHeap();
+    
+    if (freeHeap > 0) {
+        float fragmentation = 1.0f - ((float)maxBlock / (float)freeHeap);
+        int fragPercent = (int)(fragmentation * 100);
+        
+        LOG.printf("[MEMORY] %s - Fragmentation: %d%% (Free: %u, MaxBlock: %u)\n", 
+                  context, fragPercent, freeHeap, maxBlock);
+        
+        if (fragmentation > 0.5) { // More than 50% fragmented
+            LOG.printf("[MEMORY] %s - HIGH FRAGMENTATION DETECTED! Consider defragmentation\n", context);
+            return; // Return true to indicate high fragmentation
+        }
+    }
+}
