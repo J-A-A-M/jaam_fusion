@@ -548,9 +548,7 @@ void socketConnect() {
         clearAllAlertsMaps();
         animation.clearAllAnimations();
         animation.paintStripDefault(strip_main, num_leds_main);
-        LOG.print("[WEBSOCKET] connection time - ");
-        LOG.print(millis() - startTime);
-        LOG.println("ms");
+        LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
         char chipIdInfo[25];
         sprintf(chipIdInfo, "chip_id:%s", chipID);
         LOG.printf("[WEBSOCKET] %s\n", chipIdInfo);
@@ -924,7 +922,7 @@ void initStripMain() {
     
     if (settings.getInt(MAIN_LED_PIN) > 0) {
         LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs\n", settings.getInt(MAIN_LED_PIN), num_leds_main);
-        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::MAIN_STRIP, NEO_GRB + NEO_KHZ800);
+        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::OFF, NEO_GRB + NEO_KHZ800);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
@@ -954,7 +952,7 @@ void initStripBg() {
     
     if (settings.getInt(BG_LED_PIN) > 0 && settings.getInt(BG_LED_COUNT) > 0) {
         LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs\n", settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT));
-        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::BG_STRIP, NEO_GRB + NEO_KHZ800);
+        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::OFF, NEO_GRB + NEO_KHZ800);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
@@ -983,7 +981,7 @@ void initStripService() {
     
     if (settings.getInt(SERVICE_LED_PIN) > 0) {
         LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs\n", settings.getInt(SERVICE_LED_PIN), num_leds_service);
-        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::SERVICE_STRIP, NEO_GRB + NEO_KHZ800);
+        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::OFF, NEO_GRB + NEO_KHZ800);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {

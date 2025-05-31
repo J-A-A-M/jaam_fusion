@@ -83,7 +83,9 @@ String JaamWeb::getDropdownHtml(const String& name, const String& label, Type se
             if (currentValue == items[i].id) {
                 html += " selected";
             }
-            html += ">" + String(items[i].name) + "</option>";
+            // Додаємо префікс "--" якщо sub=true
+            String displayName = items[i].sub ? "-- " + String(items[i].name) : String(items[i].name);
+            html += ">" + displayName + "</option>";
         }
     }
     
@@ -165,7 +167,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Сервісні діоди");
     html += "<label class=\"label\">Налаштування тривог</label>";
     html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Загроза КАБ");
-    html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Ракетна небезпека");
+    html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Загроза крилатих та авіаційних ракет");
     html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Загроза БПЛА");
     html += getBoolParameterHtml("enable_ballistic", settings->getBool(ENABLE_BALLISTIC), "Загроза балістичних ракет");
     html += getBoolParameterHtml("enable_explosions", settings->getBool(ENABLE_EXPLOSIONS), "Вибухи");
