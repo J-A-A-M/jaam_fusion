@@ -115,6 +115,11 @@ String JaamWeb::getHtmlTemplate() {
     html += "body{font-family:Arial,sans-serif;margin:20px;background-color:#f0f0f0}";
     html += ".container{max-width:600px;margin:0 auto;background-color:white;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1)}";
     html += ".system-panel{background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:15px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}";
+    html += ".alerts-panel{background:#fff5f5;border:1px solid #fed7d7;border-radius:8px;padding:15px;margin-bottom:20px;display:flex;justify-content:flex-start;align-items:center;flex-wrap:wrap}";
+    html += ".alert-metric{display:flex;align-items:center;margin:5px 0;min-width:120px}";
+    html += ".alerts-loading{color:#6c757d;font-size:12px}";
+    html += ".alerts-no-alerts{color:#28a745;font-weight:bold;font-size:12px}";
+    html += ".alerts-error{color:#dc3545;font-size:12px}";
     html += ".system-metric{display:flex;align-items:center;margin:5px 0;min-width:120px}";
     html += ".metric-icon{width:16px;height:16px;margin-right:8px;fill:currentColor}";
     html += ".metric-label{font-size:12px;color:#6c757d;margin-right:5px}";
@@ -168,6 +173,18 @@ String JaamWeb::getHtmlTemplate() {
     html += "</div>";
     html += "</div>";
 
+    // Alerts Information Panel
+    html += "<div class='alerts-panel' id='alertsPanel'>";
+    html += "<div class='alert-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'>";
+    html += "<path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/>";
+    html += "</svg>";
+    html += "<span class='metric-label'>Активні тривоги:</span>";
+    html += "<span class='metric-value' id='alertsContent'>";
+    html += "<span class='alerts-loading'>Завантаження...</span>";
+    html += "</span>";
+    html += "</div>";
+    html += "</div>";
 
     
     // Додаємо слайдери для всіх параметрів
@@ -261,7 +278,34 @@ String JaamWeb::getHtmlTemplate() {
     
     // Auto-refresh system info every 5 seconds
     html += "setInterval(updateSystemInfo, 5000);";
+    html += "setInterval(updateAlertsInfo, 10000);"; // Update alerts every 10 seconds
     html += "updateSystemInfo();"; // Initial load
+    html += "updateAlertsInfo();"; // Initial load
+    
+    // Alerts update function
+    html += "function updateAlertsInfo() {";
+    html += "  fetch('/alerts-info')";
+    html += "    .then(response => response.json())";
+    html += "    .then(data => {";
+    html += "      const alertsContent = document.getElementById('alertsContent');";
+    html += "      if (!data.regions || data.regions.length === 0) {";
+    html += "        alertsContent.innerHTML = '<span class=\"alerts-no-alerts\">Немає активних тривог</span>';";
+    html += "        return;";
+    html += "      }";
+    html += "      let activeRegions = data.regions.length;";
+    html += "      let totalAlerts = 0;";
+    html += "      data.regions.forEach(region => {";
+    html += "        Object.values(region.alerts).forEach(alert => {";
+    html += "          if (alert) totalAlerts++;";
+    html += "        });";
+    html += "      });";
+    html += "      alertsContent.innerHTML = '<span class=\"alerts-error\">' + activeRegions + ' регіонів (' + totalAlerts + ' тривог)</span>';";
+    html += "    })";
+    html += "    .catch(error => {";
+    html += "      console.error('Error fetching alerts info:', error);";
+    html += "      document.getElementById('alertsContent').innerHTML = '<span class=\"alerts-error\">Помилка завантаження</span>';";
+    html += "    });";
+    html += "}";
     
     // Existing functions
     html += "function updateParameter(name, value) {";
