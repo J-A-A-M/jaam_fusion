@@ -373,3 +373,59 @@ inline String getSystemInfoJson() {
     serializeJson(doc, response);
     return response;
 }
+
+// Function to get alerts information as JSON string
+inline String getAlertsJson() {
+    JsonDocument doc;
+    JsonArray regions = doc["regions"].to<JsonArray>();
+    
+    // Перебираємо всі регіони з alertsMap
+    for (const auto& alertEntry : alertsMap) {
+        uint16_t region_id = alertEntry.first;
+        uint16_t flags16 = alertEntry.second;
+        
+        // Перевіряємо чи є активний перший біт (повітряна тривога)
+        bool airAlert = flags16 & (1 << 0);
+        if (!airAlert) {
+            continue; // Пропускаємо регіони без активної повітряної тривоги
+        }
+        
+        // Перевіряємо чи регіон є в DISTRICTS
+        bool foundInDistricts = false;
+        String regionName = "";
+        
+        for (int i = 0; i < MAX_REGIONS; i++) {
+            if (DISTRICTS[i].id == region_id) {
+                foundInDistricts = true;
+                regionName = DISTRICTS[i].name;
+                break;
+            }
+        }
+        
+        if (!foundInDistricts) {
+            continue; // Пропускаємо регіони не знайдені в DISTRICTS
+        }
+        
+        // Створюємо об'єкт регіону
+        JsonObject region = regions.add<JsonObject>();
+        region["regionId"] = region_id;
+        region["regionName"] = regionName;
+        
+        // Розкладаємо статуси тривог по бітам
+        JsonObject alerts = region["alerts"].to<JsonObject>();
+        alerts["air"] = (flags16 & (1 << 0)) ? 1 : 0;
+        alerts["artillery"] = (flags16 & (1 << 1)) ? 1 : 0;
+        alerts["urban"] = (flags16 & (1 << 2)) ? 1 : 0;
+        alerts["chemical"] = (flags16 & (1 << 3)) ? 1 : 0;
+        alerts["nuclear"] = (flags16 & (1 << 4)) ? 1 : 0;
+        alerts["drones"] = (flags16 & (1 << 5)) ? 1 : 0;
+        alerts["missiles"] = (flags16 & (1 << 6)) ? 1 : 0;
+        alerts["kab"] = (flags16 & (1 << 7)) ? 1 : 0;
+        alerts["ballistic"] = (flags16 & (1 << 8)) ? 1 : 0;
+        alerts["explosion"] = (flags16 & (1 << 9)) ? 1 : 0;
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    return response;
+}

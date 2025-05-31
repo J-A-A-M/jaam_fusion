@@ -171,7 +171,7 @@ String JaamWeb::getHtmlTemplate() {
 
     
     // Додаємо слайдери для всіх параметрів
-    html += getDropdownHtml("home_district", "Домашний регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
+    html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
     html += "<label class=\"label\">Загальні налаштування</label>";
     html += getTextInputHtml("device_name", settings->getString(DEVICE_NAME), "Назва пристрою", "JAAM");
     html += getTextInputHtml("device_description", settings->getString(DEVICE_DESCRIPTION), "Опис пристрою", "JAAM Informer");
@@ -560,6 +560,7 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
     server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
     server.on("/system-info", HTTP_GET, [this]() { this->handleSystemInfo(); });
+    server.on("/alerts-info", HTTP_GET, [this]() { this->handleAlertsInfo(); });
 
     server.begin();
 }
@@ -570,6 +571,12 @@ void JaamWeb::handleClient() {
 
 void JaamWeb::handleSystemInfo() {
     String response = getSystemInfoJson();
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "application/json", response);
+}
+
+void JaamWeb::handleAlertsInfo() {
+    String response = getAlertsJson();
     server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "application/json", response);
 }
