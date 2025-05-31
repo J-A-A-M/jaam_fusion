@@ -44,7 +44,7 @@ struct FreeLedInfo {
 
 class AnimationManager {
     private:
-        static const int MAX_ANIMATIONS = 150;     
+        static const int MAX_ANIMATIONS = 160;     
         SemaphoreHandle_t animMutex;
         int activeCount;
         JaamSettings* settings;
