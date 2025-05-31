@@ -38,15 +38,6 @@ void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
 
-// Function to get CPU temperature in Celsius
-float JaamWeb::getCpuTemperature() {
-    // ESP32 internal temperature sensor
-    // Convert raw value to Celsius (approximate formula)
-    uint8_t raw_temp = temprature_sens_read();
-    float temp_celsius = (raw_temp - 32) / 1.8;
-    return temp_celsius;
-}
-
 
 String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, const char* label) {
     String html = "<div class='slider-container'>";
@@ -165,6 +156,16 @@ String JaamWeb::getHtmlTemplate() {
     html += "<span class='metric-label'>Час роботи:</span>";
     html += "<span class='metric-value' id='uptime'>--</span>";
     html += "</div>";
+    html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M1,9L2,9C2.83,4.67 6.5,1.33 11,1L11,2A8,8 0 0,0 3,10L1,10V9M1,15L2,15V10L3,10A8,8 0 0,0 11,18V19C6.5,18.67 2.83,15.33 2,11L1,11V15M12,2V1C16.5,1.33 20.17,4.67 21,9L22,9V10L21,10A9,9 0 0,1 12,19V18A8,8 0 0,0 20,10L19,10V9L20,9C19.17,4.67 15.5,1.33 11,1L11,2H12M12,6V7A4,4 0 0,1 16,11L17,11V12L16,12A4,4 0 0,1 12,16V15A3,3 0 0,0 15,12L14,12V11L15,11A3,3 0 0,0 12,8V7H12M12,10V11A1,1 0 0,1 13,12L12,12V11H12Z'/></svg>";
+    html += "<span class='metric-label'>WiFi:</span>";
+    html += "<span class='metric-value' id='wifiSignal'>-- dBm</span>";
+    html += "</div>";
+    html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,15C12.81,15 13.5,14.7 14.07,14.21C14.66,13.73 15,13.06 15,12.3V11.5C15,10.76 14.66,10.09 14.07,9.62C13.5,9.13 12.81,8.84 12,8.84C11.19,8.84 10.5,9.13 9.93,9.62C9.34,10.09 9,10.76 9,11.5V12.3C9,13.06 9.34,13.73 9.93,14.21C10.5,14.7 11.19,15 12,15M7,24L9,22H15L17,24H7M18,18V8C18,6.62 17.2,5.44 16,4.95V3C16,2.45 15.55,2 15,2H9C8.45,2 8,2.45 8,3V4.95C6.8,5.44 6,6.62 6,8V18L4,20V21H20V20L18,18Z'/></svg>";
+    html += "<span class='metric-label'>Websocket:</span>";
+    html += "<span class='metric-value' id='websocketUptime'>--</span>";
+    html += "</div>";
     html += "</div>";
 
 
@@ -246,6 +247,14 @@ String JaamWeb::getHtmlTemplate() {
     html += "      const hours = Math.floor(data.uptime / 3600);";
     html += "      const minutes = Math.floor((data.uptime % 3600) / 60);";
     html += "      document.getElementById('uptime').textContent = hours + 'г ' + minutes + 'хв';";
+    html += "      document.getElementById('wifiSignal').textContent = data.wifiRSSI + ' dBm';";
+    html += "      const wsHours = Math.floor(data.websocketUptime / 3600);";
+    html += "      const wsMinutes = Math.floor((data.websocketUptime % 3600) / 60);";
+    html += "      if (data.websocketUptime > 0) {";
+    html += "        document.getElementById('websocketUptime').textContent = wsHours + 'г ' + wsMinutes + 'хв';";
+    html += "      } else {";
+    html += "        document.getElementById('websocketUptime').textContent = 'Відключено';";
+    html += "      }";
     html += "    })";
     html += "    .catch(error => console.error('Error fetching system info:', error));";
     html += "}";
@@ -560,28 +569,7 @@ void JaamWeb::handleClient() {
 }
 
 void JaamWeb::handleSystemInfo() {
-    // Get system information
-    size_t freeHeap = ESP.getFreeHeap();
-    size_t totalHeap = ESP.getHeapSize();
-    size_t usedHeap = totalHeap - freeHeap;
-    size_t maxBlock = ESP.getMaxAllocHeap();
-    float cpuTemp = getCpuTemperature();
-    uint32_t uptime = millis() / 1000; // uptime in seconds
-    
-    // Create JSON response
-    JsonDocument doc;
-    doc["freeHeap"] = freeHeap;
-    doc["totalHeap"] = totalHeap;
-    doc["usedHeap"] = usedHeap;
-    doc["maxBlock"] = maxBlock;
-    doc["cpuTemp"] = cpuTemp;
-    doc["uptime"] = uptime;
-    doc["memoryUsagePercent"] = (float)usedHeap / totalHeap * 100.0;
-    doc["fragmentationPercent"] = (1.0f - ((float)maxBlock / (float)freeHeap)) * 100.0;
-    
-    String response;
-    serializeJson(doc, response);
-    
+    String response = getSystemInfoJson();
     server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "application/json", response);
 }

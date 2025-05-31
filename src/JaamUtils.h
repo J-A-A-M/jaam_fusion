@@ -6,6 +6,8 @@
 #include <set>
 #include <utility> 
 #include <vector>
+#include <ArduinoJson.h>
+#include <WiFi.h>
 
 extern std::map<uint16_t, uint16_t> alertsMap;
 
@@ -318,4 +320,56 @@ inline void analyzeMemoryFragmentation(const char* context) {
             return; // Return true to indicate high fragmentation
         }
     }
+}
+
+// Forward declaration для websocket
+namespace websockets {
+    class WebsocketsClient;
+}
+
+// External variables declarations
+extern websockets::WebsocketsClient websocket;
+extern uint32_t lastWebsocketConnectTime;
+
+
+// Function to get system information as JSON string
+inline String getSystemInfoJson() {
+    // Get system information
+    size_t freeHeap = ESP.getFreeHeap();
+    size_t totalHeap = ESP.getHeapSize();
+    size_t usedHeap = totalHeap - freeHeap;
+    size_t maxBlock = ESP.getMaxAllocHeap();
+    float cpuTemp = temperatureRead();
+    uint32_t uptime = millis() / 1000; // uptime in seconds
+    
+    // WiFi information
+    int32_t wifiRSSI = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+    
+    // Websocket information - access via extern variable
+    bool websocketAvailable = false;
+    uint32_t websocketUptime = 0;
+    
+    // We can't call websocket.available() here due to forward declaration
+    // So we'll check if lastWebsocketConnectTime is non-zero
+    if (lastWebsocketConnectTime > 0) {
+        websocketUptime = (millis() - lastWebsocketConnectTime) / 1000; // in seconds
+        websocketAvailable = true;
+    }
+    
+    // Create JSON response
+    JsonDocument doc;
+    doc["freeHeap"] = freeHeap;
+    doc["totalHeap"] = totalHeap;
+    doc["usedHeap"] = usedHeap;
+    doc["maxBlock"] = maxBlock;
+    doc["cpuTemp"] = cpuTemp;
+    doc["uptime"] = uptime;
+    doc["memoryUsagePercent"] = (float)usedHeap / totalHeap * 100.0;
+    doc["fragmentationPercent"] = (1.0f - ((float)maxBlock / (float)freeHeap)) * 100.0;
+    doc["wifiRSSI"] = wifiRSSI;
+    doc["websocketUptime"] = websocketUptime;
+    
+    String response;
+    serializeJson(doc, response);
+    return response;
 }

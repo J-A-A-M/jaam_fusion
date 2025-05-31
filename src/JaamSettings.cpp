@@ -181,7 +181,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {HA_BROKER_ADDRESS, {"ha_brokeraddr", ""}},
     {COLOR_ALERT, {"rgbcal", "#FF0000"}},
     {COLOR_CLEAR, {"rgbccl", "#00FF00"}},
-    {COLOR_NEW_ALERT, {"rgbcna", "#FF7F00"}},
+    {COLOR_NEW_ALERT, {"rgbcna", "#FF3C00"}},
     {COLOR_ALERT_OVER, {"rgbcao", "#00FF3C"}},
     {COLOR_EXPLOSION, {"rgbcex", "#00FFFF"}},
     {COLOR_MISSILES, {"rgbcmi", "#AA00FF"}},

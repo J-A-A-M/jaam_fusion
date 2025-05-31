@@ -4,6 +4,7 @@
 
 #include <WiFiManager.h>
 #include <NTPtime.h>
+
 #include <esp_system.h>
 #include <async.h>
 #include <freertos/FreeRTOS.h>
@@ -365,10 +366,10 @@ void onMessageCallback(WebsocketsMessage msg) {
             if (airStarted) {   
                 animate = true;
                 //initialColor = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT));
-                color = animation.colorFromHex(settings.getString(COLOR_ALERT));
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+                color = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT));
+                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
                 endBrightness = 100;
-                animType = AnimationParams::Type::FADE;
+                animType = AnimationParams::Type::BLEND_FADE;
                 period = 1000;
                 cycles = 300;
             }
