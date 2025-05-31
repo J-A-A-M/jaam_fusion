@@ -129,7 +129,7 @@ String JaamWeb::getHtmlTemplate() {
     html += ".metric-label{font-size:12px;color:#6c757d;margin-right:5px}";
     html += ".metric-value{font-weight:bold;font-size:14px}";
     html += ".memory-bar{width:100px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden;margin-left:8px}";
-    html += ".memory-fill{height:100%;background:linear-gradient(90deg,#28a745,#ffc107,#dc3545);transition:width 0.3s ease}";
+    html += ".memory-fill{height:100%;transition:width 0.3s ease,background-color 0.3s ease}";
     html += ".slider-container{margin:20px 0}";
     html += ".slider{width:100%;height:25px;background:#d3d3d3;outline:none;opacity:0.7;transition:opacity .2s}";
     html += ".slider:hover{opacity:1}";
@@ -156,12 +156,12 @@ String JaamWeb::getHtmlTemplate() {
     html += "<div class='memory-bar'><div class='memory-fill' id='memoryBar' style='width:0%'></div></div>";
     html += "</div>";
     html += "<div class='system-metric'>";
-    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z'/></svg>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M9,5V7H11V5H13V7H15V5H17V7H19A2,2 0 0,1 21,9V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V9A2,2 0 0,1 5,7H7V5M5,9V19H19V9H5M7,11H9V13H7V11M11,11H13V13H11V11M15,11H17V13H15V11M7,15H9V17H7V15M11,15H13V17H11V15M15,15H17V17H15V15Z'/></svg>";
     html += "<span class='metric-label'>Процесор:</span>";
     html += "<span class='metric-value' id='cpuTemp'>--°C</span>";
     html += "</div>";
     html += "<div class='system-metric'>";
-    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2Z'/></svg>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'/></svg>";
     html += "<span class='metric-label'>Час роботи:</span>";
     html += "<span class='metric-value' id='uptime'>--</span>";
     html += "</div>";
@@ -229,12 +229,19 @@ String JaamWeb::getHtmlTemplate() {
     html += "<script>";
     
     // System info update functions
+    html += "function getMemoryColor(percent) {";
+    html += "  if (percent < 50) return '#28a745';"; // зелений
+    html += "  if (percent < 75) return '#ffc107';"; // жовтий  
+    html += "  return '#dc3545';"; // червоний
+    html += "}";
     html += "function updateSystemInfo() {";
     html += "  fetch('/system-info')";
     html += "    .then(response => response.json())";
     html += "    .then(data => {";
     html += "      document.getElementById('memoryUsage').textContent = Math.round(data.usedHeap/1024) + '/' + Math.round(data.totalHeap/1024) + ' KB';";
-    html += "      document.getElementById('memoryBar').style.width = data.memoryUsagePercent + '%';";
+    html += "      const memoryBar = document.getElementById('memoryBar');";
+    html += "      memoryBar.style.width = data.memoryUsagePercent + '%';";
+    html += "      memoryBar.style.backgroundColor = getMemoryColor(data.memoryUsagePercent);";
     html += "      document.getElementById('cpuTemp').textContent = data.cpuTemp.toFixed(1) + '°C';";
     html += "      const hours = Math.floor(data.uptime / 3600);";
     html += "      const minutes = Math.floor((data.uptime % 3600) / 60);";
