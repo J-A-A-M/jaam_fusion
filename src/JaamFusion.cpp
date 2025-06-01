@@ -363,10 +363,11 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
             if (airStarted) {   
                 animate = true;
-                //initialColor = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT));
-                color = animation.colorFromHex(settings.getString(COLOR_NEW_ALERT));
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT));
-                endBrightness = 100;
+                color = animation.adaptColorBrightness(
+                    strip_main, 
+                    animation.colorFromHex(settings.getString(COLOR_ALERT)), 
+                    led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT))
+                );
                 animType = AnimationParams::Type::BLEND_FADE;
                 period = 1000;
                 cycles = 300;

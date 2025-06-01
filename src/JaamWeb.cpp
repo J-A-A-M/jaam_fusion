@@ -465,6 +465,7 @@ void JaamWeb::handleParameter() {
             settings->saveInt(HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting home_district: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, intValue);
             LOG.printf("[WEB] Setting brightness: %d\n", intValue);
@@ -473,34 +474,42 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_DAY, intValue);
             LOG.printf("[WEB] Setting brightness_day: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_night") {
             settings->saveInt(BRIGHTNESS_NIGHT, intValue);
             LOG.printf("[WEB] Setting brightness_night: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, intValue);
             LOG.printf("[WEB] Setting brightness_clear: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_new_alert") {
             settings->saveInt(BRIGHTNESS_NEW_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_new_alert: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_alert_over") {
             settings->saveInt(BRIGHTNESS_ALERT_OVER, intValue);
             LOG.printf("[WEB] Setting brightness_alert_over: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, intValue);
             LOG.printf("[WEB] Setting brightness_explosion: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting brightness_home_district: %d\n", intValue);
             needAdaptColors = true;
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, intValue);
             LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);

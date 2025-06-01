@@ -71,9 +71,7 @@ class AnimationManager {
         void updateSetBrightnessAnimation(AnimationParams* anim, float elapsed);
         void cleanupAnimation(AnimationParams* anim, int index);
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
-        void removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex);
-        uint32_t adaptColorBrightness(Adafruit_NeoPixel* strip, uint32_t color, uint8_t brightness);
-        
+        void removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex);  
 
     public:
         AnimationManager();
@@ -101,6 +99,7 @@ class AnimationManager {
         bool isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx);
         void paintStripDefault(Adafruit_NeoPixel* strip, uint16_t num_leds);
         void adaptAllAnimationColors();
+        uint32_t adaptColorBrightness(Adafruit_NeoPixel* strip, uint32_t color, uint8_t brightness);
 };
 
 
