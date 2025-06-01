@@ -21,6 +21,7 @@ extern volatile bool needReconnectStrips;
 extern volatile bool needReconnectMainStrip;
 extern volatile bool needReconnectBgStrip;
 extern volatile bool needReconnectServiceStrip;
+extern volatile bool needAdaptColors;
 
 // extern volatile bool needAdaptNonAnimationColors;
 // extern volatile bool needAdaptAlertClearColors;
@@ -115,7 +116,7 @@ String JaamWeb::getHtmlTemplate() {
     html += "body{font-family:Arial,sans-serif;margin:20px;background-color:#f0f0f0}";
     html += ".container{max-width:600px;margin:0 auto;background-color:white;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1)}";
     html += ".system-panel{background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:15px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}";
-    html += ".alerts-panel{background:#fff5f5;border:1px solid #fed7d7;border-radius:8px;padding:15px;margin-bottom:20px;display:flex;justify-content:flex-start;align-items:center;flex-wrap:wrap}";
+    html += ".alerts-panel{background:#fff5f5;border:1px solid #fed7d7;border-radius:8px;padding:15px;margin-bottom:20px;display:block;justify-content:flex-start;align-items:center;flex-wrap:wrap}";
     html += ".alert-metric{display:flex;align-items:center;margin:5px 0;min-width:120px}";
     html += ".alerts-loading{color:#6c757d;font-size:12px}";
     html += ".alerts-no-alerts{color:#28a745;font-weight:bold;font-size:12px}";
@@ -442,16 +443,7 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_HOME_DISTRICT, valuePtr);
             LOG.printf("[WEB] Setting color_home: raw=%s\n", valuePtr);
         }
-        if (strip_main_initialized) {
-            LOG.printf("[WEB] Adjusting colors\n");               
-            animation.safeStripOperation(strip_main, [this](Adafruit_NeoPixel* strip) {
-                for (int i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-        }
+        needAdaptColors = true;
         needAdaptAnimationColors = true;
 
         server.send(200, "text/plain", "OK");
@@ -472,6 +464,7 @@ void JaamWeb::handleParameter() {
         if (name == "home_district") {
             settings->saveInt(HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting home_district: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, intValue);
             LOG.printf("[WEB] Setting brightness: %d\n", intValue);
@@ -479,27 +472,35 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_day") {
             settings->saveInt(BRIGHTNESS_DAY, intValue);
             LOG.printf("[WEB] Setting brightness_day: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_night") {
             settings->saveInt(BRIGHTNESS_NIGHT, intValue);
             LOG.printf("[WEB] Setting brightness_night: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, intValue);
             LOG.printf("[WEB] Setting brightness_clear: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_new_alert") {
             settings->saveInt(BRIGHTNESS_NEW_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_new_alert: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_alert_over") {
             settings->saveInt(BRIGHTNESS_ALERT_OVER, intValue);
             LOG.printf("[WEB] Setting brightness_alert_over: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, intValue);
             LOG.printf("[WEB] Setting brightness_explosion: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting brightness_home_district: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, intValue);
             LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);
@@ -536,22 +537,27 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_KABS, boolValue);
             LOG.printf("[WEB] Setting enable_kabs: %d\n", boolValue);
+            needAdaptColors = true;
         } else if (name == "enable_missiles") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_MISSILES, boolValue);
             LOG.printf("[WEB] Setting enable_missiles: %d\n", boolValue);
+            needAdaptColors = true;
         } else if (name == "enable_drones") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_DRONES, boolValue);
             LOG.printf("[WEB] Setting enable_drones: %d\n", boolValue);
+            needAdaptColors = true;
         } else if (name == "enable_ballistic") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BALLISTIC, boolValue);
             LOG.printf("[WEB] Setting enable_ballistic: %d\n", boolValue);
+            needAdaptColors = true;
         } else if (name == "enable_explosions") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_EXPLOSIONS, boolValue);
             LOG.printf("[WEB] Setting enable_explosions: %d\n", boolValue);
+            needAdaptColors = true;
         }
 
         server.send(200, "text/plain", "OK");

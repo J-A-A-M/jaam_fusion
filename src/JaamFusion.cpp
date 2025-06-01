@@ -56,6 +56,7 @@ AnimationParams::Type   animType;
 bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
 bool                needToReconnectWebsocket = false;
+bool                needAdaptColors = false;
 bool                needReconnectStrips = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
@@ -319,10 +320,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         explosion   = flags16 & (1 << 9);
 
         if (!airPrevious    &&   air) { airStarted = true; }
-        if (airPrevious    &&   !air) { 
-            airCompleted = true; 
-            alertsMap.erase(region_id);
-        }
+        if (airPrevious     &&  !air) { airCompleted = true; alertsMap.erase(region_id);}
         if (!dronesPrevious    &&   drones) { dronesStarted = true; }
         if (dronesPrevious    &&   !drones) { dronesCompleted = true; }
         if (!missilesPrevious    &&   missiles) { missilesStarted = true; }
@@ -926,7 +924,7 @@ void initStripMain() {
         LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(MAIN_LED_PIN), num_leds_main, ledType, 
                    settings.getInt(MAIN_LED_COLOR_FORMAT), settings.getInt(MAIN_LED_FREQUENCY));
-        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 0, DefaultColors::OFF, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
@@ -959,7 +957,7 @@ void initStripBg() {
         LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), ledType,
                    settings.getInt(BG_LED_COLOR_FORMAT), settings.getInt(BG_LED_FREQUENCY));
-        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 0, DefaultColors::OFF, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
@@ -991,7 +989,7 @@ void initStripService() {
         LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(SERVICE_LED_PIN), num_leds_service, ledType,
                    settings.getInt(SERVICE_LED_COLOR_FORMAT), settings.getInt(SERVICE_LED_FREQUENCY));
-        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 0, DefaultColors::OFF, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {
@@ -1246,6 +1244,20 @@ void mainThreadProcess() {
         LOG.println("[MAIN] Reconnecting LED strip");
         needReconnectStrips = false;
         reconnectStrips();
+    }
+
+    if (needAdaptColors) {
+        if (strip_main_initialized) {
+            LOG.printf("[WEB] Adjusting colors\n");               
+            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+                for (int i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
+                strip->show();
+            });
+        }
+        needAdaptColors = false;
     }
 
     if (needAdaptAnimationColors) {
