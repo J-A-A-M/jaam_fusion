@@ -304,12 +304,17 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
 }
 
 void AnimationManager::updateSetBrightnessAnimation(AnimationParams* anim, float elapsed) {
-    // Linear interpolation between startBrightness and endBrightness
     float phase = elapsed - floor(elapsed); // 0.0 to 1.0
     uint8_t currentBrightness = anim->startBrightness + 
                 (anim->endBrightness - anim->startBrightness) * phase;
-    
+
+    // Якщо це останній цикл або майже кінець фази — явно ставимо endBrightness
+    if (phase > 0.9f || (anim->cycles - elapsed) < 0.001f) {
+        currentBrightness = anim->endBrightness;
+    }
+
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        LOG.printf("[ANIMATION] updateSetBrightnessAnimation: %d\n", led.brightnessMapped(currentBrightness));
         anim->strip->setBrightness(led.brightnessMapped(currentBrightness));
         for (int i = 0; i < anim->strip->numPixels(); i++) {
             uint32_t color = ledActualColor(anim->strip, i);
