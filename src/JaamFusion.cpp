@@ -1253,6 +1253,7 @@ void mainThreadProcess() {
 
     if (needToReconnectWebsocket) {
         LOG.println("[MAIN] Reconnecting WebSocket");
+        isFirstDataFetchCompleted = false;
         needToReconnectWebsocket = false;
         socketConnect();
     }
