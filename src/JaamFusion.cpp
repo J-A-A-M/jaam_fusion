@@ -1288,22 +1288,30 @@ void mainThreadProcess() {
             LOG.println("[LED] strip_bg not initialized, skipping brightness adaptation");
             return;
         }
-        int ledsIdx[1] = { 0 };
-        if (!animation.createAnimation(
-            AnimationParams::Type::SET_BRIGHTNESS,
-            strip_main,
-            ledsIdx,
-            1,
-            0x000000, // Колір не важливий для SET_BRIGHTNESS
-            0x000000, // Початковий колір не важливий
-            200,
-            1,
-            strip_main->getBrightness(),
-            settings.getInt(BRIGHTNESS)
-        )) {
-            LOG.println("[ERROR] Failed to create animation");
-            return;
-        }
+        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(settings.getInt(BRIGHTNESS)));
+            for(uint16_t i = 0; i < num_leds_main; i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+        // int ledsIdx[1] = { 0 };
+        // if (!animation.createAnimation(
+        //     AnimationParams::Type::SET_BRIGHTNESS,
+        //     strip_main,
+        //     ledsIdx,
+        //     1,
+        //     0x000000, // Колір не важливий для SET_BRIGHTNESS
+        //     0x000000, // Початковий колір не важливий
+        //     200,
+        //     1,
+        //     strip_main->getBrightness(),
+        //     settings.getInt(BRIGHTNESS)
+        // )) {
+        //     LOG.println("[ERROR] Failed to create animation");
+        //     return;
+        // }
     }
     if (needAdaptStripBgBrightness) {
         needAdaptStripBgBrightness = false;
@@ -1312,22 +1320,30 @@ void mainThreadProcess() {
             LOG.println("[LED] strip_bg not initialized, skipping brightness adaptation");
             return;
         }
-        int ledsIdx[1] = { 0 };
-        if (!animation.createAnimation(
-            AnimationParams::Type::SET_BRIGHTNESS,
-            strip_bg,
-            ledsIdx,
-            1,
-            0x000000, // Колір не важливий для SET_BRIGHTNESS
-            0x000000, // Початковий колір не важливий
-            200,
-            1,
-            strip_bg->getBrightness(),
-            settings.getInt(BRIGHTNESS_BG)
-        )) {
-            LOG.println("[ERROR] Failed to create animation");
-            return;
-        }
+        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(settings.getInt(BRIGHTNESS_BG)));
+            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+        // int ledsIdx[1] = { 0 };
+        // if (!animation.createAnimation(
+        //     AnimationParams::Type::SET_BRIGHTNESS,
+        //     strip_bg,
+        //     ledsIdx,
+        //     1,
+        //     0x000000, // Колір не важливий для SET_BRIGHTNESS
+        //     0x000000, // Початковий колір не важливий
+        //     200,
+        //     1,
+        //     strip_bg->getBrightness(),
+        //     settings.getInt(BRIGHTNESS_BG)
+        // )) {
+        //     LOG.println("[ERROR] Failed to create animation");
+        //     return;
+        // }
     }
     if (needAdaptStripServiceBrightness) {
         needAdaptStripServiceBrightness = false;
@@ -1336,22 +1352,30 @@ void mainThreadProcess() {
             LOG.println("[LED] strip_bg not initialized, skipping brightness adaptation");
             return;
         }
-        int ledsIdx[1] = { 0 };
-        if (!animation.createAnimation(
-            AnimationParams::Type::SET_BRIGHTNESS,
-            strip_service,
-            ledsIdx,
-            1,
-            0x000000, // Колір не важливий для SET_BRIGHTNESS
-            0x000000, // Початковий колір не важливий
-            200,
-            1,
-            strip_service->getBrightness(),
-            settings.getInt(BRIGHTNESS_SERVICE)
-        )) {
-            LOG.println("[ERROR] Failed to create animation");
-            return;
-        }
+        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(settings.getInt(BRIGHTNESS_SERVICE)));
+            for(int i = 0; i < num_leds_service; i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+        // int ledsIdx[1] = { 0 };
+        // if (!animation.createAnimation(
+        //     AnimationParams::Type::SET_BRIGHTNESS,
+        //     strip_service,
+        //     ledsIdx,
+        //     1,
+        //     0x000000, // Колір не важливий для SET_BRIGHTNESS
+        //     0x000000, // Початковий колір не важливий
+        //     200,
+        //     1,
+        //     strip_service->getBrightness(),
+        //     settings.getInt(BRIGHTNESS_SERVICE)
+        // )) {
+        //     LOG.println("[ERROR] Failed to create animation");
+        //     return;
+        // }
     }
     // if (needAdaptNonAnimationColors) {
     //     if (strip_main_initialized) {
