@@ -74,6 +74,7 @@ bool                needReconnectServiceStrip;
 WiFiManager         wm;
 WebsocketsClient    websocket;
 uint32_t            lastWifiConnectTime = 0;  // Track when WiFi was last connected
+uint16_t            alertsHash = 0;
 
 time_t              websocketLastPingTime = 0;
 bool                isFirstDataFetchCompleted = false;
@@ -230,7 +231,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     }
 
     // 5) Обчислюємо довжину payload після заголовка
-    size_t bodyLen = len - HEADER_SZ;
+    size_t bodyLen = len - HEADER_SZ - HASH_SZ;
 
     // 6) payloadLen має ділитися на RECORD_SZ
     if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
@@ -239,12 +240,22 @@ void onMessageCallback(WebsocketsMessage msg) {
         return;
     }
 
+    uint16_t actualHash = (static_cast<uint16_t>(data[1]) << 8) | data[2];
+    uint16_t prevHash = (static_cast<uint16_t>(data[3]) << 8) | data[4];
+    LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n", alertsHash, prevHash, actualHash);
+
+    if (prevHash != alertsHash) {
+        LOG.printf("[ERROR] prevHash != alertsHash\n");
+        needToReconnectWebsocket = true;
+        return;
+    }
+
     // 7) Обчислюємо кількість записів
     size_t count = bodyLen / RECORD_SZ;
     //LOG.printf("count %d\n", count);
 
     // 8) Розбираємо count записів по RECORD_SZ
-    const uint8_t* ptr = data + HEADER_SZ;
+    const uint8_t* ptr = data + HEADER_SZ + HASH_SZ;
     uint32_t color;
     uint32_t initialColor = 0x000000; // Початковий колір для анімації
     uint32_t period;
@@ -456,6 +467,8 @@ void onMessageCallback(WebsocketsMessage msg) {
         });
     }
 
+    alertsHash = actualHash;
+    LOG.printf("[WEBSOCKET] alertsHash updated: [0x%04X]\n", alertsHash);
     isFirstDataFetchCompleted = true;
     checkFreeHeap("Websockets data processing");
 }
@@ -533,7 +546,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
 void socketConnect() {
     LOG.println("[WEBSOCKET] connection start...");
     //showServiceMessage("підключення...", "Сервер даних");
-    
+    alertsHash = 0;
     websocket.onMessage(onMessageCallback);
     websocket.onEvent(onEventsCallback);
     long startTime = millis();
@@ -547,6 +560,7 @@ void socketConnect() {
     LOG.printf("[WEBSOCKET] url:%s\n", webSocketUrl);
     websocket.connect(webSocketUrl);
     if (websocket.available()) {
+        
         clearAllAlertsMaps();
         animation.clearAllAnimations();
         animation.paintStripDefault(strip_main, num_leds_main);

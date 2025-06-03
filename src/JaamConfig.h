@@ -43,6 +43,7 @@ static const uint32_t MAIN_THREAD_CHECK_INTERVAL = 500;   // 3 seconds
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
 static constexpr size_t   HEADER_SZ         = 1;  // лише 1 байт – type
 static constexpr size_t   RECORD_SZ         = 4;  // 2B region_id + 2B flags16
+static constexpr size_t   HASH_SZ           = 4;  // 2B actual + 2B prev
 
 // --- Region to LED mapping (fixed, задається один раз) ---
 constexpr int MAX_REGIONS = 150;          // Кількість регіонів
