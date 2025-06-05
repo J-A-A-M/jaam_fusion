@@ -175,6 +175,8 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.printf("[ERROR] message type unknown\n");
         return;
     }
+
+    bool animate = false;
     uint32_t color;
     uint32_t initialColor = 0x000000; // Початковий колір для анімації
     uint32_t period;
@@ -183,11 +185,11 @@ void onMessageCallback(WebsocketsMessage msg) {
     uint8_t endBrightness = 255;
     uint8_t ledCount;
     std::vector<int> ledsIdx;
+    size_t bodyLen;
 
     if(type == TYPE_NOTIFICATIONS_BATCH) {
         LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH received\n");
-        size_t bodyLen = len - HEADER_SZ;
-        uint8_t ledCount;
+        bodyLen = len - HEADER_SZ;
 
         // payloadLen має ділитися на RECORD_SZ
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
@@ -197,9 +199,11 @@ void onMessageCallback(WebsocketsMessage msg) {
             return;
         }
 
+        // Обчислюємо кількість записів
         size_t count = bodyLen / RECORD_SZ;
-        const uint8_t* ptr = data + HEADER_SZ;
 
+        // Розбираємо count записів по RECORD_SZ
+        const uint8_t* ptr = data + HEADER_SZ;
 
         LOG.printf("[WEBSOCKET] notification data processing\n");
 
@@ -218,8 +222,6 @@ void onMessageCallback(WebsocketsMessage msg) {
                 LOG.printf("[WEBSOCKET] notification region %d: %d\n", region_id, flags16);
             }
 
-            bool animate = false;
-
             drones          = flags16 & (1 << 5);
             missiles        = flags16 & (1 << 6);
             kab             = flags16 & (1 << 7);
@@ -232,7 +234,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             period = 500;
             cycles = 360;
 
-            if (drones && settings.getBool(ENABLE_DRONES)) {
+            if ((drones || recon) && settings.getBool(ENABLE_DRONES)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             }
@@ -277,7 +279,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     if(type == TYPE_ALERTS_BATCH) {
         // Обчислюємо довжину payload після заголовка
-        size_t bodyLen = len - HEADER_SZ - HASH_SZ;
+        bodyLen = len - HEADER_SZ - HASH_SZ;
 
         // payloadLen має ділитися на RECORD_SZ
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
@@ -322,8 +324,6 @@ void onMessageCallback(WebsocketsMessage msg) {
             } else {
                 LOG.printf("[WEBSOCKET] alert region %d: %d\n", region_id, flags16);
             }
-
-            bool animate = false;
 
             bool airStarted = false;
             bool airCompleted = false;
@@ -397,8 +397,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                     animate = true;
                     color = animation.adaptColorBrightness(
                         strip_main, 
-                        animation.colorFromHex(settings.getString(COLOR_ALERT)), 
-                        led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT))
+                        animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)), 
+                        led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT))
                     );
                     animType = AnimationParams::Type::BLEND_FADE;
                     period = 1000;
