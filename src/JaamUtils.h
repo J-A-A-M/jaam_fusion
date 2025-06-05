@@ -9,11 +9,12 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 
-extern std::map<uint16_t, uint16_t> alertsMap;
+// External variables declarations
+extern uint32_t                         lastWebsocketConnectTime;
+extern std::map<uint16_t, uint16_t>     alertsMap;
+extern size_t                           lastUsedHeap;
 
-extern size_t  lastUsedHeap;
-
-struct Firmware {
+struct JaamFirmware {
     int major = 0;
     int minor = 0;
     int patch = 0;
@@ -21,13 +22,12 @@ struct Firmware {
     bool isBeta = false;
   };
   
-static Firmware parseFirmwareVersion(const char* version) {
+static JaamFirmware parseFirmwareVersion(const char* version) {
 
-    Firmware firmware;
+    JaamFirmware firmware;
 
     char* versionCopy = strdup(version);
     char* token = strtok(versionCopy, ".-");
-
     int part = 0;
     while (token) {
         if (isdigit(token[0])) {
@@ -44,13 +44,11 @@ static Firmware parseFirmwareVersion(const char* version) {
         }
         token = strtok(NULL, ".-");
     }
-
     free(versionCopy);
-
     return firmware;
 }
 
-static void fillFwVersion(char* result, Firmware firmware) {
+static void fillFwVersion(char* result, JaamFirmware firmware) {
     std::string version = std::to_string(firmware.major) + "." + std::to_string(firmware.minor);
   
     if (firmware.patch > 0) {
@@ -322,17 +320,20 @@ inline void analyzeMemoryFragmentation(const char* context) {
     }
 }
 
-// Forward declaration для websocket
-namespace websockets {
-    class WebsocketsClient;
+// Function to parse JSON payload and return JsonDocument
+static JsonDocument parseJson(const char* payload) {
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (error) {
+        LOG.printf("[ERROR] Deserialization error: $s\n", error.f_str());
+        return doc;
+    } else {
+        return doc;
+    }
 }
 
-// External variables declarations
-extern websockets::WebsocketsClient websocket;
-extern uint32_t lastWebsocketConnectTime;
 
-
-// Function to get system information as JSON string
+// Function to get system information as JSON string for web interface
 inline String getSystemInfoJson() {
     // Get system information
     size_t freeHeap = ESP.getFreeHeap();
@@ -349,8 +350,6 @@ inline String getSystemInfoJson() {
     bool websocketAvailable = false;
     uint32_t websocketUptime = 0;
     
-    // We can't call websocket.available() here due to forward declaration
-    // So we'll check if lastWebsocketConnectTime is non-zero
     if (lastWebsocketConnectTime > 0) {
         websocketUptime = (millis() - lastWebsocketConnectTime) / 1000; // in seconds
         websocketAvailable = true;
@@ -374,7 +373,7 @@ inline String getSystemInfoJson() {
     return response;
 }
 
-// Function to get alerts information as JSON string
+// Function to get alerts information as JSON string for web interface
 inline String getAlertsJson() {
     JsonDocument doc;
     JsonArray regions = doc["regions"].to<JsonArray>();

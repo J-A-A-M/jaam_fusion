@@ -20,11 +20,11 @@
 
 using namespace websockets;
 
+// --- MAIN Configuration ---
 char                chipID[13];
 char                currentFwVersion[25];
 int                 currentIdx = 0;
 uint32_t            loopCount = 0;
-int                 needRebootWithDelay = -1;
 
 Async               async = Async(20);
 
@@ -32,7 +32,7 @@ NTPtime             timeClient(2);
 DSTime              dst(3, 0, 7, 3, 10, 0, 7, 4); //https://en.wikipedia.org/wiki/Eastern_European_Summer_Time
 
 JaamSettings        settings;
-Firmware            firmware;
+JaamFirmware        firmware;
 JaamWeb             web;
 JaamLed             led;
 
@@ -43,16 +43,21 @@ Adafruit_NeoPixel*  strip_service = nullptr;
 SemaphoreHandle_t   stripMutex = nullptr;
 uint16_t            num_leds_main = 26;
 uint16_t            num_leds_service = 5;
-uint8_t             homeDistrict = 25;
+uint8_t             currentBrightness = 0;
 std::vector<int>    allLedsMain;
 std::vector<int>    allLedsBg;
-
 bool                strip_main_initialized = false;
 bool                strip_bg_initialized = false;
 bool                strip_service_initialized = false;
 
-AnimationManager    animation;
+// --- ANIMATION Configuration ---
+AnimationManager        animation;
 AnimationParams::Type   animType;
+
+// --- MAP Configuration ---
+std::map<uint16_t, uint16_t>    alertsMap;
+
+// --- TASKS Configuration ---
 bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
 bool                needAdaptStripMainBrightness = false;
@@ -64,11 +69,6 @@ bool                needReconnectStrips = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
 bool                needReconnectServiceStrip;
-// bool                needAdaptNonAnimationColors = false;
-// bool                needAdaptAlertClearColors = false;
-// bool                needAdaptAlertColors = false;
-// bool                needAdaptAlertExplosionColors = false;
-// bool                needAdaptAlertHomeDistrictColors = false;
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -91,19 +91,6 @@ size_t              lastUsedHeap = 0;
 // TaskHandle_t websocketProcessTaskHandle = nullptr;
 
 
-std::map<uint16_t, uint16_t>    alertsMap;
-// std::map<uint16_t, bool>        airAlertsMap;
-// std::map<uint16_t, bool>        artilleryAlertsMap;
-// std::map<uint16_t, bool>        urbanFightsAlertsMap;
-// std::map<uint16_t, bool>        chemicalAlertsMap;
-// std::map<uint16_t, bool>        nuclearAlertsMap;
-// std::map<uint16_t, bool>        missilesAlertsMap;
-// std::map<uint16_t, bool>        kabAlertsMap;
-// std::map<uint16_t, bool>        dronesAlertsMap;
-// std::map<uint16_t, bool>        ballisticAlertsMap;
-// std::map<uint16_t, bool>        explosionAlertsMap;
-
-
 void clearAllAlertsMaps() {
     // Логування стану пам'яті перед очищенням
     size_t memBefore = ESP.getFreeHeap();
@@ -111,31 +98,11 @@ void clearAllAlertsMaps() {
     
     // Очищаємо всі map'и
     alertsMap.clear();
-    // airAlertsMap.clear();
-    // artilleryAlertsMap.clear();
-    // urbanFightsAlertsMap.clear();
-    // chemicalAlertsMap.clear();
-    // nuclearAlertsMap.clear();
-    // missilesAlertsMap.clear();
-    // kabAlertsMap.clear();
-    // dronesAlertsMap.clear();
-    // ballisticAlertsMap.clear();
-    // explosionAlertsMap.clear();
     
     // Додаткове очищення пам'яті після clear()
     // Для std::map викликаємо shrink_to_fit через swap з пустими контейнерами
     std::map<uint16_t, uint16_t>().swap(alertsMap);
-    // std::map<uint16_t, bool>().swap(airAlertsMap);
-    // std::map<uint16_t, bool>().swap(artilleryAlertsMap);
-    // std::map<uint16_t, bool>().swap(urbanFightsAlertsMap);
-    // std::map<uint16_t, bool>().swap(chemicalAlertsMap);
-    // std::map<uint16_t, bool>().swap(nuclearAlertsMap);
-    // std::map<uint16_t, bool>().swap(missilesAlertsMap);
-    // std::map<uint16_t, bool>().swap(kabAlertsMap);
-    // std::map<uint16_t, bool>().swap(dronesAlertsMap);
-    // std::map<uint16_t, bool>().swap(ballisticAlertsMap);
-    // std::map<uint16_t, bool>().swap(explosionAlertsMap);
-    
+
     // Принудове очищення пам'яті
     forceMemoryCleanup("after maps clearing");
     
@@ -150,7 +117,6 @@ void clearAllAlertsMaps() {
     LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n", 
                memReclaimed, memBefore, memAfter);
 }
-
 
 void rebootDevice(int time = 2000, bool async = false) {
     LOG.printf("[MAIN] Rebooting in %d ms...\n", time);
@@ -171,20 +137,8 @@ void rebootDevice(int time = 2000, bool async = false) {
     ESP.restart();
 }
 
+// --- WEBSOCKET Functions ---
 
-static JsonDocument parseJson(const char* payload) {
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-    if (error) {
-        LOG.printf("[ERROR] Deserialization error: $s\n", error.f_str());
-        return doc;
-    } else {
-        return doc;
-    }
-    }
-
-
-//--Websocket process start
 void printHex(const String& data) {
     LOG.print("[WEBSOCKET] HEX: ");
     for (size_t i = 0; i < data.length(); ++i) {
@@ -199,14 +153,6 @@ void onMessageCallback(WebsocketsMessage msg) {
     // Ігноруємо текстові повідомлення
     if (!msg.isBinary()) {
         LOG.println("[WEBSOCKET] Message in not binary");
-        LOG.println(msg.data());
-        JsonDocument data = parseJson(msg.data().c_str());
-        String payload = data["payload"];
-        if (!payload.isEmpty()) {
-            if (payload == "ping") {
-                LOG.println("[WEBSOCKET] Heartbeat from server");
-            }
-        }
         return;
     } else {
         LOG.printf("[WEBSOCKET] bytes payload len: %d\n", msg.length());
@@ -225,37 +171,10 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // 4) Перевіряємо тип пакета
     uint8_t type = data[0];
-    if (type != TYPE_ALERTS_BATCH) {
-        LOG.printf("[ERROR] type != TYPE_ALERTS_BATCH\n");
+    if (type != TYPE_ALERTS_BATCH && type != TYPE_NOTIFICATIONS_BATCH) {
+        LOG.printf("[ERROR] message type unknown\n");
         return;
     }
-
-    // 5) Обчислюємо довжину payload після заголовка
-    size_t bodyLen = len - HEADER_SZ - HASH_SZ;
-
-    // 6) payloadLen має ділитися на RECORD_SZ
-    if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
-        // некоректний фрейм — пропускаємо
-        LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
-        return;
-    }
-
-    uint16_t actualHash = (static_cast<uint16_t>(data[1]) << 8) | data[2];
-    uint16_t prevHash = (static_cast<uint16_t>(data[3]) << 8) | data[4];
-    LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n", alertsHash, prevHash, actualHash);
-
-    if (prevHash != alertsHash) {
-        LOG.printf("[ERROR] prevHash != alertsHash\n");
-        needToReconnectWebsocket = true;
-        return;
-    }
-
-    // 7) Обчислюємо кількість записів
-    size_t count = bodyLen / RECORD_SZ;
-    //LOG.printf("count %d\n", count);
-
-    // 8) Розбираємо count записів по RECORD_SZ
-    const uint8_t* ptr = data + HEADER_SZ + HASH_SZ;
     uint32_t color;
     uint32_t initialColor = 0x000000; // Початковий колір для анімації
     uint32_t period;
@@ -265,171 +184,69 @@ void onMessageCallback(WebsocketsMessage msg) {
     uint8_t ledCount;
     std::vector<int> ledsIdx;
 
-    LOG.printf("[WEBSOCKET] data processing\n");
+    if(type == TYPE_NOTIFICATIONS_BATCH) {
+        LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH received\n");
+        size_t bodyLen = len - HEADER_SZ;
+        uint8_t ledCount;
 
-    bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic, explosion;
-    bool airPrevious, artilleryPrevious, urbanPrevious, chemicalPrevious, nuclearPrevious, missilesPrevious, kabPrevious, dronesPrevious, ballisticPrevious, explosionPrevious ;
-    for (size_t i = 0; i < count; ++i) {
-        uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
-        uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
-        ptr += RECORD_SZ;
-
-        
-
-        const int* leds = getLedsForRegion(region_id, ledCount);
-        if (leds == nullptr) {
-            // Якщо такого регіону немає — пропускаємо цей запис
-            LOG.printf("[WEBSOCKET] region %d: %d skipped - no leds associated\n", region_id, flags16);
-            continue;
-        } else {
-            LOG.printf("[WEBSOCKET] region %d: %d\n", region_id, flags16);
+        // payloadLen має ділитися на RECORD_SZ
+        if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
+            // некоректний фрейм — пропускаємо і реконнектимось
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
+            needToReconnectWebsocket = true;
+            return;
         }
 
-        bool animate = false;
+        size_t count = bodyLen / RECORD_SZ;
+        const uint8_t* ptr = data + HEADER_SZ;
 
-        bool airStarted = false;
-        bool airCompleted = false;
-        bool dronesStarted = false;
-        bool dronesCompleted = false;
-        bool missilesStarted = false;
-        bool missilesCompleted = false;
-        bool kabStarted = false;
-        bool kabCompleted = false;
-        bool explosionStarted = false;
-        bool explosionCompleted = false;
-        bool ballisticStarted = false;
-        bool ballisticCompleted = false;
 
-        bool notificationExplosion = false;
-        bool notificationKab = false;
-        bool notificationMissiles = false;
-        bool notificationDrones = false;
-        bool notificationBallistic = false;
+        LOG.printf("[WEBSOCKET] notification data processing\n");
 
-        // Розкладаємо попередні тривоги
-        airPrevious         = alertsMap[region_id] & (1 << 0);
-        artilleryPrevious   = alertsMap[region_id] & (1 << 1);
-        urbanPrevious       = alertsMap[region_id] & (1 << 2);
-        chemicalPrevious    = alertsMap[region_id] & (1 << 3);
-        nuclearPrevious     = alertsMap[region_id] & (1 << 4);
-        dronesPrevious      = alertsMap[region_id] & (1 << 5);
-        missilesPrevious    = alertsMap[region_id] & (1 << 6);
-        kabPrevious         = alertsMap[region_id] & (1 << 7);
-        ballisticPrevious   = alertsMap[region_id] & (1 << 8);
-        explosionPrevious   = alertsMap[region_id] & (1 << 9);
+        bool missiles, kab, drones, recon, explosion;
+        for (size_t i = 0; i < count; ++i) {
+            uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
+            uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
+            ptr += RECORD_SZ;
 
-        // Зберігаємо
-        alertsMap[region_id] = flags16;
-
-        // Розкладаємо актуальні тривоги
-        air         = flags16 & (1 << 0);
-        artillery   = flags16 & (1 << 1);
-        urban       = flags16 & (1 << 2);
-        chemical    = flags16 & (1 << 3);
-        nuclear     = flags16 & (1 << 4);
-        drones      = flags16 & (1 << 5);
-        missiles    = flags16 & (1 << 6);
-        kab         = flags16 & (1 << 7);
-        ballistic   = flags16 & (1 << 8);
-        explosion   = flags16 & (1 << 9);
-
-        if (!airPrevious    &&   air) { airStarted = true; }
-        if (airPrevious     &&  !air) { airCompleted = true; alertsMap.erase(region_id);}
-        if (!dronesPrevious    &&   drones) { dronesStarted = true; }
-        if (dronesPrevious    &&   !drones) { dronesCompleted = true; }
-        if (!missilesPrevious    &&   missiles) { missilesStarted = true; }
-        if (missilesPrevious    &&   !missiles) { missilesCompleted = true; }
-        if (!kabPrevious    &&   kab) { kabStarted = true; }
-        if (kabPrevious    &&   !kab) { kabCompleted = true; }
-        if (!ballisticPrevious    &&   ballistic) { ballisticStarted = true; }
-        if (ballisticPrevious    &&   !ballistic) { ballisticCompleted = true; }
-        if (!explosionPrevious    &&   explosion) { explosionStarted = true; }
-        if (explosionPrevious    &&   !explosion) { explosionCompleted = true; }
-
-        // Розкладаємо по окремих тривогах
-        // airAlertsMap[region_id]                   = air;
-        // artilleryAlertsMap[region_id]             = artillery;
-        // urbanFightsAlertsMap[region_id]           = urban;
-        // chemicalAlertsMap[region_id]              = chemical;
-        // nuclearAlertsMap[region_id]               = nuclear;
-        // missilesAlertsMap[region_id]              = missiles;
-        // kabAlertsMap[region_id]                   = kab;
-        // dronesAlertsMap[region_id]                = drones;
-        // ballisticAlertsMap[region_id]             = ballistic;
-        // explosionAlertsMap[region_id]             = explosion;
-
-        // LOG.printf("airAlertsMap %d air %d aS %d aC %d dS %d dC %d mS %d mC %d kS %d kC %d Region %d led %d \n", 
-        //     airAlertsMap[region_id], air, 
-        //     airStarted, airCompleted,
-        //     dronesStarted, dronesCompleted,
-        //     missilesStarted, missilesCompleted, 
-        //     kabStarted,kabCompleted, region_id, leds[0]);
-
-        
-        if (isFirstDataFetchCompleted) {
-            if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted || explosionCompleted || ballisticCompleted) {
-                animate = true;
-                initialColor = strip_main->getPixelColor(leds[0]);
-                color = animation.ledActualColor(strip_main, leds[0], true);
-                animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
-                cycles = 1;
-                period = 10000;
+            const int* leds = getLedsForRegion(region_id, ledCount);
+            if (leds == nullptr) {
+                // Якщо такого регіону немає — пропускаємо цей запис
+                LOG.printf("[WEBSOCKET] notification region %d: %d skipped - no leds associated\n", region_id, flags16);
+                continue;
+            } else {
+                LOG.printf("[WEBSOCKET] notification region %d: %d\n", region_id, flags16);
             }
-            if (airStarted) {   
-                animate = true;
-                color = animation.adaptColorBrightness(
-                    strip_main, 
-                    animation.colorFromHex(settings.getString(COLOR_ALERT)), 
-                    led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT))
-                );
-                animType = AnimationParams::Type::BLEND_FADE;
-                period = 1000;
-                cycles = 300;
-            }
-            if (air && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
+
+            bool animate = false;
+
+            drones          = flags16 & (1 << 5);
+            missiles        = flags16 & (1 << 6);
+            kab             = flags16 & (1 << 7);
+            explosion       = flags16 & (1 << 8);
+            recon           = flags16 & (1 << 9);
+
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 50;
+            animType = AnimationParams::Type::FADE;
+            period = 500;
+            cycles = 360;
+
+            if (drones && settings.getBool(ENABLE_DRONES)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_DRONES));
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 100; 
-                animType = AnimationParams::Type::PULSE;
-                period = 1000;
-                cycles = 180;              
             }
-            if (air && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
+            if (missiles && settings.getBool(ENABLE_MISSILES)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 100; 
-                animType = AnimationParams::Type::PULSE;
-                period = 1000;
-                cycles = 180;
             }
-            if (air && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
+            if (kab && settings.getBool(ENABLE_KABS)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_KABS));
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 100; 
-                animType = AnimationParams::Type::PULSE;
-                period = 1000;
-                cycles = 180;
             }
-            if (air && (ballisticStarted || notificationBallistic) && settings.getBool(ENABLE_BALLISTIC)) {
-                animate = true;
-                color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 100;
-                animType = AnimationParams::Type::PULSE;
-                period = 1000;
-                cycles = 180;
-            }
-            if (air && (explosionStarted || notificationExplosion) && settings.getBool(ENABLE_EXPLOSIONS)) {
+            if (explosion && settings.getBool(ENABLE_EXPLOSIONS)) {
                 animate = true;
                 color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
-                startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                endBrightness = 100;
-                animType = AnimationParams::Type::PULSE;
-                period = 1000;
-                cycles = 180;
             }
             
             if(animate) {
@@ -457,6 +274,210 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
         }
     }
+
+    if(type == TYPE_ALERTS_BATCH) {
+        // Обчислюємо довжину payload після заголовка
+        size_t bodyLen = len - HEADER_SZ - HASH_SZ;
+
+        // payloadLen має ділитися на RECORD_SZ
+        if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
+            // некоректний фрейм — пропускаємо і реконнектимось
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
+            needToReconnectWebsocket = true;
+            return;
+        }
+
+        // Перевіряємо  хеш
+        uint16_t actualHash = (static_cast<uint16_t>(data[1]) << 8) | data[2];
+        uint16_t prevHash = (static_cast<uint16_t>(data[3]) << 8) | data[4];
+        LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n", alertsHash, prevHash, actualHash);
+
+        if (prevHash != alertsHash) {
+            // некоректний хеш — пропускаємо і реконнектимось
+            LOG.printf("[ERROR] prevHash != alertsHash\n");
+            needToReconnectWebsocket = true;
+            return;
+        }
+
+        // Обчислюємо кількість записів
+        size_t count = bodyLen / RECORD_SZ;
+
+        // Розбираємо count записів по RECORD_SZ
+        const uint8_t* ptr = data + HEADER_SZ + HASH_SZ;
+
+        LOG.printf("[WEBSOCKET] alerts data processing\n");
+
+        bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic, explosion;
+        bool airPrevious, artilleryPrevious, urbanPrevious, chemicalPrevious, nuclearPrevious, missilesPrevious, kabPrevious, dronesPrevious, ballisticPrevious, explosionPrevious ;
+        for (size_t i = 0; i < count; ++i) {
+            uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
+            uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
+            ptr += RECORD_SZ;
+
+            const int* leds = getLedsForRegion(region_id, ledCount);
+            if (leds == nullptr) {
+                // Якщо такого регіону немає — пропускаємо цей запис
+                LOG.printf("[WEBSOCKET] alert region %d: %d skipped - no leds associated\n", region_id, flags16);
+                continue;
+            } else {
+                LOG.printf("[WEBSOCKET] alert region %d: %d\n", region_id, flags16);
+            }
+
+            bool animate = false;
+
+            bool airStarted = false;
+            bool airCompleted = false;
+            bool dronesStarted = false;
+            bool dronesCompleted = false;
+            bool missilesStarted = false;
+            bool missilesCompleted = false;
+            bool kabStarted = false;
+            bool kabCompleted = false;
+            bool explosionStarted = false;
+            bool explosionCompleted = false;
+            bool ballisticStarted = false;
+            bool ballisticCompleted = false;
+
+            bool notificationExplosion = false;
+            bool notificationKab = false;
+            bool notificationMissiles = false;
+            bool notificationDrones = false;
+            bool notificationBallistic = false;
+
+            // Розкладаємо попередні тривоги
+            airPrevious         = alertsMap[region_id] & (1 << 0);
+            artilleryPrevious   = alertsMap[region_id] & (1 << 1);
+            urbanPrevious       = alertsMap[region_id] & (1 << 2);
+            chemicalPrevious    = alertsMap[region_id] & (1 << 3);
+            nuclearPrevious     = alertsMap[region_id] & (1 << 4);
+            dronesPrevious      = alertsMap[region_id] & (1 << 5);
+            missilesPrevious    = alertsMap[region_id] & (1 << 6);
+            kabPrevious         = alertsMap[region_id] & (1 << 7);
+            ballisticPrevious   = alertsMap[region_id] & (1 << 8);
+            explosionPrevious   = alertsMap[region_id] & (1 << 9);
+
+            // Зберігаємо
+            alertsMap[region_id] = flags16;
+
+            // Розкладаємо актуальні тривоги
+            air         = flags16 & (1 << 0);
+            artillery   = flags16 & (1 << 1);
+            urban       = flags16 & (1 << 2);
+            chemical    = flags16 & (1 << 3);
+            nuclear     = flags16 & (1 << 4);
+            drones      = flags16 & (1 << 5);
+            missiles    = flags16 & (1 << 6);
+            kab         = flags16 & (1 << 7);
+            ballistic   = flags16 & (1 << 8);
+            explosion   = flags16 & (1 << 9);
+
+            if (!airPrevious    &&   air) { airStarted = true; }
+            if (airPrevious     &&  !air) { airCompleted = true; alertsMap.erase(region_id);}
+            if (!dronesPrevious    &&   drones) { dronesStarted = true; }
+            if (dronesPrevious    &&   !drones) { dronesCompleted = true; }
+            if (!missilesPrevious    &&   missiles) { missilesStarted = true; }
+            if (missilesPrevious    &&   !missiles) { missilesCompleted = true; }
+            if (!kabPrevious    &&   kab) { kabStarted = true; }
+            if (kabPrevious    &&   !kab) { kabCompleted = true; }
+            if (!ballisticPrevious    &&   ballistic) { ballisticStarted = true; }
+            if (ballisticPrevious    &&   !ballistic) { ballisticCompleted = true; }
+            if (!explosionPrevious    &&   explosion) { explosionStarted = true; }
+            if (explosionPrevious    &&   !explosion) { explosionCompleted = true; }
+            
+            if (isFirstDataFetchCompleted) {
+                if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted || explosionCompleted || ballisticCompleted) {
+                    animate = true;
+                    initialColor = strip_main->getPixelColor(leds[0]);
+                    color = animation.ledActualColor(strip_main, leds[0], true);
+                    animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
+                    cycles = 1;
+                    period = 10000;
+                }
+                if (airStarted) {   
+                    animate = true;
+                    color = animation.adaptColorBrightness(
+                        strip_main, 
+                        animation.colorFromHex(settings.getString(COLOR_ALERT)), 
+                        led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT))
+                    );
+                    animType = AnimationParams::Type::BLEND_FADE;
+                    period = 1000;
+                    cycles = 300;
+                }
+                if (air && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
+                    animate = true;
+                    color = animation.colorFromHex(settings.getString(COLOR_DRONES));
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                    endBrightness = 100; 
+                    animType = AnimationParams::Type::PULSE;
+                    period = 1000;
+                    cycles = 180;              
+                }
+                if (air && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
+                    animate = true;
+                    color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                    endBrightness = 100; 
+                    animType = AnimationParams::Type::PULSE;
+                    period = 1000;
+                    cycles = 180;
+                }
+                if (air && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
+                    animate = true;
+                    color = animation.colorFromHex(settings.getString(COLOR_KABS));
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                    endBrightness = 100; 
+                    animType = AnimationParams::Type::PULSE;
+                    period = 1000;
+                    cycles = 180;
+                }
+                if (air && (ballisticStarted || notificationBallistic) && settings.getBool(ENABLE_BALLISTIC)) {
+                    animate = true;
+                    color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                    endBrightness = 100;
+                    animType = AnimationParams::Type::PULSE;
+                    period = 1000;
+                    cycles = 180;
+                }
+                if (air && (explosionStarted || notificationExplosion) && settings.getBool(ENABLE_EXPLOSIONS)) {
+                    animate = true;
+                    color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
+                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+                    endBrightness = 100;
+                    animType = AnimationParams::Type::PULSE;
+                    period = 1000;
+                    cycles = 180;
+                }
+                
+                if(animate) {
+                    if (strip_main_initialized) {
+                        for (int i = 0; i < ledCount; ++i) {
+                            int ledsIdx[1] = { leds[i] };
+                            if (!animation.createAnimation(
+                                animType,
+                                strip_main,
+                                ledsIdx,
+                                1,
+                                color,
+                                initialColor,
+                                period,
+                                cycles,
+                                startBrightness,
+                                endBrightness,
+                                region_id
+                            )) {
+                                LOG.println("[ERROR] Failed to create animation");
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        alertsHash = actualHash;
+        LOG.printf("[WEBSOCKET] alertsHash updated: [0x%04X]\n", alertsHash);
+    }
     if (!isFirstDataFetchCompleted && strip_main_initialized) {
         animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             for(uint16_t i = 0; i < num_leds_main; i++) {
@@ -467,8 +488,6 @@ void onMessageCallback(WebsocketsMessage msg) {
         });
     }
 
-    alertsHash = actualHash;
-    LOG.printf("[WEBSOCKET] alertsHash updated: [0x%04X]\n", alertsHash);
     isFirstDataFetchCompleted = true;
     checkFreeHeap("Websockets data processing");
 }
@@ -589,288 +608,7 @@ void socketConnect() {
     }
 }
 
-void websocketProcess() {
-    //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
-    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
-        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
-        websocketReconnect = true;
-        isFirstDataFetchCompleted = false;
-        clearAllAlertsMaps();
-        animation.clearAllAnimations();
-        animation.paintStripDefault(strip_main, num_leds_main);
-        int positions[] = {}; // not used in RUNNING_LIGHT
-        animation.createAnimation(
-            AnimationParams::Type::RUNNING_LIGHT,
-            strip_main,         
-            positions,         
-            0,            
-            0xFF0000,      
-            0x001100,        
-            1000,
-            180,
-            50,
-            200
-        );
-    }
-    //if (millis() - websocketLastPingTime > 40000 && websocketReconnect) {
-    if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
-        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot");
-        rebootDevice(3000, true);
-    }
-    if (!websocket.available()) {
-        LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
-        isFirstDataFetchCompleted = false;
-        socketConnect();
-    }
-    if (websocketReconnect) {
-        LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
-        isFirstDataFetchCompleted = false;
-        socketConnect();
-    }
-}
-//--Websocket process end
-
-void animations() {
-    loopCount++;
-    int ledsIdx[1] = { currentIdx };
-    uint8_t r = random(256), g = random(256), b = random(256);
-    
-    // Випадковий вибір стрічки
-    Adafruit_NeoPixel* strip = nullptr;
-    // int stripRand = random(0, 2);
-    // switch(stripRand) {
-    //     case 0:
-    //         if (strip_main_initialized) strip = strip_main;
-    //         break;
-    //     case 1:
-    //         if (strip_bg_initialized) strip = strip_bg;
-    //         break;
-    //     case 2:
-    //         if (strip_service_initialized) strip = strip_service;
-    //         break;
-    //     default:
-    //         if (strip_main_initialized) strip = strip_main;
-    // }
-
-    strip = strip_main;
-
-    if (!strip) {
-        LOG.println("[ERROR] No available initialized strips");
-        return;
-    }
-    // r = 255;
-    // g = 0;
-    // b = 0;
-    
-    uint32_t color = strip->Color(r, g, b);
-
-    // Випадковий вибір типу анімації
-    
-    int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
-    switch(typeRand) {
-        case 0:
-            animType = AnimationParams::Type::FADE;
-            break;
-        case 1:
-            animType = AnimationParams::Type::BLINK;
-            break;
-        case 2:
-            animType = AnimationParams::Type::BLEND_FADE;
-            break;
-        case 3:
-            animType = AnimationParams::Type::PULSE;
-            break;
-        default:
-            animType = AnimationParams::Type::FADE;
-    }
-    //animType = AnimationParams::Type::BLEND_FADE;
-
-    // Випадкові параметри для анімації з використанням конфігурації
-    uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
-    uint32_t cycles = 30; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
-    uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
-    uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
-    
-    // Створення анімації з обробкою помилок
-    if (!animation.createAnimation(
-        animType,
-        strip,
-        ledsIdx,
-        1,
-        color,
-        color,
-        period,
-        cycles,
-        startBrightness,
-        endBrightness
-    )) {
-        LOG.println("ERROR: Failed to create animation");
-        return;
-    }
-
-    currentIdx++;
-    if (currentIdx >= num_leds_main) {
-        currentIdx = 0;
-    }
-}
-
-void memory() {
-    loopCount++;
-    size_t freeHeap    = ESP.getFreeHeap();
-    size_t usedHeap    = ESP.getHeapSize() - freeHeap;
-    size_t maxAlloc    = ESP.getMaxAllocHeap();
-    uint32_t uptimeMin = millis() / 60000;
-
-    // WiFi status information
-    bool wifiConnected = WiFi.status() == WL_CONNECTED;
-    uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0; 
-    uint32_t websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0; // in seconds
-    String wifiStatus = wifiConnected ? "Connected" : "Disconnected";
-    String websocketStatus = websocket.available() ? "Connected" : "Disconnected";
-    String wifiIP = wifiConnected ? WiFi.localIP().toString() : "N/A";
-
-    LOG.printf(
-        "[DEBUG] Loop %u: LED %d, used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
-        loopCount,
-        currentIdx,
-        usedHeap,
-        freeHeap,
-        uptimeMin,
-        wifiStatus.c_str(),
-        wifiUptime,
-        websocketStatus.c_str(),
-        websocketUptime
-    );
-}
-
-void initSettings() {
-    LOG.println("[INIT] Init settings");
-    settings.init();
-    firmware = parseFirmwareVersion(VERSION);
-    LOG.printf("[INIT] major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
-            firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
-    fillFwVersion(currentFwVersion, firmware);
-    LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
-
-    // Заповнюємо allLedsMain згідно з num_leds_main
-    allLedsMain.clear();
-    for (uint16_t i = 0; i < num_leds_main; ++i) {
-        allLedsMain.push_back(i);
-    }
-    allLedsBg.clear();
-    for (uint16_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
-        allLedsBg.push_back(i);
-    }
-}
-
-
-void initChipID() {
-  uint64_t chipid = ESP.getEfuseMac();
-  sprintf(chipID, "%04x%04x", (uint32_t)(chipid >> 32), (uint32_t)chipid);
-  LOG.printf("[INIT] ChipID Inited: '%s'\n", chipID);
-}
-
-static void wifiEvents(WiFiEvent_t event) {
-  switch (event) {
-    case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
-        char softApIp[16];
-        strcpy(softApIp, WiFi.softAPIP().toString().c_str());
-        //displayMessage(softApIp, "Введіть у браузері:");
-        WiFi.removeEvent(wifiEvents);
-        break;
-    }
-    default:
-        break;
-  }
-}
-
-
-void apCallback(WiFiManager* wifiManager) {
-    const char* message = wifiManager->getConfigPortalSSID().c_str();
-    //displayMessage(message, "Підключіться до WiFi:");
-    WiFi.onEvent(wifiEvents);
-}
-
-void saveConfigCallback() {
-    //showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
-    delay(2000);
-    rebootDevice();
-}
-
-void initWifi() {
-    if (!WiFiConfig::ENABLED) {
-        LOG.println("[WIFI] WiFi disabled in configuration");
-        return;
-    }
-
-    LOG.println("[WIFI] Initializing WiFi...");
-    
-    // Встановлюємо режим станції
-    WiFi.mode(WIFI_STA);
-    
-    // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
-    WiFi.begin();
-    
-    // Чекаємо підключення 10 секунд
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        attempts++;
-        LOG.print(".");
-    }
-    
-    if (WiFi.status() == WL_CONNECTED) {
-        lastWifiConnectTime = millis();
-        LOG.println("\n[WIFI] Connected to saved WiFi");
-        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-        return;
-    }
-    
-    LOG.println("\n[WIFI] Failed to connect to saved network");
-    LOG.println("[WIFI] Starting WiFiManager...");
-    
-    // Create local WiFiManager to avoid global memory usage
-    {
-        WiFiManager wm_temp;
-        
-        // Мінімальні налаштування для економії пам'яті
-        wm_temp.setHostname("jaam_fusion");
-        wm_temp.setConfigPortalBlocking(true);
-        wm_temp.setConnectTimeout(15);
-        wm_temp.setConnectRetries(2);
-        wm_temp.setConfigPortalTimeout(120);
-        
-        // Простий колбек без додаткових операцій
-        wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
-            LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
-        });
-        
-        // Створюємо ім'я AP з chip ID
-        char apName[32];
-        snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
-        
-        // Спроба підключення
-        if (!wm_temp.autoConnect(apName)) {
-            LOG.println("[WIFI] Failed to connect. Rebooting...");
-            rebootDevice(3000);
-            return;
-        }
-        
-        lastWifiConnectTime = millis();
-        LOG.println("[WIFI] Connected to WiFi via WiFiManager");
-        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-        
-    } // wm_temp destructor called here, freeing memory
-    
-    LOG.println("[WIFI] WiFi initialization completed");
-    LOG.printf("[MEMORY] Free heap after WiFi init: %u bytes\n", ESP.getFreeHeap());
-}
-
-void initWebsocket() {
-#if !defined(TEST_ANIMATION)
-    socketConnect();
-#endif
-}
+// --- LED Functions ---
 
 // функція очищення
 void cleanup() {
@@ -1030,20 +768,6 @@ void initStripService() {
     }
 }
 
-void initStrip() {
-    // Створюємо м'ютекс для захисту доступу до стрічок
-    stripMutex = xSemaphoreCreateMutex();
-    if (stripMutex == NULL) {
-        LOG.println("[ERROR] Failed to create stripMutex semaphore");
-        return;
-    }
-
-    // Ініціалізуємо стрічки з бажаними пінами
-    initStripMain();
-    initStripBg();
-    initStripService();    
-}
-
 void reconnectStripMain() {
     LOG.println("[LED] Reconnecting strip_main with new pin configuration...");
     //analyzeMemoryFragmentation("before strip_main reconnection");
@@ -1112,6 +836,8 @@ void reconnectStrips() {
     logMemoryUsage("after strip reconnection complete");
 }
 
+// --- TIME Functions ---
+
 static void printNtpStatus(NTPtime* timeClient) {
   LOG.print("[TIME] NTP status: ");
     switch (timeClient->NTPstatus()) {
@@ -1169,8 +895,148 @@ void syncTime(int8_t attempts) {
     }
 }
 
-void timeProcess() {
-    syncTime(2);
+bool isItNightNow() {
+    int dayStart = settings.getInt(DAY_START);
+    int nightStart = settings.getInt(NIGHT_START);
+    // if day and night start time is equels it means it's always day, return day
+    if (dayStart == nightStart) return false;
+
+    int currentHour = timeClient.hour();
+
+    // handle case, when night start hour is bigger than day start hour, ex. night start at 22 and day start at 9
+    if (nightStart > dayStart) return currentHour >= nightStart || currentHour < dayStart ? true : false;
+
+    // handle case, when day start hour is bigger than night start hour, ex. night start at 1 and day start at 8
+    return currentHour < dayStart && currentHour >= nightStart ? true : false;
+}
+
+uint8_t getCurrentBrightnes() {
+    // if auto brightness set to day/night mode, check current hour and choose brightness
+    if (settings.getInt(BRIGHTNESS_MODE) == 0) {
+        return settings.getInt(BRIGHTNESS);
+    }
+    if (settings.getInt(BRIGHTNESS_MODE) == 1) {
+        return isItNightNow() ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+    }
+    return settings.getInt(BRIGHTNESS);
+}
+
+// --- INIT Functions ---
+
+void initSettings() {
+    LOG.println("[INIT] Init settings");
+    settings.init();
+    firmware = parseFirmwareVersion(VERSION);
+    LOG.printf("[INIT] major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
+            firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
+    fillFwVersion(currentFwVersion, firmware);
+    LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
+
+    // Заповнюємо allLedsMain згідно з num_leds_main
+    allLedsMain.clear();
+    for (uint16_t i = 0; i < num_leds_main; ++i) {
+        allLedsMain.push_back(i);
+    }
+    allLedsBg.clear();
+    for (uint16_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
+        allLedsBg.push_back(i);
+    }
+}
+
+
+void initChipID() {
+  uint64_t chipid = ESP.getEfuseMac();
+  sprintf(chipID, "%04x%04x", (uint32_t)(chipid >> 32), (uint32_t)chipid);
+  LOG.printf("[INIT] ChipID Inited: '%s'\n", chipID);
+}
+
+void initWifi() {
+    if (!WiFiConfig::ENABLED) {
+        LOG.println("[WIFI] WiFi disabled in configuration");
+        return;
+    }
+
+    LOG.println("[WIFI] Initializing WiFi...");
+    
+    // Встановлюємо режим станції
+    WiFi.mode(WIFI_STA);
+    
+    // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
+    WiFi.begin();
+    
+    // Чекаємо підключення 10 секунд
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        attempts++;
+        LOG.print(".");
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        lastWifiConnectTime = millis();
+        LOG.println("\n[WIFI] Connected to saved WiFi");
+        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+        return;
+    }
+    
+    LOG.println("\n[WIFI] Failed to connect to saved network");
+    LOG.println("[WIFI] Starting WiFiManager...");
+    
+    // Create local WiFiManager to avoid global memory usage
+    {
+        WiFiManager wm_temp;
+        
+        // Мінімальні налаштування для економії пам'яті
+        wm_temp.setHostname("jaam_fusion");
+        wm_temp.setConfigPortalBlocking(true);
+        wm_temp.setConnectTimeout(15);
+        wm_temp.setConnectRetries(2);
+        wm_temp.setConfigPortalTimeout(120);
+        
+        // Простий колбек без додаткових операцій
+        wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
+            LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
+        });
+        
+        // Створюємо ім'я AP з chip ID
+        char apName[32];
+        snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
+        
+        // Спроба підключення
+        if (!wm_temp.autoConnect(apName)) {
+            LOG.println("[WIFI] Failed to connect. Rebooting...");
+            rebootDevice(3000);
+            return;
+        }
+        
+        lastWifiConnectTime = millis();
+        LOG.println("[WIFI] Connected to WiFi via WiFiManager");
+        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+        
+    } // wm_temp destructor called here, freeing memory
+    
+    LOG.println("[WIFI] WiFi initialization completed");
+    LOG.printf("[MEMORY] Free heap after WiFi init: %u bytes\n", ESP.getFreeHeap());
+}
+
+void initWebsocket() {
+#if !defined(TEST_ANIMATION)
+    socketConnect();
+#endif
+}
+
+void initStrip() {
+    // Створюємо м'ютекс для захисту доступу до стрічок
+    stripMutex = xSemaphoreCreateMutex();
+    if (stripMutex == NULL) {
+        LOG.println("[ERROR] Failed to create stripMutex semaphore");
+        return;
+    }
+
+    // Ініціалізуємо стрічки з бажаними пінами
+    initStripMain();
+    initStripBg();
+    initStripService();    
 }
 
 void initTime() {
@@ -1184,31 +1050,207 @@ void initTime() {
     syncTime(7);
 }
 
+// --- Cycle Functions ---
 
-void wifiReconnect() {
+// --- FreeRTOS Task Functions ---
+// void memoryTask(void* pvParameters) {
+//     const TickType_t xDelay = pdMS_TO_TICKS(MEMORY_CHECK_INTERVAL);
+//     while (true) {
+//         memoryProcess();
+//         vTaskDelay(xDelay);
+//     }
+// }
+
+// void wifiReconnectTask(void* pvParameters) {
+//     const TickType_t xDelay = pdMS_TO_TICKS(WIFI_CHECK_INTERVAL);
+//     while (true) {
+//         wifiProcess();
+//         vTaskDelay(xDelay);
+//     }
+// }
+
+// void websocketProcessTask(void* pvParameters) {
+//     const TickType_t xDelay = pdMS_TO_TICKS(WEBSOCKET_CHECK_INTERVAL);
+//     while (true) {
+//         websocketProcess();
+//         vTaskDelay(xDelay);
+//     }
+// }
+
+void animations() {
+    loopCount++;
+    int ledsIdx[1] = { currentIdx };
+    uint8_t r = random(256), g = random(256), b = random(256);
+    
+    // Випадковий вибір стрічки
+    Adafruit_NeoPixel* strip = nullptr;
+    // int stripRand = random(0, 2);
+    // switch(stripRand) {
+    //     case 0:
+    //         if (strip_main_initialized) strip = strip_main;
+    //         break;
+    //     case 1:
+    //         if (strip_bg_initialized) strip = strip_bg;
+    //         break;
+    //     case 2:
+    //         if (strip_service_initialized) strip = strip_service;
+    //         break;
+    //     default:
+    //         if (strip_main_initialized) strip = strip_main;
+    // }
+
+    strip = strip_main;
+
+    if (!strip) {
+        LOG.println("[ERROR] No available initialized strips");
+        return;
+    }
+    // r = 255;
+    // g = 0;
+    // b = 0;
+    
+    uint32_t color = strip->Color(r, g, b);
+
+    // Випадковий вибір типу анімації
+    
+    int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
+    switch(typeRand) {
+        case 0:
+            animType = AnimationParams::Type::FADE;
+            break;
+        case 1:
+            animType = AnimationParams::Type::BLINK;
+            break;
+        case 2:
+            animType = AnimationParams::Type::BLEND_FADE;
+            break;
+        case 3:
+            animType = AnimationParams::Type::PULSE;
+            break;
+        default:
+            animType = AnimationParams::Type::FADE;
+    }
+    //animType = AnimationParams::Type::BLEND_FADE;
+
+    // Випадкові параметри для анімації з використанням конфігурації
+    uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
+    uint32_t cycles = 30; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
+    uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
+    uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
+    
+    // Створення анімації з обробкою помилок
+    if (!animation.createAnimation(
+        animType,
+        strip,
+        ledsIdx,
+        1,
+        color,
+        color,
+        period,
+        cycles,
+        startBrightness,
+        endBrightness
+    )) {
+        LOG.println("ERROR: Failed to create animation");
+        return;
+    }
+
+    currentIdx++;
+    if (currentIdx >= num_leds_main) {
+        currentIdx = 0;
+    }
+}
+
+void websocketProcess() {
+    //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
+    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
+        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
+        websocketReconnect = true;
+        isFirstDataFetchCompleted = false;
+        clearAllAlertsMaps();
+        animation.clearAllAnimations();
+        animation.paintStripDefault(strip_main, num_leds_main);
+        int positions[] = {}; // not used in RUNNING_LIGHT
+        animation.createAnimation(
+            AnimationParams::Type::RUNNING_LIGHT,
+            strip_main,         
+            positions,         
+            0,            
+            0xFF0000,      
+            0x001100,        
+            1000,
+            180,
+            50,
+            200
+        );
+    }
+    //if (millis() - websocketLastPingTime > 40000 && websocketReconnect) {
+    if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
+        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot");
+        rebootDevice(3000, true);
+    }
+    if (!websocket.available()) {
+        LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
+        isFirstDataFetchCompleted = false;
+        socketConnect();
+    }
+    if (websocketReconnect) {
+        LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
+        isFirstDataFetchCompleted = false;
+        socketConnect();
+    }
+}
+
+void memoryProcess() {
+    loopCount++;
+    size_t freeHeap    = ESP.getFreeHeap();
+    size_t usedHeap    = ESP.getHeapSize() - freeHeap;
+    size_t maxAlloc    = ESP.getMaxAllocHeap();
+    uint32_t uptimeMin = millis() / 60000;
+
+    // WiFi status information
+    bool wifiConnected = WiFi.status() == WL_CONNECTED;
+    uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0; 
+    uint32_t websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0; // in seconds
+    String wifiStatus = wifiConnected ? "Connected" : "Disconnected";
+    String websocketStatus = websocket.available() ? "Connected" : "Disconnected";
+    String wifiIP = wifiConnected ? WiFi.localIP().toString() : "N/A";
+
+    LOG.printf(
+        "[DEBUG] Loop %u: used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
+        loopCount,
+        usedHeap,
+        freeHeap,
+        uptimeMin,
+        wifiStatus.c_str(),
+        wifiUptime,
+        websocketStatus.c_str(),
+        websocketUptime
+    );
+}
+
+// перевірка статусу wifi
+// Якщо статус не WL_CONNECTED, то перепідключаємося
+void wifiProcess() {
     if (WiFi.status() != WL_CONNECTED) {
         LOG.println("[WIFI] Reconnect");
         initWifi();
     }
 }
 
-void get_pixel_color() {
-//   if (strip_main_initialized) {
-//     animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-//       uint32_t color = strip->getPixelColor(currentIdx);
-//       uint8_t r = (color >> 16) & 0xFF;
-//       uint8_t g = (color >> 8)  & 0xFF;
-//       uint8_t b =  color        & 0xFF;
-//       LOG.printf("Pixel %d color: R=%d, G=%d, B=%d (0x%06X)\n", 
-//                 currentIdx, r, g, b, color);
-//     });
-//   }
+// Синхронізація часу
+void timeProcess() {
+    syncTime(2);
+}
 
-  // Виводимо інформацію про активні анімації
+// Виводимо інформацію про активні анімації
+void animationsLog() {
+  
   animation.logActiveAnimations();
 }
 
-void logFreeMainLeds() {
+// Виводимо інформацію про леди без анімацій
+void freeMinLedsLog() {
     if (!strip_main_initialized) {
         LOG.println("[LED] strip_main not initialized");
         return;
@@ -1221,31 +1263,6 @@ void logFreeMainLeds() {
     }
     LOG.println();
 }
-
-// --- FreeRTOS Task Functions ---
-// void memoryTask(void* pvParameters) {
-//     const TickType_t xDelay = pdMS_TO_TICKS(MEMORY_CHECK_INTERVAL);
-//     while (true) {
-//         memory();
-//         vTaskDelay(xDelay);
-//     }
-// }
-
-// void wifiReconnectTask(void* pvParameters) {
-//     const TickType_t xDelay = pdMS_TO_TICKS(WIFI_CHECK_INTERVAL);
-//     while (true) {
-//         wifiReconnect();
-//         vTaskDelay(xDelay);
-//     }
-// }
-
-// void websocketProcessTask(void* pvParameters) {
-//     const TickType_t xDelay = pdMS_TO_TICKS(WEBSOCKET_CHECK_INTERVAL);
-//     while (true) {
-//         websocketProcess();
-//         vTaskDelay(xDelay);
-//     }
-// }
 
 void mainThreadProcess() {
     // Ця функція виконується в основному циклі
@@ -1289,7 +1306,7 @@ void mainThreadProcess() {
             return;
         }
         animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-            strip->setBrightness(led.brightnessMapped(settings.getInt(BRIGHTNESS)));
+            strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
             for(uint16_t i = 0; i < num_leds_main; i++) {
                 uint32_t color = animation.ledActualColor(strip, i);
                 strip->setPixelColor(i, color);
@@ -1328,22 +1345,6 @@ void mainThreadProcess() {
             }
             strip->show();
         });
-        // int ledsIdx[1] = { 0 };
-        // if (!animation.createAnimation(
-        //     AnimationParams::Type::SET_BRIGHTNESS,
-        //     strip_bg,
-        //     ledsIdx,
-        //     1,
-        //     0x000000, // Колір не важливий для SET_BRIGHTNESS
-        //     0x000000, // Початковий колір не важливий
-        //     200,
-        //     1,
-        //     strip_bg->getBrightness(),
-        //     settings.getInt(BRIGHTNESS_BG)
-        // )) {
-        //     LOG.println("[ERROR] Failed to create animation");
-        //     return;
-        // }
     }
     if (needAdaptStripServiceBrightness) {
         needAdaptStripServiceBrightness = false;
@@ -1360,87 +1361,27 @@ void mainThreadProcess() {
             }
             strip->show();
         });
-        // int ledsIdx[1] = { 0 };
-        // if (!animation.createAnimation(
-        //     AnimationParams::Type::SET_BRIGHTNESS,
-        //     strip_service,
-        //     ledsIdx,
-        //     1,
-        //     0x000000, // Колір не важливий для SET_BRIGHTNESS
-        //     0x000000, // Початковий колір не важливий
-        //     200,
-        //     1,
-        //     strip_service->getBrightness(),
-        //     settings.getInt(BRIGHTNESS_SERVICE)
-        // )) {
-        //     LOG.println("[ERROR] Failed to create animation");
-        //     return;
-        // }
     }
-    // if (needAdaptNonAnimationColors) {
-    //     if (strip_main_initialized) {
-    //         // Отримуємо список вільних LED (тих, що не беруть участь в анімаціях)
-    //         auto freeLeds = animation.getFreeLeds(strip_main, num_leds_main);
-    //         if (!freeLeds.empty()) {
-    //             // Створюємо масив індексів вільних LED
-    //             std::vector<int> freeLedsIdx;
-    //             for (const auto& led : freeLeds) {
-    //                 uint8_t bit = findHighestBitForLed(led.ledIdx);
-    //                 if (needAdaptAlertClearColors) {
-    //                     if(bit == 255){
-    //                         freeLedsIdx.push_back(led.ledIdx);
-    //                     }
-    //                 }
-    //                 if (needAdaptAlertColors) {
-    //                     if(bit == 0){
-    //                         freeLedsIdx.push_back(led.ledIdx);
-    //                     }
-    //                 }
-    //                 if (needAdaptAlertExplosionColors) {
-    //                     if(bit == 5 || bit == 6 || bit == 7|| bit == 8){
-    //                         freeLedsIdx.push_back(led.ledIdx);
-    //                     }
-    //                 }
-    //                 if (needAdaptAlertHomeDistrictColors) {
-    //                     if(bit == 255){
-    //                         freeLedsIdx.push_back(led.ledIdx);
-    //                     }
-    //                 }
-    //             }
-    //             if (!freeLedsIdx.empty()) {
-    //                 LOG.printf("[ANIMATION] Updating colors for %d free LEDs\n", (int)freeLeds.size());
-    //                 // Створюємо анімацію для оновлення кольорів вільних LED
-    //                 // Всі леди одного типу, тому беремо колір з першого вільного LED
-    //                 uint32_t initialColor = strip_main->getPixelColor(freeLedsIdx[0]); // Отримуємо початковий колір з першого вільного LED
-    //                 uint32_t color = animation.ledActualColor(strip_main, freeLedsIdx[0], true); // Отримуємо колір з першого вільного LED
-    //                 if (!animation.createAnimation(
-    //                     AnimationParams::Type::ONE_WAY_BLEND_FADE,
-    //                     strip_main,
-    //                     freeLedsIdx.data(),
-    //                     freeLedsIdx.size(),
-    //                     color,
-    //                     initialColor,
-    //                     500,      // Короткий період
-    //                     1       // Один цикл
-    //                 )) {
-    //                     LOG.println("[ERROR] Failed to create animation for color update");
-    //                 }
-    //             } else {
-    //                 LOG.println("[ANIMATION] No free LEDs of required type for color update");
-    //             }
-    //         } else {
-    //             LOG.println("[ANIMATION] No free LEDs for color update");
-    //         }
-    //     }
-    //     // Скидаємо прапорець після адаптації кольорів
-    //     needAdaptNonAnimationColors = false;
-    //     needAdaptAlertClearColors = false; 
-    //     needAdaptAlertColors = false;
-    //     needAdaptAlertExplosionColors = false;
-    //     needAdaptAlertHomeDistrictColors = false;
-    // }
 }
 
+void brightnessProcess() {
+    // if auto brightness set to day/night mode, check current hour and choose brightness
+    uint8_t currentBrightness = getCurrentBrightnes();
+    if (settings.getInt(CURRENT_BRIGHTNESS) != currentBrightness) {
+        settings.saveInt(CURRENT_BRIGHTNESS, currentBrightness);
+        LOG.printf("[BRIGHTNESS] Setting current_brightness to %d\n", currentBrightness);
+        animation.safeStripOperation(strip_main, [currentBrightness](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(currentBrightness));
+            for(int i = 0; i < num_leds_main; i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+    }
+}
+
+// --- SETUP ---
 void setup() {
     LOG.begin(115200);
     checkFreeHeap("LOG initialization");
@@ -1475,14 +1416,15 @@ void setup() {
 #if defined(TEST_ANIMATION)
     async.setInterval(animations, ANIMATION_INTERVAL);
 #endif
-    //async.setInterval(get_pixel_color, 1000);
-    async.setInterval(memory, MEMORY_CHECK_INTERVAL);
-    async.setInterval(wifiReconnect, WIFI_CHECK_INTERVAL);
+    //async.setInterval(animationsLog, 1000);
+    async.setInterval(memoryProcess, MEMORY_CHECK_INTERVAL);
+    async.setInterval(wifiProcess, WIFI_CHECK_INTERVAL);
 #if !defined(TEST_ANIMATION)
     async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);;
 #endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
+    async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
     checkFreeHeap("async tasks configuration");
 
     // Ініціалізація веб-інтерфейсу

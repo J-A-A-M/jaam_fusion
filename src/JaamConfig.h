@@ -1,7 +1,5 @@
 #pragma once
-
 #include <Adafruit_NeoPixel.h>
-
 
 // --- Default Colors ---
 namespace DefaultColors {
@@ -26,34 +24,37 @@ namespace AnimationConfig {
 // --- WiFi Configuration ---
 namespace WiFiConfig {
     static const bool ENABLED = true;
-    static const uint32_t CONNECT_TIMEOUT = 3000;  // 10 seconds
+    static const uint32_t CONNECT_TIMEOUT = 3000;           // 10 seconds
     static const uint32_t CONNECT_RETRIES = 10;
-    static const uint32_t PORTAL_TIMEOUT = 180000;  // 3 minutes
+    static const uint32_t PORTAL_TIMEOUT = 180000;          // 3 minutes
     static const uint16_t WEB_PORT = 8080;
 }
 
 // --- Timing Configuration ---
-static const uint32_t ANIMATION_INTERVAL = 1000;    // 1 second
-static const uint32_t MEMORY_CHECK_INTERVAL = 60000;  // 1 minute
-static const uint32_t WIFI_CHECK_INTERVAL = 1000;   // 1 second
-static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;   // 3 seconds
-static const uint32_t TIME_CHECK_INTERVAL = 60000;   // 3 seconds
-static const uint32_t MAIN_THREAD_CHECK_INTERVAL = 500;   // 3 seconds
+static const uint32_t ANIMATION_INTERVAL = 1000;            // 1 second
+static const uint32_t MEMORY_CHECK_INTERVAL = 60000;        // 1 minute
+static const uint32_t WIFI_CHECK_INTERVAL = 1000;           // 1 second
+static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;      // 3 seconds
+static const uint32_t TIME_CHECK_INTERVAL = 60000;          // 1 minute
+static const uint32_t MAIN_THREAD_CHECK_INTERVAL = 500;     // 0.5 seconds
 
+// --- Packet structure ---
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
-static constexpr size_t   HEADER_SZ         = 1;  // лише 1 байт – type
-static constexpr size_t   RECORD_SZ         = 4;  // 2B region_id + 2B flags16
-static constexpr size_t   HASH_SZ           = 4;  // 2B actual + 2B prev
+static constexpr uint8_t  TYPE_NOTIFICATIONS_BATCH = 0xA2;
+static constexpr size_t   HEADER_SZ         = 1;            // лише 1 байт – type
+static constexpr size_t   RECORD_SZ         = 4;            // 2B region_id + 2B flags16
+static constexpr size_t   HASH_SZ           = 4;            // 2B actual + 2B prev
 
 // --- Region to LED mapping (fixed, задається один раз) ---
-constexpr int MAX_REGIONS = 150;          // Кількість регіонів
-constexpr int MAX_LEDS_PER_REGION = 7;    // Максимум LED на регіон
+constexpr int MAX_REGIONS = 150;                            // Кількість регіонів
+constexpr int MAX_LEDS_PER_REGION = 7;                      // Максимум LED на регіон
 
 struct RegionLedMapEntry {
     uint16_t region_id;
     int led_positions[MAX_LEDS_PER_REGION];
     uint8_t led_count;
 };
+
 struct SettingListItem {
   uint16_t id;
   const char* name;
@@ -61,6 +62,7 @@ struct SettingListItem {
   bool sub;
 };
 
+constexpr int LED_COLOR_FORMATS_COUNT = 8;
 static SettingListItem LED_COLOR_FORMATS[] = {
     {NEO_RGB, "NEO_RGB", false, false},
     {NEO_RBG, "NEO_RBG", false, false},
@@ -72,14 +74,18 @@ static SettingListItem LED_COLOR_FORMATS[] = {
     {NEO_WGRB, "NEO_WGRB", false, false}
 };
 
+constexpr int LED_FREQUENCIES_COUNT = 2; 
 static SettingListItem LED_FREQUENCIES[] = {
     {NEO_KHZ400, "400 КГц", false, false},
     {NEO_KHZ800, "800 КГц (рекомендовано)", false, false}
 };
 
-constexpr int LED_COLOR_FORMATS_COUNT = 8;
-constexpr int LED_FREQUENCIES_COUNT = 2; 
-
+constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
+static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
+  {0, "Вимкнено", false},
+  {1, "День/Ніч", false},
+  {2, "Сенсор освітлення", false}
+};
 
 enum Type {
     UNKNOWN = 0,

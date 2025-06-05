@@ -232,6 +232,9 @@ String JaamWeb::getHtmlTemplate() {
     html += getColorPickerHtml("color_ballistic", settings->getString(COLOR_BALLISTIC), "Балістичні ракети");
     html += getColorPickerHtml("color_home", settings->getString(COLOR_HOME_DISTRICT), "Домашній регіон");
     html += "<label class=\"label\">Налаштування яскравості</label>";
+    html += getDropdownHtml("brightness_mode", "Режим яскравості", BRIGHTNESS_MODE, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
+    html += getParameterHtml("day_start", 0, 24, settings->getInt(DAY_START), "Початок дня");
+    html += getParameterHtml("night_start", 0, 24, settings->getInt(NIGHT_START), "Початок ночі");
     html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна");
     html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "День");
     html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Нічь");
@@ -569,6 +572,15 @@ void JaamWeb::handleParameter() {
             settings->saveBool(ENABLE_EXPLOSIONS, boolValue);
             LOG.printf("[WEB] Setting enable_explosions: %d\n", boolValue);
             needAdaptColors = true;
+        } else if (name == "brightness_mode") {
+            settings->saveInt(BRIGHTNESS_MODE, intValue);
+            LOG.printf("[WEB] Setting brightness_mode: %d\n", intValue);
+        } else if (name == "day_start") {
+            settings->saveInt(DAY_START, intValue);
+            LOG.printf("[WEB] Setting day_start: %d\n", intValue);
+        } else if (name == "night_start") {
+            settings->saveInt(NIGHT_START, intValue);
+            LOG.printf("[WEB] Setting night_start: %d\n", intValue);
         }
 
         server.send(200, "text/plain", "OK");

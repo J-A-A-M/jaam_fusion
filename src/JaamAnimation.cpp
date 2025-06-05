@@ -142,7 +142,7 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
                 case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
                 case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
             }
-            LOG.printf("[ANIMATION START] type=%s, region=%d, leds=", typeName, region_id);
+            LOG.printf("[ANIMATION] START type=%s, region=%d, leds=", typeName, region_id);
             for (int i = 0; i < posCount; ++i) {
                 LOG.printf("%d ", positions[i]);
             }
@@ -269,7 +269,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
             case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
         }
         
-        LOG.printf("[ANIMATION END] type=%s, region=%d, leds=", typeName, anim->region_id);
+        LOG.printf("[ANIMATION] END type=%s, region=%d, leds=", typeName, anim->region_id);
         for (int i = 0; i < anim->posCount; ++i) {
             LOG.printf("%d ", anim->positions[i]);
         }
