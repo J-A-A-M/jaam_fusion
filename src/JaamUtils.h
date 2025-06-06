@@ -169,8 +169,8 @@ inline uint8_t findHighestBitForLed(int position) {
     }
 
     uint8_t globalHighestBit = 0;
-    bool foundAnyBit = false;
     uint16_t highestBitRegion = 0;
+    bool foundAnyBit = false;
 
     // Проходимо по всіх регіонах для цього LED
     for (uint16_t regionId : regions) {
@@ -201,6 +201,24 @@ inline uint8_t findHighestBitForLed(int position) {
     }
     
     return 255; // Немає активних бітів в жодному з регіонів
+}
+
+// Функція для пошуку найстаршого біту для конкретного регіону
+inline uint8_t findHighestBitForRegion(uint16_t regionId) {
+    auto it = alertsMap.find(regionId);
+    if (it == alertsMap.end() || it->second == 0) {
+        LOG.printf("[REGION] Region %d has no active alerts\n", regionId);
+        return 255; // Регион не має активних тривог
+    }
+    
+    uint8_t highestBit = findHighestBit16(it->second);
+    if (highestBit == 255) {
+        LOG.printf("[REGION] Region %d has no active bits\n", regionId);
+    } else {
+        LOG.printf("[REGION] Region %d highest bit: %d\n", regionId, highestBit);
+    }
+    
+    return highestBit;
 }
 
 // Add memory monitoring function
