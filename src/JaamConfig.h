@@ -4,7 +4,6 @@
 // --- Default Colors ---
 namespace DefaultColors {
     static const uint32_t MAIN_STRIP = 0x00FF00;  // Green
-    static const uint32_t BG_STRIP = 0xFF0000;    // Red
     static const uint32_t SERVICE_STRIP = 0x0000FF;  // Blue
     static const uint32_t OFF = 0x000000;  // Blue
 }
@@ -87,6 +86,12 @@ static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
   {2, "Сенсор освітлення", false}
 };
 
+constexpr int BG_LED_MODES_COUNT = 2;
+static SettingListItem BG_LED_MODES[] = {
+  {0, "Домашній Регіон", false},
+  {1, "Власний колір", false},
+};
+
 enum Type {
     UNKNOWN = 0,
     DISTRICT,
@@ -103,6 +108,7 @@ enum Type {
     MAIN_LED_PIN,
     BG_LED_PIN,
     BG_LED_COUNT,
+    BG_LED_MODE,
     SERVICE_LED_PIN,
     BUTTON_1_PIN,
     BUTTON_2_PIN,
@@ -140,6 +146,7 @@ enum Type {
     COLOR_BALLISTIC,
     COLOR_HOME_DISTRICT,
     COLOR_BG_NEIGHBOR_ALERT,
+    COLOR_BG,
     ENABLE_EXPLOSIONS,
     ENABLE_MISSILES,
     ENABLE_DRONES,

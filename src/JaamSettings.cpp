@@ -167,6 +167,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {BG_LED_FREQUENCY, {"blfq", NEO_KHZ800}},
     {SERVICE_LED_COLOR_FORMAT, {"slcf", NEO_GRB}},
     {SERVICE_LED_FREQUENCY, {"slfq", NEO_KHZ800}},
+    {BG_LED_MODE, {"blmd", 0}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {
@@ -188,7 +189,8 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_DRONES, {"rgbcdr", "#FF00AA"}},
     {COLOR_KABS, {"rgbckab", "#FFFF00"}},
     {COLOR_BALLISTIC, {"rgbcbal", "#FFFFFF"}},
-    {COLOR_HOME_DISTRICT, {"rgbchd", "#00FF50"}},
+    {COLOR_HOME_DISTRICT, {"rgbchd", "#5CFF5C"}},
+    {COLOR_BG, {"rgbcbg", "#00FF00"}},
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {

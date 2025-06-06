@@ -486,14 +486,18 @@ void AnimationManager::updateRunningLightAnimation(AnimationParams* anim, float 
     }
 }
 
-
-
 uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
     uint32_t color;
     if (strip == strip_main) {
         color = DefaultColors::MAIN_STRIP;
     } else if (strip == strip_bg) {
-        color = DefaultColors::BG_STRIP;
+        if (settings->getInt(BG_LED_MODE) == 0) {
+            LOG.printf("[COLOR] HOME_DISTRICT %d\n");
+            color = regionActualColor(strip, settings->getInt(HOME_DISTRICT));
+        } else if (settings->getInt(BG_LED_MODE) == 1) {
+            LOG.printf("[COLOR] SELF %d\n", settings->getString(COLOR_BG));
+            color = colorFromHex(settings->getString(COLOR_BG));
+        }
     } else if (strip == strip_service) {
         color = DefaultColors::SERVICE_STRIP;
     }
@@ -858,8 +862,10 @@ bool AnimationManager::isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx) {
 void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {
     if (strip == nullptr) return;
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        uint32_t defaultColor = stripDefaultColor(strip);
+        LOG.println("[LED] paint default color: " + String(defaultColor, HEX));
         for (uint16_t i = 0; i < strip->numPixels(); ++i) {
-            strip->setPixelColor(i, stripDefaultColor(strip));
+            strip->setPixelColor(i, defaultColor);
         }
         strip->show();
         xSemaphoreGive(stripMutex);

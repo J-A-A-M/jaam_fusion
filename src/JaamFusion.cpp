@@ -406,7 +406,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                         animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)), 
                         led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT))
                     );
-                    animType = AnimationParams::Type::BLEND_FADE;
+                    animType = AnimationParams::Type::FADE;
                     period = 1000;
                     cycles = 300;
                 }
@@ -624,7 +624,6 @@ void socketConnect() {
         
         clearAllAlertsMaps();
         animation.clearAllAnimations();
-        animation.paintStripDefault(strip_main);
         LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
         char chipIdInfo[25];
         sprintf(chipIdInfo, "chip_id:%s", chipID);
@@ -768,13 +767,13 @@ void initStripBg() {
         // Спочатку встановлюємо LEDs з мінімальною яскравістю
         animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->setBrightness(led.brightnessMapped(0));
-            uint32_t color = animation.regionActualColor(strip, settings.getInt(HOME_DISTRICT));
-            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
+            uint32_t color = animation.stripDefaultColor(strip);
+            for (int i = 0; i < strip->numPixels(); i++) {
                 strip->setPixelColor(i, color);
             }
             strip->show();
         });
-        needAdaptStripBgBrightness = true;
+        needAdaptStripBgBrightness = true;      
     }
 }
 
@@ -1211,7 +1210,6 @@ void websocketProcess() {
         isFirstDataFetchCompleted = false;
         clearAllAlertsMaps();
         animation.clearAllAnimations();
-        animation.paintStripDefault(strip_main);
         int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
             AnimationParams::Type::RUNNING_LIGHT,
@@ -1335,14 +1333,14 @@ void mainThreadProcess() {
             });
         }
         if (strip_bg_initialized) {
-            LOG.printf("[WEB] Adjusting bg colors\n");               
+            LOG.printf("[WEB] Adjusting bg colors\n");
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.regionActualColor(strip, settings.getInt(HOME_DISTRICT));
+                uint32_t color = animation.stripDefaultColor(strip);
                 for (int i = 0; i < strip->numPixels(); i++) {
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
-            });
+            });               
         }
         needAdaptColors = false;
     }
@@ -1391,8 +1389,8 @@ void mainThreadProcess() {
         }
         animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->setBrightness(led.brightnessMapped(settings.getInt(BRIGHTNESS_BG)));
-            uint32_t color = animation.regionActualColor(strip, settings.getInt(HOME_DISTRICT));
-            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
+            uint32_t color = animation.stripDefaultColor(strip);
+            for (int i = 0; i < strip->numPixels(); i++) {
                 strip->setPixelColor(i, color);
             }
             strip->show();

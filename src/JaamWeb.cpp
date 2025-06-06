@@ -196,6 +196,7 @@ String JaamWeb::getHtmlTemplate() {
     
     // Додаємо слайдери для всіх параметрів
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
+    html += getDropdownHtml("bg_led_mode", "Режим задньої підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
     html += "<label class=\"label\">Загальні налаштування</label>";
     html += getTextInputHtml("device_name", settings->getString(DEVICE_NAME), "Назва пристрою", "JAAM");
     html += getTextInputHtml("device_description", settings->getString(DEVICE_DESCRIPTION), "Опис пристрою", "JAAM Informer");
@@ -231,6 +232,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getColorPickerHtml("color_kab", settings->getString(COLOR_KABS), "КАБ");
     html += getColorPickerHtml("color_ballistic", settings->getString(COLOR_BALLISTIC), "Балістичні ракети");
     html += getColorPickerHtml("color_home", settings->getString(COLOR_HOME_DISTRICT), "Домашній регіон");
+    html += getColorPickerHtml("color_bg", settings->getString(COLOR_BG), "Задня підсітка");
     html += "<label class=\"label\">Налаштування яскравості</label>";
     html += getDropdownHtml("brightness_mode", "Режим яскравості", BRIGHTNESS_MODE, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
     html += getParameterHtml("day_start", 0, 24, settings->getInt(DAY_START), "Початок дня");
@@ -448,6 +450,10 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_HOME_DISTRICT, valuePtr);
             LOG.printf("[WEB] Setting color_home: raw=%s\n", valuePtr);
         }
+        if (name == "color_bg") {
+            settings->saveString(COLOR_BG, valuePtr);
+            LOG.printf("[WEB] Setting color_bg: raw=%s\n", valuePtr);
+        }
         needAdaptColors = true;
         needAdaptAnimationColors = true;
 
@@ -469,6 +475,11 @@ void JaamWeb::handleParameter() {
         if (name == "home_district") {
             settings->saveInt(HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting home_district: %d\n", intValue);
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else if (name == "bg_led_mode") {
+            settings->saveInt(BG_LED_MODE, intValue);
+            LOG.printf("[WEB] Setting bg_led_mode: %d\n", intValue);
             needAdaptColors = true;
             needAdaptAnimationColors = true;
         } else if (name == "brightness") {
