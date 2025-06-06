@@ -1210,11 +1210,11 @@ void websocketProcess() {
         isFirstDataFetchCompleted = false;
         clearAllAlertsMaps();
         animation.clearAllAnimations();
-        int positions[] = {}; // not used in RUNNING_LIGHT
+        //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
             AnimationParams::Type::RUNNING_LIGHT,
             strip_main,         
-            positions,         
+            {}, // not used in RUNNING_LIGHT        
             0,            
             0xFF0000,      
             0x001100,        
