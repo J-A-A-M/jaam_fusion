@@ -493,7 +493,7 @@ uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
     } else if (strip == strip_bg) {
         if (settings->getInt(BG_LED_MODE) == 0) {
             LOG.printf("[COLOR] HOME_DISTRICT %d\n");
-            color = regionActualColor(strip, settings->getInt(HOME_DISTRICT));
+            color = regionActualColor(settings->getInt(HOME_DISTRICT));
         } else if (settings->getInt(BG_LED_MODE) == 1) {
             LOG.printf("[COLOR] SELF %d\n", settings->getString(COLOR_BG));
             color = colorFromHex(settings->getString(COLOR_BG));
@@ -504,11 +504,11 @@ uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
     return color;
 }
 
-uint32_t AnimationManager::adaptColorBrightness(Adafruit_NeoPixel* strip, uint32_t color, uint8_t brightness) {
+uint32_t AnimationManager::adaptColorBrightness(uint32_t color, uint8_t brightness) {
     uint8_t r = ((color >> 16)  & 0xFF) * brightness / 255;
     uint8_t g = ((color >> 8)   & 0xFF) * brightness / 255;
     uint8_t b = ( color         & 0xFF) * brightness / 255;
-    color = strip->Color(r, g, b); 
+    color = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
     return color;
 }
 
@@ -532,7 +532,7 @@ void AnimationManager::adaptAllAnimationColors() {
     }
 }
 
-uint32_t AnimationManager::regionActualColor(Adafruit_NeoPixel* strip, uint16_t region_id, bool adapted) {
+uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     uint32_t color;
     bool alert = false;
     bool drones = false;
@@ -597,7 +597,7 @@ uint32_t AnimationManager::regionActualColor(Adafruit_NeoPixel* strip, uint16_t 
         }
     }
     if (adapted) {
-        color = adaptColorBrightness(strip, color, brightness);
+        color = adaptColorBrightness(color, brightness);
     }
     return color;
 }
@@ -673,7 +673,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             }
         }
         if (adapted) {
-            color = adaptColorBrightness(strip, color, brightness);
+            color = adaptColorBrightness(color, brightness);
         }
     } else if (strip == strip_bg) {
         bool alert = false;
@@ -735,7 +735,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
         }
         if (adapted) {
-            color = adaptColorBrightness(strip, color, brightness);
+            color = adaptColorBrightness(color, brightness);
         }
     } else if (strip == strip_service) {
         color = DefaultColors::SERVICE_STRIP;

@@ -134,10 +134,10 @@ inline void checkFreeHeap(const char* label) {
     int heapDiff = lastUsedHeap > 0 ? (int)usedHeap - (int)lastUsedHeap : 0;
     
     if (lastUsedHeap > 0) {
-        LOG.printf("[MEMORY] Used heap after %s: %u bytes (change: %+d bytes)\n", 
-                  label, usedHeap, heapDiff);
+        //LOG.printf("[MEMORY] Used heap after %s: %u bytes (change: %+d bytes)\n", 
+        //          label, usedHeap, heapDiff);
     } else {
-        LOG.printf("[MEMORY] Used heap after %s: %u bytes\n", label, usedHeap);
+        //LOG.printf("[MEMORY] Used heap after %s: %u bytes\n", label, usedHeap);
     }
     
     lastUsedHeap = usedHeap;
@@ -200,7 +200,40 @@ inline uint8_t findHighestBitForLed(int position) {
         return globalHighestBit;
     }
     
-    return 255; // Немає активних бітів в жодному з регіонів
+    return -1; // Немає активних бітів в жодному з регіонів
+}
+
+// Повертає найвищий біт серед усіх регіонів, до яких належать леди region_id
+inline int findHighestBitForRegionLeds(uint16_t region_id) {
+    uint8_t ledCount = 0;
+    const int* leds = getLedsForRegion(region_id, ledCount);
+    if (!leds || ledCount == 0) {
+        LOG.printf("[REGION] No leds for region %d\n", region_id);
+        return -1;
+    }
+
+    std::set<uint16_t> allRegions;
+    // Збираємо всі регіони, до яких належать ці леди
+    for (uint8_t i = 0; i < ledCount; ++i) {
+        auto regions = getRegionsForLed(leds[i]);
+        allRegions.insert(regions.begin(), regions.end());
+    }
+
+    int maxBit = -1;
+    for (uint16_t reg : allRegions) {
+        auto it = alertsMap.find(reg);
+        if (it != alertsMap.end() && it->second != 0) {
+            int bit = findHighestBit16(it->second);
+            LOG.printf("[REGION] region_id=%d, Bit=%d\n", it->first, bit);
+            if (bit != -1 && (maxBit == -1 || bit > maxBit)) {
+                
+                maxBit = bit;
+            }
+        }
+    }
+
+    LOG.printf("[REGION] region_id=%d, highestBit=%d\n", region_id, maxBit);
+    return maxBit;
 }
 
 // Функція для пошуку найстаршого біту для конкретного регіону

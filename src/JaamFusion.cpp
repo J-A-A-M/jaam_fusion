@@ -155,7 +155,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.println("[WEBSOCKET] Message in not binary");
         return;
     } else {
-        LOG.printf("[WEBSOCKET] bytes payload len: %d\n", msg.length());
+        //LOG.printf("[WEBSOCKET] bytes payload len: %d\n", msg.length());
     }
     websocketLastPingTime = millis();
 
@@ -277,6 +277,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     }
 
     if(type == TYPE_ALERTS_BATCH) {
+        //LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH received\n");
         // Обчислюємо довжину payload після заголовка
         bodyLen = len - HEADER_SZ - HASH_SZ;
 
@@ -291,7 +292,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         // Перевіряємо  хеш
         uint16_t actualHash = (static_cast<uint16_t>(data[1]) << 8) | data[2];
         uint16_t prevHash = (static_cast<uint16_t>(data[3]) << 8) | data[4];
-        LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n", alertsHash, prevHash, actualHash);
+        //LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n", alertsHash, prevHash, actualHash);
 
         if (prevHash != alertsHash) {
             // некоректний хеш — пропускаємо і реконнектимось
@@ -306,7 +307,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         // Розбираємо count записів по RECORD_SZ
         const uint8_t* ptr = data + HEADER_SZ + HASH_SZ;
 
-        LOG.printf("[WEBSOCKET] alerts data processing\n");
+        //LOG.printf("[WEBSOCKET] alerts data processing\n");
 
         bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic, explosion;
         bool airPrevious, artilleryPrevious, urbanPrevious, chemicalPrevious, nuclearPrevious, missilesPrevious, kabPrevious, dronesPrevious, ballisticPrevious, explosionPrevious ;
@@ -317,7 +318,6 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             const int* leds = getLedsForRegion(region_id, ledCount);
             if (leds == nullptr) {
-                // Якщо такого регіону немає — пропускаємо цей запис
                 LOG.printf("[WEBSOCKET] alert region %d: %d skipped - no leds associated\n", region_id, flags16);
                 continue;
             } else {
@@ -336,12 +336,6 @@ void onMessageCallback(WebsocketsMessage msg) {
             bool explosionCompleted = false;
             bool ballisticStarted = false;
             bool ballisticCompleted = false;
-
-            bool notificationExplosion = false;
-            bool notificationKab = false;
-            bool notificationMissiles = false;
-            bool notificationDrones = false;
-            bool notificationBallistic = false;
 
             // Розкладаємо попередні тривоги
             airPrevious         = alertsMap[region_id] & (1 << 0);
@@ -370,18 +364,20 @@ void onMessageCallback(WebsocketsMessage msg) {
             ballistic   = flags16 & (1 << 8);
             explosion   = flags16 & (1 << 9);
 
-            if (!airPrevious    &&   air) { airStarted = true; }
-            if (airPrevious     &&  !air) { airCompleted = true; alertsMap.erase(region_id);}
-            if (!dronesPrevious    &&   drones) { dronesStarted = true; }
-            if (dronesPrevious    &&   !drones) { dronesCompleted = true; }
-            if (!missilesPrevious    &&   missiles) { missilesStarted = true; }
-            if (missilesPrevious    &&   !missiles) { missilesCompleted = true; }
-            if (!kabPrevious    &&   kab) { kabStarted = true; }
-            if (kabPrevious    &&   !kab) { kabCompleted = true; }
-            if (!ballisticPrevious    &&   ballistic) { ballisticStarted = true; }
-            if (ballisticPrevious    &&   !ballistic) { ballisticCompleted = true; }
-            if (!explosionPrevious    &&   explosion) { explosionStarted = true; }
-            if (explosionPrevious    &&   !explosion) { explosionCompleted = true; }
+            if (!airPrevious        &&   air) {                                                 airStarted = true; }
+            if (airPrevious         &&  !air) {                                                 airCompleted = true; alertsMap.erase(region_id);}
+            if (!dronesPrevious     &&   drones     && settings.getBool(ENABLE_DRONES)) {       dronesStarted = true; }
+            if (dronesPrevious      &&  !drones     && settings.getBool(ENABLE_DRONES)) {       dronesCompleted = true; }
+            if (!missilesPrevious   &&   missiles   && settings.getBool(ENABLE_MISSILES)) {     missilesStarted = true; }
+            if (missilesPrevious    &&  !missiles   && settings.getBool(ENABLE_MISSILES)) {     missilesCompleted = true; }
+            if (!kabPrevious        &&   kab        && settings.getBool(ENABLE_KABS)) {         kabStarted = true; }
+            if (kabPrevious         &&  !kab        && settings.getBool(ENABLE_KABS)) {         kabCompleted = true; }
+            if (!ballisticPrevious  &&   ballistic  && settings.getBool(ENABLE_BALLISTIC)) {    ballisticStarted = true; }
+            if (ballisticPrevious   &&  !ballistic  && settings.getBool(ENABLE_BALLISTIC)) {    ballisticCompleted = true; }
+            if (!explosionPrevious  &&   explosion  && settings.getBool(ENABLE_EXPLOSIONS)) {   explosionStarted = true; }
+            if (explosionPrevious   &&  !explosion  && settings.getBool(ENABLE_EXPLOSIONS)) {   explosionCompleted = true; }
+
+            
             
             if (isFirstDataFetchCompleted) {
                 if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted || explosionCompleted || ballisticCompleted) {
@@ -397,63 +393,62 @@ void onMessageCallback(WebsocketsMessage msg) {
                     color = animation.ledActualColor(strip_main, leds[0], true);
                     animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
                     cycles = 1;
-                    period = 10000;
+                    period = 2000;//10000;
                 }
                 if (airStarted) {   
                     animate = true;
                     color = animation.adaptColorBrightness(
-                        strip_main, 
                         animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)), 
                         led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT))
                     );
                     animType = AnimationParams::Type::FADE;
                     period = 1000;
-                    cycles = 300;
+                    cycles = 3;//settings.getInt(ALERT_ON_TIME) * 60;
                 }
-                if (air && (dronesStarted || notificationDrones) && settings.getBool(ENABLE_DRONES)) {
+                if (air && dronesStarted) {
                     animate = true;
                     color = animation.colorFromHex(settings.getString(COLOR_DRONES));
                     startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
                     endBrightness = 100; 
                     animType = AnimationParams::Type::PULSE;
                     period = 1000;
-                    cycles = 180;             
+                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;             
                 }
-                if (air && (missilesStarted || notificationMissiles) && settings.getBool(ENABLE_MISSILES)) {
+                if (air && missilesStarted) {
                     animate = true;
                     color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
                     startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
                     endBrightness = 100; 
                     animType = AnimationParams::Type::PULSE;
                     period = 1000;
-                    cycles = 180;
+                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;
                 }
-                if (air && (kabStarted || notificationKab) && settings.getBool(ENABLE_KABS)) {
+                if (air && kabStarted) {
                     animate = true;
                     color = animation.colorFromHex(settings.getString(COLOR_KABS));
                     startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
                     endBrightness = 100; 
                     animType = AnimationParams::Type::PULSE;
                     period = 1000;
-                    cycles = 180;
+                    cycles = 3; //settings.getInt(EXPLOSION_TIME) * 60;
                 }
-                if (air && (ballisticStarted || notificationBallistic) && settings.getBool(ENABLE_BALLISTIC)) {
+                if (air && ballisticStarted) {
                     animate = true;
                     color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
                     startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
                     endBrightness = 100;
                     animType = AnimationParams::Type::PULSE;
                     period = 1000;
-                    cycles = 180;
+                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;
                 }
-                if (air && (explosionStarted || notificationExplosion) && settings.getBool(ENABLE_EXPLOSIONS)) {
+                if (air && explosionStarted) {
                     animate = true;
                     color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
                     startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
                     endBrightness = 100;
                     animType = AnimationParams::Type::PULSE;
                     period = 1000;
-                    cycles = 180;
+                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;
                 }
                 
                 if(animate) {
@@ -505,7 +500,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
         }
         alertsHash = actualHash;
-        LOG.printf("[WEBSOCKET] alertsHash updated: [0x%04X]\n", alertsHash);
+        //LOG.printf("[WEBSOCKET] alertsHash updated: [0x%04X]\n", alertsHash);
     }
     if (!isFirstDataFetchCompleted) {
         LOG.printf("[WEBSOCKET] init processing\n");
@@ -520,7 +515,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         }
         if (strip_bg_initialized) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.regionActualColor(strip, settings.getInt(HOME_DISTRICT));
+                uint32_t color = animation.regionActualColor(settings.getInt(HOME_DISTRICT));
                 for(uint16_t i = 0; i < strip->numPixels(); i++) {
                     strip->setPixelColor(i, color);
                 }

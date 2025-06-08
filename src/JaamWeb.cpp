@@ -196,7 +196,7 @@ String JaamWeb::getHtmlTemplate() {
     
     // Додаємо слайдери для всіх параметрів
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
-    html += getDropdownHtml("bg_led_mode", "Режим задньої підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
+    html += getDropdownHtml("bg_led_mode", "Режим фонової підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
     html += "<label class=\"label\">Загальні налаштування</label>";
     html += getTextInputHtml("device_name", settings->getString(DEVICE_NAME), "Назва пристрою", "JAAM");
     html += getTextInputHtml("device_description", settings->getString(DEVICE_DESCRIPTION), "Опис пристрою", "JAAM Informer");
@@ -221,6 +221,9 @@ String JaamWeb::getHtmlTemplate() {
     html += getTextInputHtml("service_led_pin", String(settings->getInt(SERVICE_LED_PIN)).c_str(), "Сервісна стрічка (пін)", "-1");
     html += getDropdownHtml("service_led_color_format", "Сервісна стрічка (формат кольору)", SERVICE_LED_COLOR_FORMAT, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
     html += getDropdownHtml("service_led_frequency", "Сервісна стрічка (частота)", SERVICE_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
+    html += "<label class=\"label\">Налаштування таймінгів</label>";
+    html += getParameterHtml("alert_on", 1, 10, settings->getInt(ALERT_ON_TIME), "Початок тривог");
+    html += getParameterHtml("notifications_on", 1, 10, settings->getInt(EXPLOSION_TIME), "Додаткові режими тривог");
     html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
@@ -591,6 +594,12 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Setting day_start: %d\n", intValue);
         } else if (name == "night_start") {
             settings->saveInt(NIGHT_START, intValue);
+            LOG.printf("[WEB] Setting night_start: %d\n", intValue);
+        } else if (name == "alert_on") {
+            settings->saveInt(ALERT_ON_TIME, intValue);
+            LOG.printf("[WEB] Setting alert_on: %d\n", intValue);
+        } else if (name == "notifications_on") {
+            settings->saveInt(EXPLOSION_TIME, intValue);
             LOG.printf("[WEB] Setting night_start: %d\n", intValue);
         }
 
