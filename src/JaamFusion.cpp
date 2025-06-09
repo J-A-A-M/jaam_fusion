@@ -203,48 +203,48 @@ void animateLed(int led_position, int bit, uint16_t region_id, bool increase = t
             color = (increase) ? animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)) : animation.colorFromHex(settings.getString(COLOR_ALERT)); 
             endBrightness = (increase) ? led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT)) : led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
             animType = (increase) ? AnimationParams::Type::FADE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 3000;
-            cycles = (increase) ? 3 : 1; //settings.getInt(ALERT_ON_TIME) * 60;
+            period = (increase) ? 1000 : 10000;
+            cycles = (increase) ? settings.getInt(ALERT_ON_TIME) * 60 : 1;
             break;
         case 5:
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
             endBrightness = 100; 
             animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 3000;
-            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            period = (increase) ? 1000 : 10000;
+            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
             break;
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
             endBrightness = 100; 
             animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 3000;
-            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            period = (increase) ? 1000 : 10000;
+            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
             break;
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
             endBrightness = 100; 
             animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE; 
-            period = (increase) ? 1000 : 3000;
-            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;  
+            period = (increase) ? 1000 : 10000;
+            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1;   
             break;
         case 8:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
             endBrightness = 100; 
             animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 3000;
-            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            period = (increase) ? 1000 : 10000;
+            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
             break;
         case 9:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
             endBrightness = 100; 
             animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 3000;
-            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            period = (increase) ? 1000 : 10000;
+            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
             break;
         default:
             LOG.printf("[ANIMATION] LED %d: unknown bit\n", led_position);

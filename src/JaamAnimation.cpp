@@ -532,6 +532,56 @@ void AnimationManager::adaptAllAnimationColors() {
     }
 }
 
+std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int highest_bit) {
+    uint32_t color = 0;
+    uint8_t brightness = 0;
+    
+    // Перебираємо біти від найвищого до найнижчого
+    for (int bit = highest_bit; bit >= 0; bit--) {
+        bool is_enabled = false;
+        
+        // Перевіряємо чи дозволено показувати цей тип тривоги
+        if (bit == 0) {
+            is_enabled = true; // Alert завжди показуємо
+        } else if (bit == 5) {
+            is_enabled = settings->getBool(ENABLE_DRONES);
+        } else if (bit == 6) {
+            is_enabled = settings->getBool(ENABLE_MISSILES);
+        } else if (bit == 7) {
+            is_enabled = settings->getBool(ENABLE_KABS);
+        } else if (bit == 8) {
+            is_enabled = settings->getBool(ENABLE_BALLISTIC);
+        } else if (bit == 9) {
+            is_enabled = settings->getBool(ENABLE_EXPLOSIONS);
+        }
+
+        // Якщо тип тривоги дозволено показувати - встановлюємо колір
+        if (is_enabled) {
+            if (bit == 0) {
+                color = colorFromHex(settings->getString(COLOR_ALERT));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
+            } else if (bit == 5) {
+                color = colorFromHex(settings->getString(COLOR_DRONES));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            } else if (bit == 6) {
+                color = colorFromHex(settings->getString(COLOR_MISSILES));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            } else if (bit == 7) {
+                color = colorFromHex(settings->getString(COLOR_KABS));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            } else if (bit == 8) {
+                color = colorFromHex(settings->getString(COLOR_BALLISTIC));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            } else if (bit == 9) {
+                color = colorFromHex(settings->getString(COLOR_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            }
+            break; // Зупиняємося на першому дозволеному біті
+        }
+    }
+    return std::make_pair(color, brightness);
+}
+
 uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     uint32_t color;
     bool alert = false;
@@ -542,52 +592,12 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     bool explosion = false;
 
     uint8_t brightness = 0;
-    int bit = findHighestBitForRegion(region_id);
-
-    if(bit == 0){
-        alert = true;
-    }
-    if(bit == 5){
-        drones = true;
-    }
-    if(bit == 6){
-        missiles = true;
-    }
-    if(bit == 7){
-        kab = true;
-    }
-    if(bit == 8){
-        ballistic = true;
-    }
-    if(bit == 9){
-        explosion = true;
-    }
+    int highest_bit = findHighestBitForRegion(region_id);
     
-    if (bit != -1) {
-        if (alert) {
-            color = colorFromHex(settings->getString(COLOR_ALERT));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
-        }
-        if (drones && settings->getBool(ENABLE_DRONES)) {
-            color = colorFromHex(settings->getString(COLOR_DRONES));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-        }
-        if (missiles && settings->getBool(ENABLE_MISSILES)) {
-            color = colorFromHex(settings->getString(COLOR_MISSILES));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-        }
-        if (kab && settings->getBool(ENABLE_KABS)) {
-            color = colorFromHex(settings->getString(COLOR_KABS));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-        }
-        if (ballistic && settings->getBool(ENABLE_BALLISTIC)) {
-            color = colorFromHex(settings->getString(COLOR_BALLISTIC));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-        }
-        if (explosion && settings->getBool(ENABLE_EXPLOSIONS)) {
-            color = colorFromHex(settings->getString(COLOR_EXPLOSION));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-        }
+    if (highest_bit != -1) {
+        std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+        color = result.first;
+        brightness = result.second;
     } else {
         color = colorFromHex(settings->getString(COLOR_CLEAR));
         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
@@ -603,67 +613,22 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
 }
 
 uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted) {
-    uint32_t color;
+    uint32_t color = 0;
+    uint8_t brightness = 0;
+
     if (strip == strip_main) {
         auto regions = getRegionsForLed(position);
-        bool alert = false;
-        bool drones = false;
-        bool missiles = false;
-        bool kab = false;
-        bool ballistic = false;
-        bool explosion = false;
-
-        uint8_t brightness = 0;
-        int bit = findHighestBitForLed(position);
-
-        if(bit == 0){
-            alert = true;
-        }
-        if(bit == 5){
-            drones = true;
-        }
-        if(bit == 6){
-            missiles = true;
-        }
-        if(bit == 7){
-            kab = true;
-        }
-        if(bit == 8){
-            ballistic = true;
-        }
-        if(bit == 9){
-            explosion = true;
-        }
+        int highest_bit = findHighestBitForLed(position);
         
-        if (bit != -1) {
-            if (alert) {
-                color = colorFromHex(settings->getString(COLOR_ALERT));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
-            }
-            if (drones && settings->getBool(ENABLE_DRONES)) {
-                color = colorFromHex(settings->getString(COLOR_DRONES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-            }
-            if (missiles && settings->getBool(ENABLE_MISSILES)) {
-                color = colorFromHex(settings->getString(COLOR_MISSILES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-            }
-            if (kab && settings->getBool(ENABLE_KABS)) {
-                color = colorFromHex(settings->getString(COLOR_KABS));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-            }
-            if (ballistic && settings->getBool(ENABLE_BALLISTIC)) {
-                color = colorFromHex(settings->getString(COLOR_BALLISTIC));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-            }
-            if (explosion && settings->getBool(ENABLE_EXPLOSIONS)) {
-                color = colorFromHex(settings->getString(COLOR_EXPLOSION));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
-            }
+        if (highest_bit != -1) {
+            std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+            color = result.first;
+            brightness = result.second;
         } else {
+            // Якщо немає тривог, перевіряємо чи є домашній район
             color = colorFromHex(settings->getString(COLOR_CLEAR));
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
-            // Якщо є домашній район — окремий brightness
+            
             for (uint16_t region_id : regions) {
                 if (region_id == settings->getInt(HOME_DISTRICT)) {
                     color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
@@ -672,73 +637,24 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 }
             }
         }
-        if (adapted) {
-            color = adaptColorBrightness(color, brightness);
-        }
     } else if (strip == strip_bg) {
-        bool alert = false;
-        bool drones = false;
-        bool missiles = false;
-        bool kab = false;
-        bool ballistic = false;
-        bool explosion = false;
-
-        uint8_t brightness = 0;
-        int bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
-
-        if(bit == 0){
-            alert = true;
-        }
-        if(bit == 5){
-            drones = true;
-        }
-        if(bit == 6){
-            missiles = true;
-        }
-        if(bit == 7){
-            kab = true;
-        }
-        if(bit == 8){
-            ballistic = true;
-        }
-        if(bit == 9){
-            explosion = true;
-        }
+        int highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
         
-        if (bit != -1) {
-            if (alert) {
-                color = colorFromHex(settings->getString(COLOR_ALERT));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-            }
-            if (drones && settings->getBool(ENABLE_DRONES)) {
-                color = colorFromHex(settings->getString(COLOR_DRONES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-            }
-            if (missiles && settings->getBool(ENABLE_MISSILES)) {
-                color = colorFromHex(settings->getString(COLOR_MISSILES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-            }
-            if (kab && settings->getBool(ENABLE_KABS)) {
-                color = colorFromHex(settings->getString(COLOR_KABS));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-            }
-            if (ballistic && settings->getBool(ENABLE_BALLISTIC)) {
-                color = colorFromHex(settings->getString(COLOR_BALLISTIC));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-            }
-            if (explosion && settings->getBool(ENABLE_EXPLOSIONS)) {
-                color = colorFromHex(settings->getString(COLOR_EXPLOSION));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-            }
+        if (highest_bit != -1) {
+            std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+            color = result.first;
+            brightness = result.second;
         } else {
+            // Якщо немає тривог, встановлюємо колір домашнього району
             color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
         }
-        if (adapted) {
-            color = adaptColorBrightness(color, brightness);
-        }
     } else if (strip == strip_service) {
         color = DefaultColors::SERVICE_STRIP;
+    }
+
+    if (adapted) {
+        color = adaptColorBrightness(color, brightness);
     }
     return color;
 }
