@@ -144,13 +144,13 @@ inline void checkFreeHeap(const char* label) {
 }
 
 // Функція для пошуку номеру найстаршого біту в 16-бітному числі
-inline uint8_t findHighestBit16(uint16_t value) {
-    if (value == 0) return 255; // Повертаємо 255 як індикатор відсутності бітів
+inline int findHighestBit16(uint16_t value) {
+    if (value == 0) return -1; // Повертаємо 255 як індикатор відсутності бітів
     
 
     // Перевіряємо наявність біта 0 (повітряна тривога)
     if (!(value & (1 << 0))) {
-        return 255; // Якщо біт 0 не встановлений, повертаємо 255
+        return -1; // Якщо біт 0 не встановлений, повертаємо 255
     }
 
     uint8_t position = 0;
@@ -161,11 +161,11 @@ inline uint8_t findHighestBit16(uint16_t value) {
 }
 
 // Функція для пошуку найстаршого біту для конкретного LED
-inline uint8_t findHighestBitForLed(int position) {
+inline int findHighestBitForLed(int position) {
     auto regions = getRegionsForLed(position);
     if (regions.empty()) {
         LOG.printf("[LED] LED %d does not belong to any region\n", position);
-        return 255; // LED не належить жодному регіону
+        return -1; // LED не належить жодному регіону
     }
 
     uint8_t globalHighestBit = 0;
@@ -176,9 +176,9 @@ inline uint8_t findHighestBitForLed(int position) {
     for (uint16_t regionId : regions) {
         auto it = alertsMap.find(regionId);
         if (it != alertsMap.end() && it->second > 0) {
-            uint8_t currentHighestBit = findHighestBit16(it->second);
+            int currentHighestBit = findHighestBit16(it->second);
             
-            if (currentHighestBit != 255 && (!foundAnyBit || currentHighestBit > globalHighestBit)) {
+            if (currentHighestBit != -1 && (!foundAnyBit || currentHighestBit > globalHighestBit)) {
                 globalHighestBit = currentHighestBit;
                 highestBitRegion = regionId;
                 foundAnyBit = true;
@@ -237,15 +237,15 @@ inline int findHighestBitForRegionLeds(uint16_t region_id) {
 }
 
 // Функція для пошуку найстаршого біту для конкретного регіону
-inline uint8_t findHighestBitForRegion(uint16_t regionId) {
+inline int findHighestBitForRegion(uint16_t regionId) {
     auto it = alertsMap.find(regionId);
     if (it == alertsMap.end() || it->second == 0) {
         LOG.printf("[REGION] Region %d has no active alerts\n", regionId);
-        return 255; // Регион не має активних тривог
+        return -1; // Регион не має активних тривог
     }
     
-    uint8_t highestBit = findHighestBit16(it->second);
-    if (highestBit == 255) {
+    int highestBit = findHighestBit16(it->second);
+    if (highestBit == -1) {
         LOG.printf("[REGION] Region %d has no active bits\n", regionId);
     } else {
         LOG.printf("[REGION] Region %d highest bit: %d\n", regionId, highestBit);

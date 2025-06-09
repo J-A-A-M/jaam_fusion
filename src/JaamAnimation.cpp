@@ -542,7 +542,7 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     bool explosion = false;
 
     uint8_t brightness = 0;
-    uint8_t bit = findHighestBitForRegion(region_id);
+    int bit = findHighestBitForRegion(region_id);
 
     if(bit == 0){
         alert = true;
@@ -563,7 +563,7 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
         explosion = true;
     }
     
-    if (bit != 255) {
+    if (bit != -1) {
         if (alert) {
             color = colorFromHex(settings->getString(COLOR_ALERT));
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
@@ -614,7 +614,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         bool explosion = false;
 
         uint8_t brightness = 0;
-        uint8_t bit = findHighestBitForLed(position);
+        int bit = findHighestBitForLed(position);
 
         if(bit == 0){
             alert = true;
@@ -635,7 +635,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             explosion = true;
         }
         
-        if (bit != 255) {
+        if (bit != -1) {
             if (alert) {
                 color = colorFromHex(settings->getString(COLOR_ALERT));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
@@ -684,7 +684,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         bool explosion = false;
 
         uint8_t brightness = 0;
-        uint8_t bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+        int bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
 
         if(bit == 0){
             alert = true;
@@ -705,7 +705,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             explosion = true;
         }
         
-        if (bit != 255) {
+        if (bit != -1) {
             if (alert) {
                 color = colorFromHex(settings->getString(COLOR_ALERT));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));

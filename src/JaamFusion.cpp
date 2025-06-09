@@ -147,6 +147,132 @@ void printHex(const String& data) {
     LOG.println();
 }
 
+// Структура для зберігання diff
+struct AlertDiff {
+    uint16_t region_id;
+    uint16_t previous_flags;
+    uint16_t current_flags;
+    bool has_changes;
+};
+
+// Масив з описом типів тривог
+const char* ALERT_TYPES[] = {
+    "Air",      // bit 0
+    "Artillery", // bit 1
+    "Urban",    // bit 2
+    "Chemical", // bit 3
+    "Nuclear",  // bit 4
+    "Drones",   // bit 5
+    "Missiles", // bit 6
+    "KAB",      // bit 7
+    "Ballistic",// bit 8
+    "Explosion" // bit 9
+};
+const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
+
+// Функція для розрахунку diff
+AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16_t current_flags) {
+    AlertDiff diff;
+    diff.region_id = region_id;
+    diff.previous_flags = previous_flags;
+    diff.current_flags = current_flags;
+    diff.has_changes = (previous_flags != current_flags);
+    return diff;
+}
+
+void animateLed(int led_position, int bit, uint16_t region_id, bool increase = true) {
+    LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
+    
+    uint32_t color;
+    uint32_t initialColor = 0x000000; // Початковий колір для анімації
+    uint32_t period;
+    uint32_t cycles;
+    uint8_t startBrightness = 50;
+    uint8_t endBrightness = 255;
+    uint8_t ledCount;
+
+    switch (bit) {
+        case -1:
+            initialColor = strip_main->getPixelColor(led_position);  
+            color = animation.ledActualColor(strip_main, led_position, true);               
+            animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            cycles = 1;
+            period = 3000;//10000;
+            break;
+        case 0:
+            color = (increase) ? animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)) : animation.colorFromHex(settings.getString(COLOR_ALERT)); 
+            endBrightness = (increase) ? led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT)) : led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+            animType = (increase) ? AnimationParams::Type::FADE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            period = (increase) ? 1000 : 3000;
+            cycles = (increase) ? 3 : 1; //settings.getInt(ALERT_ON_TIME) * 60;
+            break;
+        case 5:
+            color = animation.colorFromHex(settings.getString(COLOR_DRONES));
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 100; 
+            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            period = (increase) ? 1000 : 3000;
+            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            break;
+        case 6:
+            color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 100; 
+            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            period = (increase) ? 1000 : 3000;
+            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            break;
+        case 7:
+            color = animation.colorFromHex(settings.getString(COLOR_KABS));
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 100; 
+            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE; 
+            period = (increase) ? 1000 : 3000;
+            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;  
+            break;
+        case 8:
+            color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 100; 
+            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            period = (increase) ? 1000 : 3000;
+            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            break;
+        case 9:
+            color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 100; 
+            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            period = (increase) ? 1000 : 3000;
+            cycles = (increase) ? 3 : 1; //settings.getInt(EXPLOSION_TIME) * 60;
+            break;
+        default:
+            LOG.printf("[ANIMATION] LED %d: unknown bit\n", led_position);
+            return;
+    }
+    int ledsIdx[1] = { led_position };
+    if (!animation.createAnimation(
+        animType,
+        strip_main,
+        ledsIdx,
+        1,
+        color,
+        initialColor,
+        period,
+        cycles,
+        startBrightness,
+        endBrightness,
+        region_id
+    )) {
+        LOG.println("[ERROR] Failed to create animation");
+        return;
+    }
+}
+
+void analyzeAlertChanges(const std::vector<AlertDiff>& diffs) {
+
+}
+
 void onMessageCallback(WebsocketsMessage msg) {
     checkFreeHeap("Websockets onMessageCallback");
 
@@ -309,6 +435,11 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         //LOG.printf("[WEBSOCKET] alerts data processing\n");
 
+        std::vector<AlertDiff> diffs;
+        // Створюємо тимчасову мапу для нових значень
+        std::map<uint16_t, uint16_t> alertsMapActual;
+
+
         bool air, artillery, urban, chemical, nuclear, missiles, kab, drones, ballistic, explosion;
         bool airPrevious, artilleryPrevious, urbanPrevious, chemicalPrevious, nuclearPrevious, missilesPrevious, kabPrevious, dronesPrevious, ballisticPrevious, explosionPrevious ;
         for (size_t i = 0; i < count; ++i) {
@@ -316,191 +447,148 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
             ptr += RECORD_SZ;
 
-            const int* leds = getLedsForRegion(region_id, ledCount);
-            if (leds == nullptr) {
-                LOG.printf("[WEBSOCKET] alert region %d: %d skipped - no leds associated\n", region_id, flags16);
-                continue;
-            } else {
-                LOG.printf("[WEBSOCKET] alert region %d: %d\n", region_id, flags16);
+            // Отримуємо попередній стан
+            uint16_t previous_flags = alertsMap[region_id];
+            
+            // Розраховуємо diff
+            AlertDiff diff = calculateAlertDiff(region_id, previous_flags, flags16);
+            if (diff.has_changes) {
+                diffs.push_back(diff);
+            }
+            
+            alertsMapActual[region_id] = flags16;
+        }
+
+        LOG.printf("[DEBUG] analyzeAlertChanges called with %d diffs\n", (int)diffs.size());
+        LOG.printf("------------------------------------------------------------\n");
+        LOG.println();
+
+        // Мапа для зберігання найвищих бітів для LED
+        struct LedBit {
+            int highest_bit;
+            uint16_t region_id;
+        };
+        std::map<int, LedBit> led_bits_diff;
+        std::map<int, LedBit> led_bits_alerts;
+
+        // Проходимо по всіх змінах
+        for (const auto& diff : diffs) {
+            // Показуємо зміни для цього регіону
+            LOG.printf("[DIFF] Region %d: flags changed from 0x%04X to 0x%04X\n", 
+                diff.region_id, diff.previous_flags, diff.current_flags);
+            
+            // Показуємо які біти змінилися
+            for (int bit = 0; bit < ALERT_TYPES_COUNT; bit++) {
+                bool prev_state = diff.previous_flags & (1 << bit);
+                bool curr_state = diff.current_flags & (1 << bit);
+                
+                if (prev_state != curr_state) {
+                    LOG.printf("[DIFF]   Bit %d (%s): %s -> %s\n", 
+                        bit,
+                        ALERT_TYPES[bit],
+                        prev_state ? "ON" : "OFF",
+                        curr_state ? "ON" : "OFF"
+                    );
+                }
             }
 
-            bool airStarted = false;
-            bool airCompleted = false;
-            bool dronesStarted = false;
-            bool dronesCompleted = false;
-            bool missilesStarted = false;
-            bool missilesCompleted = false;
-            bool kabStarted = false;
-            bool kabCompleted = false;
-            bool explosionStarted = false;
-            bool explosionCompleted = false;
-            bool ballisticStarted = false;
-            bool ballisticCompleted = false;
+            // Знаходимо найвищий біт для цього регіону
+            int highest_bit_diff = findHighestBit16(diff.current_flags);
+            LOG.printf("[DIFF]   Highest bit for region %d: %d\n", 
+                diff.region_id, highest_bit_diff);
 
-            // Розкладаємо попередні тривоги
-            airPrevious         = alertsMap[region_id] & (1 << 0);
-            artilleryPrevious   = alertsMap[region_id] & (1 << 1);
-            urbanPrevious       = alertsMap[region_id] & (1 << 2);
-            chemicalPrevious    = alertsMap[region_id] & (1 << 3);
-            nuclearPrevious     = alertsMap[region_id] & (1 << 4);
-            dronesPrevious      = alertsMap[region_id] & (1 << 5);
-            missilesPrevious    = alertsMap[region_id] & (1 << 6);
-            kabPrevious         = alertsMap[region_id] & (1 << 7);
-            ballisticPrevious   = alertsMap[region_id] & (1 << 8);
-            explosionPrevious   = alertsMap[region_id] & (1 << 9);
+            // Шукаємо LED для цього регіону
+            const RegionLedMapEntry* entry = getRegionEntry(diff.region_id);
+            if (entry) {
+                LOG.printf("[DIFF]   LEDs for region %d: ", diff.region_id);
+                for (uint8_t i = 0; i < entry->led_count; ++i) {
+                    int led_position = entry->led_positions[i];
+                    LOG.printf("%d ", led_position);
 
-            // Зберігаємо
-            alertsMap[region_id] = flags16;
+                    // Оновлюємо найвищий біт для LED
+                    auto it = led_bits_diff.find(led_position);
+                    if (it == led_bits_diff.end() || highest_bit_diff > it->second.highest_bit) {
+                        led_bits_diff[led_position] = {highest_bit_diff, diff.region_id};
+                    }
+                }
+                // Шукаємо всі леди для цього регіону
+                for (uint8_t i = 0; i < entry->led_count; ++i) {
+                    int led_position = entry->led_positions[i];
+                    LOG.printf("\n[LED_ANALYSIS] LED %d regions: ", led_position);
 
-            // Розкладаємо актуальні тривоги
-            air         = flags16 & (1 << 0);
-            artillery   = flags16 & (1 << 1);
-            urban       = flags16 & (1 << 2);
-            chemical    = flags16 & (1 << 3);
-            nuclear     = flags16 & (1 << 4);
-            drones      = flags16 & (1 << 5);
-            missiles    = flags16 & (1 << 6);
-            kab         = flags16 & (1 << 7);
-            ballistic   = flags16 & (1 << 8);
-            explosion   = flags16 & (1 << 9);
+                    // Шукаємо всі регіони для цього LED
+                    const std::vector<uint16_t>& regions = getRegionsForLed(led_position);
+                    for (uint16_t region_id : regions) {
+                        LOG.printf("%d ", region_id);
 
-            if (!airPrevious        &&   air) {                                                 airStarted = true; }
-            if (airPrevious         &&  !air) {                                                 airCompleted = true; alertsMap.erase(region_id);}
-            if (!dronesPrevious     &&   drones     && settings.getBool(ENABLE_DRONES)) {       dronesStarted = true; }
-            if (dronesPrevious      &&  !drones     && settings.getBool(ENABLE_DRONES)) {       dronesCompleted = true; }
-            if (!missilesPrevious   &&   missiles   && settings.getBool(ENABLE_MISSILES)) {     missilesStarted = true; }
-            if (missilesPrevious    &&  !missiles   && settings.getBool(ENABLE_MISSILES)) {     missilesCompleted = true; }
-            if (!kabPrevious        &&   kab        && settings.getBool(ENABLE_KABS)) {         kabStarted = true; }
-            if (kabPrevious         &&  !kab        && settings.getBool(ENABLE_KABS)) {         kabCompleted = true; }
-            if (!ballisticPrevious  &&   ballistic  && settings.getBool(ENABLE_BALLISTIC)) {    ballisticStarted = true; }
-            if (ballisticPrevious   &&  !ballistic  && settings.getBool(ENABLE_BALLISTIC)) {    ballisticCompleted = true; }
-            if (!explosionPrevious  &&   explosion  && settings.getBool(ENABLE_EXPLOSIONS)) {   explosionStarted = true; }
-            if (explosionPrevious   &&  !explosion  && settings.getBool(ENABLE_EXPLOSIONS)) {   explosionCompleted = true; }
+                        // Шукаємо найвищий біт для регіону в alertsMap
+                        auto alerts_it = alertsMap.find(region_id);
+                        if (alerts_it != alertsMap.end()) {
+                            int highest_bit_region = findHighestBit16(alerts_it->second);
+                            LOG.printf("[%d] ", highest_bit_region);
 
-            
-            
-            if (isFirstDataFetchCompleted) {
-                if (airCompleted || dronesCompleted || missilesCompleted || kabCompleted || explosionCompleted || ballisticCompleted) {
-                    animate = true;
-                    if (strip_main_initialized) {
-                        initialColor = strip_main->getPixelColor(leds[0]);
-                    } 
-                    else if (strip_bg_initialized) {
-                        initialColor = strip_bg->getPixelColor(leds[0]);
-                    } else{
-                        initialColor = 0x000000;
-                    }                    
-                    color = animation.ledActualColor(strip_main, leds[0], true);
-                    animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
-                    cycles = 1;
-                    period = 2000;//10000;
-                }
-                if (airStarted) {   
-                    animate = true;
-                    color = animation.adaptColorBrightness(
-                        animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)), 
-                        led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT))
-                    );
-                    animType = AnimationParams::Type::FADE;
-                    period = 1000;
-                    cycles = 3;//settings.getInt(ALERT_ON_TIME) * 60;
-                }
-                if (air && dronesStarted) {
-                    animate = true;
-                    color = animation.colorFromHex(settings.getString(COLOR_DRONES));
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                    endBrightness = 100; 
-                    animType = AnimationParams::Type::PULSE;
-                    period = 1000;
-                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;             
-                }
-                if (air && missilesStarted) {
-                    animate = true;
-                    color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                    endBrightness = 100; 
-                    animType = AnimationParams::Type::PULSE;
-                    period = 1000;
-                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;
-                }
-                if (air && kabStarted) {
-                    animate = true;
-                    color = animation.colorFromHex(settings.getString(COLOR_KABS));
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                    endBrightness = 100; 
-                    animType = AnimationParams::Type::PULSE;
-                    period = 1000;
-                    cycles = 3; //settings.getInt(EXPLOSION_TIME) * 60;
-                }
-                if (air && ballisticStarted) {
-                    animate = true;
-                    color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                    endBrightness = 100;
-                    animType = AnimationParams::Type::PULSE;
-                    period = 1000;
-                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;
-                }
-                if (air && explosionStarted) {
-                    animate = true;
-                    color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
-                    startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-                    endBrightness = 100;
-                    animType = AnimationParams::Type::PULSE;
-                    period = 1000;
-                    cycles = 3;//settings.getInt(EXPLOSION_TIME) * 60;
-                }
-                
-                if(animate) {
-                    if (strip_main_initialized) {
-                        for (int i = 0; i < ledCount; ++i) {
-                            int ledsIdx[1] = { leds[i] };
-                            if (!animation.createAnimation(
-                                animType,
-                                strip_main,
-                                ledsIdx,
-                                1,
-                                color,
-                                initialColor,
-                                period,
-                                cycles,
-                                startBrightness,
-                                endBrightness,
-                                region_id
-                            )) {
-                                LOG.println("[ERROR] Failed to create animation");
-                                return;
+                            // Оновлюємо найвищий біт для LED
+                            auto it = led_bits_alerts.find(led_position);
+                            if (it == led_bits_alerts.end() || highest_bit_region > it->second.highest_bit) {
+                                led_bits_alerts[led_position] = {highest_bit_region, region_id};
                             }
                         }
                     }
-                    if (strip_bg_initialized && region_id == settings.getInt(HOME_DISTRICT)) {
-                        // Якщо є анімація в домашньому регіоні, то робимо аналогічну на фоні 
-                        std::vector<int> ledsBgIdx(settings.getInt(BG_LED_COUNT));
-                        for (int i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
-                            ledsBgIdx[i] = i;
-                        }
-                        if (!animation.createAnimation(
-                            animType,
-                            strip_bg,
-                            ledsBgIdx.data(),
-                            ledsBgIdx.size(),
-                            color,
-                            initialColor,
-                            period,
-                            cycles,
-                            startBrightness,
-                            endBrightness,
-                            region_id
-                        )) {
-                            LOG.println("[ERROR] Failed to create background animation");
-                            return;
-                        }
+                    LOG.println();
+                }  
+                LOG.println();
+            } else {
+                LOG.printf("[DIFF]   No LEDs found for region %d\n", diff.region_id);
+            }
+        }
+
+        // Виводимо фінальний список бітів для LED
+        LOG.printf("\n[FINAL] LED bits summary:\n");
+        for (const auto& led : led_bits_diff) {
+            LOG.printf("[FINAL] LED diff %d: highest_bit=%d, region_id=%d\n",
+                led.first,
+                led.second.highest_bit,
+                led.second.region_id
+            );
+        }
+        for (const auto& led : led_bits_alerts) {
+            LOG.printf("[FINAL] LED alerts %d: highest_bit=%d, region_id=%d\n",
+                led.first,
+                led.second.highest_bit,
+                led.second.region_id
+            );
+        }
+
+        // вмерджуємо alertsMapActual в основний alertsMap
+        for (const auto& pair : alertsMapActual) {
+            alertsMap[pair.first] = pair.second;
+        }
+
+        if (isFirstDataFetchCompleted) {
+            // Виводимо фінальний список бітів для LED
+            LOG.printf("\n[FINAL] LED bits summary:\n");
+            for (const auto& led : led_bits_diff) {
+                // Порівнюємо з led_bits_alerts
+                auto alerts_it = led_bits_alerts.find(led.first);
+                if (alerts_it != led_bits_alerts.end()) {
+                    int diff_bit = led.second.highest_bit;
+                    int alerts_bit = alerts_it->second.highest_bit;
+
+                    if (diff_bit > alerts_bit) {
+                        LOG.printf("[ANIMATION] LED %d: increasing bit from %d to %d\n",
+                            led.first, alerts_bit, diff_bit);
+                            animateLed(led.first, diff_bit, led.second.region_id, true);
+                    } else if (diff_bit < alerts_bit) {
+                        LOG.printf("[ANIMATION] LED %d: decreasing bit from %d to %d\n",
+                            led.first, alerts_bit, diff_bit);
+                            animateLed(led.first, diff_bit, led.second.region_id, false);
                     }
                 }
             }
         }
+        LOG.printf("------------------------------------------------------------\n");
+        
         alertsHash = actualHash;
-        //LOG.printf("[WEBSOCKET] alertsHash updated: [0x%04X]\n", alertsHash);
     }
     if (!isFirstDataFetchCompleted) {
         LOG.printf("[WEBSOCKET] init processing\n");
