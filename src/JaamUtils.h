@@ -1,5 +1,6 @@
 #pragma once
 #include "JaamLogs.h"
+#include "JaamSettings.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -13,6 +14,7 @@
 extern uint32_t                         lastWebsocketConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern size_t                           lastUsedHeap;
+extern JaamSettings                     settings;
 
 struct JaamFirmware {
     int major = 0;
@@ -21,6 +23,10 @@ struct JaamFirmware {
     int betaBuild = 0;
     bool isBeta = false;
   };
+struct LedBit {
+    int highest_bit;
+    uint16_t region_id;
+};
   
 static JaamFirmware parseFirmwareVersion(const char* version) {
 
@@ -144,13 +150,13 @@ inline void checkFreeHeap(const char* label) {
 }
 
 // Функція для пошуку номеру найстаршого біту в 16-бітному числі
-inline int findHighestBit16(uint16_t value) {
-    if (value == 0) return -1; // Повертаємо 255 як індикатор відсутності бітів
+inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
+    if (value == 0) return -1; // Повертаємо -1 як індикатор відсутності бітів
     
 
     // Перевіряємо наявність біта 0 (повітряна тривога)
-    if (!(value & (1 << 0))) {
-        return -1; // Якщо біт 0 не встановлений, повертаємо 255
+    if (!(value & (1 << 0)) && checkBit0) {
+        return -1; // Якщо біт 0 не встановлений і потрібно перевіряти наявність біта 0, повертаємо -1
     }
 
     uint8_t position = 0;
@@ -204,7 +210,7 @@ inline int findHighestBitForLed(int position) {
 }
 
 // Повертає найвищий біт серед усіх регіонів, до яких належать леди region_id
-inline int findHighestBitForRegionLeds(uint16_t region_id) {
+inline int findHighestBitForRegion(uint16_t region_id) {
     uint8_t ledCount = 0;
     const int* leds = getLedsForRegion(region_id, ledCount);
     if (!leds || ledCount == 0) {
@@ -219,6 +225,7 @@ inline int findHighestBitForRegionLeds(uint16_t region_id) {
         allRegions.insert(regions.begin(), regions.end());
     }
 
+    // Шукаємо найвищий біт серед усіх регіонів
     int maxBit = -1;
     for (uint16_t reg : allRegions) {
         auto it = alertsMap.find(reg);
@@ -226,32 +233,73 @@ inline int findHighestBitForRegionLeds(uint16_t region_id) {
             int bit = findHighestBit16(it->second);
             LOG.printf("[REGION] region_id=%d, Bit=%d\n", it->first, bit);
             if (bit != -1 && (maxBit == -1 || bit > maxBit)) {
-                
                 maxBit = bit;
             }
         }
     }
-
     LOG.printf("[REGION] region_id=%d, highestBit=%d\n", region_id, maxBit);
     return maxBit;
 }
 
 // Функція для пошуку найстаршого біту для конкретного регіону
-inline int findHighestBitForRegion(uint16_t regionId) {
-    auto it = alertsMap.find(regionId);
-    if (it == alertsMap.end() || it->second == 0) {
-        LOG.printf("[REGION] Region %d has no active alerts\n", regionId);
-        return -1; // Регион не має активних тривог
-    }
+// inline int findHighestBitForRegion(uint16_t regionId) {
+//     auto it = alertsMap.find(regionId);
+//     if (it == alertsMap.end() || it->second == 0) {
+//         LOG.printf("[REGION] Region %d has no active alerts\n", regionId);
+//         return -1; // Регион не має активних тривог
+//     }
     
-    int highestBit = findHighestBit16(it->second);
-    if (highestBit == -1) {
-        LOG.printf("[REGION] Region %d has no active bits\n", regionId);
-    } else {
-        LOG.printf("[REGION] Region %d highest bit: %d\n", regionId, highestBit);
-    }
+//     int highestBit = findHighestBit16(it->second);
+//     if (highestBit == -1) {
+//         LOG.printf("[REGION] Region %d has no active bits\n", regionId);
+//     } else {
+//         LOG.printf("[REGION] Region %d highest bit: %d\n", regionId, highestBit);
+//     }
     
-    return highestBit;
+//     return highestBit;
+// }
+
+inline int getHighestActualBit(int sourceBit) {
+    int actualBit = -1;
+    
+    // Перебираємо біти від найвищого до найнижчого
+    for (int bit = sourceBit; bit >= 0; bit--) {
+        bool is_enabled = false;
+        
+        // Перевіряємо чи дозволено показувати цей тип тривоги
+        if (bit == 0) {
+            is_enabled = true; // Alert завжди показуємо
+        } else if (bit == 5) {
+            is_enabled = settings.getBool(ENABLE_DRONES);
+        } else if (bit == 6) {
+            is_enabled = settings.getBool(ENABLE_MISSILES);
+        } else if (bit == 7) {
+            is_enabled = settings.getBool(ENABLE_KABS);
+        } else if (bit == 8) {
+            is_enabled = settings.getBool(ENABLE_BALLISTIC);
+        } else if (bit == 9) {
+            is_enabled = settings.getBool(ENABLE_EXPLOSIONS);
+        }
+
+        // Якщо тип тривоги дозволено показувати - встановлюємо колір
+        if (is_enabled) {
+            if (bit == 0) {
+                actualBit = 0;
+            } else if (bit == 5) {
+                actualBit = 5;
+            } else if (bit == 6) {
+                actualBit = 6;
+            } else if (bit == 7) {
+                actualBit = 7;
+            } else if (bit == 8) {
+                actualBit = 8;
+            } else if (bit == 9) {
+                actualBit = 9;
+            }
+            break; // Зупиняємося на першому дозволеному біті
+        }
+    }
+    return actualBit;
 }
 
 // Add memory monitoring function

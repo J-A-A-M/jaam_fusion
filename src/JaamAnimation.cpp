@@ -492,10 +492,10 @@ uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
         color = DefaultColors::MAIN_STRIP;
     } else if (strip == strip_bg) {
         if (settings->getInt(BG_LED_MODE) == 0) {
-            LOG.printf("[COLOR] HOME_DISTRICT %d\n");
+            LOG.printf("[COLOR] stripDefaultColor HOME_DISTRICT %d\n");
             color = regionActualColor(settings->getInt(HOME_DISTRICT));
         } else if (settings->getInt(BG_LED_MODE) == 1) {
-            LOG.printf("[COLOR] SELF %d\n", settings->getString(COLOR_BG));
+            LOG.printf("[COLOR] stripDefaultColor SELF %d\n", settings->getString(COLOR_BG));
             color = colorFromHex(settings->getString(COLOR_BG));
         }
     } else if (strip == strip_service) {
