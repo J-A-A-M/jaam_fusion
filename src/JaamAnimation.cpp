@@ -486,23 +486,7 @@ void AnimationManager::updateRunningLightAnimation(AnimationParams* anim, float 
     }
 }
 
-uint32_t AnimationManager::stripDefaultColor(Adafruit_NeoPixel* strip) {
-    uint32_t color;
-    if (strip == strip_main) {
-        color = DefaultColors::MAIN_STRIP;
-    } else if (strip == strip_bg) {
-        if (settings->getInt(BG_LED_MODE) == 0) {
-            LOG.printf("[COLOR] stripDefaultColor HOME_DISTRICT %d\n");
-            color = regionActualColor(settings->getInt(HOME_DISTRICT));
-        } else if (settings->getInt(BG_LED_MODE) == 1) {
-            LOG.printf("[COLOR] stripDefaultColor SELF %d\n", settings->getString(COLOR_BG));
-            color = colorFromHex(settings->getString(COLOR_BG));
-        }
-    } else if (strip == strip_service) {
-        color = DefaultColors::SERVICE_STRIP;
-    }
-    return color;
-}
+
 
 uint32_t AnimationManager::adaptColorBrightness(uint32_t color, uint8_t brightness) {
     uint8_t r = ((color >> 16)  & 0xFF) * brightness / 255;
@@ -580,6 +564,30 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
         }
     }
     return std::make_pair(color, brightness);
+}
+
+uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapted) {
+    uint32_t color;
+    uint8_t brightness = 255;
+    if (strip == strip_main) {
+        color = DefaultColors::MAIN_STRIP;
+    } else if (strip == strip_bg) {
+        if (settings->getInt(BG_LED_MODE) == 0) {
+            LOG.printf("[COLOR] stripActualColor HOME_DISTRICT %d\n");
+            color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
+        } else if (settings->getInt(BG_LED_MODE) == 1) {
+            LOG.printf("[COLOR] stripActualColor SELF %d\n", settings->getString(COLOR_BG));
+            color = colorFromHex(settings->getString(COLOR_BG));
+        }
+        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+    } else if (strip == strip_service) {
+        color = DefaultColors::SERVICE_STRIP;
+        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
+    }
+    if (adapted) {
+        color = adaptColorBrightness(color, brightness);
+    }
+    return color;
 }
 
 uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
@@ -778,7 +786,7 @@ bool AnimationManager::isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx) {
 void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {
     if (strip == nullptr) return;
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        uint32_t defaultColor = stripDefaultColor(strip);
+        uint32_t defaultColor = stripActualColor(strip);
         LOG.println("[LED] paint default color: " + String(defaultColor, HEX));
         for (uint16_t i = 0; i < strip->numPixels(); ++i) {
             strip->setPixelColor(i, defaultColor);

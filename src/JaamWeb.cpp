@@ -15,9 +15,7 @@ uint8_t temprature_sens_read();
 #endif
 
 extern volatile bool needAdaptAnimationColors;
-extern volatile bool needAdaptStripMainBrightness;
-extern volatile bool needAdaptStripBgBrightness;
-extern volatile bool needAdaptStripServiceBrightness;
+extern volatile bool needAdaptStripBrightness;
 extern volatile bool needToReconnectWebsocket;
 extern volatile bool needReconnectStrips;
 extern volatile bool needReconnectMainStrip;
@@ -476,7 +474,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, intValue);
             LOG.printf("[WEB] Setting brightness: %d\n", intValue);
-            needAdaptStripMainBrightness = true;
+            needAdaptStripBrightness = true;
         } else if (name == "brightness_day") {
             settings->saveInt(BRIGHTNESS_DAY, intValue);
             LOG.printf("[WEB] Setting brightness_day: %d\n", intValue);
@@ -510,11 +508,13 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, intValue);
             LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);
-            needAdaptStripBgBrightness = true;
+            needAdaptColors = true; 
+            needAdaptAnimationColors = true;
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
-            needAdaptStripServiceBrightness = true;
+            needAdaptColors = true; 
+            needAdaptAnimationColors = true;
         } else if (name == "main_led_color_format") {
             settings->saveInt(MAIN_LED_COLOR_FORMAT, intValue);
             LOG.printf("[WEB] Setting main_led_color_format: %d\n", intValue);

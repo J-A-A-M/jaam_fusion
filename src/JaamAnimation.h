@@ -98,7 +98,7 @@ class AnimationManager {
         void paintStripDefault(Adafruit_NeoPixel* strip);
         void adaptAllAnimationColors();
         uint32_t colorFromHex(const char* hex);
-        uint32_t stripDefaultColor(Adafruit_NeoPixel* strip);
+        uint32_t stripActualColor(Adafruit_NeoPixel* strip, bool adapted = true);
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
         uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
