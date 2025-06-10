@@ -180,7 +180,7 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     return diff;
 }
 
-void animateLed(int led_position, int bit, uint16_t region_id, bool increase = true) {
+void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t region_id, bool increase = true) {
     LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
     
     uint32_t color;
@@ -198,17 +198,17 @@ void animateLed(int led_position, int bit, uint16_t region_id, bool increase = t
     }
 
     switch (actualBit) {
-        case -1:
-            initialColor = strip_main->getPixelColor(led_position);  
-            color = animation.ledActualColor(strip_main, led_position, true);               
+        case -1: 
+            color = animation.ledActualColor(strip, led_position, true);               
             animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
             cycles = 1;
-            period = 3000;//10000;
+            period = 10000;
             break;
         case 0:
-            color = (increase) ? animation.colorFromHex(settings.getString(COLOR_NEW_ALERT)) : animation.colorFromHex(settings.getString(COLOR_ALERT)); 
-            endBrightness = (increase) ? led.brightnessAbsolute(settings.getInt(BRIGHTNESS_NEW_ALERT)) : led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+            color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
             animType = (increase) ? AnimationParams::Type::FADE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+            endBrightness = 100; 
             period = (increase) ? 1000 : 10000;
             cycles = (increase) ? settings.getInt(ALERT_ON_TIME) * 60 : 1;
             break;
@@ -256,12 +256,30 @@ void animateLed(int led_position, int bit, uint16_t region_id, bool increase = t
             LOG.printf("[ANIMATION] LED %d: unknown bit %d\n", led_position, actualBit);
             return;
     }
-    int ledsIdx[1] = { led_position };
+    int ledsIdx[1];      // для strip_main та strip_service
+    int* ledsPtr = nullptr;
+
+    if (strip == strip_main) {
+        ledsIdx[0] = led_position;
+        ledsPtr = ledsIdx;
+        ledCount = 1;
+    } else if (strip == strip_bg) {
+        ledsPtr = allLedsBg.data();
+        ledCount = strip->numPixels();
+    } else if (strip == strip_service) {
+        ledsIdx[0] = led_position;
+        ledsPtr = ledsIdx;
+        ledCount = 1;
+    } else {
+        LOG.println("[ERROR] Invalid strip for animation");
+        return;
+    }
+    
     if (!animation.createAnimation(
         animType,
-        strip_main,
-        ledsIdx,
-        1,
+        strip,
+        ledsPtr,
+        ledCount,
         color,
         initialColor,
         period,
@@ -332,6 +350,9 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH data processing\n");
 
+        bool needToAnimateHomeRegion = false;
+        int homeRegionBit = 0;
+
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
@@ -380,11 +401,24 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             LOG.printf("[WEBSOCKET] actualBitLed %d, actualBitRegion %d\n", actualBitLed, actualBitDiff);
 
+            
+
             if (actualBitDiff > actualBitLed) {
                 for (int i = 0; i < ledCount; ++i) {
-                    animateLed(leds[i], actualBitDiff, region_id, true);
+                    animateLed(strip_main,leds[i], actualBitDiff, region_id, true);
+                    if (isLedInHomeRegion(leds[i])) {
+                        needToAnimateHomeRegion = true;
+                        homeRegionBit = actualBitDiff;
+                    }
                 }
             }
+        }
+        if (needToAnimateHomeRegion) {
+            LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
+                settings.getInt(HOME_DISTRICT), homeRegionBit);
+            animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
+        }else {
+            LOG.println("[WEBSOCKET] No changes in home region LEDs");
         }
     }
 
@@ -459,6 +493,9 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.println();
 
         // Проходимо по всіх змінах
+        bool needToAnimateHomeRegion = false;
+        bool homeRegionIncrease = false;
+        int homeRegionBit = 0;
         for (const auto& diff : diffs) {
             // Показуємо зміни для цього регіону
             LOG.printf("[DIFF] Region %d: flags changed from 0x%04X to 0x%04X\n", 
@@ -564,17 +601,33 @@ void onMessageCallback(WebsocketsMessage msg) {
                     if (diff_bit > alerts_bit) {
                         LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
                             led.first, led.second.region_id, alerts_bit, diff_bit);
-                            animateLed(led.first, diff_bit, led.second.region_id, true);
+                            animateLed(strip_main, led.first, diff_bit, led.second.region_id, true);
+                            if (isLedInHomeRegion(led.first)) {
+                                needToAnimateHomeRegion = true;
+                                homeRegionBit = diff_bit;
+                                homeRegionIncrease = true;
+                            }
                     } else if (diff_bit < alerts_bit) {
                         LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
                             led.first, led.second.region_id, alerts_bit, diff_bit);
-                            animateLed(led.first, diff_bit, led.second.region_id, false);
+                            animateLed(strip_main, led.first, diff_bit, led.second.region_id, false);
+                            if (isLedInHomeRegion(led.first)) {
+                                needToAnimateHomeRegion = true;
+                                homeRegionBit = diff_bit;
+                                homeRegionIncrease = false;
+                            }
                     }
                 }
             }
+            if (needToAnimateHomeRegion) {
+                LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
+                    settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
+                animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
+            }else {
+                LOG.println("[WEBSOCKET] No changes in home region LEDs");
+            }
         }
         LOG.println();
-        
         alertsHash = actualHash;
     }
     if (!isFirstDataFetchCompleted) {

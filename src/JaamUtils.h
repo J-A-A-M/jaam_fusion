@@ -241,23 +241,35 @@ inline int findHighestBitForRegion(uint16_t region_id) {
     return maxBit;
 }
 
-// Функція для пошуку найстаршого біту для конкретного регіону
-// inline int findHighestBitForRegion(uint16_t regionId) {
-//     auto it = alertsMap.find(regionId);
-//     if (it == alertsMap.end() || it->second == 0) {
-//         LOG.printf("[REGION] Region %d has no active alerts\n", regionId);
-//         return -1; // Регион не має активних тривог
-//     }
-    
-//     int highestBit = findHighestBit16(it->second);
-//     if (highestBit == -1) {
-//         LOG.printf("[REGION] Region %d has no active bits\n", regionId);
-//     } else {
-//         LOG.printf("[REGION] Region %d highest bit: %d\n", regionId, highestBit);
-//     }
-    
-//     return highestBit;
-// }
+// Перевіряє, чи входить led_position у леди домашнього регіону
+inline bool isLedInHomeRegion(int led_position) {
+    LOG.printf("[HOME REGION] check led %d\n", led_position);
+    // Отримуємо масив LED-ів для домашнього регіону
+    uint8_t ledCount = 0;
+    const int* leds = getLedsForRegion(settings.getInt(HOME_DISTRICT), ledCount);
+
+    // Якщо для регіону немає LED-ів — повертаємо false
+    if (leds == nullptr || ledCount == 0) {
+        return false;
+    }
+
+    LOG.printf("[HOME REGION] leds: ");
+    for (uint8_t i = 0; i < ledCount; ++i) {
+        LOG.printf("%d ", leds[i]);
+    }
+    LOG.printf("\n");
+
+    // Перевіряємо, чи входить led_position у масив
+    for (uint8_t i = 0; i < ledCount; ++i) {
+        if (leds[i] == led_position) {
+            LOG.printf("[HOME REGION] led_position=%d\n", led_position);
+            return true;
+        } else {
+            LOG.printf("[HOME REGION] led_position=%d not found in home region\n", led_position);
+        }
+    }
+    return false;
+}
 
 inline int getHighestActualBit(int sourceBit) {
     int actualBit = -1;

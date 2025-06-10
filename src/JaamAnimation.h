@@ -87,7 +87,7 @@ class AnimationManager {
                            uint32_t period = 1000,
                            uint32_t cycles = 5,
                            uint8_t startBrightness = 50,
-                           uint8_t endBrightness = 150,
+                           uint8_t endBrightness = 255,
                            uint16_t region_id = 0);
         void update();
         void clearAllAnimations();

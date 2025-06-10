@@ -227,8 +227,6 @@ String JaamWeb::getHtmlTemplate() {
     html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
-    html += getColorPickerHtml("color_new_alert", settings->getString(COLOR_NEW_ALERT), "Початок тривоги");
-    html += getColorPickerHtml("color_alert_over", settings->getString(COLOR_ALERT_OVER), "Завершення тривоги");
     html += getColorPickerHtml("color_explosion", settings->getString(COLOR_EXPLOSION), "Вибухи");
     html += getColorPickerHtml("color_missiles", settings->getString(COLOR_MISSILES), "Ракети");
     html += getColorPickerHtml("color_drones", settings->getString(COLOR_DRONES), "БПЛА");
@@ -245,8 +243,6 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Нічь");
     html += getParameterHtml("brightness_alert", 0, 100, settings->getInt(BRIGHTNESS_ALERT), "Тривога");
     html += getParameterHtml("brightness_clear", 0, 100, settings->getInt(BRIGHTNESS_CLEAR), "Без тривоги");
-    html += getParameterHtml("brightness_new_alert", 0, 100, settings->getInt(BRIGHTNESS_NEW_ALERT), "Початок тривоги");
-    html += getParameterHtml("brightness_alert_over", 0, 100, settings->getInt(BRIGHTNESS_ALERT_OVER), "Відбій тривоги");
     html += getParameterHtml("brightness_explosion", 0, 100, settings->getInt(BRIGHTNESS_EXPLOSION), "Вибухи, дрони, ракети");
     html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Домашній регіон");
     html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Фонова стрічка");
@@ -421,14 +417,6 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_CLEAR, valuePtr);
             LOG.printf("[WEB] Setting color_clear: raw=%s\n", valuePtr);
         }
-        if (name == "color_new_alert") {
-            settings->saveString(COLOR_NEW_ALERT, valuePtr);
-            LOG.printf("[WEB] Setting color_new_alert: raw=%s\n", valuePtr);
-        }
-        if (name == "color_alert_over") {
-            settings->saveString(COLOR_ALERT_OVER, valuePtr);
-            LOG.printf("[WEB] Setting color_alert_over: raw=%s\n", valuePtr);
-        }
         if (name == "color_explosion") {
             settings->saveString(COLOR_EXPLOSION, valuePtr);
             LOG.printf("[WEB] Setting color_explosion: raw=%s\n", valuePtr);
@@ -507,16 +495,6 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, intValue);
             LOG.printf("[WEB] Setting brightness_clear: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
-        } else if (name == "brightness_new_alert") {
-            settings->saveInt(BRIGHTNESS_NEW_ALERT, intValue);
-            LOG.printf("[WEB] Setting brightness_new_alert: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
-        } else if (name == "brightness_alert_over") {
-            settings->saveInt(BRIGHTNESS_ALERT_OVER, intValue);
-            LOG.printf("[WEB] Setting brightness_alert_over: %d\n", intValue);
             needAdaptColors = true;
             needAdaptAnimationColors = true;
         } else if (name == "brightness_explosion") {
