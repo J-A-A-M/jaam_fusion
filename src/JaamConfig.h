@@ -88,7 +88,7 @@ constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
 static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
   {0, "Вимкнено", false},
   {1, "День/Ніч", false},
-  //{2, "Сенсор освітлення", false}
+  {2, "Сенсор освітлення", false}
 };
 
 constexpr int BG_LED_MODES_COUNT = 2;

@@ -7,9 +7,11 @@ void JaamLed::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
 
-// Convert percentage to 0-255 scale
 uint8_t JaamLed::brightnessAbsolute(uint8_t percent) {
-    return map(percent, 0, 100, 0, 255);
+    // Використовуємо пряму параболічну залежність
+    float normalized = percent / 100.0f;
+    float squared = normalized * normalized;
+    return (uint8_t)(squared * 255.0f);
 }
 
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
@@ -105,13 +107,13 @@ StripStatus JaamLed::recreateStrip(Adafruit_NeoPixel*& strip,
     LOG.printf("[LED] Recreating strip: pin=%d, count=%d\n", pin, count);
     
     // Analyze memory fragmentation before operation
-    //analyzeMemoryFragmentation("before strip recreation");
+    analyzeMemoryFragmentation("before strip recreation");
     
     // First, safely destroy existing strip
     destroyStrip(strip);
     
     // Force memory defragmentation after cleanup
-    //defragmentMemory("after strip destruction");
+    defragmentMemory("after strip destruction");
     
     // Create new strip
     StripStatus result = createStrip(strip, pin, count, brightness, color, type);
