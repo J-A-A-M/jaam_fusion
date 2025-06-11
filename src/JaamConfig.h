@@ -4,8 +4,13 @@
 // --- Default Colors ---
 namespace DefaultColors {
     static const uint32_t MAIN_STRIP = 0x00FF00;  // Green
-    static const uint32_t SERVICE_STRIP = 0x0000FF;  // Blue
+    static const uint32_t SERVICE_STRIP = 0xFFFFFF;  // Blue
     static const uint32_t OFF = 0x000000;  // Blue
+    static const uint32_t POWER = 0xFF0000;  // Green
+    static const uint32_t WIFI = 0x0000FF;  // Blue
+    static const uint32_t DATA = 0x00FF00;  // Blue
+    static const uint32_t HA = 0xFFFF00;  // Blue
+    static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
 }
 
 // --- Animation Configuration ---
@@ -83,7 +88,7 @@ constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
 static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
   {0, "Вимкнено", false},
   {1, "День/Ніч", false},
-  {2, "Сенсор освітлення", false}
+  //{2, "Сенсор освітлення", false}
 };
 
 constexpr int BG_LED_MODES_COUNT = 2;

@@ -16,29 +16,16 @@ uint8_t temprature_sens_read();
 
 extern volatile bool needAdaptAnimationColors;
 extern volatile bool needAdaptStripBrightness;
-extern volatile bool needToReconnectWebsocket;
-extern volatile bool needReconnectStrips;
+extern volatile bool needAdaptColors;
+extern volatile bool needReconnectWebsocket;
 extern volatile bool needReconnectMainStrip;
 extern volatile bool needReconnectBgStrip;
 extern volatile bool needReconnectServiceStrip;
-extern volatile bool needAdaptColors;
-
-// extern volatile bool needAdaptNonAnimationColors;
-// extern volatile bool needAdaptAlertClearColors;
-// extern volatile bool needAdaptAlertColors;
-// extern volatile bool needAdaptAlertExplosionColors;
-// extern volatile bool needAdaptAlertHomeDistrictColors;
-
-// Forward declaration for socketConnect function from JaamFusion.cpp
-extern void socketConnect();
-extern void clearAllAlertsMaps();
-extern void reconnectStrips();
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
-
 
 String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, const char* label) {
     String html = "<div class='slider-container'>";
@@ -514,7 +501,6 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
             needAdaptColors = true; 
-            needAdaptAnimationColors = true;
         } else if (name == "main_led_color_format") {
             settings->saveInt(MAIN_LED_COLOR_FORMAT, intValue);
             LOG.printf("[WEB] Setting main_led_color_format: %d\n", intValue);
@@ -607,11 +593,11 @@ void JaamWeb::handleTextParameter() {
             LOG.printf("[WEB] Setting broadcast_name: %s\n", valuePtr);
         } else if (name == "ws_server_host") {
             settings->saveString(WS_SERVER_HOST, valuePtr);
-            needToReconnectWebsocket = true;
+            needReconnectWebsocket = true;
             LOG.printf("[WEB] Setting ws_server_host: %s\n", valuePtr);
         } else if (name == "ws_server_port") {
             settings->saveInt(WS_SERVER_PORT, value.toInt());
-            needToReconnectWebsocket = true;
+            needReconnectWebsocket = true;
             LOG.printf("[WEB] Setting ws_server_port: %s\n", valuePtr);
         } else if (name == "ntp_host") {
             settings->saveString(NTP_HOST, valuePtr);
@@ -667,6 +653,10 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
 }
 
 void JaamWeb::handleClient() {
+    if (!wifiConnected) {
+        LOG.println("[WEB] Reconnecting... wifiConnected == false");
+        return;
+    }
     server.handleClient();
 }
 

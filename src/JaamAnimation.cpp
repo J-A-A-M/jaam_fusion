@@ -571,7 +571,8 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
     uint8_t brightness = 255;
     if (strip == strip_main) {
         color = DefaultColors::MAIN_STRIP;
-    } else if (strip == strip_bg) {
+    }
+    if (strip == strip_bg) {
         if (settings->getInt(BG_LED_MODE) == 0) {
             LOG.printf("[COLOR] stripActualColor HOME_DISTRICT %d\n");
             color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
@@ -580,7 +581,8 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
             color = colorFromHex(settings->getString(COLOR_BG));
         }
         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-    } else if (strip == strip_service) {
+    } 
+    if (strip == strip_service) {
         color = DefaultColors::SERVICE_STRIP;
         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
     }
@@ -645,20 +647,24 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 }
             }
         }
-    } else if (strip == strip_bg) {
+    } 
+    if (strip == strip_bg) {
         int highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
         
         if (highest_bit != -1) {
             std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
             color = result.first;
-            brightness = result.second;
+            //brightness = result.second;
         } else {
             // Якщо немає тривог, встановлюємо колір домашнього району
             color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+            //brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
         }
-    } else if (strip == strip_service) {
-        color = DefaultColors::SERVICE_STRIP;
+        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+    } 
+    if (strip == strip_service) {
+        color = getServicePinColor(position);
+        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
     }
 
     if (adapted) {

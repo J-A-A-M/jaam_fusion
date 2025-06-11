@@ -15,6 +15,8 @@ extern uint32_t                         lastWebsocketConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern size_t                           lastUsedHeap;
 extern JaamSettings                     settings;
+extern bool                             wifiConnected;
+extern bool                             apiConnected;
 
 struct JaamFirmware {
     int major = 0;
@@ -26,6 +28,14 @@ struct JaamFirmware {
 struct LedBit {
     int highest_bit;
     uint16_t region_id;
+};
+
+enum ServiceLed {
+    POWER,
+    WIFI,
+    DATA,
+    HA,
+    UPD_AVAILABLE
 };
   
 static JaamFirmware parseFirmwareVersion(const char* version) {
@@ -140,10 +150,10 @@ inline void checkFreeHeap(const char* label) {
     int heapDiff = lastUsedHeap > 0 ? (int)usedHeap - (int)lastUsedHeap : 0;
     
     if (lastUsedHeap > 0) {
-        //LOG.printf("[MEMORY] Used heap after %s: %u bytes (change: %+d bytes)\n", 
-        //          label, usedHeap, heapDiff);
+        LOG.printf("[MEMORY] Used heap after %s: %u bytes (change: %+d bytes)\n", 
+                  label, usedHeap, heapDiff);
     } else {
-        //LOG.printf("[MEMORY] Used heap after %s: %u bytes\n", label, usedHeap);
+        LOG.printf("[MEMORY] Used heap after %s: %u bytes\n", label, usedHeap);
     }
     
     lastUsedHeap = usedHeap;
@@ -429,6 +439,32 @@ inline void analyzeMemoryFragmentation(const char* context) {
             return; // Return true to indicate high fragmentation
         }
     }
+}
+
+// Function to get service pin color
+inline uint32_t getServicePinColor(int type) {
+    LOG.printf("[LED] getServicePinColor %d\n", type);
+    uint32_t color = 0;
+    switch (type) {
+        case POWER:
+            color = DefaultColors::POWER;
+            break;
+        case WIFI:
+            LOG.printf("[LED] wifiConnected %d\n", wifiConnected);
+            color = wifiConnected ? DefaultColors::WIFI : DefaultColors::OFF;
+            break;
+        case DATA:
+            LOG.printf("[LED] apiConnected %d\n", apiConnected);
+            color = apiConnected ? DefaultColors::DATA : DefaultColors::OFF;
+            break;
+        case HA:
+            color = DefaultColors::OFF;
+            break;
+        case UPD_AVAILABLE:
+            color = DefaultColors::OFF;
+            break;
+    }
+    return color;
 }
 
 // Function to parse JSON payload and return JsonDocument

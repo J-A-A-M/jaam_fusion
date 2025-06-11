@@ -60,25 +60,30 @@ std::map<uint16_t, uint16_t>    alertsMap;
 // --- TASKS Configuration ---
 bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
-bool                needToReconnectWebsocket = false;
+bool                needReconnectWebsocket = false;
 bool                needAdaptColors = false;
-bool                needReconnectStrips = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
 bool                needReconnectServiceStrip;
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
-WebsocketsClient    websocket;
+
 uint32_t            lastWifiConnectTime = 0;  // Track when WiFi was last connected
 uint16_t            alertsHash = 0;
+bool                wifiConnected = false;
 
+// --- WEBSOCKET Configuration ---
+WebsocketsClient    websocket;
 time_t              websocketLastPingTime = 0;
 bool                isFirstDataFetchCompleted = false;
 bool                apiConnected;
-uint8_t             legacy = 4;
 bool                websocketReconnect = false;
 uint32_t            lastWebsocketConnectTime = 0;
+
+
+
+uint8_t             legacy = 4;
 size_t              lastUsedHeap = 0; 
 
 
@@ -166,6 +171,22 @@ const char* ALERT_TYPES[] = {
     "Explosion" // bit 9
 };
 const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
+
+void servicePin(ServiceLed type) {
+    if (strip_service_initialized) {
+        uint32_t color = getServicePinColor(type);
+        animation.safeStripOperation(strip_service, [type, color](Adafruit_NeoPixel* strip) {
+            strip->setPixelColor(type, color);
+            strip->show();
+        }); 
+    }
+}
+
+void checkServicePins() {
+    servicePin(POWER);
+    servicePin(WIFI);
+    servicePin(DATA);
+}
 
 // Функція для розрахунку diff
 AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16_t current_flags) {
@@ -335,7 +356,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
             LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
-            needToReconnectWebsocket = true;
+            needReconnectWebsocket = true;
             return;
         }
 
@@ -347,7 +368,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH data processing\n");
 
-        bool needToAnimateHomeRegion = false;
+        bool needToAnimateBgHomeRegion = false;
         int homeRegionBit = 0;
 
         for (size_t i = 0; i < count; ++i) {
@@ -404,13 +425,13 @@ void onMessageCallback(WebsocketsMessage msg) {
                 for (int i = 0; i < ledCount; ++i) {
                     animateLed(strip_main,leds[i], actualBitDiff, region_id, true);
                     if (isLedInHomeRegion(leds[i])) {
-                        needToAnimateHomeRegion = true;
+                        needToAnimateBgHomeRegion = true;
                         homeRegionBit = actualBitDiff;
                     }
                 }
             }
         }
-        if (needToAnimateHomeRegion) {
+        if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0) {
             LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
                 settings.getInt(HOME_DISTRICT), homeRegionBit);
             animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
@@ -428,7 +449,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
             LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
-            needToReconnectWebsocket = true;
+            needReconnectWebsocket = true;
             return;
         }
 
@@ -440,7 +461,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (prevHash != alertsHash) {
             // некоректний хеш — пропускаємо і реконнектимось
             LOG.printf("[ERROR] prevHash != alertsHash\n");
-            needToReconnectWebsocket = true;
+            needReconnectWebsocket = true;
             return;
         }
 
@@ -490,7 +511,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.println();
 
         // Проходимо по всіх змінах
-        bool needToAnimateHomeRegion = false;
+        bool needToAnimateBgHomeRegion = false;
         bool homeRegionIncrease = false;
         int homeRegionBit = 0;
         for (const auto& diff : diffs) {
@@ -600,7 +621,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                             led.first, led.second.region_id, alerts_bit, diff_bit);
                             animateLed(strip_main, led.first, diff_bit, led.second.region_id, true);
                             if (isLedInHomeRegion(led.first)) {
-                                needToAnimateHomeRegion = true;
+                                needToAnimateBgHomeRegion = true;
                                 homeRegionBit = diff_bit;
                                 homeRegionIncrease = true;
                             }
@@ -609,14 +630,14 @@ void onMessageCallback(WebsocketsMessage msg) {
                             led.first, led.second.region_id, alerts_bit, diff_bit);
                             animateLed(strip_main, led.first, diff_bit, led.second.region_id, false);
                             if (isLedInHomeRegion(led.first)) {
-                                needToAnimateHomeRegion = true;
+                                needToAnimateBgHomeRegion = true;
                                 homeRegionBit = diff_bit;
                                 homeRegionIncrease = false;
                             }
                     }
                 }
             }
-            if (needToAnimateHomeRegion) {
+            if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0) {
                 LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
                     settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
                 animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
@@ -638,9 +659,9 @@ void onMessageCallback(WebsocketsMessage msg) {
                 strip->show();
             });
         }
-        if (strip_bg_initialized) {
+        if (strip_bg_initialized && settings.getInt(BG_LED_MODE) == 0) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.regionActualColor(settings.getInt(HOME_DISTRICT));
+                uint32_t color = animation.regionActualColor(settings.getInt(HOME_DISTRICT), false);
                 for(uint16_t i = 0; i < strip->numPixels(); i++) {
                     strip->setPixelColor(i, color);
                 }
@@ -698,12 +719,14 @@ void logWebsocketCloseReason(websockets::CloseReason reason) {
 void onEventsCallback(WebsocketsEvent event, String data) {
     if (event == WebsocketsEvent::ConnectionOpened) {
         apiConnected = true;
+        servicePin(DATA);
         LOG.println("[WEBSOCKET] connnection opened");
-        //servicePin(DATA, HIGH, false);
+        
         websocketLastPingTime = millis();
         //ha.setMapApiConnect(apiConnected);
     } else if (event == WebsocketsEvent::ConnectionClosed) {
         apiConnected = false;
+        servicePin(DATA);
         LOG.println("[WEBSOCKET] connnection closed");
         isFirstDataFetchCompleted = false;
         LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
@@ -712,7 +735,6 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         logWebsocketCloseReason(reason);
         delay(500);
         LOG.printf("[MEMORY] Heap after close: %u\n", ESP.getFreeHeap());
-        //servicePin(DATA, LOW, false);
         //ha.setMapApiConnect(apiConnected);
     } else if (event == WebsocketsEvent::GotPing) {
         LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
@@ -726,6 +748,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
 
 void socketConnect() {
     LOG.println("[WEBSOCKET] connection start...");
+    servicePin(DATA);
     //showServiceMessage("підключення...", "Сервер даних");
     alertsHash = 0;
     websocket.onMessage(onMessageCallback);
@@ -735,13 +758,14 @@ void socketConnect() {
     sprintf(
         webSocketUrl,
         "ws://%s:%d/data_fusion_v1",
-        settings.getString(WS_SERVER_HOST), //"10.2.0.156",
+        settings.getString(WS_SERVER_HOST),
         settings.getInt(WS_SERVER_PORT)
     );
     LOG.printf("[WEBSOCKET] url:%s\n", webSocketUrl);
     websocket.connect(webSocketUrl);
     if (websocket.available()) {
-        
+        apiConnected = true;
+        servicePin(DATA);
         clearAllAlertsMaps();
         animation.clearAllAnimations();
         LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
@@ -753,7 +777,6 @@ void socketConnect() {
         sprintf(firmwareInfo, "firmware:%s_%s", currentFwVersion, settings.getString(ID));
         LOG.printf("[WEBSOCKET] %s\n", firmwareInfo);
         websocket.send(firmwareInfo);
-
         char userInfo[250];
         JsonDocument userInfoJson;
         userInfoJson["legacy"] = legacy;
@@ -763,6 +786,7 @@ void socketConnect() {
         websocket.ping("A");
         websocketReconnect = false;
         lastWebsocketConnectTime  = millis();
+        
         //showServiceMessage("підключено!", "Сервер даних", 3000);
     } else {
         //showServiceMessage("недоступний", "Сервер даних", 3000);
@@ -851,18 +875,18 @@ void initStripMain() {
     else {
         LOG.println("[LED] SKIP: strip_main (pin <= 0)");
     }
-    if (strip_main_initialized) {
-        // Спочатку встановлюємо LEDs з мінімальною яскравістю
-        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-            strip->setBrightness(led.brightnessMapped(0));
-            for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-        needAdaptStripBrightness = true;
-    }
+    // if (strip_main_initialized) {
+    //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
+    //     animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+    //         strip->setBrightness(led.brightnessMapped(0));
+    //         for(uint16_t i = 0; i < strip->numPixels(); i++) {
+    //             uint32_t color = animation.ledActualColor(strip, i);
+    //             strip->setPixelColor(i, color);
+    //         }
+    //         strip->show();
+    //     });
+    //     needAdaptStripBrightness = true;
+    // }
 }
 
 void initStripBg() {
@@ -883,18 +907,18 @@ void initStripBg() {
     } else {
         LOG.println("[LED] SKIP: strip_bg (pin <= 0 or count <= 0)");
     }
-    if (strip_bg_initialized) {
-        // Спочатку встановлюємо LEDs з мінімальною яскравістю
-        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-            strip->setBrightness(led.brightnessMapped(0));
-            uint32_t color = animation.stripActualColor(strip);
-            for (int i = 0; i < strip->numPixels(); i++) {
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-        needAdaptStripBrightness = true;      
-    }
+    // if (strip_bg_initialized) {
+    //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
+    //     animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+    //         strip->setBrightness(led.brightnessMapped(0));
+    //         uint32_t color = animation.stripActualColor(strip);
+    //         for (int i = 0; i < strip->numPixels(); i++) {
+    //             strip->setPixelColor(i, color);
+    //         }
+    //         strip->show();
+    //     });
+    //     needAdaptStripBrightness = true;      
+    // }
 }
 
 void initStripService() {
@@ -915,18 +939,19 @@ void initStripService() {
     } else {
         LOG.println("[LED] SKIP: strip_service (pin <= 0)");
     }
-    if (strip_service_initialized) {
-        // Спочатку встановлюємо LEDs з мінімальною яскравістю
-        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-            strip->setBrightness(led.brightnessMapped(0));
-            for(int i = 0; i < strip->numPixels(); i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-        needAdaptStripBrightness = true;
-    }
+    // if (strip_service_initialized) {
+    //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
+    //     // animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+    //     //     strip->setBrightness(led.brightnessMapped(0));
+    //     //     for(int i = 0; i < strip->numPixels(); i++) {
+    //     //         uint32_t color = animation.ledActualColor(strip, i);
+    //     //         strip->setPixelColor(i, color);
+    //     //     }
+    //     //     strip->show();
+    //     // });
+    //     needAdaptStripBrightness = true;
+    //     servicePin(POWER);
+    // }
 }
 
 void reconnectStripMain() {
@@ -989,6 +1014,7 @@ void reconnectStrips() {
         reconnectStripService();
         needReconnectServiceStrip = false;
     }
+    needAdaptStripBrightness = true;
     
     // Оновлюємо посилання в веб-інтерфейсі
     web.begin(strip_main, strip_bg, strip_service);
@@ -1111,6 +1137,22 @@ void initChipID() {
   LOG.printf("[INIT] ChipID Inited: '%s'\n", chipID);
 }
 
+void initTime() {
+    LOG.println("[TIME] Init time");
+    LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
+    timeClient.setHost(settings.getString(NTP_HOST));
+    timeClient.setTimeZone(settings.getInt(TIME_ZONE));
+    timeClient.setDSTauto(&dst); // auto update on summer/winter time.
+    timeClient.setTimeout(5000); // 5 seconds waiting for reply
+    timeClient.begin();
+    syncTime(7);
+}
+
+void initWeb() {
+    web.begin(strip_main, strip_bg, strip_service);
+    web.setSettings(&settings);
+}
+
 void initWifi() {
     if (!WiFiConfig::ENABLED) {
         LOG.println("[WIFI] WiFi disabled in configuration");
@@ -1118,6 +1160,8 @@ void initWifi() {
     }
 
     LOG.println("[WIFI] Initializing WiFi...");
+    wifiConnected = false;
+    servicePin(WIFI);
     
     // Встановлюємо режим станції
     WiFi.mode(WIFI_STA);
@@ -1135,6 +1179,10 @@ void initWifi() {
     
     if (WiFi.status() == WL_CONNECTED) {
         lastWifiConnectTime = millis();
+        wifiConnected = true;
+        servicePin(WIFI);
+        initTime();
+        initWeb();
         LOG.println("\n[WIFI] Connected to saved WiFi");
         LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
         return;
@@ -1200,16 +1248,6 @@ void initStrip() {
     initStripService();    
 }
 
-void initTime() {
-    LOG.println("[TIME] Init time");
-    LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
-    timeClient.setHost(settings.getString(NTP_HOST));
-    timeClient.setTimeZone(settings.getInt(TIME_ZONE));
-    timeClient.setDSTauto(&dst); // auto update on summer/winter time.
-    timeClient.setTimeout(5000); // 5 seconds waiting for reply
-    timeClient.begin();
-    syncTime(7);
-}
 
 // --- Cycle Functions ---
 
@@ -1323,6 +1361,10 @@ void animations() {
 }
 
 void websocketProcess() {
+    if (!wifiConnected) {
+        LOG.println("[WEBSOCKET] Reconnecting... wifiConnected == false");
+        return;
+    }
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
         LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
@@ -1352,11 +1394,13 @@ void websocketProcess() {
     if (!websocket.available()) {
         LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
         isFirstDataFetchCompleted = false;
+        apiConnected = false;
         socketConnect();
     }
     if (websocketReconnect) {
         LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
         isFirstDataFetchCompleted = false;
+        apiConnected = false;
         socketConnect();
     }
 }
@@ -1369,7 +1413,7 @@ void memoryProcess() {
     uint32_t uptimeMin = millis() / 60000;
 
     // WiFi status information
-    bool wifiConnected = WiFi.status() == WL_CONNECTED;
+    //bool wifiConnected = WiFi.status() == WL_CONNECTED;
     uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0; 
     uint32_t websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0; // in seconds
     String wifiStatus = wifiConnected ? "Connected" : "Disconnected";
@@ -1394,6 +1438,7 @@ void memoryProcess() {
 void wifiProcess() {
     if (WiFi.status() != WL_CONNECTED) {
         LOG.println("[WIFI] Reconnect");
+        wifiConnected = false;
         initWifi();
     }
 }
@@ -1428,16 +1473,16 @@ void mainThreadProcess() {
     // Ця функція виконується в основному циклі
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
 
-    if (needToReconnectWebsocket) {
+    if (needReconnectWebsocket) {
         LOG.println("[MAIN] Reconnecting WebSocket");
         isFirstDataFetchCompleted = false;
-        needToReconnectWebsocket = false;
+        needReconnectWebsocket = false;
+        apiConnected = false;
         socketConnect();
     }
 
     if (needReconnectMainStrip || needReconnectBgStrip || needReconnectServiceStrip) {
         LOG.println("[MAIN] Reconnecting LED strip");
-        needReconnectStrips = false;
         reconnectStrips();
     }
 
@@ -1465,8 +1510,8 @@ void mainThreadProcess() {
         if (strip_service_initialized) {
             LOG.printf("[WEB] Adjusting service colors\n");
             animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.stripActualColor(strip);
-                for (int i = 0; i < strip->numPixels(); i++) {
+                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
@@ -1481,10 +1526,7 @@ void mainThreadProcess() {
     }
     if (needAdaptStripBrightness) {
         needAdaptStripBrightness = false;
-        if (!strip_main_initialized) {
-            LOG.println("[LED] strip_bg not initialized, skipping brightness adaptation");
-            return;
-        } else {
+        if (strip_main_initialized) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
                 for(uint16_t i = 0; i < strip->numPixels(); i++) {
@@ -1494,10 +1536,7 @@ void mainThreadProcess() {
                 strip->show();
             });
         }
-        if (!strip_bg_initialized) {
-            LOG.println("[LED] strip_bg not initialized, skipping brightness adaptation");
-            return;
-        } else {
+        if (strip_bg_initialized) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
                 uint32_t color = animation.stripActualColor(strip);
@@ -1507,14 +1546,11 @@ void mainThreadProcess() {
                 strip->show();
             });
         }
-        if (!strip_service_initialized) {
-            LOG.println("[LED] strip_bg not initialized, skipping brightness adaptation");
-            return;
-        } else {
+        if (strip_service_initialized) {
             animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                for(int i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.stripActualColor(strip);
+                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
@@ -1568,8 +1604,8 @@ void brightnessProcess() {
         if (strip_service_initialized) {
             animation.safeStripOperation(strip_service, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
-                uint32_t color = animation.stripActualColor(strip);
-                for(int i = 0; i < strip->numPixels(); i++) {
+                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
@@ -1592,14 +1628,21 @@ void setup() {
     initStrip();
     checkFreeHeap("LED strips initialization");
 
-    initWifi();
-    checkFreeHeap("WiFi initialization");
+    delay(3000);
 
-    initWebsocket();
-    checkFreeHeap("WebSocket initialization");
+    // initWifi();
+    // checkFreeHeap("WiFi initialization");
 
-    initTime();
-    checkFreeHeap("time initialization");
+    // initWebsocket();
+    // checkFreeHeap("WebSocket initialization");
+
+    // initTime();
+    // checkFreeHeap("time initialization");
+
+    // Ініціалізація веб-інтерфейсу
+    //initWeb();
+    //web.begin(strip_main, strip_bg, strip_service);
+    //web.setSettings(&settings);
 
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
@@ -1624,9 +1667,7 @@ void setup() {
     async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
     checkFreeHeap("async tasks configuration");
 
-    // Ініціалізація веб-інтерфейсу
-    web.begin(strip_main, strip_bg, strip_service);
-    web.setSettings(&settings);
+    
     checkFreeHeap("web interface initialization");
     
     LOG.println("[SETUP] Initialization complete");
