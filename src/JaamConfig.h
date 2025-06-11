@@ -28,9 +28,9 @@ namespace AnimationConfig {
 // --- WiFi Configuration ---
 namespace WiFiConfig {
     static const bool ENABLED = true;
-    static const uint32_t CONNECT_TIMEOUT = 3000;           // 10 seconds
+    static const uint32_t CONNECT_TIMEOUT = 3;           // 10 seconds
     static const uint32_t CONNECT_RETRIES = 10;
-    static const uint32_t PORTAL_TIMEOUT = 180000;          // 3 minutes
+    static const uint32_t PORTAL_TIMEOUT = 180;          // 3 minutes
     static const uint16_t WEB_PORT = 8080;
 }
 
@@ -663,5 +663,5 @@ const RegionLedMapEntry REGION_MAP_LED[MAX_REGIONS] = {
     { 142,  { 18 }, 1 },    // Ніжинський район
     { 143,  { 18 }, 1 },    // Прилуцький район
     { 140,  { 18 }, 1 },    // Чернігівський район
-     { 144,  { 18 }, 1 },    // Корюківський район
+    { 144,  { 18 }, 1 },    // Корюківський район
 };

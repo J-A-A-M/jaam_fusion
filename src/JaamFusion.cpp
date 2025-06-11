@@ -1163,6 +1163,32 @@ void initWeb() {
     webInitialized = true;
 }
 
+static void wifiEvents(WiFiEvent_t event) {
+    switch (event) {
+        case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
+            char softApIp[16];
+            strcpy(softApIp, WiFi.softAPIP().toString().c_str());
+            //displayMessage(softApIp, "Введіть у браузері:");
+            WiFi.removeEvent(wifiEvents);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void apCallback(WiFiManager* wifiManager) {
+    const char* message = wifiManager->getConfigPortalSSID().c_str();
+    //displayMessage(message, "Підключіться до WiFi:");
+    WiFi.onEvent(wifiEvents);
+}
+
+void saveConfigCallback() {
+    //showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
+    delay(2000);
+    rebootDevice();
+    }
+
 void initWifi() {
     if (!WiFiConfig::ENABLED) {
         LOG.println("[WIFI] WiFi disabled in configuration");
@@ -1180,66 +1206,92 @@ void initWifi() {
     
     // Встановлюємо режим станції
     WiFi.mode(WIFI_STA);
-    
-    // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
-    WiFi.begin();
-    
-    // Чекаємо підключення 10 секунд
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        attempts++;
-        LOG.print(".");
-    }
-    
-    if (WiFi.status() == WL_CONNECTED) {
-        lastWifiConnectTime = millis();
-        wifiConnected = true;
-        servicePin(WIFI);
-        initTime();
-        initWeb();
-        LOG.println("\n[WIFI] Connected to saved WiFi");
-        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+    wm.setHostname(settings.getString(BROADCAST_NAME));
+    wm.setTitle(settings.getString(DEVICE_NAME));
+    wm.setConfigPortalBlocking(true);
+    wm.setConnectTimeout(WiFiConfig::CONNECT_TIMEOUT);
+    wm.setConnectRetries(WiFiConfig::CONNECT_RETRIES);
+    wm.setAPCallback(apCallback);
+    wm.setSaveConfigCallback(saveConfigCallback);
+    wm.setConfigPortalTimeout(WiFiConfig::PORTAL_TIMEOUT);
+
+    char apssid[32];
+    snprintf(apssid, sizeof(apssid), "JAAM_FUSION_%s", chipID);
+    if (!wm.autoConnect(apssid)) {
+        LOG.println("[WIFI] Reboot");
+        rebootDevice(5000);
         return;
     }
+    // Connected to WiFi
+    LOG.println("[WIFI] connected...yeey :)");
+    lastWifiConnectTime = millis();
+    wifiConnected = true;
+    servicePin(WIFI);
+    //showServiceMessage("Підключено до WiFi!");
+    wm.setHttpPort(WiFiConfig::WEB_PORT);
+    wm.startWebPortal();
+    initTime();
+    initWeb();
     
-    LOG.println("\n[WIFI] Failed to connect to saved network");
-    LOG.println("[WIFI] Starting WiFiManager...");
+    // // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
+    // WiFi.begin();
     
-    // Create local WiFiManager to avoid global memory usage
-    {
-        WiFiManager wm_temp;
-        
-        // Мінімальні налаштування для економії пам'яті
-        wm_temp.setHostname("jaam_fusion");
-        wm_temp.setConfigPortalBlocking(true);
-        wm_temp.setConnectTimeout(15);
-        wm_temp.setConnectRetries(2);
-        wm_temp.setConfigPortalTimeout(120);
-        
-        // Простий колбек без додаткових операцій
-        wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
-            LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
-        });
-        
-        // Створюємо ім'я AP з chip ID
-        char apName[32];
-        snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
-        
-        // Спроба підключення
-        if (!wm_temp.autoConnect(apName)) {
-            LOG.println("[WIFI] Failed to connect. Rebooting...");
-            rebootDevice(3000);
-            return;
-        }
-        
-        lastWifiConnectTime = millis();
-        LOG.println("[WIFI] Connected to WiFi via WiFiManager");
-        LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-        
-    } // wm_temp destructor called here, freeing memory
+    // // Чекаємо підключення 10 секунд
+    // int attempts = 0;
+    // while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    //     delay(500);
+    //     attempts++;
+    //     LOG.print(".");
+    // }
     
-    LOG.println("[WIFI] WiFi initialization completed");
+    // if (WiFi.status() == WL_CONNECTED) {
+    //     lastWifiConnectTime = millis();
+    //     wifiConnected = true;
+    //     servicePin(WIFI);
+    //     initTime();
+    //     initWeb();
+    //     LOG.println("\n[WIFI] Connected to saved WiFi");
+    //     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+    //     return;
+    // }
+    
+    // LOG.println("\n[WIFI] Failed to connect to saved network");
+    // LOG.println("[WIFI] Starting WiFiManager...");
+    
+    // // Create local WiFiManager to avoid global memory usage
+    // {
+    //     WiFiManager wm_temp;
+        
+    //     // Мінімальні налаштування для економії пам'яті
+    //     wm_temp.setHostname("jaam_fusion");
+    //     wm_temp.setConfigPortalBlocking(true);
+    //     wm_temp.setConnectTimeout(15);
+    //     wm_temp.setConnectRetries(2);
+    //     wm_temp.setConfigPortalTimeout(120);
+        
+    //     // Простий колбек без додаткових операцій
+    //     wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
+    //         LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
+    //     });
+        
+    //     // Створюємо ім'я AP з chip ID
+    //     char apName[32];
+    //     snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
+        
+    //     // Спроба підключення
+    //     if (!wm_temp.autoConnect(apName)) {
+    //         LOG.println("[WIFI] Failed to connect. Rebooting...");
+    //         rebootDevice(3000);
+    //         return;
+    //     }
+        
+    //     lastWifiConnectTime = millis();
+    //     LOG.println("[WIFI] Connected to WiFi via WiFiManager");
+    //     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
+        
+    // } // wm_temp destructor called here, freeing memory
+    
+    LOG.println("[WIFI] initialization completed");
     LOG.printf("[MEMORY] Free heap after WiFi init: %u bytes\n", ESP.getFreeHeap());
 }
 

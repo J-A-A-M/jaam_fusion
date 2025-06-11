@@ -570,19 +570,21 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
     uint32_t color;
     uint8_t brightness = 255;
     if (strip == strip_main) {
+        LOG.printf("[COLOR] main strip color\n");
         color = DefaultColors::MAIN_STRIP;
     }
     if (strip == strip_bg) {
         if (settings->getInt(BG_LED_MODE) == 0) {
-            LOG.printf("[COLOR] stripActualColor HOME_DISTRICT %d\n");
+            LOG.printf("[COLOR] bg strip color HOME_DISTRICT\n");
             color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
         } else if (settings->getInt(BG_LED_MODE) == 1) {
-            LOG.printf("[COLOR] stripActualColor SELF %d\n", settings->getString(COLOR_BG));
+            LOG.printf("[COLOR] bg strip color SELF\n");
             color = colorFromHex(settings->getString(COLOR_BG));
         }
         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
     } 
     if (strip == strip_service) {
+        LOG.printf("[COLOR] service strip color\n");
         color = DefaultColors::SERVICE_STRIP;
         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
     }
