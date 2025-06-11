@@ -23,8 +23,6 @@ using namespace websockets;
 // --- MAIN Configuration ---
 char                chipID[13];
 char                currentFwVersion[25];
-int                 currentIdx = 0;
-uint32_t            loopCount = 0;
 
 Async               async = Async(20);
 
@@ -73,6 +71,7 @@ uint32_t            lastWifiConnectTime = 0;  // Track when WiFi was last connec
 uint16_t            alertsHash = 0;
 bool                wifiConnected = false;
 
+
 // --- WEBSOCKET Configuration ---
 WebsocketsClient    websocket;
 time_t              websocketLastPingTime = 0;
@@ -84,7 +83,6 @@ uint32_t            lastWebsocketConnectTime = 0;
 
 
 uint8_t             legacy = 4;
-size_t              lastUsedHeap = 0; 
 
 
 // --- FreeRTOS Task Handles ---
@@ -1138,6 +1136,11 @@ void initChipID() {
 }
 
 void initTime() {
+    static bool timeInitialized = false;
+    if (timeInitialized) {
+        LOG.println("[TIME] Time already initialized, skipping...");
+        return;
+    }
     LOG.println("[TIME] Init time");
     LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
     timeClient.setHost(settings.getString(NTP_HOST));
@@ -1146,11 +1149,18 @@ void initTime() {
     timeClient.setTimeout(5000); // 5 seconds waiting for reply
     timeClient.begin();
     syncTime(7);
+    timeInitialized = true;
 }
 
 void initWeb() {
+    static bool webInitialized = false;
+    if (webInitialized) {
+        LOG.println("[WEB] Web already initialized, skipping...");
+        return;
+    }
     web.begin(strip_main, strip_bg, strip_service);
     web.setSettings(&settings);
+    webInitialized = true;
 }
 
 void initWifi() {
@@ -1162,6 +1172,11 @@ void initWifi() {
     LOG.println("[WIFI] Initializing WiFi...");
     wifiConnected = false;
     servicePin(WIFI);
+
+    // Очищення старих з'єднань
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    delay(100);
     
     // Встановлюємо режим станції
     WiFi.mode(WIFI_STA);
@@ -1277,7 +1292,7 @@ void initStrip() {
 // }
 
 void animations() {
-    loopCount++;
+    static uint8_t currentIdx = 0;
     int ledsIdx[1] = { currentIdx };
     uint8_t r = random(256), g = random(256), b = random(256);
     
@@ -1406,7 +1421,7 @@ void websocketProcess() {
 }
 
 void memoryProcess() {
-    loopCount++;
+    static uint32_t loopCount = 1;
     size_t freeHeap    = ESP.getFreeHeap();
     size_t usedHeap    = ESP.getHeapSize() - freeHeap;
     size_t maxAlloc    = ESP.getMaxAllocHeap();
@@ -1431,15 +1446,28 @@ void memoryProcess() {
         websocketStatus.c_str(),
         websocketUptime
     );
+    loopCount++;
 }
 
 // перевірка статусу wifi
 // Якщо статус не WL_CONNECTED, то перепідключаємося
 void wifiProcess() {
+    static uint8_t reconnectAttempts = 0;
+    const uint8_t MAX_RECONNECT_ATTEMPTS = 5;
+    
     if (WiFi.status() != WL_CONNECTED) {
-        LOG.println("[WIFI] Reconnect");
-        wifiConnected = false;
-        initWifi();
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            LOG.println("[WIFI] Reconnect");
+            wifiConnected = false;
+            initWifi();
+            reconnectAttempts++;
+        } else {
+            LOG.println("[WIFI] Max reconnect attempts reached, rebooting...");
+            rebootDevice(3000);
+            reconnectAttempts = 0;
+        }
+    } else {
+        reconnectAttempts = 0;
     }
 }
 
@@ -1627,8 +1655,6 @@ void setup() {
 
     initStrip();
     checkFreeHeap("LED strips initialization");
-
-    delay(3000);
 
     // initWifi();
     // checkFreeHeap("WiFi initialization");

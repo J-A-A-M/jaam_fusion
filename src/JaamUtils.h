@@ -13,7 +13,6 @@
 // External variables declarations
 extern uint32_t                         lastWebsocketConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
-extern size_t                           lastUsedHeap;
 extern JaamSettings                     settings;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
@@ -146,6 +145,7 @@ inline bool isAlertForLed(int led_position) {
 
 // перевірка вільної пам'яті і порівняння з останнєю перевіркою
 inline void checkFreeHeap(const char* label) {
+    static size_t lastUsedHeap = 0; 
     size_t usedHeap = ESP.getHeapSize() - ESP.getFreeHeap();
     int heapDiff = lastUsedHeap > 0 ? (int)usedHeap - (int)lastUsedHeap : 0;
     

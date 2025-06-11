@@ -654,7 +654,6 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
 
 void JaamWeb::handleClient() {
     if (!wifiConnected) {
-        LOG.println("[WEB] Reconnecting... wifiConnected == false");
         return;
     }
     server.handleClient();
