@@ -94,11 +94,29 @@ static void fillFwVersion(char* result, JaamFirmware firmware) {
     strcpy(result, version.c_str());
 }
 
+inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
+    switch (legacy) {
+        case 0:
+            return STATE_MAP_LED;
+        case 1:
+            return STATE_MAP_LED;
+        case 2:
+            return STATE_MAP_LED;
+        case 3:
+            return STATE_MAP_LED;
+        case 4:
+            return REGION_MAP_LED;
+        default:
+            return STATE_MAP_LED;
+    }
+}
+
 // Отримати регіон по region_id
 inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
+    const RegionLedMapEntry* leds = getRegionEntryLegacy(settings.getInt(LEGACY));
     for (int i = 0; i < MAX_REGIONS; ++i) {
-        if (REGION_MAP_LED[i].region_id == region_id) {
-            return &REGION_MAP_LED[i];
+        if (leds[i].region_id == region_id) {
+            return &leds[i];
         }
     }
     return nullptr;
@@ -118,8 +136,9 @@ inline const int* getLedsForRegion(uint16_t region_id, uint8_t& count) {
 // Пошук усіх region_id по led_position
 inline std::vector<uint16_t> getRegionsForLed(int led_position) {
     std::vector<uint16_t> regions;
+    const RegionLedMapEntry* leds = getRegionEntryLegacy(settings.getInt(LEGACY));
     for (int i = 0; i < MAX_REGIONS; ++i) {
-        const RegionLedMapEntry& entry = REGION_MAP_LED[i];
+        const RegionLedMapEntry& entry = leds[i];
         for (int j = 0; j < entry.led_count; ++j) {
             if (entry.led_positions[j] == led_position) {
                 regions.push_back(entry.region_id);
@@ -211,8 +230,8 @@ inline int findHighestBitForLed(int position) {
                 break;
             }
         }
-        LOG.printf("[LED] LED %d: highest bit %d ([%d] %s)\n", 
-                  position, globalHighestBit, highestBitRegion, regionName);
+        // LOG.printf("[LED] LED %d: highest bit %d ([%d] %s)\n", 
+        //           position, globalHighestBit, highestBitRegion, regionName);
         return globalHighestBit;
     }
     
@@ -253,7 +272,7 @@ inline int findHighestBitForRegion(uint16_t region_id) {
 
 // Перевіряє, чи входить led_position у леди домашнього регіону
 inline bool isLedInHomeRegion(int led_position) {
-    LOG.printf("[HOME REGION] check led %d\n", led_position);
+    //LOG.printf("[HOME REGION] check led %d\n", led_position);
     // Отримуємо масив LED-ів для домашнього регіону
     uint8_t ledCount = 0;
     const int* leds = getLedsForRegion(settings.getInt(HOME_DISTRICT), ledCount);
@@ -263,7 +282,7 @@ inline bool isLedInHomeRegion(int led_position) {
         return false;
     }
 
-    LOG.printf("[HOME REGION] leds: ");
+    //LOG.printf("[HOME REGION] leds: ");
     for (uint8_t i = 0; i < ledCount; ++i) {
         LOG.printf("%d ", leds[i]);
     }
@@ -272,10 +291,10 @@ inline bool isLedInHomeRegion(int led_position) {
     // Перевіряємо, чи входить led_position у масив
     for (uint8_t i = 0; i < ledCount; ++i) {
         if (leds[i] == led_position) {
-            LOG.printf("[HOME REGION] led_position=%d\n", led_position);
+            //LOG.printf("[HOME REGION] led_position=%d\n", led_position);
             return true;
         } else {
-            LOG.printf("[HOME REGION] led_position=%d not found in home region\n", led_position);
+            //LOG.printf("[HOME REGION] led_position=%d not found in home region\n", led_position);
         }
     }
     return false;

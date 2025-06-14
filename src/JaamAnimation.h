@@ -92,7 +92,7 @@ class AnimationManager {
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
-        std::vector<FreeLedInfo> getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds);
+        std::vector<FreeLedInfo> getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds);
         bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation);
         bool isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx);
         void paintStripDefault(Adafruit_NeoPixel* strip);

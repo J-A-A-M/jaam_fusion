@@ -180,6 +180,7 @@ String JaamWeb::getHtmlTemplate() {
     html += "</div>";
     
     // Додаємо слайдери для всіх параметрів
+    html += getDropdownHtml("legacy", "Режим прошивки", LEGACY, LEGACY_OPTIONS, LEGACY_OPTIONS_COUNT);
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
     html += getDropdownHtml("bg_led_mode", "Режим фонової підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
     html += "<label class=\"label\">Загальні налаштування</label>";
@@ -448,7 +449,12 @@ void JaamWeb::handleParameter() {
         const char* valuePtr = value.c_str();
         int intValue = value.toInt();
 
-        if (name == "home_district") {
+        if (name == "legacy") {
+            settings->saveInt(LEGACY, intValue);
+            LOG.printf("[WEB] Setting legacy: %d\n", intValue);
+            needReconnectMainStrip = true;
+            needReconnectWebsocket = true;
+        } else if (name == "home_district") {
             settings->saveInt(HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting home_district: %d\n", intValue);
             needAdaptColors = true;

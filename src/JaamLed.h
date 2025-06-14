@@ -43,7 +43,7 @@ public:
     // Функція для створення стрічки з обробкою помилок
     static StripStatus createStrip(Adafruit_NeoPixel*& strip, 
                         int pin, 
-                        uint8_t count, 
+                        uint32_t count, 
                         uint8_t brightness,
                         uint32_t color, 
                         uint8_t type);
@@ -57,7 +57,7 @@ public:
     // Add strip recreation with proper cleanup
     static StripStatus recreateStrip(Adafruit_NeoPixel*& strip,
                                    int pin,
-                                   uint8_t count,
+                                   uint32_t count,
                                    uint8_t brightness,
                                    uint32_t color,
                                    uint8_t type);

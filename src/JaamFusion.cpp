@@ -39,7 +39,7 @@ Adafruit_NeoPixel*  strip_main = nullptr;
 Adafruit_NeoPixel*  strip_bg = nullptr;
 Adafruit_NeoPixel*  strip_service = nullptr;
 SemaphoreHandle_t   stripMutex = nullptr;
-uint16_t            num_leds_main = 26;
+uint32_t            num_leds_main = 0;
 uint16_t            num_leds_service = 5;
 uint8_t             currentBrightness = 0;
 std::vector<int>    allLedsMain;
@@ -82,7 +82,7 @@ uint32_t            lastWebsocketConnectTime = 0;
 
 
 
-uint8_t             legacy = 4;
+uint8_t             legacy = 0;
 
 
 // --- FreeRTOS Task Handles ---
@@ -197,7 +197,7 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t region_id, bool increase = true) {
-    LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
+    //LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
     
     uint32_t color;
     uint32_t initialColor = 0x000000; // Початковий колір для анімації
@@ -390,7 +390,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 // Шукаємо всі леди для цього регіону
                 for (uint8_t i = 0; i < entry->led_count; ++i) {
                     int led_position = entry->led_positions[i];
-                    LOG.printf("[WEBSOCKET] LED %d: ", led_position);
+                    //LOG.printf("[WEBSOCKET] LED %d: ", led_position);
                     // Шукаємо всі регіони для цього LED
                     const std::vector<uint16_t>& regions = getRegionsForLed(led_position);
                     for (uint16_t rid : regions) {
@@ -506,7 +506,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         std::map<int, LedBit> led_bits_alerts;
 
         LOG.printf("[WEBSOCKET] processing %d diffs\n", (int)diffs.size());
-        LOG.println();
+        //LOG.println();
 
         // Проходимо по всіх змінах
         bool needToAnimateBgHomeRegion = false;
@@ -514,36 +514,36 @@ void onMessageCallback(WebsocketsMessage msg) {
         int homeRegionBit = 0;
         for (const auto& diff : diffs) {
             // Показуємо зміни для цього регіону
-            LOG.printf("[DIFF] Region %d: flags changed from 0x%04X to 0x%04X\n", 
-                diff.region_id, diff.previous_flags, diff.current_flags);
+            // LOG.printf("[DIFF] Region %d: flags changed from 0x%04X to 0x%04X\n", 
+            //     diff.region_id, diff.previous_flags, diff.current_flags);
             
             // Показуємо які біти змінилися
-            for (int bit = 0; bit < ALERT_TYPES_COUNT; bit++) {
-                bool prev_state = diff.previous_flags & (1 << bit);
-                bool curr_state = diff.current_flags & (1 << bit);
+            // for (int bit = 0; bit < ALERT_TYPES_COUNT; bit++) {
+            //     bool prev_state = diff.previous_flags & (1 << bit);
+            //     bool curr_state = diff.current_flags & (1 << bit);
                 
-                if (prev_state != curr_state) {
-                    LOG.printf("[DIFF]   Bit %d (%s): %s -> %s\n", 
-                        bit,
-                        ALERT_TYPES[bit],
-                        prev_state ? "ON" : "OFF",
-                        curr_state ? "ON" : "OFF"
-                    );
-                }
-            }
+            //     if (prev_state != curr_state) {
+            //         LOG.printf("[DIFF]   Bit %d (%s): %s -> %s\n", 
+            //             bit,
+            //             ALERT_TYPES[bit],
+            //             prev_state ? "ON" : "OFF",
+            //             curr_state ? "ON" : "OFF"
+            //         );
+            //     }
+            // }
 
             // Знаходимо найвищий біт для цього регіону
             int highest_bit_diff = findHighestBit16(diff.current_flags);
-            LOG.printf("[DIFF]   Highest bit for region %d: %d\n", 
-                diff.region_id, highest_bit_diff);
+            // LOG.printf("[DIFF]   Highest bit for region %d: %d\n", 
+            //     diff.region_id, highest_bit_diff);
 
             // Шукаємо LED для цього регіону
             const RegionLedMapEntry* entry = getRegionEntry(diff.region_id);
             if (entry) {
-                LOG.printf("[DIFF]   LEDs for region %d: ", diff.region_id);
+                //LOG.printf("[DIFF]   LEDs for region %d: ", diff.region_id);
                 for (uint8_t i = 0; i < entry->led_count; ++i) {
                     int led_position = entry->led_positions[i];
-                    LOG.printf("%d ", led_position);
+                    //LOG.printf("%d ", led_position);
 
                     // Оновлюємо найвищий біт для LED
                     auto it = led_bits_diff.find(led_position);
@@ -554,18 +554,18 @@ void onMessageCallback(WebsocketsMessage msg) {
                 // Шукаємо всі леди для цього регіону
                 for (uint8_t i = 0; i < entry->led_count; ++i) {
                     int led_position = entry->led_positions[i];
-                    LOG.printf("\n[DIFF] LED %d regions: ", led_position);
+                    //LOG.printf("\n[DIFF] LED %d regions: ", led_position);
 
                     // Шукаємо всі регіони для цього LED
                     const std::vector<uint16_t>& regions = getRegionsForLed(led_position);
                     for (uint16_t region_id : regions) {
-                        LOG.printf("%d ", region_id);
+                        //LOG.printf("%d ", region_id);
 
                         // Шукаємо найвищий біт для регіону в alertsMap
                         auto alerts_it = alertsMap.find(region_id);
                         if (alerts_it != alertsMap.end()) {
                             int highest_bit_region = findHighestBit16(alerts_it->second);
-                            LOG.printf("[%d] ", highest_bit_region);
+                            //LOG.printf("[%d] ", highest_bit_region);
 
                             // Оновлюємо найвищий біт для LED
                             auto it = led_bits_alerts.find(led_position);
@@ -574,30 +574,30 @@ void onMessageCallback(WebsocketsMessage msg) {
                             }
                         }
                     }
-                    LOG.println();
+                    //LOG.println();
                 }  
-                LOG.println();
+                //LOG.println();
             } else {
-                LOG.printf("[DIFF]   No LEDs found for region %d\n", diff.region_id);
+                //LOG.printf("[DIFF]   No LEDs found for region %d\n", diff.region_id);
             }
         }
 
         // Виводимо фінальний список бітів для LED
-        LOG.printf("[DIFF] LED bits summary:\n");
-        for (const auto& led : led_bits_diff) {
-            LOG.printf("[DIFF] LED diff %d: highest_bit=%d, region_id=%d\n",
-                led.first,
-                led.second.highest_bit,
-                led.second.region_id
-            );
-        }
-        for (const auto& led : led_bits_alerts) {
-            LOG.printf("[DIFF] LED alerts %d: highest_bit=%d, region_id=%d\n",
-                led.first,
-                led.second.highest_bit,
-                led.second.region_id
-            );
-        }
+        // LOG.printf("[DIFF] LED bits summary:\n");
+        // for (const auto& led : led_bits_diff) {
+        //     LOG.printf("[DIFF] LED diff %d: highest_bit=%d, region_id=%d\n",
+        //         led.first,
+        //         led.second.highest_bit,
+        //         led.second.region_id
+        //     );
+        // }
+        // for (const auto& led : led_bits_alerts) {
+        //     LOG.printf("[DIFF] LED alerts %d: highest_bit=%d, region_id=%d\n",
+        //         led.first,
+        //         led.second.highest_bit,
+        //         led.second.region_id
+        //     );
+        // }
 
         // вмерджуємо alertsMapActual в основний alertsMap
         for (const auto& pair : alertsMapActual) {
@@ -606,7 +606,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         if (isFirstDataFetchCompleted) {
             // Виводимо фінальний список бітів для LED
-            LOG.printf("\n[WEBSOCKET] LED bits summary:\n");
+            //LOG.printf("\n[WEBSOCKET] LED bits summary:\n");
             for (const auto& led : led_bits_diff) {
                 // Порівнюємо з led_bits_alerts
                 auto alerts_it = led_bits_alerts.find(led.first);
@@ -615,8 +615,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                     int alerts_bit = alerts_it->second.highest_bit;
 
                     if (diff_bit > alerts_bit) {
-                        LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
-                            led.first, led.second.region_id, alerts_bit, diff_bit);
+                        //LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
+                        //    led.first, led.second.region_id, alerts_bit, diff_bit);
                             animateLed(strip_main, led.first, diff_bit, led.second.region_id, true);
                             if (isLedInHomeRegion(led.first)) {
                                 needToAnimateBgHomeRegion = true;
@@ -624,8 +624,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                                 homeRegionIncrease = true;
                             }
                     } else if (diff_bit < alerts_bit) {
-                        LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
-                            led.first, led.second.region_id, alerts_bit, diff_bit);
+                        //LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
+                        //    led.first, led.second.region_id, alerts_bit, diff_bit);
                             animateLed(strip_main, led.first, diff_bit, led.second.region_id, false);
                             if (isLedInHomeRegion(led.first)) {
                                 needToAnimateBgHomeRegion = true;
@@ -643,14 +643,14 @@ void onMessageCallback(WebsocketsMessage msg) {
                 LOG.println("[WEBSOCKET] No changes in home region LEDs");
             }
         }
-        LOG.println();
+        //LOG.println();
         alertsHash = actualHash;
     }
     if (!isFirstDataFetchCompleted) {
         LOG.printf("[WEBSOCKET] init processing\n");
         if (strip_main_initialized) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                for(uint32_t i = 0; i < strip->numPixels(); i++) {
                     uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }
@@ -660,7 +660,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (strip_bg_initialized && settings.getInt(BG_LED_MODE) == 0) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 uint32_t color = animation.stripActualColor(strip);
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                for(uint32_t i = 0; i < strip->numPixels(); i++) {
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
@@ -842,7 +842,7 @@ void cleanupSingleStrip(Adafruit_NeoPixel*& strip, bool& initialized, uint32_t d
         animation.safeStripOperation(strip, [&strip, defaultColor](Adafruit_NeoPixel* stripPtr) {
             stripPtr->clear();
             // Встановлюємо дефолтний колір
-            for(uint16_t i = 0; i < strip->numPixels(); i++) {
+            for(uint32_t i = 0; i < strip->numPixels(); i++) {
                 stripPtr->setPixelColor(i, defaultColor);
             }
             stripPtr->show();
@@ -855,6 +855,14 @@ void cleanupSingleStrip(Adafruit_NeoPixel*& strip, bool& initialized, uint32_t d
 
 void initStripMain() {
     StripStatus status;
+
+    legacy = settings.getInt(LEGACY);
+
+    if (legacy == 4) {
+        num_leds_main = 273;
+    } else {
+        num_leds_main = 26;
+    }
     
     if (settings.getInt(MAIN_LED_PIN) > 0) {
         uint8_t ledType = settings.getInt(MAIN_LED_COLOR_FORMAT) + settings.getInt(MAIN_LED_FREQUENCY);
@@ -888,6 +896,8 @@ void initStripMain() {
 
 void initStripBg() {
     StripStatus status;
+
+    legacy = settings.getInt(LEGACY);
     
     if (settings.getInt(BG_LED_PIN) > 0 && settings.getInt(BG_LED_COUNT) > 0) {
         uint8_t ledType = settings.getInt(BG_LED_COLOR_FORMAT) + settings.getInt(BG_LED_FREQUENCY);
@@ -920,6 +930,8 @@ void initStripBg() {
 
 void initStripService() {
     StripStatus status;
+
+    legacy = settings.getInt(LEGACY);
     
     if (settings.getInt(SERVICE_LED_PIN) > 0) {
         uint8_t ledType = settings.getInt(SERVICE_LED_COLOR_FORMAT) + settings.getInt(SERVICE_LED_FREQUENCY);
@@ -1116,13 +1128,15 @@ void initSettings() {
     fillFwVersion(currentFwVersion, firmware);
     LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
 
+    legacy = settings.getInt(LEGACY);
+
     // Заповнюємо allLedsMain згідно з num_leds_main
     allLedsMain.clear();
-    for (uint16_t i = 0; i < num_leds_main; ++i) {
+    for (uint32_t i = 0; i < num_leds_main; ++i) {
         allLedsMain.push_back(i);
     }
     allLedsBg.clear();
-    for (uint16_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
+    for (uint32_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
         allLedsBg.push_back(i);
     }
 }
@@ -1344,7 +1358,7 @@ void initStrip() {
 // }
 
 void animations() {
-    static uint8_t currentIdx = 0;
+    static int currentIdx = 0;
     int ledsIdx[1] = { currentIdx };
     uint8_t r = random(256), g = random(256), b = random(256);
     
@@ -1553,17 +1567,17 @@ void mainThreadProcess() {
     // Ця функція виконується в основному циклі
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
 
-    if (needReconnectWebsocket) {
+    if (needReconnectMainStrip || needReconnectBgStrip || needReconnectServiceStrip) {
+        LOG.println("[MAIN] Reconnecting LED strip");
+        reconnectStrips();
+    }
+
+    if (needReconnectWebsocket && !needReconnectMainStrip) {
         LOG.println("[MAIN] Reconnecting WebSocket");
         isFirstDataFetchCompleted = false;
         needReconnectWebsocket = false;
         apiConnected = false;
         socketConnect();
-    }
-
-    if (needReconnectMainStrip || needReconnectBgStrip || needReconnectServiceStrip) {
-        LOG.println("[MAIN] Reconnecting LED strip");
-        reconnectStrips();
     }
 
     if (needAdaptColors) {
@@ -1609,7 +1623,7 @@ void mainThreadProcess() {
         if (strip_main_initialized) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                for(uint32_t i = 0; i < strip->numPixels(); i++) {
                     uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }
@@ -1620,7 +1634,7 @@ void mainThreadProcess() {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
                 uint32_t color = animation.stripActualColor(strip);
-                for (int i = 0; i < strip->numPixels(); i++) {
+                for (uint32_t i = 0; i < strip->numPixels(); i++) {
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
@@ -1664,7 +1678,7 @@ void brightnessProcess() {
         if (strip_main_initialized) {
             animation.safeStripOperation(strip_main, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
-                for(int i = 0; i < strip->numPixels(); i++) {
+                for(uint32_t i = 0; i < strip->numPixels(); i++) {
                     uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }

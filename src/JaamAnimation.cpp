@@ -753,7 +753,7 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     LOG.printf("[ANIMATION] Cleaned up animation slot %d, active count: %d\n", index, activeCount);
 }
 
-std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint16_t num_leds) {
+std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds) {
     std::vector<FreeLedInfo> freeLedsResult;
     std::set<int> animatedLeds;
 
@@ -769,7 +769,7 @@ std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip,
         xSemaphoreGive(animMutex);
     }
 
-    for (uint16_t j = 0; j < num_leds; ++j) {
+    for (uint32_t j = 0; j < num_leds; ++j) {
         if (animatedLeds.find(j) == animatedLeds.end()) {
             freeLedsResult.push_back({(int)j});
         }

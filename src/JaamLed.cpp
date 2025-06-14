@@ -1,6 +1,8 @@
 #include "JaamLed.h"
 #include "JaamUtils.h"
 
+extern uint8_t legacy;
+
 JaamLed::JaamLed() : settings(nullptr) {}
 
 void JaamLed::setSettings(JaamSettings* settings) {
@@ -15,7 +17,11 @@ uint8_t JaamLed::brightnessAbsolute(uint8_t percent) {
 }
 
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
-    return map(percent, 0, 100, 0, 100);
+    if (legacy == 4) {
+        return map(percent, 0, 100, 0, 20);
+    } else {
+        return map(percent, 0, 100, 0, 100);
+    }
 }
 
 // Перевірка ініціалізації стрічки
@@ -26,7 +32,7 @@ bool JaamLed::isStripInitialized(Adafruit_NeoPixel* strip) {
 // Функція для створення стрічки з обробкою помилок
 StripStatus JaamLed::createStrip(Adafruit_NeoPixel*& strip, 
                     int pin, 
-                    uint8_t count, 
+                    uint32_t count, 
                     uint8_t brightness,
                     uint32_t color, 
                     uint8_t type) {
@@ -100,7 +106,7 @@ void JaamLed::verifyStripCleanup(Adafruit_NeoPixel* strip) {
 // Add strip recreation with proper cleanup
 StripStatus JaamLed::recreateStrip(Adafruit_NeoPixel*& strip,
                                  int pin,
-                                 uint8_t count,
+                                 uint32_t count,
                                  uint8_t brightness,
                                  uint32_t color,
                                  uint8_t type) {
