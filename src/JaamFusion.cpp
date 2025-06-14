@@ -659,14 +659,13 @@ void onMessageCallback(WebsocketsMessage msg) {
         }
         if (strip_bg_initialized && settings.getInt(BG_LED_MODE) == 0) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.regionActualColor(settings.getInt(HOME_DISTRICT), false);
+                uint32_t color = animation.stripActualColor(strip);
                 for(uint16_t i = 0; i < strip->numPixels(); i++) {
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
             });
-        }
-        
+        }    
     }
 
     isFirstDataFetchCompleted = true;
@@ -1697,7 +1696,9 @@ void brightnessProcess() {
 
 // --- SETUP ---
 void setup() {
+    delay(2000);
     LOG.begin(115200);
+    delay(2000);
     checkFreeHeap("LOG initialization");
 
     initChipID();

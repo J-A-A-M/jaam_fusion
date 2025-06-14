@@ -209,19 +209,25 @@ void JaamSettings::init() {
 
     for (auto it = stringSettings.begin(); it != stringSettings.end(); ++it) {
         SettingItemString setting = it->second;
-        setting.value = preferences.getString(setting.key, setting.value);
+        if (preferences.isKey(setting.key)) {
+            setting.value = preferences.getString(setting.key);
+        }
         it->second = setting;
     }
 
     for (auto it = intSettings.begin(); it != intSettings.end(); ++it) {
         SettingItemInt setting = it->second;
-        setting.value = preferences.getInt(setting.key, setting.value);
+        if (preferences.isKey(setting.key)) {
+            setting.value = preferences.getInt(setting.key);
+        }
         it->second = setting;
     }
 
     for (auto it = floatSettings.begin(); it != floatSettings.end(); ++it) {
         SettingItemFloat setting = it->second;
-        setting.value = preferences.getFloat(setting.key, setting.value);
+        if (preferences.isKey(setting.key)) {
+            setting.value = preferences.getFloat(setting.key);
+        }
         it->second = setting;
     }
 
