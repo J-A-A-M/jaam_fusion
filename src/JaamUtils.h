@@ -260,13 +260,13 @@ inline int findHighestBitForRegion(uint16_t region_id) {
         auto it = alertsMap.find(reg);
         if (it != alertsMap.end() && it->second != 0) {
             int bit = findHighestBit16(it->second);
-            LOG.printf("[REGION] region_id=%d, Bit=%d\n", it->first, bit);
+            //LOG.printf("[REGION] region_id=%d, Bit=%d\n", it->first, bit);
             if (bit != -1 && (maxBit == -1 || bit > maxBit)) {
                 maxBit = bit;
             }
         }
     }
-    LOG.printf("[REGION] region_id=%d, highestBit=%d\n", region_id, maxBit);
+    //LOG.printf("[REGION] region_id=%d, highestBit=%d\n", region_id, maxBit);
     return maxBit;
 }
 

@@ -44,7 +44,7 @@ struct FreeLedInfo {
 
 class AnimationManager {
     private:
-        static const int MAX_ANIMATIONS = 160;     
+        static const int MAX_ANIMATIONS = 280;     
         SemaphoreHandle_t animMutex;
         int activeCount;
         JaamSettings* settings;
@@ -102,6 +102,7 @@ class AnimationManager {
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
         uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
+        void showAllStrips();
 };
 
 

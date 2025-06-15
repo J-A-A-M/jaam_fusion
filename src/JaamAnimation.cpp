@@ -181,6 +181,24 @@ void AnimationManager::update() {
         }
         xSemaphoreGive(animMutex);
     }
+    showAllStrips();
+}
+
+void AnimationManager::showAllStrips() {
+    // Викликаємо show() лише один раз для кожної стрічки
+    std::set<Adafruit_NeoPixel*> updatedStrips;
+    for (int i = 0; i < MAX_ANIMATIONS; i++) {
+        if (animations[i] != nullptr && animations[i]->isActive) {
+            Adafruit_NeoPixel* strip = animations[i]->strip;
+            if (strip && updatedStrips.find(strip) == updatedStrips.end()) {
+                if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                    strip->show();
+                    xSemaphoreGive(stripMutex);
+                }
+                updatedStrips.insert(strip);
+            }
+        }
+    }
 }
 
 void AnimationManager::clearAllAnimations() {
@@ -314,7 +332,6 @@ void AnimationManager::updateSetBrightnessAnimation(AnimationParams* anim, float
             uint32_t color = ledActualColor(anim->strip, i);
             anim->strip->setPixelColor(i, color);
         }
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 }
@@ -335,7 +352,6 @@ void AnimationManager::updateFadeAnimation(AnimationParams* anim, float elapsed)
             uint8_t b = ( c        & 0xFF) * scale / 255;
             anim->strip->setPixelColor(idx, r, g, b);
         }
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 }
@@ -353,7 +369,6 @@ void AnimationManager::updateBlinkAnimation(AnimationParams* anim, float elapsed
             uint8_t b = ( c        & 0xFF) * brightness / 255;
             anim->strip->setPixelColor(idx, r, g, b);
         }
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 }
@@ -372,7 +387,6 @@ void AnimationManager::updateBlendFadeAnimation(AnimationParams* anim, float ela
             uint32_t blendedColor = blendColors(anim->color, anim->initialColor, factor);
             anim->strip->setPixelColor(idx, blendedColor);
         }
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 }
@@ -388,7 +402,6 @@ void AnimationManager::updateOneWayBlendAnimation(AnimationParams* anim, float e
             uint32_t blendedColor = blendColors(anim->initialColor, anim->color, factor);
             anim->strip->setPixelColor(idx, blendedColor);
         }
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 }
@@ -428,7 +441,6 @@ void AnimationManager::updatePulseAnimation(AnimationParams* anim, float elapsed
             uint8_t b = ( c        & 0xFF) * scale / 255;
             anim->strip->setPixelColor(idx, r, g, b);
         }
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 }
@@ -481,7 +493,6 @@ void AnimationManager::updateRunningLightAnimation(AnimationParams* anim, float 
             anim->strip->setPixelColor(ledIndex, r, g, b);
         }
         
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 }
@@ -724,7 +735,6 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
             uint32_t color = ledActualColor(anim->strip, anim->positions[i]);
             anim->strip->setPixelColor(anim->positions[i], color);
         }
-        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 
