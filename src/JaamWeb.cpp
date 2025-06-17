@@ -21,6 +21,7 @@ extern volatile bool needReconnectWebsocket;
 extern volatile bool needReconnectMainStrip;
 extern volatile bool needReconnectBgStrip;
 extern volatile bool needReconnectServiceStrip;
+extern volatile bool needUpdateBatteryPin;
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
@@ -172,6 +173,11 @@ String JaamWeb::getHtmlTemplate() {
     html += "<span class='metric-label'>Websocket:</span>";
     html += "<span class='metric-value' id='websocketUptime'>--</span>";
     html += "</div>";
+    html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>";
+    html += "<span class='metric-label'>Батарея:</span>";
+    html += "<span class='metric-value' id='batteryVoltage'>--</span>";
+    html += "</div>";
     html += "</div>";
 
     // Alerts Information Panel (об'єднано)
@@ -248,6 +254,8 @@ String JaamWeb::getHtmlTemplate() {
     html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Загроза БПЛА");
     html += getBoolParameterHtml("enable_ballistic", settings->getBool(ENABLE_BALLISTIC), "Загроза балістичних ракет");
     html += getBoolParameterHtml("enable_explosions", settings->getBool(ENABLE_EXPLOSIONS), "Вибухи");
+    html += getBoolParameterHtml("enable_battery", settings->getBool(ENABLE_BATTERY_MONITORING), "Моніторинг батареї");
+    html += getTextInputHtml("battery_pin", String(settings->getInt(BATTERY_PIN)).c_str(), "ADC пін батареї", "-1");
     
     html += "</div>";
     html += "<script>";
@@ -277,6 +285,9 @@ String JaamWeb::getHtmlTemplate() {
     html += "        document.getElementById('websocketUptime').textContent = wsHours + 'г ' + wsMinutes + 'хв';";
     html += "      } else {";
     html += "        document.getElementById('websocketUptime').textContent = 'Відключено';";
+    html += "      }";
+    html += "      if(document.getElementById('batteryVoltage')) {";
+    html += "        document.getElementById('batteryVoltage').textContent = data.batteryVoltage ? data.batteryVoltage.toFixed(2) + ' V' : '--';";
     html += "      }";
     html += "    })";
     html += "    .catch(error => console.error('Error fetching system info:', error));";
@@ -580,6 +591,11 @@ void JaamWeb::handleParameter() {
         } else if (name == "notifications_on") {
             settings->saveInt(EXPLOSION_TIME, intValue);
             LOG.printf("[WEB] Setting night_start: %d\n", intValue);
+        } else if (name == "enable_battery") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_BATTERY_MONITORING, boolValue);
+            needUpdateBatteryPin = true;
+            LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
         }
 
         server.send(200, "text/plain", "OK");
@@ -642,8 +658,11 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(SERVICE_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting service_led_pin: %s\n", valuePtr);
             needReconnectServiceStrip = true;
+        } else if (name == "battery_pin") {
+            settings->saveInt(BATTERY_PIN, value.toInt());
+            needUpdateBatteryPin = true;
+            LOG.printf("[WEB] Set battery_pin: %d\n", valuePtr);
         }
-
         server.send(200, "text/plain", "OK");
     } else {
         server.send(400, "text/plain", "Missing parameters");

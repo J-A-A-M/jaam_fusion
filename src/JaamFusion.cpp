@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <ArduinoWebsockets.h>
 
+
 #include <WiFiManager.h>
 #include <NTPtime.h>
 
@@ -11,6 +12,7 @@
 #include <freertos/semphr.h>
 
 #include "JaamAnimation.h"
+#include "JaamBattery.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
 #include "JaamSettings.h"
@@ -33,6 +35,7 @@ JaamSettings        settings;
 JaamFirmware        firmware;
 JaamWeb             web;
 JaamLed             led;
+JaamBattery         battery;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -63,6 +66,7 @@ bool                needAdaptColors = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
 bool                needReconnectServiceStrip;
+bool                needUpdateBatteryPin = false; // Flag to update battery pin in web settings
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -1329,6 +1333,12 @@ void initStrip() {
     needAdaptStripBrightness = true;
 }
 
+void initBattery() {
+    LOG.println("[BATTERY] Initializing battery monitoring...");
+    // Ініціалізація моніторингу батареї
+    battery.begin();
+}
+
 
 // --- Cycle Functions ---
 
@@ -1667,6 +1677,15 @@ void mainThreadProcess() {
         //     return;
         // }
     }
+    if (needUpdateBatteryPin) {
+        LOG.println("[MAIN] Updating battery pin state");
+        if (settings.getInt(BATTERY_PIN) > 0) {
+            battery.setPin(settings.getInt(BATTERY_PIN));
+        } else {
+            LOG.println("[MAIN] Battery pin not configured, skipping update");
+        }
+        needUpdateBatteryPin = false;
+    }
 }
 
 void brightnessProcess() {
@@ -1708,6 +1727,11 @@ void brightnessProcess() {
     }
 }
 
+// --- Battery Monitor Process ---
+void batteryProcess() {
+    battery.logVoltage();
+}
+
 // --- SETUP ---
 void setup() {
     delay(2000);
@@ -1723,6 +1747,9 @@ void setup() {
 
     initStrip();
     checkFreeHeap("LED strips initialization");
+
+    initBattery();
+    checkFreeHeap("battery initialization");
 
     // initWifi();
     // checkFreeHeap("WiFi initialization");
@@ -1744,6 +1771,7 @@ void setup() {
     // Передаємо settings в AnimationManager
     animation.setSettings(&settings);
     led.setSettings(&settings);
+    battery.setSettings(&settings);
     checkFreeHeap("animation and LED settings");
     
     // Налаштовуємо асинхронні задачі
@@ -1759,6 +1787,7 @@ void setup() {
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
+    async.setInterval(batteryProcess, 10000); // кожні 10 секунд
     checkFreeHeap("async tasks configuration");
 
     

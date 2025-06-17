@@ -1,6 +1,7 @@
 #pragma once
 #include "JaamLogs.h"
 #include "JaamSettings.h"
+#include "JaamBattery.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -14,6 +15,7 @@
 extern uint32_t                         lastWebsocketConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern JaamSettings                     settings;
+extern JaamBattery                      battery;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
 
@@ -529,6 +531,7 @@ inline String getSystemInfoJson() {
     doc["maxBlock"] = maxBlock;
     doc["cpuTemp"] = cpuTemp;
     doc["uptime"] = uptime;
+    doc["batteryVoltage"] = battery.readVoltage();
     doc["memoryUsagePercent"] = (float)usedHeap / totalHeap * 100.0;
     doc["fragmentationPercent"] = (1.0f - ((float)maxBlock / (float)freeHeap)) * 100.0;
     doc["wifiRSSI"] = wifiRSSI;

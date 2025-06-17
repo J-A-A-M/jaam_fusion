@@ -168,6 +168,8 @@ std::map<Type, SettingItemInt> intSettings = {
     {SERVICE_LED_COLOR_FORMAT, {"slcf", NEO_GRB}},
     {SERVICE_LED_FREQUENCY, {"slfq", NEO_KHZ800}},
     {BG_LED_MODE, {"blmd", 0}},
+    {BATTERY_PIN, {"batp", -1}},
+    {ENABLE_BATTERY_MONITORING, {"ebatm", 0}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {
