@@ -99,6 +99,15 @@ String JaamWeb::getHtmlTemplate() {
     html += "<meta charset='UTF-8'>";
     html += "<title>JAAM LED Control</title>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+
+    html += "<meta name='mobile-web-app-capable' content='yes' />";
+    html += "<meta name='application-name' content='JAAM' />";
+    html += "<meta name='msapplication-starturl' content='/' /> ";
+    html += "<meta name='apple-mobile-web-app-capable' content='yes' />";
+    html += "<meta name='apple-mobile-web-app-title' content='JAAM'>";
+    html += "<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent' />";
+    html += "<link rel='shortcut icon' href='favicon.png'>";
+    html += "<link rel='apple-touch-icon' href='apple-touch-icon.png'>";
     html += "<style>";
     html += "body{font-family:Arial,sans-serif;margin:20px;background-color:#f0f0f0}";
     html += ".container{max-width:600px;margin:0 auto;background-color:white;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1)}";

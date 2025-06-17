@@ -648,10 +648,11 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             color = result.first;
             brightness = result.second;
         } else {
-            // Якщо немає тривог, перевіряємо чи є домашній район
+            
             color = colorFromHex(settings->getString(COLOR_CLEAR));
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
             
+            // Якщо немає тривог, перевіряємо чи є домашній район
             for (uint16_t region_id : regions) {
                 if (region_id == settings->getInt(HOME_DISTRICT)) {
                     color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
@@ -667,11 +668,9 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         if (highest_bit != -1) {
             std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
             color = result.first;
-            //brightness = result.second;
         } else {
             // Якщо немає тривог, встановлюємо колір домашнього району
             color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
-            //brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
         }
         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
     } 
