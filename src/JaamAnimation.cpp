@@ -588,7 +588,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
         if (settings->getInt(BG_LED_MODE) == 0) {
             LOG.printf("[COLOR] bg strip color HOME_DISTRICT\n");
             color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
-        } else if (settings->getInt(BG_LED_MODE) == 1) {
+        } else {
             LOG.printf("[COLOR] bg strip color SELF\n");
             color = colorFromHex(settings->getString(COLOR_BG));
         }
@@ -665,12 +665,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     if (strip == strip_bg) {
         int highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
         
-        if (highest_bit != -1) {
+        if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == 0) {
+            // Якщо немає тривог, встановлюємо колір домашнього району
             std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
             color = result.first;
         } else {
-            // Якщо немає тривог, встановлюємо колір домашнього району
-            color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
+            color = colorFromHex(settings->getString(COLOR_BG));
         }
         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
     } 
