@@ -727,13 +727,15 @@ void AnimationManager::removeLedFromAnimation(AnimationParams* anim, int ledIdx,
 
 void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     if (anim == nullptr) return;
-    
+    char hexColor[8];
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < anim->posCount; ++i) {
             // Визначаємо дефолтний колір для стрічки
             uint32_t color = ledActualColor(anim->strip, anim->positions[i]);
-            anim->strip->setPixelColor(anim->positions[i], color);
+            snprintf(hexColor, sizeof(hexColor), "#%06X", color);
+            anim->strip->setPixelColor(anim->positions[i], color);   
         }
+        anim->strip->show();
         xSemaphoreGive(stripMutex);
     }
 
@@ -759,7 +761,7 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     animations[index] = nullptr;
     activeCount--;
     
-    LOG.printf("[ANIMATION] Cleaned up animation slot %d, active count: %d\n", index, activeCount);
+    LOG.printf("[ANIMATION] Cleaned up animation slot %d, color %s, active count: %d\n", index, hexColor, activeCount);
 }
 
 std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds) {

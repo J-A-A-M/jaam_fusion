@@ -48,8 +48,7 @@ float JaamBattery::readVoltage() const {
     if (adcPin < 0 || !enabled) return 0.0f;
     int raw = analogRead(adcPin);
     float vout = (raw / 4095.0f) * VIN;
-    float vin = vout * ((R1 + R2) / R2) * 1.225f; // Adjusted for voltage divider and calibration factor
-    //float vin = vout * 1.225f;
+    float vin = vout * ((R1 + R2) / R2);
     return vin;
 }
 
