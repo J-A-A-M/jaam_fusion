@@ -523,6 +523,10 @@ inline String getSystemInfoJson() {
         websocketAvailable = true;
     }
     
+    // WiFi uptime metric (in seconds)
+    extern uint32_t lastWifiConnectTime;
+    uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
+    
     // Create JSON response
     JsonDocument doc;
     doc["freeHeap"] = freeHeap;
@@ -536,6 +540,7 @@ inline String getSystemInfoJson() {
     doc["fragmentationPercent"] = (1.0f - ((float)maxBlock / (float)freeHeap)) * 100.0;
     doc["wifiRSSI"] = wifiRSSI;
     doc["websocketUptime"] = websocketUptime;
+    doc["wifiUptime"] = wifiUptime;
     
     String response;
     serializeJson(doc, response);

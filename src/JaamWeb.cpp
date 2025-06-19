@@ -169,6 +169,11 @@ String JaamWeb::getHtmlTemplate() {
     html += "<span class='metric-value' id='wifiSignal'>-- dBm</span>";
     html += "</div>";
     html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M6 20v-2h12v2H6zm6-18C7.48 2 4 5.48 4 10c0 3.87 3.13 7.43 7.55 11.54.29.26.71.26 1 0C16.87 17.43 20 13.87 20 10c0-4.52-3.48-8-8-8zm0 17C8.14 15.24 6 12.39 6 10c0-3.31 2.69-6 6-6s6 2.69 6 6c0 2.39-2.14 5.24-6 9z'/></svg>";
+    html += "<span class='metric-label'>WiFi uptime:</span>";
+    html += "<span class='metric-value' id='wifiUptime'>--</span>";
+    html += "</div>";
+    html += "<div class='system-metric'>";
     html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2a7.71,7.71,0,0,0-1,15.37v.77h-1a1,1,0,0,0-1,1H2.35V21H9.11a1,1,0,0,0,1,1h3.86a1,1,0,0,0,1-1h6.76V19.11H14.89a1,1,0,0,0-1-1H13v-.77A7.71,7.71,0,0,0,12,2m0,1.67a15.43,15.43,0,0,1,1.21,2.9H10.81A15.83,15.83,0,0,1,12,3.67m-2.15.42a14,14,0,0,0-1,2.48H7A5.78,5.78,0,0,1,9.88,4.09m4.3,0A5.73,5.73,0,0,1,17,6.57H15.17a13,13,0,0,0-1-2.47m-8,4.4H8.48a7.48,7.48,0,0,0-.07,1,7.77,7.77,0,0,0,.07,1H6.33a5.23,5.23,0,0,1-.09-1,5,5,0,0,1,.09-1m3.74,0h3.58a7.48,7.48,0,0,1,.07,1,7.77,7.77,0,0,1-.07,1H10.41a7.77,7.77,0,0,1-.07-1,7.48,7.48,0,0,1,.07-1m5.45,0h1.87a5,5,0,0,1,.09,1,5.23,5.23,0,0,1-.09,1H15.58a7.77,7.77,0,0,0,.07-1,7.48,7.48,0,0,0-.07-1m-8.4,3.85h1.7a13.53,13.53,0,0,0,1,2.47A5.76,5.76,0,0,1,7,12.35m4,0h2.2A15.43,15.43,0,0,1,12,15.25a15.83,15.83,0,0,1-1.22-2.9m4.36,0H17a5.75,5.75,0,0,1-2.85,2.48A13.41,13.41,0,0,0,15.17,12.35Z'/></svg>";
     html += "<span class='metric-label'>Websocket:</span>";
     html += "<span class='metric-value' id='websocketUptime'>--</span>";
@@ -285,6 +290,13 @@ String JaamWeb::getHtmlTemplate() {
     html += "        document.getElementById('websocketUptime').textContent = wsHours + 'г ' + wsMinutes + 'хв';";
     html += "      } else {";
     html += "        document.getElementById('websocketUptime').textContent = 'Відключено';";
+    html += "      }";
+    html += "      const wifiHours = Math.floor(data.wifiUptime / 3600);";
+    html += "      const wifiMinutes = Math.floor((data.wifiUptime % 3600) / 60);";
+    html += "      if (data.wifiUptime > 0) {";
+    html += "        document.getElementById('wifiUptime').textContent = wifiHours + 'г ' + wifiMinutes + 'хв';";
+    html += "      } else {";
+    html += "        document.getElementById('wifiUptime').textContent = 'Відключено';";
     html += "      }";
     html += "      if(document.getElementById('batteryVoltage')) {";
     html += "        document.getElementById('batteryVoltage').textContent = data.batteryVoltage ? data.batteryVoltage.toFixed(2) + ' V' : '--';";
