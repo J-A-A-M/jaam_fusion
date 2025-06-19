@@ -420,6 +420,7 @@ void JaamWeb::handleRoot() {
 
 void JaamWeb::handleColorParameter() {
     if (server.hasArg("name") && server.hasArg("value")) {
+        setCrossOrigin();
         String name = server.arg("name");
         String value = server.arg("value");
         
@@ -474,6 +475,7 @@ void JaamWeb::handleColorParameter() {
 
 void JaamWeb::handleParameter() {
     if (server.hasArg("name") && server.hasArg("value")) {
+        setCrossOrigin();
         String name = server.arg("name");
         String value = server.arg("value");
         
@@ -618,6 +620,7 @@ void JaamWeb::handleParameter() {
 
 void JaamWeb::handleTextParameter() {
     if (server.hasArg("name") && server.hasArg("value")) {
+        setCrossOrigin();
         String name = server.arg("name");
         String value = server.arg("value");
         
@@ -681,6 +684,24 @@ void JaamWeb::handleTextParameter() {
     }
 }
 
+void JaamWeb::setCrossOrigin() {
+    server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    server.sendHeader(F("Access-Control-Max-Age"), F("600"));
+    server.sendHeader(F("Access-Control-Allow-Methods"), F("PUT,POST,GET,OPTIONS"));
+    server.sendHeader(F("Access-Control-Allow-Headers"), F("Content-Type,Authorization"));
+}
+
+void JaamWeb::sendCrossOriginHeader(){
+    LOG.printf("[WEB] sendCORSHeader");
+    setCrossOrigin();
+    server.send(204);
+}
+
+void JaamWeb::handleNotFound() {
+    LOG.printf("[WEB] Not found: %s\n", server.uri().c_str());
+    server.send(404, "text/plain", "Not found");
+}
+
 void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
     this->strip_main = strip_main;
     this->strip_bg = strip_bg;
@@ -688,12 +709,20 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
 
 
     // Налаштування веб-сервера
+    server.enableCORS();
     server.on("/", HTTP_GET, [this]() { this->handleRoot(); });
     server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
+    server.on("/parameter", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
+    server.on("/color", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
+    server.on("/text", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/system-info", HTTP_GET, [this]() { this->handleSystemInfo(); });
+    server.on("/system-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/alerts-info", HTTP_GET, [this]() { this->handleAlertsInfo(); });
+    server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/favicon.png", HTTP_GET, [this]() { server.send(204); });
+    server.onNotFound([this]() { this->handleNotFound(); });
 
     server.begin();
 }
@@ -706,13 +735,13 @@ void JaamWeb::handleClient() {
 }
 
 void JaamWeb::handleSystemInfo() {
+    setCrossOrigin();
     String response = getSystemInfoJson();
-    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "application/json", response);
 }
 
 void JaamWeb::handleAlertsInfo() {
+    setCrossOrigin();
     String response = getAlertsJson();
-    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "application/json", response);
 }

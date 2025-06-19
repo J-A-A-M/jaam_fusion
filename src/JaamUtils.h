@@ -13,6 +13,7 @@
 
 // External variables declarations
 extern uint32_t                         lastWebsocketConnectTime;
+extern uint32_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern JaamSettings                     settings;
 extern JaamBattery                      battery;
@@ -524,7 +525,6 @@ inline String getSystemInfoJson() {
     }
     
     // WiFi uptime metric (in seconds)
-    extern uint32_t lastWifiConnectTime;
     uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
     
     // Create JSON response

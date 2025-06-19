@@ -22,6 +22,9 @@ private:
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;
     String getHtmlTemplate();
+    void handleNotFound();
+    void setCrossOrigin();
+    void sendCrossOriginHeader();
     void handleRoot();
     void handleParameter();
     void handleColorParameter();
