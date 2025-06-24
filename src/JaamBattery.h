@@ -22,5 +22,5 @@ private:
     JaamSettings* settings;
     static constexpr float R1 = 26100.0f;
     static constexpr float R2 = 10000.0f;
-    static constexpr float VIN = 4.1f;
+    static constexpr float VIN = 3.62f;
 };
