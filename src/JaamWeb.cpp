@@ -22,6 +22,7 @@ extern volatile bool needReconnectMainStrip;
 extern volatile bool needReconnectBgStrip;
 extern volatile bool needReconnectServiceStrip;
 extern volatile bool needUpdateBatteryPin;
+extern volatile bool needRecalculateLeds;
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
@@ -296,6 +297,10 @@ String JaamWeb::getHtmlTemplate() {
     
     // Додаємо слайдери для всіх параметрів
     html += getDropdownHtml("legacy", "Режим прошивки", LEGACY, LEGACY_OPTIONS, LEGACY_OPTIONS_COUNT);
+    html += getDropdownHtml("district_mode_kyiv", "Режим леда Київської області", DISTRICT_MODE_KYIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
+    html += getBoolParameterHtml("kyiv_led", settings->getBool(KYIV_LED), "Київ як окремий LED");
+    html += getDropdownHtml("district_mode_kharkiv", "Режим леда Харківської області", DISTRICT_MODE_KHARKIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
+    html += getDropdownHtml("district_mode_zp", "Режим леда Запорізької області", DISTRICT_MODE_ZP, LED_MODE_OPTIONS, LED_MODE_COUNT);
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
     html += getDropdownHtml("bg_led_mode", "Режим фонової підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
     html += "<label class=\"label\">Загальні налаштування</label>";
@@ -581,8 +586,19 @@ void JaamWeb::handleParameter() {
         if (name == "legacy") {
             settings->saveInt(LEGACY, intValue);
             LOG.printf("[WEB] Setting legacy: %d\n", intValue);
-            needReconnectMainStrip = true;
-            needReconnectWebsocket = true;
+            needRecalculateLeds = true;
+        } else if (name == "district_mode_kyiv") {
+            settings->saveInt(DISTRICT_MODE_KYIV, intValue);
+            LOG.printf("[WEB] Setting district_mode_kyiv: %d\n", intValue);
+            needRecalculateLeds = true;
+        } else if (name == "district_mode_kharkiv") {
+            settings->saveInt(DISTRICT_MODE_KHARKIV, intValue);
+            LOG.printf("[WEB] Setting district_mode_kharkiv: %d\n", intValue);
+            needRecalculateLeds = true;
+        } else if (name == "district_mode_zp") {
+            settings->saveInt(DISTRICT_MODE_ZP, intValue);
+            LOG.printf("[WEB] Setting district_mode_zp: %d\n", intValue);
+            needRecalculateLeds = true;
         } else if (name == "home_district") {
             settings->saveInt(HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting home_district: %d\n", intValue);
@@ -704,6 +720,11 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BATTERY_MONITORING, boolValue);
             needUpdateBatteryPin = true;
+            LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
+        } else if (name == "kyiv_led") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(KYIV_LED, boolValue);
+            needRecalculateLeds = true;
             LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
         }
 

@@ -57,12 +57,14 @@ AnimationParams::Type   animType;
 
 // --- MAP Configuration ---
 std::map<uint16_t, uint16_t>    alertsMap;
+RegionLedMapEntry        customMap[150];
 
 // --- TASKS Configuration ---
 bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
 bool                needReconnectWebsocket = false;
 bool                needAdaptColors = false;
+bool                needRecalculateLeds = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
 bool                needReconnectServiceStrip;
@@ -1134,6 +1136,12 @@ void initSettings() {
 
     legacy = settings.getInt(LEGACY);
 
+    if (legacy == 4) {
+        num_leds_main = 273;
+    } else {
+        num_leds_main = 26;
+    }
+
     // Заповнюємо allLedsMain згідно з num_leds_main
     allLedsMain.clear();
     for (uint32_t i = 0; i < num_leds_main; ++i) {
@@ -1143,6 +1151,12 @@ void initSettings() {
     for (uint32_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
         allLedsBg.push_back(i);
     }
+}
+
+void initMapping() {
+    LOG.println("[INIT] Init mapping");
+    // Ініціалізуємо мапінг регіонів
+    generateCustomRegionMap();
 }
 
 
@@ -1590,6 +1604,13 @@ void mainThreadProcess() {
         socketConnect();
     }
 
+    if (needRecalculateLeds) {
+        generateCustomRegionMap();
+        LOG.println("[MAIN] Recalculating LEDs");
+        needRecalculateLeds = false;
+        needReconnectWebsocket = true;
+    }
+
     if (needAdaptColors) {
         if (strip_main_initialized) {
             LOG.printf("[WEB] Adjusting main colors\n");               
@@ -1744,6 +1765,9 @@ void setup() {
 
     initSettings();
     checkFreeHeap("settings initialization");
+
+    initMapping();
+    checkFreeHeap("LED mapping initialization");
 
     initStrip();
     checkFreeHeap("LED strips initialization");

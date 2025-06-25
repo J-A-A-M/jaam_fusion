@@ -19,6 +19,8 @@ extern JaamSettings                     settings;
 extern JaamBattery                      battery;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
+extern uint8_t                          legacy;
+extern RegionLedMapEntry                customMap[150];
 
 struct JaamFirmware {
     int major = 0;
@@ -97,22 +99,133 @@ static void fillFwVersion(char* result, JaamFirmware firmware) {
     strcpy(result, version.c_str());
 }
 
-inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
-    switch (legacy) {
-        case 0:
-            return STATE_MAP_LED_ODESA;
-        case 1:
-            return STATE_MAP_LED_TRANSCARPATHIA;
-        case 2:
-            return STATE_MAP_LED_ODESA;
-        case 3:
-            return STATE_MAP_LED_ODESA;
-        case 4:
-            return REGION_MAP_LED;
-        default:
-            return STATE_MAP_LED_ODESA; // Повертаємо Odesa як дефолтний
+// Генерація customMap (викликається окремо при зміні налаштувань)
+inline void generateCustomRegionMap() {
+    // Очистити customMap перед копіюванням нового mapping
+    memset(customMap, 0, sizeof(customMap));
+
+    const RegionLedMapEntry* base = nullptr;
+    int legacy = settings.getInt(LEGACY);
+    int kyiv_led_position;
+    int kharkiv_led_position;
+    int zp_led_position;
+
+    if (legacy == 4) {
+        base = REGION_MAP_LED;
+    } else if (legacy == 0 || legacy == 3) {
+        kharkiv_led_position = 20;              // Позиція для Харківської області
+        zp_led_position = 23;                   // Позиція для Запорізької області
+        base = STATE_MAP_LED_ODESA_WITH_KYIV;
+    } else if (legacy == 2 && settings.getBool(KYIV_LED)) {
+        kharkiv_led_position = 20;              // Позиція для Харківської області
+        zp_led_position = 23;                   // Позиція для Запорізької області
+        base = STATE_MAP_LED_ODESA_WITH_KYIV;
+    } else if (legacy == 1 && settings.getBool(KYIV_LED)) {
+        kharkiv_led_position = 11;              // Позиція для Харківської області
+        zp_led_position = 14;                   // Позиція для Запорізької області
+        base = STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
+    } else if (legacy == 1) {
+        kharkiv_led_position = 10;              // Позиція для Харківської області
+        zp_led_position = 13;                   // Позиція для Запорізької області
+        kyiv_led_position = 7;                  // Позиція для Київської області
+        base = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
+    } else if (legacy == 2) {
+        kharkiv_led_position = 19;              // Позиція для Харківської області
+        zp_led_position = 22;                   // Позиція для Запорізької області
+        kyiv_led_position = 16;                 // Позиція для Київської області
+        base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
+    }
+
+    if (!base) return;
+
+    memcpy(customMap, base, sizeof(customMap));
+
+    // Додатковий кастом для Києва
+    if ((legacy == 1 || legacy == 2) && !settings.getBool(KYIV_LED) && settings.getInt(DISTRICT_MODE_KYIV) > 0) {
+        const std::set<uint16_t> regionSet = {14, 77, 73, 75, 76, 74, 79, 78}; // Київська область та райони
+        for (int i = 0; i < MAX_REGIONS; ++i) {
+            if (customMap[i].region_id == 31) {
+                customMap[i].led_positions[0] = kyiv_led_position;
+                customMap[i].led_count = 1;
+                break;
+            }
+            if (regionSet.count(customMap[i].region_id) && settings.getInt(DISTRICT_MODE_KYIV) == 1) {
+                customMap[i].led_count = 0;
+            }
+        }
+    }
+    if (settings.getInt(DISTRICT_MODE_KHARKIV) > 0) {
+        const std::set<uint16_t> regionSet = {22, 124, 123, 122, 126, 127, 125, 128}; // Харківська область та райони
+        for (int i = 0; i < MAX_REGIONS; ++i) {
+            if (customMap[i].region_id == 1293) { // Харківська область
+                customMap[i].led_positions[0] = kharkiv_led_position;
+                customMap[i].led_count = 1;
+                break;      
+            }
+            if (regionSet.count(customMap[i].region_id) && settings.getInt(DISTRICT_MODE_KHARKIV) == 1) {
+                customMap[i].led_count = 0;
+            }
+        }
+    }
+    if (settings.getInt(DISTRICT_MODE_ZP) > 0) {
+        const std::set<uint16_t> regionSet = {12, 146, 145, 149, 147, 148}; // Запорізька область та райони
+        for (int i = 0; i < MAX_REGIONS; ++i) {
+            if (customMap[i].region_id == 564) { // Запорізька область
+                customMap[i].led_positions[0] = zp_led_position;
+                customMap[i].led_count = 1;
+                break;      
+            }
+            if (regionSet.count(customMap[i].region_id) && settings.getInt(DISTRICT_MODE_ZP) == 1) {
+                customMap[i].led_count = 0;
+            }
+        }
     }
 }
+
+// Повертає потрібний mapping (customMap або стандартний)
+inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
+    return customMap; // Повертаємо customMap, який був заповнений раніше
+}
+
+//inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
+//     if (legacy == 4) {
+//         return REGION_MAP_LED;
+//     }
+//     if (legacy == 0 || legacy == 3) {
+//         return STATE_MAP_LED_ODESA_WITH_KYIV;
+//     }
+//     if (legacy == 2 && settings.getBool(KYIV_LED)){
+//         return STATE_MAP_LED_ODESA_WITH_KYIV;
+//     }
+//     if (legacy == 1 && settings.getBool(KYIV_LED)){
+//         return STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
+//     }
+
+//     const RegionLedMapEntry* base = nullptr;
+//     int kyiv_led_position;
+//     if (legacy == 1){
+//         base = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
+//         kyiv_led_position = 7;
+//     } 
+//     if (legacy == 2){
+//         base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
+//         kyiv_led_position = 16;
+//     } 
+    
+//     static RegionLedMapEntry customMap[MAX_REGIONS];
+//     memcpy(customMap, base, sizeof(customMap));
+    
+
+//     for (int i = 0; i < MAX_REGIONS; ++i) {
+//         if (settings.getInt(DISTRICT_MODE_KYIV) == 1) {
+//             if (customMap[i].region_id == 31 && settings.getInt(DISTRICT_MODE_KYIV) == 1) {
+//                 customMap[i].led_positions[0] = kyiv_led_position;
+//                 break;
+//             }
+//         }
+//     }  
+//     return customMap;
+// }
 
 // Отримати регіон по region_id
 inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
