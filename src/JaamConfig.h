@@ -68,33 +68,33 @@ struct SettingListItem {
 
 constexpr int LED_COLOR_FORMATS_COUNT = 8;
 static SettingListItem LED_COLOR_FORMATS[] = {
-    {NEO_RGB, "NEO_RGB", false, false},
-    {NEO_RBG, "NEO_RBG", false, false},
-    {NEO_GRB, "NEO_GRB (рекомендовано)", false, false},
-    {NEO_GBR, "NEO_GBR", false, false},
-    {NEO_BRG, "NEO_BRG", false, false},
-    {NEO_BGR, "NEO_BGR", false, false},
-    {NEO_WRGB, "NEO_WRGB", false, false},
-    {NEO_WGRB, "NEO_WGRB", false, false}
+    {NEO_RGB, "NEO_RGB"},
+    {NEO_RBG, "NEO_RBG"},
+    {NEO_GRB, "NEO_GRB (рекомендовано)"},
+    {NEO_GBR, "NEO_GBR"},
+    {NEO_BRG, "NEO_BRG"},
+    {NEO_BGR, "NEO_BGR"},
+    {NEO_WRGB, "NEO_WRGB"},
+    {NEO_WGRB, "NEO_WGRB"}
 };
 
 constexpr int LED_FREQUENCIES_COUNT = 2; 
 static SettingListItem LED_FREQUENCIES[] = {
-    {NEO_KHZ400, "400 КГц", false, false},
-    {NEO_KHZ800, "800 КГц (рекомендовано)", false, false}
+    {NEO_KHZ400, "400 КГц"},
+    {NEO_KHZ800, "800 КГц (рекомендовано)"}
 };
 
 constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
 static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
-  {0, "Вимкнено", false},
-  {1, "День/Ніч", false},
-  {2, "Сенсор освітлення", false}
+  {0, "Вимкнено"},
+  {1, "День/Ніч"},
+  {2, "Сенсор освітлення"}
 };
 
 constexpr int BG_LED_MODES_COUNT = 2;
 static SettingListItem BG_LED_MODES[] = {
-  {0, "Домашній Регіон", false},
-  {1, "Власний колір", false},
+  {0, "Домашній Регіон"},
+  {1, "Власний колір"},
 };
 
 #if ARDUINO_ESP32_DEV
@@ -104,12 +104,12 @@ static SettingListItem BG_LED_MODES[] = {
 #endif
 static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
 #if ARDUINO_ESP32_DEV
-  {0, "Плата JAAM 1.3", false},
-  {3, "Плата JAAM 2.1", false},
-  {4, "Плата JAAM 3.0", false},
+  {0, "Плата JAAM 1.3"},
+  {3, "Плата JAAM 2.1"},
+  {4, "Плата JAAM 3.0"},
 #endif
-  {1, "Початок на Закарпатті", false},
-  {2, "Початок на Одещині", false},
+  {1, "Початок на Закарпатті"},
+  {2, "Початок на Одещині"},
 };
 
 enum Type {

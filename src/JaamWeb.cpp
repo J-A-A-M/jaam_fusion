@@ -537,7 +537,7 @@ void JaamWeb::handleColorParameter() {
         }
         if (name == "color_missiles") {
             settings->saveString(COLOR_MISSILES, valuePtr);
-            LOG.printf("[WEB] Setting color_ccolor_missileslear: raw=%s\n", valuePtr);
+            LOG.printf("[WEB] Setting color_color_missiles: raw=%s\n", valuePtr);
         }
         if (name == "color_drones") {
             settings->saveString(COLOR_DRONES, valuePtr);

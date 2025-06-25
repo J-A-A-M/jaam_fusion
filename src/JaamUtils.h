@@ -465,18 +465,18 @@ inline void analyzeMemoryFragmentation(const char* context) {
 
 // Function to get service pin color
 inline uint32_t getServicePinColor(int type) {
-    LOG.printf("[LED] getServicePinColor %d\n", type);
+    //LOG.printf("[LED] getServicePinColor %d\n", type);
     uint32_t color = 0;
     switch (type) {
         case POWER:
             color = DefaultColors::POWER;
             break;
         case WIFI:
-            LOG.printf("[LED] wifiConnected %d\n", wifiConnected);
+            LOG.printf("[SERVICE LED] wifiConnected %d\n", wifiConnected);
             color = wifiConnected ? DefaultColors::WIFI : DefaultColors::OFF;
             break;
         case DATA:
-            LOG.printf("[LED] apiConnected %d\n", apiConnected);
+            LOG.printf("[SERVICE LED] apiConnected %d\n", apiConnected);
             color = apiConnected ? DefaultColors::DATA : DefaultColors::OFF;
             break;
         case HA:
