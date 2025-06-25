@@ -100,17 +100,17 @@ static void fillFwVersion(char* result, JaamFirmware firmware) {
 inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
     switch (legacy) {
         case 0:
-            return STATE_MAP_LED;
+            return STATE_MAP_LED_ODESA;
         case 1:
-            return STATE_MAP_LED;
+            return STATE_MAP_LED_TRANSCARPATHIA;
         case 2:
-            return STATE_MAP_LED;
+            return STATE_MAP_LED_ODESA;
         case 3:
-            return STATE_MAP_LED;
+            return STATE_MAP_LED_ODESA;
         case 4:
             return REGION_MAP_LED;
         default:
-            return STATE_MAP_LED;
+            return STATE_MAP_LED_ODESA; // Повертаємо Odesa як дефолтний
     }
 }
 
