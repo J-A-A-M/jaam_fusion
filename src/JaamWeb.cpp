@@ -31,77 +31,8 @@ void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
 
-String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, const char* label) {
-    String html = "<div class='slider-container'>";
-    html += "<span class='value' id='" + String(name) + "Value'>[" + String(value) + "]</span>";
-    html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
-    html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' class='slider' id='" + String(name) + "' oninput='updateSliderValue(\"" + String(name) + "\", this.value)' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
-    html += "</div>";
-    return html;
-}
-
-String JaamWeb::getBoolParameterHtml(const char* name, bool value, const char* label) {
-    String html = "<div class='switch-container'>";
-    
-    html += "<input type='checkbox' id='" + String(name) + "' class='switch' ";
-    if (value) html += "checked ";
-    html += "onchange='updateBoolParameter(\"" + String(name) + "\", this.checked)'>";
-    html += "<label for='" + String(name) + "'>" + String(label) + "</label>";
-    html += "</div>";
-    return html;
-}
-
-String JaamWeb::getColorPickerHtml(const char* name, const char* value, const char* label) {
-    String html = "<div class='color-picker-container'>";
-    html += "<span class='value'><input type='color' id='" + String(name) + "' value='" + String(value) + "' onchange='updateColor(\"" + String(name) + "\", this.value)'></span>";
-    html += "<label for='" + String(name) + "'>" + String(label) + "</label>";
-    html += "</div>";
-    return html;
-}
-
-String JaamWeb::getTextInputHtml(const char* name, const char* value, const char* label, const char* placeholder) {
-    String html = "<div class='text-input-container'>";
-    html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
-    html += "<input type='text' id='" + String(name) + "' value='" + String(value) + "' placeholder='" + String(placeholder) + "' class='text-input' onchange='updateTextParameter(\"" + String(name) + "\", this.value)'>";
-    html += "</div>";
-    return html;
-}
-
-String JaamWeb::getDropdownHtml(const String& name, const String& label, Type settingKey, SettingListItem items[], int itemCount) {
-    String html = "<div class=\"form-group\">";
-    html += "<label for=\"" + name + "\">" + label + ":</label>";
-    html += "<select class=\"form-control\" id=\"" + name + "\" name=\"" + name + "\" onchange='console.log(\"Dropdown changed:\", this.value); updateParameter(\"" + name + "\", this.value);'>";
-    
-    uint16_t currentValue = settings->getInt(settingKey);
-    
-    // Додаємо опцію "Не вибрано"
-    // html += "<option value=\"0\"";
-    // if (currentValue == 0) html += " selected";
-    // html += ">Не вибрано</option>";
-    
-    // Проходимо по масиву items і додаємо тільки ті, що мають ignore=false
-    for (int i = 0; i < itemCount; i++) {
-        if (!items[i].ignore) {
-            html += "<option value=\"" + String(items[i].id) + "\"";
-            if (currentValue == items[i].id) {
-                html += " selected";
-            }
-            // Додаємо префікс "--" якщо sub=true
-            String displayName = items[i].sub ? "-- " + String(items[i].name) : String(items[i].name);
-            html += ">" + displayName + "</option>";
-        }
-    }
-    
-    html += "</select>";
-    html += "</div>";
-    
-    return html;
-}
-
-String JaamWeb::getHtmlTemplate() {
-    String html = "<!DOCTYPE html><html><head>";
-    html += "<meta charset='UTF-8'>";
-    html += "<title>JAAM LED Control</title>";
+String JaamWeb::getMeta() {
+    String html = "<meta charset='UTF-8'>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
 
     html += "<meta name='mobile-web-app-capable' content='yes' />";
@@ -112,7 +43,11 @@ String JaamWeb::getHtmlTemplate() {
     html += "<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent' />";
     html += "<link rel='shortcut icon' href='favicon.png'>";
     html += "<link rel='apple-touch-icon' href='apple-touch-icon.png'>";
-    html += "<style>";
+    return html;
+}
+
+String JaamWeb::getStyles() {
+    String html = "<style>";
     // Основні CSS змінні для темізації
     html += ":root{";
     html += "--bg-color:#f0f0f0;";
@@ -191,9 +126,12 @@ String JaamWeb::getHtmlTemplate() {
     html += ".alert-detail-region{font-size:12px;color:var(--secondary-text);margin-right:5px;font-weight:bold;min-width:60px;}";
     html += ".alert-detail-icon{width:16px;height:16px;fill:currentColor;margin-right:8px;}";
     html += "</style>";
-    
+    return html;
+}
+
+String JaamWeb::getScripts() {
     // JavaScript функції для теми в head
-    html += "<script>";
+    String html = "<script>";
     html += "function detectSystemTheme() {";
     html += "  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';";
     html += "}";
@@ -231,7 +169,85 @@ String JaamWeb::getHtmlTemplate() {
     html += "  }";
     html += "}";
     html += "document.addEventListener('DOMContentLoaded', initTheme);";
-    html += "</script></head><body>";
+    html += "</script>";
+    return html;
+}
+
+String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, const char* label) {
+    String html = "<div class='slider-container'>";
+    html += "<span class='value' id='" + String(name) + "Value'>[" + String(value) + "]</span>";
+    html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
+    html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' class='slider' id='" + String(name) + "' oninput='updateSliderValue(\"" + String(name) + "\", this.value)' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
+    html += "</div>";
+    return html;
+}
+
+String JaamWeb::getBoolParameterHtml(const char* name, bool value, const char* label) {
+    String html = "<div class='switch-container'>";
+    
+    html += "<input type='checkbox' id='" + String(name) + "' class='switch' ";
+    if (value) html += "checked ";
+    html += "onchange='updateBoolParameter(\"" + String(name) + "\", this.checked)'>";
+    html += "<label for='" + String(name) + "'>" + String(label) + "</label>";
+    html += "</div>";
+    return html;
+}
+
+String JaamWeb::getColorPickerHtml(const char* name, const char* value, const char* label) {
+    String html = "<div class='color-picker-container'>";
+    html += "<span class='value'><input type='color' id='" + String(name) + "' value='" + String(value) + "' onchange='updateColor(\"" + String(name) + "\", this.value)'></span>";
+    html += "<label for='" + String(name) + "'>" + String(label) + "</label>";
+    html += "</div>";
+    return html;
+}
+
+String JaamWeb::getTextInputHtml(const char* name, const char* value, const char* label, const char* placeholder) {
+    String html = "<div class='text-input-container'>";
+    html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
+    html += "<input type='text' id='" + String(name) + "' value='" + String(value) + "' placeholder='" + String(placeholder) + "' class='text-input' onchange='updateTextParameter(\"" + String(name) + "\", this.value)'>";
+    html += "</div>";
+    return html;
+}
+
+String JaamWeb::getDropdownHtml(const String& name, const String& label, Type settingKey, SettingListItem items[], int itemCount) {
+    String html = "<div class=\"form-group\">";
+    html += "<label for=\"" + name + "\">" + label + ":</label>";
+    html += "<select class=\"form-control\" id=\"" + name + "\" name=\"" + name + "\" onchange='console.log(\"Dropdown changed:\", this.value); updateParameter(\"" + name + "\", this.value);'>";
+    
+    uint16_t currentValue = settings->getInt(settingKey);
+    
+    // Додаємо опцію "Не вибрано"
+    // html += "<option value=\"0\"";
+    // if (currentValue == 0) html += " selected";
+    // html += ">Не вибрано</option>";
+    
+    // Проходимо по масиву items і додаємо тільки ті, що мають ignore=false
+    for (int i = 0; i < itemCount; i++) {
+        if (!items[i].ignore) {
+            html += "<option value=\"" + String(items[i].id) + "\"";
+            if (currentValue == items[i].id) {
+                html += " selected";
+            }
+            // Додаємо префікс "--" якщо sub=true
+            String displayName = items[i].sub ? "-- " + String(items[i].name) : String(items[i].name);
+            html += ">" + displayName + "</option>";
+        }
+    }
+    
+    html += "</select>";
+    html += "</div>";
+    
+    return html;
+}
+
+String JaamWeb::getHtmlTemplate() {
+    String html = "<!DOCTYPE html><html>";
+    html += "<head>";
+    html += "<title>JAAM LED Control</title>";
+    html += getMeta();
+    html += getStyles();
+    html += getScripts();
+    html += "</head><body>";
     html += "<div class='container'>";
     html += "<h1>JAAM LED Control</h1>";
     
@@ -921,26 +937,27 @@ void JaamWeb::handleSaveMap() {
 }
 
 void JaamWeb::handleMapEditor() {
-    String html = "<!DOCTYPE html><html lang='uk'><head><meta charset='UTF-8'><title>Редактор Карти LED</title>";
-    html += "<style>";
-    html += "body{font-family:Arial,sans-serif;margin:20px;background-color:var(--bg-color);color:var(--text-color);transition:background-color 0.3s ease,color 0.3s ease}";
-    html += ".container{max-width:800px;margin:0 auto;background-color:var(--container-bg);padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.3);transition:background-color 0.3s ease}";
-    html += ".form-group{margin-bottom:15px; display: flex; align-items: center;}";
-    html += ".form-group label{font-weight:bold; margin-right: 10px; min-width: 350px;}";
-    html += ".form-group input{width:100%;padding:8px;border-radius:5px;border:1px solid var(--input-border);background-color:var(--input-bg);color:var(--text-color);}";
-    html += "h1 {text-align: center;} button[type=submit] { background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin: 20px auto 0;}";
-    html += ":root{--bg-color:#f0f0f0;--container-bg:#ffffff;--text-color:#000000;--border-color:#dee2e6;--panel-bg:#f8f9fa;--input-bg:#ffffff;--input-border:#ddd;}";
-    html += "[data-theme='dark']{--bg-color:#121212;--container-bg:#1e1e1e;--text-color:#ffffff;--border-color:#444;--panel-bg:#2a2a2a;--input-bg:#333;--input-border:#555;}";
-    html += "</style></head><body><div class='container'><h1>Редактор власної карти LED</h1>";
+    String html = "<!DOCTYPE html><html>";
+    html += "<head>";
+    html += "<title>JAAM LED Control</title>";
+    html += getMeta();
+    html += getStyles();
+    html += getScripts();
+    html += "</head><body>";
+
+    html += "<div class='container'>";
+    html += "<h1>Редактор власної карти LED</h1>";
+    
+    // Навігація та перемикач теми
+    html += "<a href='/' style='float: left; margin-top: 10px; color: var(--text-color); text-decoration: none;'>&larr; На головну</a>";
+    html += "<button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'><svg viewBox='0 0 24 24'><path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/></svg></button>";
+    html += "<div style='clear:both'></div>";
+
     html += "<form action='/save-map' method='post'>";
 
-    //RegionLedMapEntry currentCustomMap[MAX_REGIONS];
     loadCustomMap(customMap);
 
     for (int i = 0; i < MAX_REGIONS; ++i) {
-        // if ((DISTRICTS[i].id == 0 && i > 0) || DISTRICTS[i].sub) {
-        //     continue;
-        // }
         if ((DISTRICTS[i].id == 0 && i > 0)) {
             continue;
         }
@@ -956,11 +973,14 @@ void JaamWeb::handleMapEditor() {
         }
         
         String displayName = DISTRICTS[i].sub ? "&nbsp;&nbsp;&nbsp;&nbsp;" + String(DISTRICTS[i].name) : "<b>" + String(DISTRICTS[i].name) + "</b>";
-        html += "<div class='form-group'><label for='region_" + String(DISTRICTS[i].id) + "'>" + displayName + ":</label>";
-        html += "<input type='text' id='region_" + String(DISTRICTS[i].id) + "' name='region_" + String(DISTRICTS[i].id) + "' value='" + leds_str + "' placeholder='номери LED, через кому'>";
+        
+        // Використання структури та класів з головної сторінки
+        html += "<div class='text-input-container'>";
+        html += "<label for='region_" + String(DISTRICTS[i].id) + "'>" + displayName + "</label>";
+        html += "<input type='text' id='region_" + String(DISTRICTS[i].id) + "' name='region_" + String(DISTRICTS[i].id) + "' value='" + leds_str + "' placeholder='номери LED, через кому' class='text-input'>";
         html += "</div>";
     }
 
-    html += "<button type='submit'>Зберегти Карту</button></form></div></body></html>";
+    html += "<button type='submit' class='btn-submit'>Зберегти Карту</button></form></div></body></html>";
     server.send(200, "text/html", html);
 }
