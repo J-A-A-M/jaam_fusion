@@ -57,7 +57,7 @@ AnimationParams::Type   animType;
 
 // --- MAP Configuration ---
 std::map<uint16_t, uint16_t>    alertsMap;
-RegionLedMapEntry        customMap[150];
+RegionLedMapEntry               customMap[MAX_REGIONS];
 
 // --- TASKS Configuration ---
 bool                needAdaptAnimationColors = false;

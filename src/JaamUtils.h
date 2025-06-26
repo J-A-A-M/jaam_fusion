@@ -20,7 +20,7 @@ extern JaamBattery                      battery;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
 extern uint8_t                          legacy;
-extern RegionLedMapEntry                customMap[150];
+extern RegionLedMapEntry                customMap[MAX_REGIONS];
 
 struct JaamFirmware {
     int major = 0;
@@ -120,6 +120,11 @@ inline void generateCustomRegionMap() {
         kharkiv_led_position = 20;              // Позиція для Харківської області
         zp_led_position = 23;                   // Позиція для Запорізької області
         base = STATE_MAP_LED_ODESA_WITH_KYIV;
+    } else if (legacy == 2) {
+        kharkiv_led_position = 19;              // Позиція для Харківської області
+        zp_led_position = 22;                   // Позиція для Запорізької області
+        kyiv_led_position = 16;                 // Позиція для Київської області
+        base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
     } else if (legacy == 1 && settings.getBool(KYIV_LED)) {
         kharkiv_led_position = 11;              // Позиція для Харківської області
         zp_led_position = 14;                   // Позиція для Запорізької області
@@ -129,11 +134,6 @@ inline void generateCustomRegionMap() {
         zp_led_position = 13;                   // Позиція для Запорізької області
         kyiv_led_position = 7;                  // Позиція для Київської області
         base = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
-    } else if (legacy == 2) {
-        kharkiv_led_position = 19;              // Позиція для Харківської області
-        zp_led_position = 22;                   // Позиція для Запорізької області
-        kyiv_led_position = 16;                 // Позиція для Київської області
-        base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
     }
 
     if (!base) return;
@@ -398,9 +398,9 @@ inline bool isLedInHomeRegion(int led_position) {
         return false;
     }
 
-    //LOG.printf("[HOME REGION] leds: ");
+    LOG.printf("[HOME REGION] leds: ");
     for (uint8_t i = 0; i < ledCount; ++i) {
-        LOG.printf("%d ", leds[i]);
+        LOG.printf("%d", leds[i]);
     }
     LOG.printf("\n");
 
