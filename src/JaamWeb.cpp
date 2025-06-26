@@ -84,9 +84,11 @@ String JaamWeb::getStyles() {
     
     html += "body{font-family:Arial,sans-serif;margin:20px;background-color:var(--bg-color);color:var(--text-color);transition:background-color 0.3s ease,color 0.3s ease}";
     html += ".container{max-width:600px;margin:0 auto;background-color:var(--container-bg);padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.3);transition:background-color 0.3s ease}";
+    html += ".header-container{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}";
+    html += "h1{margin:0;font-size:1.5em}";
     
     // Перемикач теми
-    html += ".theme-toggle{float:right;background:none;border:1px solid var(--border-color);cursor:pointer;padding:8px;border-radius:8px;transition:background-color 0.3s ease,border-color 0.3s ease;margin-bottom:10px}";
+    html += ".theme-toggle{background:none;border:1px solid var(--border-color);cursor:pointer;padding:8px;border-radius:8px;transition:background-color 0.3s ease,border-color 0.3s ease}";
     html += ".theme-toggle:hover{background-color:var(--panel-bg)}";
     html += ".theme-toggle svg{width:20px;height:20px;fill:var(--text-color);transition:fill 0.3s ease}";
     
@@ -249,6 +251,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getScripts();
     html += "</head><body>";
     html += "<div class='container'>";
+    html += "<div class='header-container'>";
     html += "<h1>JAAM LED Control</h1>";
     
     // Кнопка перемикання теми
@@ -257,7 +260,7 @@ String JaamWeb::getHtmlTemplate() {
     html += "<path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>";
     html += "</svg>";
     html += "</button>";
-    html += "<div style='clear:both'></div>";
+    html += "</div>";
     
     // System Information Panel
     html += "<div class='system-panel' id='systemPanel'>";
@@ -946,12 +949,13 @@ void JaamWeb::handleMapEditor() {
     html += "</head><body>";
 
     html += "<div class='container'>";
+    html += "<div class='header-container'>";
     html += "<h1>Редактор власної карти LED</h1>";
+    html += "<button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'><svg viewBox='0 0 24 24'><path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/></svg></button>";
+    html += "</div>";
     
     // Навігація та перемикач теми
-    html += "<a href='/' style='float: left; margin-top: 10px; color: var(--text-color); text-decoration: none;'>&larr; На головну</a>";
-    html += "<button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'><svg viewBox='0 0 24 24'><path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/></svg></button>";
-    html += "<div style='clear:both'></div>";
+    html += "<a href='/' style='display: block; margin-bottom: 20px; color: var(--text-color); text-decoration: none;'>&larr; На головну</a>";
 
     html += "<form action='/save-map' method='post'>";
 
