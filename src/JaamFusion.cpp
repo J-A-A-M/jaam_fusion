@@ -1758,7 +1758,14 @@ void setup() {
     delay(2000);
     LOG.begin(115200);
     delay(2000);
+
     checkFreeHeap("LOG initialization");
+
+    if(!SPIFFS.begin(true)){
+        LOG.println("[ERROR] An Error has occurred while mounting SPIFFS");
+        return;
+    }
+    checkFreeHeap("SPIFFS initialization");
 
     initChipID();
     checkFreeHeap("chipID initialization");

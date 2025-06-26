@@ -26,6 +26,8 @@ private:
     void setCrossOrigin();
     void sendCrossOriginHeader();
     void handleRoot();
+    void handleMapEditor();
+    void handleSaveMap();
     void handleParameter();
     void handleColorParameter();
     void handleTextParameter();

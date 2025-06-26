@@ -24,6 +24,8 @@ extern volatile bool needReconnectServiceStrip;
 extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 
+extern RegionLedMapEntry                customMap[MAX_REGIONS];
+
 
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -827,6 +829,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     // Налаштування веб-сервера
     server.enableCORS();
     server.on("/", HTTP_GET, [this]() { this->handleRoot(); });
+    server.on("/map-editor", HTTP_GET, [this]() { this->handleMapEditor(); });
+    server.on("/save-map", HTTP_POST, [this]() { this->handleSaveMap(); });
     server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
     server.on("/parameter", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
@@ -860,4 +864,103 @@ void JaamWeb::handleAlertsInfo() {
     setCrossOrigin();
     String response = getAlertsJson();
     server.send(200, "application/json", response);
+}
+
+void JaamWeb::handleSaveMap() {
+
+    for (int i = 0; i < server.args(); ++i) {
+        String argName = server.argName(i);
+        if (argName.startsWith("region_")) {
+            uint16_t region_id = argName.substring(7).toInt();
+            String value = server.arg(i);
+            value.trim();
+
+            int map_idx = -1;
+            for(int j = 0; j < MAX_REGIONS; ++j) {
+                if (DISTRICTS[j].id == region_id) {
+                    map_idx = j;
+                    break;
+                }
+            }
+
+            if (map_idx != -1) {
+                customMap[map_idx].region_id = region_id;
+                uint8_t count = 0;
+                
+                int last_comma = -1;
+                for (int k = 0; k < value.length(); ++k) {
+                    if (value.charAt(k) == ',') {
+                        String num_str = value.substring(last_comma + 1, k);
+                        num_str.trim();
+                        if (num_str.length() > 0 && count < MAX_LEDS_PER_REGION) {
+                            customMap[map_idx].led_positions[count++] = num_str.toInt();
+                        }
+                        last_comma = k;
+                    }
+                }
+                String num_str = value.substring(last_comma + 1);
+                num_str.trim();
+                if (num_str.length() > 0 && count < MAX_LEDS_PER_REGION) {
+                    customMap[map_idx].led_positions[count++] = num_str.toInt();
+                }
+                customMap[map_idx].led_count = count;
+            }
+        }
+    }
+
+    if (saveCustomMap(customMap)) {
+        generateCustomRegionMap();
+        needRecalculateLeds = true;
+        LOG.println("[WEB] Custom map saved successfully.");
+        server.sendHeader("Location", "/map-editor", true);
+        server.send(303);
+    } else {
+        LOG.println("[WEB] Custom map saved successfully.");
+        server.send(500, "text/plain", "Custom map error");
+    }
+}
+
+void JaamWeb::handleMapEditor() {
+    String html = "<!DOCTYPE html><html lang='uk'><head><meta charset='UTF-8'><title>Редактор Карти LED</title>";
+    html += "<style>";
+    html += "body{font-family:Arial,sans-serif;margin:20px;background-color:var(--bg-color);color:var(--text-color);transition:background-color 0.3s ease,color 0.3s ease}";
+    html += ".container{max-width:800px;margin:0 auto;background-color:var(--container-bg);padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.3);transition:background-color 0.3s ease}";
+    html += ".form-group{margin-bottom:15px; display: flex; align-items: center;}";
+    html += ".form-group label{font-weight:bold; margin-right: 10px; min-width: 350px;}";
+    html += ".form-group input{width:100%;padding:8px;border-radius:5px;border:1px solid var(--input-border);background-color:var(--input-bg);color:var(--text-color);}";
+    html += "h1 {text-align: center;} button[type=submit] { background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin: 20px auto 0;}";
+    html += ":root{--bg-color:#f0f0f0;--container-bg:#ffffff;--text-color:#000000;--border-color:#dee2e6;--panel-bg:#f8f9fa;--input-bg:#ffffff;--input-border:#ddd;}";
+    html += "[data-theme='dark']{--bg-color:#121212;--container-bg:#1e1e1e;--text-color:#ffffff;--border-color:#444;--panel-bg:#2a2a2a;--input-bg:#333;--input-border:#555;}";
+    html += "</style></head><body><div class='container'><h1>Редактор власної карти LED</h1>";
+    html += "<form action='/save-map' method='post'>";
+
+    //RegionLedMapEntry currentCustomMap[MAX_REGIONS];
+    loadCustomMap(customMap);
+
+    for (int i = 0; i < MAX_REGIONS; ++i) {
+        // if ((DISTRICTS[i].id == 0 && i > 0) || DISTRICTS[i].sub) {
+        //     continue;
+        // }
+        if ((DISTRICTS[i].id == 0 && i > 0)) {
+            continue;
+        }
+        String leds_str = "";
+        for (int j = 0; j < MAX_REGIONS; ++j) {
+            if (customMap[j].region_id == DISTRICTS[i].id) {
+                for (int k = 0; k < customMap[j].led_count; ++k) {
+                    leds_str += String(customMap[j].led_positions[k]);
+                    if (k < customMap[j].led_count - 1) leds_str += ", ";
+                }
+                break;
+            }
+        }
+        
+        String displayName = DISTRICTS[i].sub ? "&nbsp;&nbsp;&nbsp;&nbsp;" + String(DISTRICTS[i].name) : "<b>" + String(DISTRICTS[i].name) + "</b>";
+        html += "<div class='form-group'><label for='region_" + String(DISTRICTS[i].id) + "'>" + displayName + ":</label>";
+        html += "<input type='text' id='region_" + String(DISTRICTS[i].id) + "' name='region_" + String(DISTRICTS[i].id) + "' value='" + leds_str + "' placeholder='номери LED, через кому'>";
+        html += "</div>";
+    }
+
+    html += "<button type='submit'>Зберегти Карту</button></form></div></body></html>";
+    server.send(200, "text/html", html);
 }

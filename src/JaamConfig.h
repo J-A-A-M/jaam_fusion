@@ -98,9 +98,9 @@ static SettingListItem BG_LED_MODES[] = {
 };
 
 #if ARDUINO_ESP32_DEV
-#define LEGACY_OPTIONS_COUNT 5
+#define LEGACY_OPTIONS_COUNT 6
 #else
-#define LEGACY_OPTIONS_COUNT 2
+#define LEGACY_OPTIONS_COUNT 3
 #endif
 static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
 #if ARDUINO_ESP32_DEV
@@ -110,6 +110,7 @@ static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
 #endif
   {1, "Початок на Закарпатті"},
   {2, "Початок на Одещині"},
+  {5, "Власна карта LED"},
 };
 
 constexpr int LED_MODE_COUNT = 3;
