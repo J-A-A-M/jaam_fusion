@@ -927,14 +927,14 @@ void JaamWeb::handleSaveMap() {
         }
     }
 
-    if (saveCustomMap(customMap)) {
-        generateCustomRegionMap();
+    if (storage.saveCustomMap(customMap)) {
+        //generateCustomRegionMap();
         needRecalculateLeds = true;
         LOG.println("[WEB] Custom map saved successfully.");
         server.sendHeader("Location", "/map-editor", true);
         server.send(303);
     } else {
-        LOG.println("[WEB] Custom map saved successfully.");
+        LOG.println("[WEB] Custom map saving error.");
         server.send(500, "text/plain", "Custom map error");
     }
 }
@@ -959,7 +959,7 @@ void JaamWeb::handleMapEditor() {
 
     html += "<form action='/save-map' method='post'>";
 
-    loadCustomMap(customMap);
+    storage.loadCustomMap(customMap);
 
     for (int i = 0; i < MAX_REGIONS; ++i) {
         if ((DISTRICTS[i].id == 0 && i > 0)) {

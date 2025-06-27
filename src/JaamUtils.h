@@ -2,6 +2,7 @@
 #include "JaamLogs.h"
 #include "JaamSettings.h"
 #include "JaamBattery.h"
+#include "JaamStorage.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -20,6 +21,7 @@ extern uint32_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern JaamSettings                     settings;
 extern JaamBattery                      battery;
+extern JaamStorage                      storage;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
 extern uint8_t                          legacy;
@@ -64,114 +66,6 @@ inline void logMemoryUsage(const char* context) {
     // if (maxBlock < freeHeap * 0.7) {
     //     LOG.printf("[MEMORY] WARNING: High fragmentation! Max block: %u, Free: %u\n", maxBlock, freeHeap);
     // }
-}
-
-// Збереження власної карти у SPIFFS
-inline bool saveCustomMap(const RegionLedMapEntry* map) {
-    File file = SPIFFS.open(CUSTOM_MAP_PATH, "w");
-    if (!file) {
-        return false;
-    }
-
-    JsonDocument doc;
-    JsonArray array = doc.to<JsonArray>();
-
-    for (int i = 0; i < MAX_REGIONS; ++i) {
-        if (map[i].led_count > 0 && map[i].region_id != 0) {
-            JsonObject obj = array.add<JsonObject>();
-            obj["region_id"] = map[i].region_id;
-            JsonArray leds = obj["leds"].to<JsonArray>();
-            for (int j = 0; j < map[i].led_count; ++j) {
-                leds.add(map[i].led_positions[j]);
-            }
-        }
-    }
-
-    bool success = serializeJson(doc, file) > 0;
-    file.close();
-    return success;
-}
-
-// Завантаження власної карти з SPIFFS
-inline bool loadCustomMap(RegionLedMapEntry* map) {
-    //logMemoryUsage("Before loadCustomMap");
-
-    // --- ДІАГНОСТИКА ТА ВІДКРИТТЯ ФАЙЛУ ---
-    LOG.println("[MAP] Attempting to open custom map file...");
-    File file = SPIFFS.open(CUSTOM_MAP_PATH, "r");
-    
-    // Якщо файл не відкрито, значить його немає або сталася помилка.
-    // Це нормальна ситуація, якщо карта ще не була збережена.
-    if (!file) {
-        LOG.println("[MAP] Custom map file not found or cannot be opened. Using default map.");
-        return false;
-    }
-    // --- КІНЕЦЬ ДІАГНОСТИКИ ---
-
-    LOG.printf("[MAP] Opened custom map file, size: %u\n", file.size());
-
-    // Ізолюємо читання файлу від розбору JSON
-    String json_content = file.readString();
-    file.close();
-    LOG.println("[MAP] File content read into string.");
-
-    if (json_content.length() == 0) {
-        LOG.println("[MAP] File is empty.");
-        return false;
-    }
-    
-    //logMemoryUsage("After reading file to string");
-    yield();
-
-    // Явно створюємо документ в купі, щоб уникнути проблем зі стеком
-    JsonDocument* doc = new JsonDocument();
-    if (!doc) {
-        LOG.println("[MAP] Failed to allocate JsonDocument on heap.");
-        return false;
-    }
-    //logMemoryUsage("After new JsonDocument");
-
-    LOG.println("[MAP] Deserializing JSON from string...");
-    DeserializationError error = deserializeJson(*doc, json_content);
-    
-    if (error) {
-        LOG.printf("[MAP] deserializeJson() failed: %s\n", error.c_str());
-        //logMemoryUsage("After failed deserializeJson");
-        delete doc; // Звільняємо пам'ять
-        return false;
-    }
-    LOG.println("[MAP] JSON deserialized successfully.");
-    //logMemoryUsage("After successful deserializeJson");
-
-    memset(map, 0, sizeof(RegionLedMapEntry) * MAX_REGIONS);
-    JsonArray array = doc->as<JsonArray>();
-
-    for (JsonObject obj : array) {
-        uint16_t region_id = obj["region_id"];
-        int map_idx = -1;
-        for(int i = 0; i < MAX_REGIONS; ++i) {
-            if (DISTRICTS[i].id == region_id) {
-                map_idx = i;
-                break;
-            }
-        }
-
-        if (map_idx != -1) {
-            map[map_idx].region_id = region_id;
-            JsonArray leds = obj["leds"];
-            uint8_t count = 0;
-            for (JsonVariant v : leds) {
-                if (count < MAX_LEDS_PER_REGION) {
-                    map[map_idx].led_positions[count++] = v.as<int>();
-                }
-            }
-            map[map_idx].led_count = count;
-        }
-    }
-    
-    delete doc; // Звільняємо пам'ять
-    LOG.println("[MAP] Finished processing custom map.");
-    return true;
 }
   
 static JaamFirmware parseFirmwareVersion(const char* version) {
@@ -243,7 +137,7 @@ inline void generateCustomRegionMap() {
     int zp_led_position;
 
     if (legacy == 5) {
-        if (!loadCustomMap(customMap)) {
+        if (!storage.loadCustomMap(customMap)) {
             // Якщо файл не знайдено, завантажити карту за замовчуванням
             base = STATE_MAP_LED_ODESA_WITH_KYIV;
             memcpy(customMap, base, sizeof(customMap));

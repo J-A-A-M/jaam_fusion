@@ -19,6 +19,7 @@
 #include "JaamWeb.h"
 #include "JaamLed.h"
 #include "JaamUtils.h"
+#include "JaamStorage.h"
 
 using namespace websockets;
 
@@ -36,6 +37,7 @@ JaamFirmware        firmware;
 JaamWeb             web;
 JaamLed             led;
 JaamBattery         battery;
+JaamStorage         storage;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -1353,6 +1355,15 @@ void initBattery() {
     battery.begin();
 }
 
+void initStorage() {
+    LOG.println("[STORAGE] Initializing storage...");
+    // Ініціалізація файлової системи
+    if (storage.begin()) {
+        storage.getStorageInfo();
+        storage.getFilesInfo();
+    }
+}
+
 
 // --- Cycle Functions ---
 
@@ -1755,16 +1766,12 @@ void batteryProcess() {
 
 // --- SETUP ---
 void setup() {
-    delay(2000);
     LOG.begin(115200);
     delay(2000);
 
     checkFreeHeap("LOG initialization");
 
-    if(!SPIFFS.begin(true)){
-        LOG.println("[ERROR] An Error has occurred while mounting SPIFFS");
-        return;
-    }
+    initStorage();
     checkFreeHeap("SPIFFS initialization");
 
     initChipID();
