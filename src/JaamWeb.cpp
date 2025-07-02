@@ -318,10 +318,10 @@ String JaamWeb::getHtmlTemplate() {
     
     // Додаємо слайдери для всіх параметрів
     html += getDropdownHtml("legacy", "Режим прошивки", LEGACY, LEGACY_OPTIONS, LEGACY_OPTIONS_COUNT);
-    html += getDropdownHtml("district_mode_kyiv", "Режим леда Київської області", DISTRICT_MODE_KYIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
+    //html += getDropdownHtml("district_mode_kyiv", "Режим леда Київської області", DISTRICT_MODE_KYIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
     html += getBoolParameterHtml("kyiv_led", settings->getBool(KYIV_LED), "Київ як окремий LED");
-    html += getDropdownHtml("district_mode_kharkiv", "Режим леда Харківської області", DISTRICT_MODE_KHARKIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
-    html += getDropdownHtml("district_mode_zp", "Режим леда Запорізької області", DISTRICT_MODE_ZP, LED_MODE_OPTIONS, LED_MODE_COUNT);
+    //html += getDropdownHtml("district_mode_kharkiv", "Режим леда Харківської області", DISTRICT_MODE_KHARKIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
+    //html += getDropdownHtml("district_mode_zp", "Режим леда Запорізької області", DISTRICT_MODE_ZP, LED_MODE_OPTIONS, LED_MODE_COUNT);
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
     html += getDropdownHtml("bg_led_mode", "Режим фонової підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
     html += "<label class=\"label\">Загальні налаштування</label>";
