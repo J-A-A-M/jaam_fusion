@@ -62,6 +62,10 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
                                     uint8_t endBrightness,
                                     uint16_t region_id)
 {
+    if (strip == nullptr) {
+        LOG.printf("[ANIMATION] ERROR: Strip is nullptr\n");
+        return false;
+    }
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         // Для кожного LED видаляємо його зі старої анімації (якщо є)
         for (int posIdx = 0; posIdx < posCount; ++posIdx) {
@@ -221,12 +225,17 @@ void AnimationManager::logActiveAnimations() {
             if (animations[i] != nullptr && animations[i]->isActive) {
                 AnimationParams* anim = animations[i];
                 const char* stripName = "unknown";
-                if (anim->strip == strip_main) {
+                if (anim->strip == strip_main && strip_main != nullptr) {
                     stripName = "main";
-                } else if (anim->strip == strip_bg) {
+                } else if (anim->strip == strip_bg && strip_bg != nullptr) {
                     stripName = "bg";
-                } else if (anim->strip == strip_service) {
+                } else if (anim->strip == strip_service && strip_service != nullptr) {
                     stripName = "service";
+                }
+
+                if (stripName == "unknown") {
+                    LOG.printf("[DEBUG] Animation %d: strip is nullptr\n", i);
+                    continue;
                 }
 
                 const char* typeName = "unknown";
@@ -768,6 +777,11 @@ std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip,
     std::vector<FreeLedInfo> freeLedsResult;
     std::set<int> animatedLeds;
 
+    if (strip == nullptr) {
+        LOG.println("[LED] ERROR: Strip is nullptr in getFreeLeds");
+        return freeLedsResult;
+    }
+    
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < MAX_ANIMATIONS; i++) {
             if (animations[i] != nullptr && animations[i]->isActive && animations[i]->strip == strip) {

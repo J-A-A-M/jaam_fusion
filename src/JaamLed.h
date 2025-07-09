@@ -11,11 +11,6 @@ extern Adafruit_NeoPixel* strip_bg;
 extern Adafruit_NeoPixel* strip_service;
 extern SemaphoreHandle_t stripMutex;
 
-// Флаги ініціалізації стрічок
-// extern bool strip_main_initialized;
-// extern bool strip_bg_initialized;
-// extern bool strip_service_initialized;
-
 enum class StripStatus {
     SUCCESS = 0,
     STRIP_PIN_NOT_SET,

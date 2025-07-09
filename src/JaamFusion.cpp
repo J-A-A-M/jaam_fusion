@@ -49,9 +49,6 @@ uint16_t            num_leds_service = 5;
 uint8_t             currentBrightness = 0;
 std::vector<int>    allLedsMain;
 std::vector<int>    allLedsBg;
-bool                strip_main_initialized = false;
-bool                strip_bg_initialized = false;
-bool                strip_service_initialized = false;
 
 // --- ANIMATION Configuration ---
 AnimationManager        animation;
@@ -179,7 +176,7 @@ const char* ALERT_TYPES[] = {
 const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
 
 void servicePin(ServiceLed type) {
-    if (strip_service_initialized) {
+    if (strip_service != nullptr) {
         uint32_t color = getServicePinColor(type);
         animation.safeStripOperation(strip_service, [type, color](Adafruit_NeoPixel* strip) {
             strip->setPixelColor(type, color);
@@ -206,6 +203,11 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
 
 void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t region_id, bool increase = true) {
     //LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
+
+    if (strip == nullptr) {
+        LOG.printf("[ANIMATION] LED %d: strip is nullptr\n", led_position);
+        return;
+    }
     
     uint32_t color;
     uint32_t initialColor = 0x000000; // Початковий колір для анімації
@@ -437,7 +439,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
             }
         }
-        if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0) {
+        if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0 && strip_bg != nullptr) {
             LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
                 settings.getInt(HOME_DISTRICT), homeRegionBit);
             animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
@@ -643,7 +645,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     }
                 }
             }
-            if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0) {
+            if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0 && strip_bg != nullptr) {
                 LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
                     settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
                 animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
@@ -656,7 +658,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     }
     if (!isFirstDataFetchCompleted) {
         LOG.printf("[WEBSOCKET] init processing\n");
-        if (strip_main_initialized) {
+        if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 for(uint32_t i = 0; i < strip->numPixels(); i++) {
                     uint32_t color = animation.ledActualColor(strip, i);
@@ -665,7 +667,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 strip->show();
             });
         }
-        if (strip_bg_initialized && settings.getInt(BG_LED_MODE) == 0) {
+        if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == 0) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 uint32_t color = animation.stripActualColor(strip);
                 for(uint32_t i = 0; i < strip->numPixels(); i++) {
@@ -802,7 +804,7 @@ void socketConnect() {
 
 // функція очищення
 void cleanup() {
-    if (strip_main_initialized) {
+    if (strip_main != nullptr) {
         animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
@@ -812,11 +814,10 @@ void cleanup() {
             strip->show();
             delete strip;
             strip_main = nullptr;
-            strip_main_initialized = false;
         });
     }
     
-    if (strip_bg_initialized) {
+    if (strip_bg != nullptr) {
         animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
@@ -826,11 +827,10 @@ void cleanup() {
             strip->show();
             delete strip;
             strip_bg = nullptr;
-            strip_bg_initialized = false;
         });
     }
     
-    if (strip_service_initialized) {
+    if (strip_service != nullptr) {
         animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
@@ -840,13 +840,12 @@ void cleanup() {
             strip->show();
             delete strip;
             strip_service = nullptr;
-            strip_service_initialized = false;
         });
     }
 }
 
-void cleanupSingleStrip(Adafruit_NeoPixel*& strip, bool& initialized, uint32_t defaultColor) {
-    if (initialized && strip != nullptr) {
+void cleanupSingleStrip(Adafruit_NeoPixel*& strip, uint32_t defaultColor) {
+    if (strip != nullptr) {
         animation.safeStripOperation(strip, [&strip, defaultColor](Adafruit_NeoPixel* stripPtr) {
             stripPtr->clear();
             // Встановлюємо дефолтний колір
@@ -857,7 +856,6 @@ void cleanupSingleStrip(Adafruit_NeoPixel*& strip, bool& initialized, uint32_t d
             delete stripPtr;
         });
         strip = nullptr;
-        initialized = false;
     }
 }
 
@@ -882,13 +880,12 @@ void initStripMain() {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
             LOG.println("[LED] SUCCESS: strip_main");
-            strip_main_initialized = true;
         }
     }
     else {
         LOG.println("[LED] SKIP: strip_main (pin <= 0)");
     }
-    // if (strip_main_initialized) {
+    // if (strip_main != nullptr) {
     //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
     //     animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
     //         strip->setBrightness(led.brightnessMapped(0));
@@ -917,12 +914,11 @@ void initStripBg() {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
             LOG.println("[LED] SUCCESS: strip_bg");
-            strip_bg_initialized = true;
         }
     } else {
         LOG.println("[LED] SKIP: strip_bg (pin <= 0 or count <= 0)");
     }
-    // if (strip_bg_initialized) {
+    // if (strip_bg != nullptr) {
     //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
     //     animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
     //         strip->setBrightness(led.brightnessMapped(0));
@@ -951,12 +947,11 @@ void initStripService() {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {
             LOG.println("[LED] SUCCESS: strip_service");
-            strip_service_initialized = true;
         }
     } else {
         LOG.println("[LED] SKIP: strip_service (pin <= 0)");
     }
-    // if (strip_service_initialized) {
+    // if (strip_service != nullptr) {
     //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
     //     // animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
     //     //     strip->setBrightness(led.brightnessMapped(0));
@@ -977,7 +972,7 @@ void reconnectStripMain() {
     animation.clearAllAnimations();
     logMemoryUsage("after clearing animations");
     //defragmentMemory("before strip_main cleanup");
-    cleanupSingleStrip(strip_main, strip_main_initialized, DefaultColors::OFF);
+    cleanupSingleStrip(strip_main, DefaultColors::OFF);
     //defragmentMemory("after strip_main cleanup");
     led.verifyStripCleanup(strip_main);
     //analyzeMemoryFragmentation("before strip_main recreation");
@@ -992,7 +987,7 @@ void reconnectStripBg() {
     animation.clearAllAnimations();
     logMemoryUsage("after clearing animations");
     //defragmentMemory("before strip_bg cleanup");
-    cleanupSingleStrip(strip_bg, strip_bg_initialized, DefaultColors::OFF);
+    cleanupSingleStrip(strip_bg, DefaultColors::OFF);
     //defragmentMemory("after strip_bg cleanup");
     led.verifyStripCleanup(strip_bg);
     //analyzeMemoryFragmentation("before strip_bg recreation");
@@ -1007,7 +1002,7 @@ void reconnectStripService() {
     animation.clearAllAnimations();
     logMemoryUsage("after clearing animations");
     //defragmentMemory("before strip_service cleanup");
-    cleanupSingleStrip(strip_service, strip_service_initialized, DefaultColors::OFF);
+    cleanupSingleStrip(strip_service, DefaultColors::OFF);
     //defragmentMemory("after strip_service cleanup");
     led.verifyStripCleanup(strip_service);
     //analyzeMemoryFragmentation("before strip_service recreation");
@@ -1402,16 +1397,16 @@ void animations() {
     // int stripRand = random(0, 2);
     // switch(stripRand) {
     //     case 0:
-    //         if (strip_main_initialized) strip = strip_main;
+    //         if (strip_main != nullptr) strip = strip_main;
     //         break;
     //     case 1:
-    //         if (strip_bg_initialized) strip = strip_bg;
+    //         if (strip_bg != nullptr) strip = strip_bg;
     //         break;
     //     case 2:
-    //         if (strip_service_initialized) strip = strip_service;
+    //         if (strip_service != nullptr) strip = strip_service;
     //         break;
     //     default:
-    //         if (strip_main_initialized) strip = strip_main;
+    //         if (strip_main != nullptr) strip = strip_main;
     // }
 
     strip = strip_main;
@@ -1585,7 +1580,7 @@ void animationsLog() {
 
 // Виводимо інформацію про леди без анімацій
 void freeMinLedsLog() {
-    if (!strip_main_initialized) {
+    if (strip_main == nullptr) {
         LOG.println("[LED] strip_main not initialized");
         return;
     }
@@ -1623,7 +1618,7 @@ void mainThreadProcess() {
     }
 
     if (needAdaptColors) {
-        if (strip_main_initialized) {
+        if (strip_main != nullptr) {
             LOG.printf("[WEB] Adjusting main colors\n");               
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 for (int i = 0; i < strip->numPixels(); i++) {
@@ -1633,7 +1628,7 @@ void mainThreadProcess() {
                 strip->show();
             });
         }
-        if (strip_bg_initialized) {
+        if (strip_bg != nullptr) {
             LOG.printf("[WEB] Adjusting bg colors\n");
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 uint32_t color = animation.stripActualColor(strip);
@@ -1643,7 +1638,7 @@ void mainThreadProcess() {
                 strip->show();
             });               
         }
-        if (strip_service_initialized) {
+        if (strip_service != nullptr) {
             LOG.printf("[WEB] Adjusting service colors\n");
             animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
                 for(uint16_t i = 0; i < strip->numPixels(); i++) {
@@ -1662,7 +1657,7 @@ void mainThreadProcess() {
     }
     if (needAdaptStripBrightness) {
         needAdaptStripBrightness = false;
-        if (strip_main_initialized) {
+        if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
                 for(uint32_t i = 0; i < strip->numPixels(); i++) {
@@ -1672,7 +1667,7 @@ void mainThreadProcess() {
                 strip->show();
             });
         }
-        if (strip_bg_initialized) {
+        if (strip_bg != nullptr) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
                 uint32_t color = animation.stripActualColor(strip);
@@ -1682,7 +1677,7 @@ void mainThreadProcess() {
                 strip->show();
             });
         }
-        if (strip_service_initialized) {
+        if (strip_service != nullptr) {
             animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
                 for(uint16_t i = 0; i < strip->numPixels(); i++) {
@@ -1726,7 +1721,7 @@ void brightnessProcess() {
     if (settings.getInt(CURRENT_BRIGHTNESS) != currentBrightness) {
         settings.saveInt(CURRENT_BRIGHTNESS, currentBrightness);
         LOG.printf("[BRIGHTNESS] Setting current_brightness to %d\n", currentBrightness);
-        if (strip_main_initialized) {
+        if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
                 for(uint32_t i = 0; i < strip->numPixels(); i++) {
@@ -1736,7 +1731,7 @@ void brightnessProcess() {
                 strip->show();
             });
         }
-        if (strip_bg_initialized) {
+        if (strip_bg != nullptr) {
             animation.safeStripOperation(strip_bg, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
                 uint32_t color = animation.stripActualColor(strip);
@@ -1746,7 +1741,7 @@ void brightnessProcess() {
                 strip->show();
             });
         }
-        if (strip_service_initialized) {
+        if (strip_service != nullptr) {
             animation.safeStripOperation(strip_service, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
                 for(uint16_t i = 0; i < strip->numPixels(); i++) {
