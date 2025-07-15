@@ -30,6 +30,40 @@ static const uint8_t JAAM_FONT_SIZES_COUNT = 10;
 
 JaamDisplay::JaamDisplay() {}
 
+JaamDisplay::~JaamDisplay() {
+    if (_u8g2) {
+        delete _u8g2;
+        _u8g2 = nullptr;
+    }
+}
+
+JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
+    : _type(other._type), _height(other._height), _sda(other._sda), 
+      _scl(other._scl), _address(other._address), _u8g2(other._u8g2) {
+    other._u8g2 = nullptr;
+}
+
+JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
+    if (this != &other) {
+        // Clean up existing resources
+        if (_u8g2) {
+            delete _u8g2;
+        }
+        
+        // Move data from other
+        _type = other._type;
+        _height = other._height;
+        _sda = other._sda;
+        _scl = other._scl;
+        _address = other._address;
+        _u8g2 = other._u8g2;
+        
+        // Reset other
+        other._u8g2 = nullptr;
+    }
+    return *this;
+}
+
 void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
     _type = type;
     _height = height;

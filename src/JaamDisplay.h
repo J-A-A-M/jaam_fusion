@@ -22,6 +22,15 @@ enum class JaamDisplayIcon {
 class JaamDisplay {
 public:
     JaamDisplay();
+    ~JaamDisplay();
+    
+    // Delete copy constructor and copy assignment operator (rule of five)
+    JaamDisplay(const JaamDisplay&) = delete;
+    JaamDisplay& operator=(const JaamDisplay&) = delete;
+    
+    // Move constructor and move assignment operator
+    JaamDisplay(JaamDisplay&& other) noexcept;
+    JaamDisplay& operator=(JaamDisplay&& other) noexcept;
 
     void begin(JaamDisplayType type = JaamDisplayType::SSD1306, JaamDisplayHeight height = JaamDisplayHeight::HEIGHT_64);
     void clear();

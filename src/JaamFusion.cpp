@@ -1495,10 +1495,13 @@ void showClock() {
         return;
     }
     needDivider = !needDivider; // toggle divider for clock display
-    char divider = needDivider ? ':' : ' ';
-    char time[6];
-    sprintf(time, "%02d%c%02d", timeClient.hour(), divider, timeClient.minute());
-    const char* date = timeClient.unixToString("DSTRUA DD.MM.YYYY").c_str();
+    String time;
+    if (needDivider) {
+        time = timeClient.unixToString("hh:mm");
+    } else {
+        time = timeClient.unixToString("hh mm");
+    }
+    String date = timeClient.unixToString("DSTRUA DD.MM.YYYY");
     display.printClock(time, date);
 }
 
