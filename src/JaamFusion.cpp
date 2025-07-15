@@ -70,6 +70,7 @@ bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
 bool                needReconnectServiceStrip;
 bool                needUpdateBatteryPin = false; // Flag to update battery pin in web settings
+bool                needReconfigureDisplay = false; // Flag to reconfigure display settings
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -1746,6 +1747,12 @@ void mainThreadProcess() {
             LOG.println("[MAIN] Battery pin not configured, skipping update");
         }
         needUpdateBatteryPin = false;
+    }
+
+    if (needReconfigureDisplay) {
+        LOG.println("[MAIN] Reconfiguring display");
+        display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
+        needReconfigureDisplay = false;
     }
 }
 

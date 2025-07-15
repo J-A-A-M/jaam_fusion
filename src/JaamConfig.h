@@ -97,6 +97,20 @@ static SettingListItem BG_LED_MODES[] = {
   {1, "Власний колір"},
 };
 
+constexpr int DISPLAY_TYPES_COUNT = 4;
+static SettingListItem DISPLAY_TYPES[] = {
+  {0, "Відключено"},
+  {1, "SSD1306"},
+  {2, "SH1106G"}, 
+  {3, "SH1107"},
+};
+
+constexpr int DISPLAY_HEIGHT_COUNT = 2;
+static SettingListItem DISPLAY_HEIGHTS[] = {
+  {32, "32"},
+  {64, "64"},
+};
+
 #if ARDUINO_ESP32_DEV
 #define LEGACY_OPTIONS_COUNT 6
 #else

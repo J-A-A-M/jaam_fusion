@@ -65,8 +65,18 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
 }
 
 void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
+
+    if (_u8g2) {
+        clear();
+        LOG.printf("[DISPLAY] Clearing existing display\n");
+        delete _u8g2;
+        _u8g2 = nullptr;
+        LOG.printf("[DISPLAY] Cleaned up existing U8G2 object\n");
+    }
+
     _type = type;
     _height = height;
+    
     setupU8g2();
     if (_u8g2) {
         _u8g2->begin();
@@ -88,6 +98,9 @@ void JaamDisplay::setupU8g2() {
 
     // Select constructor based on type/height
     switch (_type) {
+        case JaamDisplayType::NONE:
+            LOG.printf("[DISPLAY] setupU8g2: Display type is NONE - skipping U8G2 initialization\n");
+            return;
         case JaamDisplayType::SSD1306:
             if (_height == JaamDisplayHeight::HEIGHT_64) {
                 _u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);

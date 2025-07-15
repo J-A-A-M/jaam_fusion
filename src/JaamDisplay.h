@@ -5,6 +5,7 @@
 
 // Supported display types
 enum class JaamDisplayType {
+    NONE = 0,
     SSD1306 = 1,
     SH1106G = 2,
     SH1107 = 3
