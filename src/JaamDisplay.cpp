@@ -13,7 +13,8 @@ static const unsigned char trident[] PROGMEM = {
 };
 
 #define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
-#define JAAM_FONT_CLOCK u8g2_font_osr35_tn
+#define JAAM_FONT_CLOCK_64 u8g2_font_osr35_tn
+#define JAAM_FONT_CLOCK_32 u8g2_font_osr21_tn
 static const uint8_t* JAAM_FONT_SIZES[] = {
     u8g2_font_inr42_t_cyrillic, // 42
     u8g2_font_inr38_t_cyrillic, // 38
@@ -93,6 +94,7 @@ void JaamDisplay::clear() {
 
 void JaamDisplay::setupU8g2() {
     if (_u8g2) return; // Already initialized
+
 
     LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
 
@@ -382,7 +384,12 @@ void JaamDisplay::printClock(const String& time, const String& date) {
     }
 
     // Draw time using clock font (always single line)
-    _u8g2->setFont(JAAM_FONT_CLOCK);
+    if (_height == JaamDisplayHeight::HEIGHT_32) {
+        _u8g2->setFont(JAAM_FONT_CLOCK_32);
+    } else {
+        // Default to 64 height
+        _u8g2->setFont(JAAM_FONT_CLOCK_64);
+    }
     int timeWidth = _u8g2->getUTF8Width(time.c_str());
     int timeFontHeight = _u8g2->getAscent();
 
