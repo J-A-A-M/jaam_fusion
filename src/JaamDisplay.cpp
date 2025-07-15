@@ -1,0 +1,340 @@
+#include "JaamDisplay.h"
+#include "JaamLogs.h"
+
+static const unsigned char trident[] PROGMEM = {
+    0x20, 0x00, 0x01, 0x08, 0x60, 0x80, 0x03, 0x0c, 0xe0, 0x80, 0x03, 0x0e, 0xe0, 0x81, 0x03, 0x0f,
+    0xe0, 0x83, 0x83, 0x0f, 0x60, 0x83, 0x83, 0x0d, 0x60, 0x87, 0xc3, 0x0d, 0x60, 0x86, 0xc3, 0x0c,
+    0x60, 0x8e, 0xe3, 0x0c, 0x60, 0x8c, 0x63, 0x0c, 0x60, 0x8c, 0x63, 0x0c, 0x60, 0x8c, 0x63, 0x0c,
+    0x60, 0x8c, 0x63, 0x0c, 0x60, 0x8c, 0x63, 0x0c, 0x60, 0x8f, 0xe3, 0x0d, 0xe0, 0x87, 0xc3, 0x0f,
+    0xe0, 0xc1, 0x07, 0x0f, 0xe0, 0xc0, 0x06, 0x0e, 0xe0, 0xe1, 0x0e, 0x0f, 0xe0, 0x63, 0x8c, 0x0f,
+    0x60, 0x77, 0xdc, 0x0d, 0x60, 0xfe, 0xfe, 0x0c, 0x60, 0xbc, 0x7b, 0x0c, 0x60, 0x98, 0x33, 0x0c,
+    0xe0, 0xff, 0xff, 0x0f, 0xc0, 0xff, 0xff, 0x07, 0x80, 0x3f, 0xf9, 0x03, 0x00, 0x70, 0x1d, 0x00,
+    0x00, 0xe0, 0x0f, 0x00, 0x00, 0xc0, 0x07, 0x00, 0x00, 0x80, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00
+};
+
+#define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
+#define JAAM_FONT_CLOCK u8g2_font_osr35_tn
+static const uint8_t* JAAM_FONT_SIZES[] = {
+    u8g2_font_inr42_t_cyrillic, // 42
+    u8g2_font_inr38_t_cyrillic, // 38
+    u8g2_font_inr33_t_cyrillic, // 33
+    u8g2_font_inr30_t_cyrillic, // 30
+    u8g2_font_inr27_t_cyrillic, // 27
+    u8g2_font_inr24_t_cyrillic, // 24
+    u8g2_font_10x20_t_cyrillic, // 20
+    u8g2_font_9x15_t_cyrillic,  // 15
+    u8g2_font_6x13_t_cyrillic,  // 13
+    u8g2_font_6x12_t_cyrillic,  // 12
+};
+static const uint8_t JAAM_FONT_SIZES_COUNT = 10;
+
+JaamDisplay::JaamDisplay() {}
+
+void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
+    _type = type;
+    _height = height;
+    setupU8g2();
+    if (_u8g2) {
+        _u8g2->begin();
+        _u8g2->enableUTF8Print(); // Enable UTF-8 support for printing
+    }
+}
+
+void JaamDisplay::clear() {
+    if (_u8g2) {
+        _u8g2->clearBuffer();
+        _u8g2->sendBuffer();
+    }
+}
+
+void JaamDisplay::setupU8g2() {
+    if (_u8g2) return; // Already initialized
+
+    LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
+
+    // Select constructor based on type/height
+    switch (_type) {
+        case JaamDisplayType::SSD1306:
+            if (_height == JaamDisplayHeight::HEIGHT_64) {
+                _u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                LOG.printf("[DISPLAY] Using U8G2_SSD1306_128X64_NONAME_F_HW_I2C\n");
+            } else {
+                _u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                LOG.printf("[DISPLAY] Using U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C\n");
+            }
+            break;
+        case JaamDisplayType::SH1106G:
+            if (_height == JaamDisplayHeight::HEIGHT_64) {
+                _u8g2 = new U8G2_SH1106_128X64_NONAME_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                LOG.printf("[DISPLAY] Using U8G2_SH1106_128X64_NONAME_F_HW_I2C\n");
+            } else {
+                _u8g2 = new U8G2_SH1106_128X32_VISIONOX_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                LOG.printf("[DISPLAY] Using U8G2_SH1106_128X32_VISIONOX_F_HW_I2C\n");
+            }
+            break;
+        case JaamDisplayType::SH1107:
+            if (_height == JaamDisplayHeight::HEIGHT_64) {
+                _u8g2 = new U8G2_SH1107_128X128_1_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                LOG.printf("[DISPLAY] Using U8G2_SH1107_128X128_1_HW_I2C\n");
+            } else {
+                // SH1107 128x32 is rare, fallback to 64
+                _u8g2 = new U8G2_SH1107_128X80_2_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                LOG.printf("[DISPLAY] Using U8G2_SH1107_128X80_2_HW_I2C (fallback)\n");
+            }
+            break;
+    }
+    if (_u8g2) {
+        _u8g2->setI2CAddress(_address << 1);
+    }
+}
+
+void JaamDisplay::printMessage(const String& mainText, const String& title) {
+    if (!_u8g2) return;
+    _u8g2->clearBuffer();
+
+    uint8_t dispWidth = 128;
+    uint8_t dispHeight = (uint8_t)_height;
+
+    // Draw title if provided
+    uint8_t titleHeight = 0;
+    if (!title.isEmpty()) {
+        _u8g2->setFont(JAAM_FONT_TITLE);
+        _u8g2->setCursor(3, _u8g2->getAscent());
+        _u8g2->print(title);
+        titleHeight = _u8g2->getAscent() + 2;
+    }
+
+    // Prepare main text
+    String line1 = mainText;
+    String line2 = "";
+
+    // Try to fit mainText in one line, if not, split to two lines and recalc font size
+    int fontIdx = 0;
+    int textWidth = 0;
+    int textHeight = 0;
+    bool fits = false;
+    for (; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
+        _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+        textWidth = _u8g2->getUTF8Width(mainText.c_str());
+        textHeight = _u8g2->getAscent();
+        if (textWidth <= dispWidth - 2) {
+            fits = true;
+            break;
+        }
+    }
+    if (!fits) {
+        // Need to split to two lines and recalc font size
+        // Find a space near the middle to split
+        int mid = mainText.length() / 2;
+        int splitPos = mainText.lastIndexOf(' ', mid);
+        if (splitPos == -1) splitPos = mainText.indexOf(' ', mid);
+        if (splitPos == -1) splitPos = mid; // fallback: split at mid
+        line1 = mainText.substring(0, splitPos);
+        line2 = mainText.substring(splitPos);
+        line2.trim();
+
+        // Now find font size that fits both lines
+        for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
+            _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+            int w1 = _u8g2->getUTF8Width(line1.c_str());
+            int w2 = _u8g2->getUTF8Width(line2.c_str());
+            int h = _u8g2->getAscent();
+            if (w1 <= dispWidth - 2 && w2 <= dispWidth - 2 && (h * 2 + titleHeight + 4) <= dispHeight) {
+                fits = true;
+                break;
+            }
+        }
+        if (fontIdx == JAAM_FONT_SIZES_COUNT) fontIdx = JAAM_FONT_SIZES_COUNT - 1; // fallback to smallest
+    }
+
+    _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+    int mainFontHeight = _u8g2->getAscent();
+
+    if (line2.isEmpty()) {
+        // One line, center vertically (below title if present)
+        int y = (dispHeight + mainFontHeight) / 2;
+        if (titleHeight > 0) {
+            // Center in remaining area below title
+            int availHeight = dispHeight - titleHeight;
+            y = titleHeight + (availHeight + mainFontHeight) / 2;
+        }
+        int x = (dispWidth - _u8g2->getUTF8Width(line1.c_str())) / 2;
+        _u8g2->setCursor(x > 0 ? x : 0, y);
+        _u8g2->print(line1);
+    } else {
+        // Two lines, center both
+        int totalTextHeight = mainFontHeight * 2 + 4;
+        int y1 = titleHeight + (dispHeight - titleHeight - totalTextHeight) / 2 + mainFontHeight;
+        int y2 = y1 + mainFontHeight + 4;
+        int x1 = (dispWidth - _u8g2->getUTF8Width(line1.c_str())) / 2;
+        int x2 = (dispWidth - _u8g2->getUTF8Width(line2.c_str())) / 2;
+        _u8g2->setCursor(x1 > 0 ? x1 : 0, y1);
+        _u8g2->print(line1);
+        _u8g2->setCursor(x2 > 0 ? x2 : 0, y2);
+        _u8g2->print(line2);
+    }
+
+    _u8g2->sendBuffer();
+}
+
+// Draw a monochrome bitmap icon at (x, y) with width w and height h
+void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text) {
+    if (!_u8g2) return;
+
+    const uint8_t* icon = nullptr;
+    switch (iconType) {
+        case JaamDisplayIcon::TRIDENT:
+        default:
+            icon = trident;
+            break;
+    }
+    uint8_t iconW = 32;
+    uint8_t iconH = 32;
+
+    _u8g2->clearBuffer();
+
+    uint8_t dispWidth = 128;
+    uint8_t dispHeight = (uint8_t)_height;
+
+    // Icon position: left-middle
+    uint8_t iconX = 0;
+    uint8_t iconY = (dispHeight - iconH) / 2;
+    _u8g2->drawXBMP(iconX, iconY, iconW, iconH, icon);
+
+    // Text area: to the right of the icon
+    uint8_t textX = iconW + 2;
+    uint8_t textW = dispWidth - textX;
+    uint8_t textY = 0;
+
+    // Try to fit text in 1, 2, or 3 lines with dynamic font size
+    String lines[3];
+    int linesCount = 1;
+    int fontIdx = 0;
+    bool fits = false;
+
+    // Try 1 line, but only allow if font is not the smallest
+    for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
+        _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+        int w = _u8g2->getUTF8Width(text.c_str());
+        int h = _u8g2->getAscent();
+        if (w <= textW && h <= dispHeight - 2) {
+            // Only allow 1-line if font is not the smallest
+            if (fontIdx < JAAM_FONT_SIZES_COUNT - 1) {
+                lines[0] = text;
+                linesCount = 1;
+                fits = true;
+                break;
+            }
+            // else: force split below
+        }
+    }
+
+    // Try 2 lines if not fit
+    if (!fits) {
+        // Split text into two lines near the middle
+        int mid = text.length() / 2;
+        int splitPos = text.lastIndexOf(' ', mid);
+        if (splitPos == -1) splitPos = text.indexOf(' ', mid);
+        if (splitPos == -1) splitPos = mid;
+        lines[0] = text.substring(0, splitPos);
+        lines[1] = text.substring(splitPos);
+        lines[1].trim();
+        for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
+            _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+            int w1 = _u8g2->getUTF8Width(lines[0].c_str());
+            int w2 = _u8g2->getUTF8Width(lines[1].c_str());
+            int h = _u8g2->getAscent();
+            if (w1 <= textW && w2 <= textW && (h * 2 + 2) <= dispHeight) {
+                linesCount = 2;
+                fits = true;
+                break;
+            }
+        }
+        // Only allow 2 lines if font is not the smallest
+        if (!fits && fontIdx == JAAM_FONT_SIZES_COUNT) fontIdx = JAAM_FONT_SIZES_COUNT - 1;
+    }
+
+    // Try 3 lines if still not fit
+    if (!fits) {
+        // Naive split into 3 lines
+        int part = text.length() / 3;
+        int split1 = text.indexOf(' ', part);
+        int split2 = text.indexOf(' ', split1 + 1 + part);
+        if (split1 == -1) split1 = part;
+        if (split2 == -1) split2 = split1 + part;
+        lines[0] = text.substring(0, split1);
+        lines[1] = text.substring(split1, split2);
+        lines[2] = text.substring(split2);
+        lines[1].trim();
+        lines[2].trim();
+        for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
+            _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+            int w1 = _u8g2->getUTF8Width(lines[0].c_str());
+            int w2 = _u8g2->getUTF8Width(lines[1].c_str());
+            int w3 = _u8g2->getUTF8Width(lines[2].c_str());
+            int h = _u8g2->getAscent();
+            if (w1 <= textW && w2 <= textW && w3 <= textW && (h * 3 + 2) <= dispHeight) {
+                linesCount = 3;
+                fits = true;
+                break;
+            }
+        }
+        if (!fits) fontIdx = JAAM_FONT_SIZES_COUNT - 1; // fallback to smallest
+    }
+
+    // Set the font and calculate line heights
+    _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+    int lineHeight = _u8g2->getAscent();
+    int lineSpacing = 5; // Space between lines
+
+    // Vertically center the text block in the display
+    int totalTextHeight = lineHeight * linesCount + lineSpacing * (linesCount - 1);
+    int baseY = (dispHeight - totalTextHeight) / 2 + lineHeight;
+
+    // Draw the lines, left-aligned in the text area (next to icon)
+    for (int i = 0; i < linesCount; ++i) {
+        int x = textX;
+        int y = baseY + i * (lineHeight + lineSpacing);
+        _u8g2->setCursor(x, y);
+        _u8g2->print(lines[i]);
+    }
+
+    _u8g2->sendBuffer();
+}
+
+void JaamDisplay::printClock(const String& time, const String& date) {
+    if (!_u8g2) return;
+    _u8g2->clearBuffer();
+
+    uint8_t dispWidth = 128;
+    uint8_t dispHeight = (uint8_t)_height;
+
+    // Draw date title if provided
+    uint8_t titleHeight = 0;
+    if (!date.isEmpty()) {
+        _u8g2->setFont(JAAM_FONT_TITLE);
+        _u8g2->setCursor(3, _u8g2->getAscent());
+        _u8g2->print(date);
+        titleHeight = _u8g2->getAscent() + 2;
+    }
+
+    // Draw time using clock font (always single line)
+    _u8g2->setFont(JAAM_FONT_CLOCK);
+    int timeWidth = _u8g2->getUTF8Width(time.c_str());
+    int timeFontHeight = _u8g2->getAscent();
+
+    // Center time vertically (below title if present)
+    int y = (dispHeight + timeFontHeight) / 2;
+    if (titleHeight > 0) {
+        // Center in remaining area below title
+        int availHeight = dispHeight - titleHeight;
+        y = titleHeight + (availHeight + timeFontHeight) / 2;
+    }
+    
+    // Center time horizontally
+    int x = (dispWidth - timeWidth) / 2;
+    _u8g2->setCursor(x > 0 ? x : 0, y);
+    _u8g2->print(time);
+
+    _u8g2->sendBuffer();
+}

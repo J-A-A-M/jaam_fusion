@@ -113,6 +113,15 @@ static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
   {5, "Власна карта LED"},
 };
 
+enum LEGACY {
+    JAAM_1_3 = 0,
+    ZAKARPATTIA = 1,
+    ODESSA = 2,
+    JAAM_2_1 = 3,
+    JAAM_3_0 = 4,
+    CUSTOM_MAPPING = 5
+};
+
 constexpr int LED_MODE_COUNT = 3;
 static SettingListItem LED_MODE_OPTIONS[] = {
   {0, "Область"},

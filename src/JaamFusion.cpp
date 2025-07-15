@@ -20,6 +20,7 @@
 #include "JaamLed.h"
 #include "JaamUtils.h"
 #include "JaamStorage.h"
+#include "JaamDisplay.h"
 
 using namespace websockets;
 
@@ -38,6 +39,7 @@ JaamWeb             web;
 JaamLed             led;
 JaamBattery         battery;
 JaamStorage         storage;
+JaamDisplay         display;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -88,6 +90,9 @@ uint32_t            lastWebsocketConnectTime = 0;
 
 
 uint8_t             legacy = 0;
+
+// --- CLOCK ---
+bool needDivider = false;
 
 
 // --- FreeRTOS Task Handles ---
@@ -1132,11 +1137,18 @@ void initSettings() {
     LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
 
     legacy = settings.getInt(LEGACY);
+    num_leds_main = 26; // Default value
 
-    if (legacy == 4) {
+    if (legacy == LEGACY::JAAM_3_0) {
         num_leds_main = 273;
-    } else {
-        num_leds_main = 26;
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+    } else if (legacy == LEGACY::JAAM_2_1) {
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+    } else if (legacy == LEGACY::JAAM_1_3) {
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SSD1306));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
     }
 
     // Заповнюємо allLedsMain згідно з num_leds_main
@@ -1148,6 +1160,12 @@ void initSettings() {
     for (uint32_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
         allLedsBg.push_back(i);
     }
+}
+
+void initDisplay() {
+    LOG.println("[INIT] Init display");
+    display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Jaam Fusion v" + String(VERSION) + " Слава Україні!");
 }
 
 void initMapping() {
@@ -1471,6 +1489,19 @@ void animations() {
     }
 }
 
+void showClock() {
+    if (timeClient.status() != UNIX_OK) {
+        LOG.println("[TIME] Clock not synced yet!");
+        return;
+    }
+    needDivider = !needDivider; // toggle divider for clock display
+    char divider = needDivider ? ':' : ' ';
+    char time[6];
+    sprintf(time, "%02d%c%02d", timeClient.hour(), divider, timeClient.minute());
+    const char* date = timeClient.unixToString("DSTRUA DD.MM.YYYY").c_str();
+    display.printClock(time, date);
+}
+
 void websocketProcess() {
     if (!wifiConnected) {
         LOG.println("[WEBSOCKET] Reconnecting... wifiConnected == false");
@@ -1759,6 +1790,11 @@ void batteryProcess() {
     battery.logVoltage();
 }
 
+// --- Display Process ---
+void displayProcess() {
+    showClock();
+}
+
 // --- SETUP ---
 void setup() {
     LOG.begin(115200);
@@ -1774,6 +1810,9 @@ void setup() {
 
     initSettings();
     checkFreeHeap("settings initialization");
+
+    initDisplay();
+    checkFreeHeap("display initialization");
 
     initMapping();
     checkFreeHeap("LED mapping initialization");
@@ -1821,8 +1860,8 @@ void setup() {
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(batteryProcess, 10000); // кожні 10 секунд
+    async.setInterval(displayProcess, 1000); // кожну секунду
     checkFreeHeap("async tasks configuration");
-
     
     checkFreeHeap("web interface initialization");
     
