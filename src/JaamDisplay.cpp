@@ -290,12 +290,28 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
 
     // Try 3 lines if still not fit
     if (!fits) {
-        // Naive split into 3 lines
-        int part = text.length() / 3;
+        // Smart split into 3 lines
+        int textLen = text.length();
+        int part = textLen / 3;
+        
+        // Find first split point around 1/3
         int split1 = text.indexOf(' ', part);
-        int split2 = text.indexOf(' ', split1 + 1 + part);
-        if (split1 == -1) split1 = part;
-        if (split2 == -1) split2 = split1 + part;
+        if (split1 == -1) {
+            split1 = text.lastIndexOf(' ', part);
+            if (split1 == -1) split1 = part; // fallback
+        }
+        
+        // Find second split point around 2/3, but start after split1
+        int searchStart = split1 + 1;
+        int target2 = (textLen * 2) / 3;
+        int split2 = text.indexOf(' ', target2);
+        if (split2 == -1 || split2 <= split1) {
+            split2 = text.lastIndexOf(' ', target2);
+            if (split2 == -1 || split2 <= split1) {
+                split2 = split1 + (textLen - split1) / 2; // fallback: split remaining text in half
+            }
+        }
+        
         lines[0] = text.substring(0, split1);
         lines[1] = text.substring(split1, split2);
         lines[2] = text.substring(split2);
