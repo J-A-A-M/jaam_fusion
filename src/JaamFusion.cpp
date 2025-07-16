@@ -1128,6 +1128,28 @@ uint8_t getCurrentBrightnes() {
 
 // --- INIT Functions ---
 
+void initLegacy() {
+    LOG.println("[INIT] Init legacy");
+    legacy = settings.getInt(LEGACY);
+    num_leds_main = 26; // Default value
+
+    if (legacy == LEGACY::JAAM_3_0) {
+        num_leds_main = 273;
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
+    } else if (legacy == LEGACY::JAAM_2_1) {
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
+    } else if (legacy == LEGACY::JAAM_1_3) {
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SSD1306));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
+    }
+    LOG.printf("[INIT] Legacy set to %d\n", legacy);
+}
+
 void initSettings() {
     LOG.println("[INIT] Init settings");
     settings.init();
@@ -1137,20 +1159,7 @@ void initSettings() {
     fillFwVersion(currentFwVersion, firmware);
     LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
 
-    legacy = settings.getInt(LEGACY);
-    num_leds_main = 26; // Default value
-
-    if (legacy == LEGACY::JAAM_3_0) {
-        num_leds_main = 273;
-        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
-        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
-    } else if (legacy == LEGACY::JAAM_2_1) {
-        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
-        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
-    } else if (legacy == LEGACY::JAAM_1_3) {
-        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SSD1306));
-        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
-    }
+    initLegacy();
 
     // Заповнюємо allLedsMain згідно з num_leds_main
     allLedsMain.clear();
@@ -1163,9 +1172,13 @@ void initSettings() {
     }
 }
 
+
+
 void initDisplay() {
     LOG.println("[INIT] Init display");
     display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
+    display.invertDisplay(settings.getBool(INVERT_DISPLAY));
+    display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
     display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Jaam Fusion v" + String(VERSION) + " Слава Україні!");
 }
 
@@ -1751,7 +1764,10 @@ void mainThreadProcess() {
 
     if (needReconfigureDisplay) {
         LOG.println("[MAIN] Reconfiguring display");
+        initLegacy(); // reinitialize legacy settings
         display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
+        display.invertDisplay(settings.getBool(INVERT_DISPLAY));
+        display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
         needReconfigureDisplay = false;
     }
 }

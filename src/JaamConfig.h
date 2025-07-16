@@ -111,6 +111,14 @@ static SettingListItem DISPLAY_HEIGHTS[] = {
   {64, "64"},
 };
 
+constexpr int DISPLAY_ROTATION_COUNT = 4;
+static SettingListItem DISPLAY_ROTATIONS[] = {
+  {0, "0°"},
+  {90, "90°"},
+  {180, "180°"},
+  {270, "270°"},
+};
+
 #if ARDUINO_ESP32_DEV
 #define LEGACY_OPTIONS_COUNT 6
 #else
@@ -284,6 +292,7 @@ enum Type {
     DISPLAY_MODEL,
     DISPLAY_WIDTH,
     DISPLAY_HEIGHT,
+    DISPLAY_ROTATION,
     DAY_START,
     NIGHT_START,
     WS_ALERT_TIME,

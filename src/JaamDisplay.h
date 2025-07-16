@@ -20,6 +20,13 @@ enum class JaamDisplayIcon {
     TRIDENT = 1
 };
 
+enum class JaamDisplayRotation {
+    ROTATION_0 = 0,
+    ROTATION_90 = 90,
+    ROTATION_180 = 180,
+    ROTATION_270 = 270
+};
+
 /**
  * JaamDisplay - Display driver for Jaam Fusion.
  */
@@ -38,6 +45,8 @@ public:
 
     void begin(JaamDisplayType type = JaamDisplayType::SSD1306, JaamDisplayHeight height = JaamDisplayHeight::HEIGHT_64);
     void clear();
+    void invertDisplay(bool invert = true);
+    void rotateDisplay(JaamDisplayRotation rotation = JaamDisplayRotation::ROTATION_0);
     void printMessage(const String& mainText, const String& title = "");
     void printClock(const String& time, const String& date = "");
     void drawIconWithText(JaamDisplayIcon icon, const String& text);

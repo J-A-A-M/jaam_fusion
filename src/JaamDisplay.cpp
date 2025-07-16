@@ -108,6 +108,42 @@ void JaamDisplay::clear() {
     }
 }
 
+void JaamDisplay::invertDisplay(bool invert) {
+    if (_u8g2) {
+        if (invert) {
+            _u8g2->sendF("c", 0xa7);  // Set inverse display on
+        } else {
+            _u8g2->sendF("c", 0xa6);  // Set normal display
+        }
+        LOG.printf("[DISPLAY] Display color inversion %s\n", invert ? "enabled" : "disabled");
+    }
+}
+
+void JaamDisplay::rotateDisplay(JaamDisplayRotation rotation) {
+    if (_u8g2) {
+        const u8g2_cb_t* u8g2_rotation;
+        switch (rotation) {
+            case JaamDisplayRotation::ROTATION_0:
+                u8g2_rotation = U8G2_R0;
+                break;
+            case JaamDisplayRotation::ROTATION_90:
+                u8g2_rotation = U8G2_R1;
+                break;
+            case JaamDisplayRotation::ROTATION_180:
+                u8g2_rotation = U8G2_R2;
+                break;
+            case JaamDisplayRotation::ROTATION_270:
+                u8g2_rotation = U8G2_R3;
+                break;
+            default:
+                u8g2_rotation = U8G2_R0;
+                break;
+        }
+        _u8g2->setDisplayRotation(u8g2_rotation);
+        LOG.printf("[DISPLAY] Display rotation set to %d degrees\n", (int)rotation);
+    }
+}
+
 void JaamDisplay::setupU8g2() {
     if (_u8g2) return; // Already initialized
 
