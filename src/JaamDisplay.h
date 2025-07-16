@@ -3,6 +3,21 @@
 #include <Arduino.h>
 #include <U8g2lib.h>
 
+// Board-specific I2C pin definitions
+#if defined(ARDUINO_ESP32S3_DEV)
+    #define DEFAULT_SDA_PIN 8
+    #define DEFAULT_SCL_PIN 9
+    #define BOARD_NAME "ESP32-S3"
+#elif defined(ARDUINO_ESP32C3_DEV)
+    #define DEFAULT_SDA_PIN 5
+    #define DEFAULT_SCL_PIN 6
+    #define BOARD_NAME "ESP32-C3"
+#else
+    #define DEFAULT_SDA_PIN 21
+    #define DEFAULT_SCL_PIN 22
+    #define BOARD_NAME "ESP32"
+#endif
+
 // Supported display types
 enum class JaamDisplayType {
     NONE = 0,
@@ -20,6 +35,16 @@ enum class JaamDisplayIcon {
     TRIDENT = 1
 };
 
+/**
+ * JaamDisplay - Display driver for Jaam Fusion.
+ * 
+ * Supported boards with automatic I2C pin detection:
+ * - ESP32: SDA=21, SCL=22
+ * - ESP32-S3: SDA=8, SCL=9  
+ * - ESP32-C3: SDA=5, SCL=6
+ * 
+ * Pins are automatically configured at compile time based on board type.
+ */
 class JaamDisplay {
 public:
     JaamDisplay();
@@ -42,7 +67,12 @@ public:
 private:
     JaamDisplayType _type = JaamDisplayType::SSD1306;
     JaamDisplayHeight _height = JaamDisplayHeight::HEIGHT_64;
-    uint8_t _sda = 21, _scl = 22, _address = 0x3C;
+    
+    // I2C configuration using board-specific defaults
+    uint8_t _sda = DEFAULT_SDA_PIN;
+    uint8_t _scl = DEFAULT_SCL_PIN;
+    uint8_t _address = 0x3C;
+    
     U8G2* _u8g2 = nullptr;
 
     void setupU8g2();

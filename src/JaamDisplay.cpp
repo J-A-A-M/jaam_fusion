@@ -95,8 +95,11 @@ void JaamDisplay::clear() {
 void JaamDisplay::setupU8g2() {
     if (_u8g2) return; // Already initialized
 
-
     LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
+    
+    // Log board type and I2C pins
+    LOG.printf("[DISPLAY] Board: %s, I2C pins: SDA=%d, SCL=%d, Address=0x%02X\n", 
+               BOARD_NAME, _sda, _scl, _address);
 
     // Select constructor based on type/height
     switch (_type) {
