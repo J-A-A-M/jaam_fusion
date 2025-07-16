@@ -59,8 +59,7 @@ JaamDisplay::~JaamDisplay() {
 }
 
 JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
-    : _type(other._type), _height(other._height), _sda(other._sda), 
-      _scl(other._scl), _address(other._address), _u8g2(other._u8g2) {
+    : _type(other._type), _height(other._height), _u8g2(other._u8g2) {
     other._u8g2 = nullptr;
 }
 
@@ -74,9 +73,6 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
         // Move data from other
         _type = other._type;
         _height = other._height;
-        _sda = other._sda;
-        _scl = other._scl;
-        _address = other._address;
         _u8g2 = other._u8g2;
         
         // Reset other
@@ -117,10 +113,6 @@ void JaamDisplay::setupU8g2() {
 
     LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
     
-    // Log board type and I2C pins
-    LOG.printf("[DISPLAY] Board: %s, I2C pins: SDA=%d, SCL=%d, Address=0x%02X\n", 
-               BOARD_NAME, _sda, _scl, _address);
-
     // Select constructor based on type/height
     switch (_type) {
         case JaamDisplayType::NONE:
@@ -128,35 +120,32 @@ void JaamDisplay::setupU8g2() {
             return;
         case JaamDisplayType::SSD1306:
             if (_height == JaamDisplayHeight::HEIGHT_64) {
-                _u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                _u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0);
                 LOG.printf("[DISPLAY] Using U8G2_SSD1306_128X64_NONAME_F_HW_I2C\n");
             } else {
-                _u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                _u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C(U8G2_R0);
                 LOG.printf("[DISPLAY] Using U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C\n");
             }
             break;
         case JaamDisplayType::SH1106G:
             if (_height == JaamDisplayHeight::HEIGHT_64) {
-                _u8g2 = new U8G2_SH1106_128X64_NONAME_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                _u8g2 = new U8G2_SH1106_128X64_NONAME_F_HW_I2C(U8G2_R0);
                 LOG.printf("[DISPLAY] Using U8G2_SH1106_128X64_NONAME_F_HW_I2C\n");
             } else {
-                _u8g2 = new U8G2_SH1106_128X32_VISIONOX_F_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                _u8g2 = new U8G2_SH1106_128X32_VISIONOX_F_HW_I2C(U8G2_R0);
                 LOG.printf("[DISPLAY] Using U8G2_SH1106_128X32_VISIONOX_F_HW_I2C\n");
             }
             break;
         case JaamDisplayType::SH1107:
             if (_height == JaamDisplayHeight::HEIGHT_64) {
-                _u8g2 = new U8G2_SH1107_128X128_1_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                _u8g2 = new U8G2_SH1107_128X128_1_HW_I2C(U8G2_R0);
                 LOG.printf("[DISPLAY] Using U8G2_SH1107_128X128_1_HW_I2C\n");
             } else {
                 // SH1107 128x32 is rare, fallback to 64
-                _u8g2 = new U8G2_SH1107_128X80_2_HW_I2C(U8G2_R0, _scl, _sda, U8X8_PIN_NONE);
+                _u8g2 = new U8G2_SH1107_128X80_2_HW_I2C(U8G2_R0);
                 LOG.printf("[DISPLAY] Using U8G2_SH1107_128X80_2_HW_I2C (fallback)\n");
             }
             break;
-    }
-    if (_u8g2) {
-        _u8g2->setI2CAddress(_address << 1);
     }
 }
 
