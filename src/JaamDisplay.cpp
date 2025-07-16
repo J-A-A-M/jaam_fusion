@@ -16,7 +16,6 @@ static const unsigned char trident[] PROGMEM = {
 #define JAAM_FONT_CLOCK_64 u8g2_font_osr35_tn
 #define JAAM_FONT_CLOCK_32 u8g2_font_osr21_tn
 static const uint8_t* JAAM_FONT_SIZES[] = {
-    u8g2_font_inr42_t_cyrillic, // 42
     u8g2_font_inr38_t_cyrillic, // 38
     u8g2_font_inr33_t_cyrillic, // 33
     u8g2_font_inr30_t_cyrillic, // 30
@@ -27,7 +26,28 @@ static const uint8_t* JAAM_FONT_SIZES[] = {
     u8g2_font_6x13_t_cyrillic,  // 13
     u8g2_font_6x12_t_cyrillic,  // 12
 };
-static const uint8_t JAAM_FONT_SIZES_COUNT = 10;
+static const uint8_t JAAM_FONT_SIZES_COUNT = 9;
+
+// Alternative font sizes for 32-height displays (max font height: 20px)
+static const uint8_t* JAAM_FONT_SIZES_32[] = {
+    u8g2_font_10x20_t_cyrillic, // 20
+    u8g2_font_9x15_t_cyrillic,  // 15
+    u8g2_font_6x13_t_cyrillic,  // 13
+    u8g2_font_6x12_t_cyrillic,  // 12
+    u8g2_font_5x8_t_cyrillic,   // 8
+};
+static const uint8_t JAAM_FONT_SIZES_32_COUNT = 5;
+
+// Helper function to get appropriate font array and count based on display height
+static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fontArray, uint8_t& fontCount) {
+    if (height == JaamDisplayHeight::HEIGHT_32) {
+        fontArray = JAAM_FONT_SIZES_32;
+        fontCount = JAAM_FONT_SIZES_32_COUNT;
+    } else {
+        fontArray = JAAM_FONT_SIZES;
+        fontCount = JAAM_FONT_SIZES_COUNT;
+    }
+}
 
 JaamDisplay::JaamDisplay() {}
 
@@ -160,13 +180,18 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
     String line1 = mainText;
     String line2 = "";
 
+    // Get appropriate font array based on display height
+    const uint8_t** fontArray;
+    uint8_t fontCount;
+    getFontArrayForHeight(_height, fontArray, fontCount);
+
     // Try to fit mainText in one line, if not, split to two lines and recalc font size
     int fontIdx = 0;
     int textWidth = 0;
     int textHeight = 0;
     bool fits = false;
-    for (; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
-        _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+    for (; fontIdx < fontCount; ++fontIdx) {
+        _u8g2->setFont(fontArray[fontIdx]);
         textWidth = _u8g2->getUTF8Width(mainText.c_str());
         textHeight = _u8g2->getAscent();
         if (textWidth <= dispWidth - 2) {
@@ -186,8 +211,8 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
         line2.trim();
 
         // Now find font size that fits both lines
-        for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
-            _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+        for (fontIdx = 0; fontIdx < fontCount; ++fontIdx) {
+            _u8g2->setFont(fontArray[fontIdx]);
             int w1 = _u8g2->getUTF8Width(line1.c_str());
             int w2 = _u8g2->getUTF8Width(line2.c_str());
             int h = _u8g2->getAscent();
@@ -196,10 +221,10 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
                 break;
             }
         }
-        if (fontIdx == JAAM_FONT_SIZES_COUNT) fontIdx = JAAM_FONT_SIZES_COUNT - 1; // fallback to smallest
+        if (fontIdx == fontCount) fontIdx = fontCount - 1; // fallback to smallest
     }
 
-    _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+    _u8g2->setFont(fontArray[fontIdx]);
     int mainFontHeight = _u8g2->getAscent();
 
     if (line2.isEmpty()) {
@@ -264,14 +289,19 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
     int fontIdx = 0;
     bool fits = false;
 
+    // Get appropriate font array based on display height
+    const uint8_t** fontArray;
+    uint8_t fontCount;
+    getFontArrayForHeight(_height, fontArray, fontCount);
+
     // Try 1 line, but only allow if font is not the smallest
-    for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
-        _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+    for (fontIdx = 0; fontIdx < fontCount; ++fontIdx) {
+        _u8g2->setFont(fontArray[fontIdx]);
         int w = _u8g2->getUTF8Width(text.c_str());
         int h = _u8g2->getAscent();
         if (w <= textW && h <= dispHeight - 2) {
             // Only allow 1-line if font is not the smallest
-            if (fontIdx < JAAM_FONT_SIZES_COUNT - 1) {
+            if (fontIdx < fontCount - 1) {
                 lines[0] = text;
                 linesCount = 1;
                 fits = true;
@@ -291,8 +321,8 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
         lines[0] = text.substring(0, splitPos);
         lines[1] = text.substring(splitPos);
         lines[1].trim();
-        for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
-            _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+        for (fontIdx = 0; fontIdx < fontCount; ++fontIdx) {
+            _u8g2->setFont(fontArray[fontIdx]);
             int w1 = _u8g2->getUTF8Width(lines[0].c_str());
             int w2 = _u8g2->getUTF8Width(lines[1].c_str());
             int h = _u8g2->getAscent();
@@ -303,7 +333,7 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
             }
         }
         // Only allow 2 lines if font is not the smallest
-        if (!fits && fontIdx == JAAM_FONT_SIZES_COUNT) fontIdx = JAAM_FONT_SIZES_COUNT - 1;
+        if (!fits && fontIdx == fontCount) fontIdx = fontCount - 1;
     }
 
     // Try 3 lines if still not fit
@@ -335,8 +365,8 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
         lines[2] = text.substring(split2);
         lines[1].trim();
         lines[2].trim();
-        for (fontIdx = 0; fontIdx < JAAM_FONT_SIZES_COUNT; ++fontIdx) {
-            _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+        for (fontIdx = 0; fontIdx < fontCount; ++fontIdx) {
+            _u8g2->setFont(fontArray[fontIdx]);
             int w1 = _u8g2->getUTF8Width(lines[0].c_str());
             int w2 = _u8g2->getUTF8Width(lines[1].c_str());
             int w3 = _u8g2->getUTF8Width(lines[2].c_str());
@@ -347,11 +377,11 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
                 break;
             }
         }
-        if (!fits) fontIdx = JAAM_FONT_SIZES_COUNT - 1; // fallback to smallest
+        if (!fits) fontIdx = fontCount - 1; // fallback to smallest
     }
 
     // Set the font and calculate line heights
-    _u8g2->setFont(JAAM_FONT_SIZES[fontIdx]);
+    _u8g2->setFont(fontArray[fontIdx]);
     int lineHeight = _u8g2->getAscent();
     int lineSpacing = 5; // Space between lines
 
