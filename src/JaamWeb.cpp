@@ -25,8 +25,6 @@ extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 
-bool needReloadWeb = false; // Flag to reload web page after settings change
-
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 
 
@@ -321,18 +319,13 @@ String JaamWeb::getHtmlTemplate() {
     
     // Додаємо слайдери для всіх параметрів
     html += getDropdownHtml("legacy", "Режим прошивки", LEGACY, LEGACY_OPTIONS, LEGACY_OPTIONS_COUNT);
-    
-    // Показуємо налаштування дисплея лише якщо режим НЕ є платою JAAM
-    int legacyMode = settings->getInt(LEGACY);
     html += "<label class=\"label\">Налаштування дисплея</label>";
-    if (legacyMode != JAAM_1_3 && legacyMode != JAAM_2_1 && legacyMode != JAAM_3_0) {
-        html += getDropdownHtml("display_model", "Тип дисплея", DISPLAY_MODEL, DISPLAY_TYPES, DISPLAY_TYPES_COUNT);
-        html += getDropdownHtml("display_height", "Висота дисплея", DISPLAY_HEIGHT, DISPLAY_HEIGHTS, DISPLAY_HEIGHT_COUNT);
-        html += getDropdownHtml("display_rotation", "Поворот дисплея", DISPLAY_ROTATION, DISPLAY_ROTATIONS, DISPLAY_ROTATION_COUNT);
-    }
+    html += getDropdownHtml("display_model", "Тип дисплея", DISPLAY_MODEL, DISPLAY_TYPES, DISPLAY_TYPES_COUNT);
+    html += getDropdownHtml("display_height", "Висота дисплея", DISPLAY_HEIGHT, DISPLAY_HEIGHTS, DISPLAY_HEIGHT_COUNT);
+    html += getDropdownHtml("display_rotation", "Поворот дисплея", DISPLAY_ROTATION, DISPLAY_ROTATIONS, DISPLAY_ROTATION_COUNT);
     html += getBoolParameterHtml("invert_display", settings->getBool(INVERT_DISPLAY), "Інвертувати дисплей");
-    //html += getDropdownHtml("district_mode_kyiv", "Режим леда Київської області", DISTRICT_MODE_KYIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
     html += getBoolParameterHtml("kyiv_led", settings->getBool(KYIV_LED), "Київ як окремий LED");
+    //html += getDropdownHtml("district_mode_kyiv", "Режим леда Київської області", DISTRICT_MODE_KYIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
     //html += getDropdownHtml("district_mode_kharkiv", "Режим леда Харківської області", DISTRICT_MODE_KHARKIV, LED_MODE_OPTIONS, LED_MODE_COUNT);
     //html += getDropdownHtml("district_mode_zp", "Режим леда Запорізької області", DISTRICT_MODE_ZP, LED_MODE_OPTIONS, LED_MODE_COUNT);
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
@@ -503,13 +496,8 @@ String JaamWeb::getHtmlTemplate() {
     html += "    valueElement.textContent = '[' + value + ']';";
     html += "  }";
     html += "  fetch('/parameter?name=' + name + '&value=' + value)";
-    html += "    .then(response => response.json())";
-    html += "    .then(data => {";
-    html += "      if (data.status === 'OK') {";
-    html += "        if (data.reload) {";
-    html += "          setTimeout(() => location.reload(), 500);"; // Перезавантажуємо через 500мс
-    html += "        }";
-    html += "      } else {";
+    html += "    .then(response => {";
+    html += "      if (!response.ok) {";
     html += "        console.error('Error updating parameter:', name, value);";
     html += "      }";
     html += "    })";
@@ -626,7 +614,6 @@ void JaamWeb::handleParameter() {
             settings->saveInt(LEGACY, intValue);
             LOG.printf("[WEB] Setting legacy: %d\n", intValue);
             needRecalculateLeds = true;
-            needReloadWeb = true;
             needReconfigureDisplay = true;
         } else if (name == "district_mode_kyiv") {
             settings->saveInt(DISTRICT_MODE_KYIV, intValue);
@@ -786,15 +773,7 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
         }
 
-        // Формуємо відповідь з інформацією про необхідність оновлення
-        String response = "{\"status\":\"OK\"";
-        if (needReloadWeb) {
-            response += ",\"reload\":true";
-            needReloadWeb = false; // Скидаємо флаг після відправки
-        }
-        response += "}";
-        
-        server.send(200, "application/json", response);
+        server.send(200, "text/plain", "OK");
     } else {
         server.send(400, "text/plain", "Missing parameters");
     }

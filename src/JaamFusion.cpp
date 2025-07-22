@@ -870,7 +870,7 @@ void initStripMain() {
 
     legacy = settings.getInt(LEGACY);
 
-    if (legacy == 4) {
+    if (legacy == LEGACY::JAAM_3_0) {
         num_leds_main = 273;
     } else {
         num_leds_main = 26;
@@ -1228,7 +1228,7 @@ static void wifiEvents(WiFiEvent_t event) {
         case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
             char softApIp[16];
             strcpy(softApIp, WiFi.softAPIP().toString().c_str());
-            //displayMessage(softApIp, "Введіть у браузері:");
+            display.printMessage(softApIp, "Введіть у браузері:");
             WiFi.removeEvent(wifiEvents);
             break;
         }
@@ -1239,7 +1239,7 @@ static void wifiEvents(WiFiEvent_t event) {
 
 void apCallback(WiFiManager* wifiManager) {
     const char* message = wifiManager->getConfigPortalSSID().c_str();
-    //displayMessage(message, "Підключіться до WiFi:");
+    display.printMessage(message, "Підключіться до WiFi:");
     WiFi.onEvent(wifiEvents);
 }
 

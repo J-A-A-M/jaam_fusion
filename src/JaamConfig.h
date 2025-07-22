@@ -138,7 +138,7 @@ static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
 enum LEGACY {
     JAAM_1_3 = 0,
     ZAKARPATTIA = 1,
-    ODESSA = 2,
+    ODESA = 2,
     JAAM_2_1 = 3,
     JAAM_3_0 = 4,
     CUSTOM_MAPPING = 5
