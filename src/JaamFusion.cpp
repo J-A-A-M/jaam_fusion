@@ -1287,7 +1287,7 @@ void initWifi() {
     lastWifiConnectTime = millis();
     wifiConnected = true;
     servicePin(WIFI);
-    display.showServiceMessage("Підключено до WiFi!");
+    display.showServiceMessage("підключено!", "WiFi", 3000);
     wm.setHttpPort(WiFiConfig::WEB_PORT);
     wm.startWebPortal();
     initTime();
