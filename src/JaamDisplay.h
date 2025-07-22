@@ -50,13 +50,16 @@ public:
     void printMessage(const String& mainText, const String& title = "");
     void printClock(const String& time, const String& date = "");
     void drawIconWithText(JaamDisplayIcon icon, const String& text);
+    void showServiceMessage(const String& message, const String& title = "", int duration = 2000);
 
 private:
     JaamDisplayType _type = JaamDisplayType::SSD1306;
     JaamDisplayHeight _height = JaamDisplayHeight::HEIGHT_64;
     
     U8G2* _u8g2 = nullptr;
+    long _serviceMessageEndTime = 0;
 
-    void setupU8g2();
+    void _setupU8g2();
+    bool _isServiceMessageActive();
 
 };

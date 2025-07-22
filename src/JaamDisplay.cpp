@@ -94,7 +94,7 @@ void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
     _type = type;
     _height = height;
     
-    setupU8g2();
+    _setupU8g2();
     if (_u8g2) {
         _u8g2->begin();
         _u8g2->enableUTF8Print(); // Enable UTF-8 support for printing
@@ -144,7 +144,7 @@ void JaamDisplay::rotateDisplay(JaamDisplayRotation rotation) {
     }
 }
 
-void JaamDisplay::setupU8g2() {
+void JaamDisplay::_setupU8g2() {
     if (_u8g2) return; // Already initialized
 
     LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
@@ -187,6 +187,10 @@ void JaamDisplay::setupU8g2() {
 
 void JaamDisplay::printMessage(const String& mainText, const String& title) {
     if (!_u8g2) return;
+    if (_isServiceMessageActive()) {
+        LOG.printf("[DISPLAY] Skipping printMessage, service message is active\n");
+        return;
+    }
     _u8g2->clearBuffer();
 
     uint8_t dispWidth = 128;
@@ -282,6 +286,10 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
 // Draw a monochrome bitmap icon at (x, y) with width w and height h
 void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text) {
     if (!_u8g2) return;
+    if (_isServiceMessageActive()) {
+        LOG.printf("[DISPLAY] Skipping drawIconWithText, service message is active\n");
+        return;
+    }
 
     const uint8_t* icon = nullptr;
     switch (iconType) {
@@ -427,6 +435,10 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
 
 void JaamDisplay::printClock(const String& time, const String& date) {
     if (!_u8g2) return;
+    if (_isServiceMessageActive()) {
+        LOG.printf("[DISPLAY] Skipping printClock, service message is active\n");
+        return;
+    }
     _u8g2->clearBuffer();
 
     uint8_t dispWidth = 128;
@@ -465,4 +477,15 @@ void JaamDisplay::printClock(const String& time, const String& date) {
     _u8g2->print(time);
 
     _u8g2->sendBuffer();
+}
+
+void JaamDisplay::showServiceMessage(const String& message, const String& title, int duration) {
+  if (!_u8g2) return;
+  _serviceMessageEndTime = 0; // Reset end time
+  printMessage(message, title);
+  _serviceMessageEndTime = millis() + duration;
+}
+
+bool JaamDisplay::_isServiceMessageActive() {
+    return millis() < _serviceMessageEndTime;
 }

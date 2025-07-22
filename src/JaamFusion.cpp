@@ -762,7 +762,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
 void socketConnect() {
     LOG.println("[WEBSOCKET] connection start...");
     servicePin(DATA);
-    //showServiceMessage("підключення...", "Сервер даних");
+    display.showServiceMessage("підключення...", "Сервер даних");
     alertsHash = 0;
     websocket.onMessage(onMessageCallback);
     websocket.onEvent(onEventsCallback);
@@ -799,10 +799,10 @@ void socketConnect() {
         websocket.ping("A");
         websocketReconnect = false;
         lastWebsocketConnectTime  = millis();
-        
-        //showServiceMessage("підключено!", "Сервер даних", 3000);
+
+        display.showServiceMessage("підключено!", "Сервер даних", 3000);
     } else {
-        //showServiceMessage("недоступний", "Сервер даних", 3000);
+        display.showServiceMessage("недоступний", "Сервер даних", 3000);
     }
 }
 
@@ -1244,7 +1244,7 @@ void apCallback(WiFiManager* wifiManager) {
 }
 
 void saveConfigCallback() {
-    //showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
+    display.showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
     delay(2000);
     rebootDevice();
     }
@@ -1287,7 +1287,7 @@ void initWifi() {
     lastWifiConnectTime = millis();
     wifiConnected = true;
     servicePin(WIFI);
-    //showServiceMessage("Підключено до WiFi!");
+    display.showServiceMessage("Підключено до WiFi!");
     wm.setHttpPort(WiFiConfig::WEB_PORT);
     wm.startWebPortal();
     initTime();
