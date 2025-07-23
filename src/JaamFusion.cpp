@@ -131,6 +131,7 @@ void clearAllAlertsMaps() {
 
 void rebootDevice(int time = 2000, bool async = false) {
     LOG.printf("[MAIN] Rebooting in %d ms...\n", time);
+    display.showServiceMessage("Перезавантаження...", "", time);
     
     // Clean up all resources before reboot
     clearAllAlertsMaps();
@@ -1256,6 +1257,7 @@ void initWifi() {
     }
 
     LOG.println("[WIFI] Initializing WiFi...");
+    display.showServiceMessage("підключенння...", "WiFi");
     wifiConnected = false;
     servicePin(WIFI);
 
@@ -1274,7 +1276,10 @@ void initWifi() {
     wm.setAPCallback(apCallback);
     wm.setSaveConfigCallback(saveConfigCallback);
     wm.setConfigPortalTimeout(WiFiConfig::PORTAL_TIMEOUT);
-
+    String wifiSSID = wm.getWiFiSSID(true);
+    if (wifiSSID.length() > 0) {
+        display.showServiceMessage(wifiSSID, "Підключення до:");
+    }
     char apssid[32];
     snprintf(apssid, sizeof(apssid), "JAAM_FUSION_%s", chipID);
     if (!wm.autoConnect(apssid)) {
