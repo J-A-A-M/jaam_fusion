@@ -97,6 +97,28 @@ static SettingListItem BG_LED_MODES[] = {
   {1, "Власний колір"},
 };
 
+constexpr int DISPLAY_TYPES_COUNT = 4;
+static SettingListItem DISPLAY_TYPES[] = {
+  {0, "Відключено"},
+  {1, "SSD1306"},
+  {2, "SH1106G"}, 
+  {3, "SH1107"},
+};
+
+constexpr int DISPLAY_HEIGHT_COUNT = 2;
+static SettingListItem DISPLAY_HEIGHTS[] = {
+  {32, "32"},
+  {64, "64"},
+};
+
+constexpr int DISPLAY_ROTATION_COUNT = 4;
+static SettingListItem DISPLAY_ROTATIONS[] = {
+  {0, "0°"},
+  {90, "90°"},
+  {180, "180°"},
+  {270, "270°"},
+};
+
 #if ARDUINO_ESP32_DEV
 #define LEGACY_OPTIONS_COUNT 6
 #else
@@ -111,6 +133,15 @@ static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
   {1, "Початок на Закарпатті"},
   {2, "Початок на Одещині"},
   {5, "Власна карта LED"},
+};
+
+enum LEGACY {
+    JAAM_1_3 = 0,
+    ZAKARPATTIA = 1,
+    ODESA = 2,
+    JAAM_2_1 = 3,
+    JAAM_3_0 = 4,
+    CUSTOM_MAPPING = 5
 };
 
 constexpr int LED_MODE_COUNT = 3;
@@ -261,6 +292,7 @@ enum Type {
     DISPLAY_MODEL,
     DISPLAY_WIDTH,
     DISPLAY_HEIGHT,
+    DISPLAY_ROTATION,
     DAY_START,
     NIGHT_START,
     WS_ALERT_TIME,

@@ -20,6 +20,7 @@
 #include "JaamLed.h"
 #include "JaamUtils.h"
 #include "JaamStorage.h"
+#include "JaamDisplay.h"
 
 using namespace websockets;
 
@@ -38,6 +39,7 @@ JaamWeb             web;
 JaamLed             led;
 JaamBattery         battery;
 JaamStorage         storage;
+JaamDisplay         display;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -68,6 +70,7 @@ bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
 bool                needReconnectServiceStrip;
 bool                needUpdateBatteryPin = false; // Flag to update battery pin in web settings
+bool                needReconfigureDisplay = false; // Flag to reconfigure display settings
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -88,6 +91,9 @@ uint32_t            lastWebsocketConnectTime = 0;
 
 
 uint8_t             legacy = 0;
+
+// --- CLOCK ---
+bool needDivider = false;
 
 
 // --- FreeRTOS Task Handles ---
@@ -125,6 +131,7 @@ void clearAllAlertsMaps() {
 
 void rebootDevice(int time = 2000, bool async = false) {
     LOG.printf("[MAIN] Rebooting in %d ms...\n", time);
+    display.showServiceMessage("Перезавантаження...", "", time);
     
     // Clean up all resources before reboot
     clearAllAlertsMaps();
@@ -756,7 +763,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
 void socketConnect() {
     LOG.println("[WEBSOCKET] connection start...");
     servicePin(DATA);
-    //showServiceMessage("підключення...", "Сервер даних");
+    display.showServiceMessage("підключення...", "Сервер даних");
     alertsHash = 0;
     websocket.onMessage(onMessageCallback);
     websocket.onEvent(onEventsCallback);
@@ -793,10 +800,10 @@ void socketConnect() {
         websocket.ping("A");
         websocketReconnect = false;
         lastWebsocketConnectTime  = millis();
-        
-        //showServiceMessage("підключено!", "Сервер даних", 3000);
+
+        display.showServiceMessage("підключено!", "Сервер даних", 3000);
     } else {
-        //showServiceMessage("недоступний", "Сервер даних", 3000);
+        display.showServiceMessage("недоступний", "Сервер даних", 3000);
     }
 }
 
@@ -864,7 +871,7 @@ void initStripMain() {
 
     legacy = settings.getInt(LEGACY);
 
-    if (legacy == 4) {
+    if (legacy == LEGACY::JAAM_3_0) {
         num_leds_main = 273;
     } else {
         num_leds_main = 26;
@@ -1122,6 +1129,28 @@ uint8_t getCurrentBrightnes() {
 
 // --- INIT Functions ---
 
+void initLegacy() {
+    LOG.println("[INIT] Init legacy");
+    legacy = settings.getInt(LEGACY);
+    num_leds_main = 26; // Default value
+
+    if (legacy == LEGACY::JAAM_3_0) {
+        num_leds_main = 273;
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
+    } else if (legacy == LEGACY::JAAM_2_1) {
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
+    } else if (legacy == LEGACY::JAAM_1_3) {
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SSD1306));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
+    }
+    LOG.printf("[INIT] Legacy set to %d\n", legacy);
+}
+
 void initSettings() {
     LOG.println("[INIT] Init settings");
     settings.init();
@@ -1131,13 +1160,7 @@ void initSettings() {
     fillFwVersion(currentFwVersion, firmware);
     LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
 
-    legacy = settings.getInt(LEGACY);
-
-    if (legacy == 4) {
-        num_leds_main = 273;
-    } else {
-        num_leds_main = 26;
-    }
+    initLegacy();
 
     // Заповнюємо allLedsMain згідно з num_leds_main
     allLedsMain.clear();
@@ -1148,6 +1171,16 @@ void initSettings() {
     for (uint32_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
         allLedsBg.push_back(i);
     }
+}
+
+
+
+void initDisplay() {
+    LOG.println("[INIT] Init display");
+    display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
+    display.invertDisplay(settings.getBool(INVERT_DISPLAY));
+    display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Jaam Fusion v" + String(VERSION) + " Слава Україні!");
 }
 
 void initMapping() {
@@ -1196,7 +1229,7 @@ static void wifiEvents(WiFiEvent_t event) {
         case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
             char softApIp[16];
             strcpy(softApIp, WiFi.softAPIP().toString().c_str());
-            //displayMessage(softApIp, "Введіть у браузері:");
+            display.printMessage(softApIp, "Введіть у браузері:");
             WiFi.removeEvent(wifiEvents);
             break;
         }
@@ -1207,12 +1240,12 @@ static void wifiEvents(WiFiEvent_t event) {
 
 void apCallback(WiFiManager* wifiManager) {
     const char* message = wifiManager->getConfigPortalSSID().c_str();
-    //displayMessage(message, "Підключіться до WiFi:");
+    display.printMessage(message, "Підключіться до WiFi:");
     WiFi.onEvent(wifiEvents);
 }
 
 void saveConfigCallback() {
-    //showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
+    display.showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
     delay(2000);
     rebootDevice();
     }
@@ -1224,6 +1257,7 @@ void initWifi() {
     }
 
     LOG.println("[WIFI] Initializing WiFi...");
+    display.showServiceMessage("підключенння...", "WiFi");
     wifiConnected = false;
     servicePin(WIFI);
 
@@ -1242,7 +1276,10 @@ void initWifi() {
     wm.setAPCallback(apCallback);
     wm.setSaveConfigCallback(saveConfigCallback);
     wm.setConfigPortalTimeout(WiFiConfig::PORTAL_TIMEOUT);
-
+    String wifiSSID = wm.getWiFiSSID(true);
+    if (wifiSSID.length() > 0) {
+        display.showServiceMessage(wifiSSID, "Підключення до:");
+    }
     char apssid[32];
     snprintf(apssid, sizeof(apssid), "JAAM_FUSION_%s", chipID);
     if (!wm.autoConnect(apssid)) {
@@ -1255,7 +1292,7 @@ void initWifi() {
     lastWifiConnectTime = millis();
     wifiConnected = true;
     servicePin(WIFI);
-    //showServiceMessage("Підключено до WiFi!");
+    display.showServiceMessage("підключено!", "WiFi", 3000);
     wm.setHttpPort(WiFiConfig::WEB_PORT);
     wm.startWebPortal();
     initTime();
@@ -1469,6 +1506,22 @@ void animations() {
     if (currentIdx >= num_leds_main) {
         currentIdx = 0;
     }
+}
+
+void showClock() {
+    if (timeClient.status() != UNIX_OK) {
+        LOG.println("[TIME] Clock not synced yet!");
+        return;
+    }
+    needDivider = !needDivider; // toggle divider for clock display
+    String time;
+    if (needDivider) {
+        time = timeClient.unixToString("hh:mm");
+    } else {
+        time = timeClient.unixToString("hh mm");
+    }
+    String date = timeClient.unixToString("DSTRUA DD.MM.YYYY");
+    display.printClock(time, date);
 }
 
 void websocketProcess() {
@@ -1713,6 +1766,15 @@ void mainThreadProcess() {
         }
         needUpdateBatteryPin = false;
     }
+
+    if (needReconfigureDisplay) {
+        LOG.println("[MAIN] Reconfiguring display");
+        initLegacy(); // reinitialize legacy settings
+        display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
+        display.invertDisplay(settings.getBool(INVERT_DISPLAY));
+        display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
+        needReconfigureDisplay = false;
+    }
 }
 
 void brightnessProcess() {
@@ -1759,6 +1821,11 @@ void batteryProcess() {
     battery.logVoltage();
 }
 
+// --- Display Process ---
+void displayProcess() {
+    showClock();
+}
+
 // --- SETUP ---
 void setup() {
     LOG.begin(115200);
@@ -1774,6 +1841,9 @@ void setup() {
 
     initSettings();
     checkFreeHeap("settings initialization");
+
+    initDisplay();
+    checkFreeHeap("display initialization");
 
     initMapping();
     checkFreeHeap("LED mapping initialization");
@@ -1821,8 +1891,8 @@ void setup() {
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(batteryProcess, 10000); // кожні 10 секунд
+    async.setInterval(displayProcess, 1000); // кожну секунду
     checkFreeHeap("async tasks configuration");
-
     
     checkFreeHeap("web interface initialization");
     
