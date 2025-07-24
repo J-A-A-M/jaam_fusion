@@ -54,7 +54,7 @@ std::vector<int>    allLedsBg;
 
 // --- ANIMATION Configuration ---
 AnimationManager        animation;
-AnimationParams::Type   animType;
+uint16_t                animType;
 
 // --- MAP Configuration ---
 std::map<uint16_t, uint16_t>    alertsMap;
@@ -233,57 +233,57 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
     switch (actualBit) {
         case -1: 
             color = animation.ledActualColor(strip, led_position, true);               
-            animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            animType = 4; // ONE_WAY_BLEND_FADE
             cycles = 1;
-            period = 10000;
+            period = 5000;
             break;
         case 0:
             color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
-            animType = (increase) ? AnimationParams::Type::FADE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
+            animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : 4; // BLEND_FADE : ONE_WAY_BLEND_FADE
             startBrightness = (increase) ? 50 : led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
             endBrightness = (increase) ? led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT)): 50; 
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(ALERT_ON_TIME) * 60 : 1;
+            period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 5000;
+            cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 60000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
             break;
-        case 5:
+        case 5: 
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : 4; // BLEND_FADE : ONE_WAY_BLEND_FADE
+            period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 5000;
+            cycles = (increase) ? (settings.getInt(DRONE_TIME) * 60000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
             break;
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : 4; // BLEND_FADE : ONE_WAY_BLEND_FADE
+            period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 5000;
+            cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 60000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
             break;
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE; 
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1;   
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : 4; // BLEND_FADE : ONE_WAY_BLEND_FADE
+            period = (increase) ? settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 5000;
+            cycles = (increase) ? (settings.getInt(KAB_TIME) * 60000)/settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 1;
             break;
         case 8:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : 4; // BLEND_FADE : ONE_WAY_BLEND_FADE
+            period = (increase) ? settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME) : 5000;
+            cycles = (increase) ? (settings.getInt(BALLISTIC_TIME) * 60000)/settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME)  : 1;
             break;
         case 9:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50;
+            animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : 4; // BLEND_FADE : ONE_WAY_BLEND_FADE
+            period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 5000;
+            cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 60000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
             break;
         default:
             LOG.printf("[ANIMATION] LED %d: unknown bit %d\n", led_position, actualBit);
@@ -1463,21 +1463,21 @@ void animations() {
     int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
     switch(typeRand) {
         case 0:
-            animType = AnimationParams::Type::FADE;
+            animType = 0; // FADE
             break;
         case 1:
-            animType = AnimationParams::Type::BLINK;
+            animType = 1; // BLINK
             break;
         case 2:
-            animType = AnimationParams::Type::BLEND_FADE;
+            animType = 2; // BLEND_FADE
             break;
         case 3:
-            animType = AnimationParams::Type::PULSE;
+            animType = 3; // PULSE
             break;
         default:
-            animType = AnimationParams::Type::FADE;
+            animType = 0; // FADE
     }
-    //animType = AnimationParams::Type::BLEND_FADE;
+    //animType = 2; // BLEND_FADE
 
     // Випадкові параметри для анімації з використанням конфігурації
     uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
@@ -1538,7 +1538,7 @@ void websocketProcess() {
         animation.clearAllAnimations();
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
-            AnimationParams::Type::RUNNING_LIGHT,
+            5, // RUNNING_LIGHT
             strip_main,         
             {}, // not used in RUNNING_LIGHT        
             0,            
@@ -1742,7 +1742,7 @@ void mainThreadProcess() {
         }
         // int ledsIdx[1] = { 0 };
         // if (!animation.createAnimation(
-        //     AnimationParams::Type::SET_BRIGHTNESS,
+        //     6, // SET_BRIGHTNESS
         //     strip_main,
         //     ledsIdx,
         //     1,

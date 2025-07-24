@@ -50,7 +50,7 @@ void AnimationManager::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
 
-bool AnimationManager::createAnimation(AnimationParams::Type type, 
+bool AnimationManager::createAnimation(uint16_t type, 
                                     Adafruit_NeoPixel* strip,
                                     int* positions, 
                                     int posCount,
@@ -130,16 +130,7 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
             memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
 
             // LOG: Початок анімації
-            const char* typeName = "unknown";
-            switch (type) {
-                case AnimationParams::Type::FADE: typeName = "FADE"; break;
-                case AnimationParams::Type::BLINK: typeName = "BLINK"; break;
-                case AnimationParams::Type::BLEND_FADE: typeName = "BLEND_FADE"; break;
-                case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
-                case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
-                case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
-                case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
-            }
+            const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
             LOG.printf("[ANIMATION] START type=%s, region=%d, leds=", typeName, region_id);
             for (int i = 0; i < posCount; ++i) {
                 LOG.printf("%d ", positions[i]);
@@ -238,24 +229,7 @@ void AnimationManager::logActiveAnimations() {
                     continue;
                 }
 
-                const char* typeName = "unknown";
-                switch (anim->type) {
-                    case AnimationParams::Type::FADE:
-                        typeName = "FADE";
-                        break;
-                    case AnimationParams::Type::BLINK:
-                        typeName = "BLINK";
-                        break;
-                    case AnimationParams::Type::BLEND_FADE:
-                        typeName = "BLEND_FADE";
-                        break;
-                    case AnimationParams::Type::PULSE:
-                        typeName = "PULSE";
-                        break;
-                    case AnimationParams::Type::ONE_WAY_BLEND_FADE:
-                        typeName = "ONE_WAY_BLEND_FADE";
-                        break;
-                }
+                const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
 
                 LOG.printf("[DEBUG] Animation %d: strip=%s, LED=%d, region=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
                          i, stripName, anim->positions, anim->region_id, typeName, anim->startBrightness, anim->endBrightness, anim->period, anim->cycles);
@@ -279,16 +253,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
         anim->isActive = false;
         // LOG: Кінець анімації
         uint32_t duration = millis() - anim->startTime;
-        const char* typeName = "unknown";
-        switch (anim->type) {
-            case AnimationParams::Type::FADE: typeName = "FADE"; break;
-            case AnimationParams::Type::BLINK: typeName = "BLINK"; break;
-            case AnimationParams::Type::BLEND_FADE: typeName = "BLEND_FADE"; break;
-            case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
-            case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
-            case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
-            case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
-        }
+        const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
         
         LOG.printf("[ANIMATION] END type=%s, region=%d, leds=", typeName, anim->region_id);
         for (int i = 0; i < anim->posCount; ++i) {
@@ -300,25 +265,25 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
     }
 
     switch (anim->type) {
-        case AnimationParams::Type::FADE:
+        case 0:
             updateFadeAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::BLINK:
+        case 1:
             updateBlinkAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::BLEND_FADE:
+        case 2:
             updateBlendFadeAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::PULSE:
+        case 3:
             updatePulseAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::ONE_WAY_BLEND_FADE:
+        case 4:
             updateOneWayBlendAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::RUNNING_LIGHT:
+        case 5:
             updateRunningLightAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::SET_BRIGHTNESS:
+        case 6:
             updateSetBrightnessAnimation(anim, elapsed);
             break;
     }

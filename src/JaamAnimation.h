@@ -11,18 +11,8 @@ extern Adafruit_NeoPixel* strip_service;
 
 // Структура для параметрів анімації
 struct AnimationParams {
-    enum class Type {
-        FADE,
-        BLINK,
-        BLEND_FADE,
-        PULSE,
-        ONE_WAY_BLEND_FADE,
-        RUNNING_LIGHT,
-        SET_BRIGHTNESS
-    };
-
     Adafruit_NeoPixel* strip;
-    Type type;
+    uint16_t type;
     int* positions;
     int posCount;
     uint32_t color;
@@ -78,7 +68,7 @@ class AnimationManager {
         AnimationManager();
         AnimationParams* animations[MAX_ANIMATIONS];
         void setSettings(JaamSettings* settings);
-        bool createAnimation(AnimationParams::Type type, 
+        bool createAnimation(uint16_t type, 
                            Adafruit_NeoPixel* strip,
                            int* positions, 
                            int posCount,
