@@ -128,7 +128,7 @@ static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
 #if ARDUINO_ESP32_DEV
   {0, "Плата JAAM 1.3"},
   {3, "Плата JAAM 2.1"},
-  {4, "Плата JAAM 3.0"},
+  {4, "Макетна збірка"},
 #endif
   {1, "Початок на Закарпатті"},
   {2, "Початок на Одещині"},

@@ -775,7 +775,7 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Setting night_start: %d\n", intValue);
         } else if (name == "alert_on_time") {
             settings->saveInt(ALERT_ON_TIME, intValue);
-            LOG.printf("[WEB] Setting alert_on: %d\n", intValue);
+            LOG.printf("[WEB] Setting alert_on_time: %d\n", intValue);
         } else if (name == "drone_time") {
             settings->saveInt(DRONE_TIME, intValue);
             LOG.printf("[WEB] Setting drone_time: %d\n", intValue);
