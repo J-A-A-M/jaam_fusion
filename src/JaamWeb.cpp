@@ -356,25 +356,28 @@ String JaamWeb::getHtmlTemplate() {
     html += getDropdownHtml("service_led_frequency", "Сервісна стрічка (частота)", SERVICE_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
     html += "<label class=\"label\">Налаштування анімацій</label>";
     html += getDropdownHtml("alert_on_animation", "Початок тривог", ANIMATION_ALERT_ON_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("alert_off_animation", "Відбій тривог", ANIMATION_ALERT_OFF_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
     html += getDropdownHtml("drone_animation", "Загроза БПЛА", ANIMATION_DRONE_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
     html += getDropdownHtml("missile_animation", "Загроза ракет", ANIMATION_MISSILE_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
     html += getDropdownHtml("kab_animation", "Загроза КАБ", ANIMATION_KAB_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
     html += getDropdownHtml("ballistic_animation", "Загроза балістичних ракет", ANIMATION_BALLISTIC_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
     html += getDropdownHtml("explosion_animation", "Вибухи", ANIMATION_EXPLOSION_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
-    html += "<label class=\"label\">Налаштування таймінгів</label>";
-    html += getParameterHtml("alert_on_time", 1, 10, 1, settings->getInt(ALERT_ON_TIME), "Початок тривог");
-    html += getParameterHtml("drone_time", 1, 10, 1, settings->getInt(DRONE_TIME), "Загроза БПЛА");
-    html += getParameterHtml("missile_time", 1, 10, 1, settings->getInt(MISSILE_TIME), "Загроза ракет");
-    html += getParameterHtml("kab_time", 1, 10, 1, settings->getInt(KAB_TIME), "Загроза КАБ");
-    html += getParameterHtml("ballistic_time", 1, 10, 1, settings->getInt(BALLISTIC_TIME), "Загроза балістичних ракет");
-    html += getParameterHtml("explosion_time", 1, 10, 1, settings->getInt(EXPLOSION_TIME), "Вибухи");
-    html += "<label class=\"label\">Налаштування цикла</label>";
-    html += getParameterHtml("alert_on_cycle", 300, 3000, 100, settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME), "Початок тривог");
-    html += getParameterHtml("drone_cycle", 300, 3000, 100, settings->getInt(ANIMATION_DRONE_CYCLE_TIME), "Загроза БПЛА");
-    html += getParameterHtml("missile_cycle", 300, 3000, 100, settings->getInt(ANIMATION_MISSILE_CYCLE_TIME), "Загроза ракет");
-    html += getParameterHtml("kab_cycle", 300, 3000, 100, settings->getInt(ANIMATION_KAB_CYCLE_TIME), "Загроза КАБ");
-    html += getParameterHtml("ballistic_cycle", 300, 3000, 100, settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME), "Загроза балістичних ракет");
-    html += getParameterHtml("explosion_cycle", 300, 3000, 100, settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME), "Вибухи");
+    html += "<label class=\"label\">Налаштування таймінгів (в секундах)</label>";
+    html += getParameterHtml("alert_on_time", 5, 600, 5, settings->getInt(ALERT_ON_TIME), "Початок тривог");
+    html += getParameterHtml("alert_off_time", 5, 600, 5, settings->getInt(ALERT_OFF_TIME), "Відбій тривог");
+    html += getParameterHtml("drone_time", 5, 600, 5, settings->getInt(DRONE_TIME), "Загроза БПЛА");
+    html += getParameterHtml("missile_time", 5, 600, 5, settings->getInt(MISSILE_TIME), "Загроза ракет");
+    html += getParameterHtml("kab_time", 5, 600, 5, settings->getInt(KAB_TIME), "Загроза КАБ");
+    html += getParameterHtml("ballistic_time", 5, 600, 5, settings->getInt(BALLISTIC_TIME), "Загроза балістичних ракет");
+    html += getParameterHtml("explosion_time", 5, 600, 5, settings->getInt(EXPLOSION_TIME), "Вибухи");
+    html += "<label class=\"label\">Налаштування цикла (в мілісекундах)</label>";
+    html += getParameterHtml("alert_on_cycle", 300, 5000, 100, settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME), "Початок тривог");
+    html += getParameterHtml("alert_off_cycle", 300, 5000, 100, settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME), "Відбій тривог");
+    html += getParameterHtml("drone_cycle", 300, 5000, 100, settings->getInt(ANIMATION_DRONE_CYCLE_TIME), "Загроза БПЛА");
+    html += getParameterHtml("missile_cycle", 300, 5000, 100, settings->getInt(ANIMATION_MISSILE_CYCLE_TIME), "Загроза ракет");
+    html += getParameterHtml("kab_cycle", 300, 3000, 5000, settings->getInt(ANIMATION_KAB_CYCLE_TIME), "Загроза КАБ");
+    html += getParameterHtml("ballistic_cycle", 300, 5000, 100, settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME), "Загроза балістичних ракет");
+    html += getParameterHtml("explosion_cycle", 300, 5000, 100, settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME), "Вибухи");
     html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
@@ -776,6 +779,9 @@ void JaamWeb::handleParameter() {
         } else if (name == "alert_on_time") {
             settings->saveInt(ALERT_ON_TIME, intValue);
             LOG.printf("[WEB] Setting alert_on_time: %d\n", intValue);
+        } else if (name == "alert_off_time") {
+            settings->saveInt(ALERT_OFF_TIME, intValue);
+            LOG.printf("[WEB] Setting alert_off_time: %d\n", intValue);
         } else if (name == "drone_time") {
             settings->saveInt(DRONE_TIME, intValue);
             LOG.printf("[WEB] Setting drone_time: %d\n", intValue);
@@ -794,6 +800,9 @@ void JaamWeb::handleParameter() {
         } else if (name == "alert_on_cycle") {
             settings->saveInt(ANIMATION_ALERT_ON_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting alert_on_cycle: %d\n", intValue);
+        } else if (name == "alert_off_cycle") {
+            settings->saveInt(ANIMATION_ALERT_OFF_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting alert_off_cycle: %d\n", intValue);
         } else if (name == "drone_cycle") {
             settings->saveInt(ANIMATION_DRONE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting drone_cycle: %d\n", intValue);
@@ -812,6 +821,9 @@ void JaamWeb::handleParameter() {
         } else if (name == "alert_on_animation") {
             settings->saveInt(ANIMATION_ALERT_ON_TYPE, intValue);
             LOG.printf("[WEB] Setting alert_on_animation: %d\n", intValue);
+        } else if (name == "alert_off_animation") {
+            settings->saveInt(ANIMATION_ALERT_OFF_TYPE, intValue);
+            LOG.printf("[WEB] Setting alert_off_animation: %d\n", intValue);
         } else if (name == "drone_animation") {
             settings->saveInt(ANIMATION_DRONE_TYPE, intValue);
             LOG.printf("[WEB] Setting drone_animation: %d\n", intValue);
