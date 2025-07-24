@@ -17,7 +17,7 @@ uint8_t JaamLed::brightnessAbsolute(uint8_t percent) {
 }
 
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
-    if (legacy == LEGACY::JAAM_3_0) {
+    if (legacy == LEGACY::MAKET) {
         return map(percent, 0, 100, 0, 35);
     } else {
         return map(percent, 0, 100, 0, 50);

@@ -871,7 +871,7 @@ void initStripMain() {
 
     legacy = settings.getInt(LEGACY);
 
-    if (legacy == LEGACY::JAAM_3_0) {
+    if (legacy == LEGACY::MAKET) {
         num_leds_main = 273;
     } else {
         num_leds_main = 26;
@@ -1134,7 +1134,7 @@ void initLegacy() {
     legacy = settings.getInt(LEGACY);
     num_leds_main = 26; // Default value
 
-    if (legacy == LEGACY::JAAM_3_0) {
+    if (legacy == LEGACY::MAKET) {
         num_leds_main = 273;
         settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
         settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));

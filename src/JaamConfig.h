@@ -140,7 +140,7 @@ enum LEGACY {
     ZAKARPATTIA = 1,
     ODESA = 2,
     JAAM_2_1 = 3,
-    JAAM_3_0 = 4,
+    MAKET = 4,
     CUSTOM_MAPPING = 5
 };
 
