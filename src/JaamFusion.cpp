@@ -882,7 +882,7 @@ void initStripMain() {
         LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(MAIN_LED_PIN), num_leds_main, ledType, 
                    settings.getInt(MAIN_LED_COLOR_FORMAT), settings.getInt(MAIN_LED_FREQUENCY));
-        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 0, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::MAIN_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
@@ -916,7 +916,7 @@ void initStripBg() {
         LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), ledType,
                    settings.getInt(BG_LED_COLOR_FORMAT), settings.getInt(BG_LED_FREQUENCY));
-        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 0, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::BG_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
@@ -949,7 +949,7 @@ void initStripService() {
         LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(SERVICE_LED_PIN), num_leds_service, ledType,
                    settings.getInt(SERVICE_LED_COLOR_FORMAT), settings.getInt(SERVICE_LED_FREQUENCY));
-        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 0, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::SERVICE_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {
@@ -1830,9 +1830,18 @@ void displayProcess() {
 // --- SETUP ---
 void setup() {
     LOG.begin(115200);
-    delay(2000);
 
     checkFreeHeap("LOG initialization");
+
+    initSettings();
+    checkFreeHeap("settings initialization");
+    
+    initStrip();
+    checkFreeHeap("LED strips initialization");
+    brightnessProcess();
+
+    initDisplay();
+    checkFreeHeap("display initialization");
 
     initStorage();
     checkFreeHeap("SPIFFS initialization");
@@ -1840,17 +1849,8 @@ void setup() {
     initChipID();
     checkFreeHeap("chipID initialization");
 
-    initSettings();
-    checkFreeHeap("settings initialization");
-
-    initDisplay();
-    checkFreeHeap("display initialization");
-
     initMapping();
     checkFreeHeap("LED mapping initialization");
-
-    initStrip();
-    checkFreeHeap("LED strips initialization");
 
     initBattery();
     checkFreeHeap("battery initialization");
@@ -1883,6 +1883,7 @@ void setup() {
     async.setInterval(animations, ANIMATION_INTERVAL);
 #endif
     //async.setInterval(animationsLog, 1000);
+    async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(memoryProcess, MEMORY_CHECK_INTERVAL);
     async.setInterval(wifiProcess, WIFI_CHECK_INTERVAL);
 #if !defined(TEST_ANIMATION)
@@ -1890,7 +1891,7 @@ void setup() {
 #endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
-    async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
+    
     async.setInterval(batteryProcess, 10000); // кожні 10 секунд
     async.setInterval(displayProcess, 1000); // кожну секунду
     checkFreeHeap("async tasks configuration");
