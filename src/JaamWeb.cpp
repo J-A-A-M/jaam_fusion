@@ -375,7 +375,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("alert_off_cycle", 300, 5000, 100, settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME), "Відбій тривог");
     html += getParameterHtml("drone_cycle", 300, 5000, 100, settings->getInt(ANIMATION_DRONE_CYCLE_TIME), "Загроза БПЛА");
     html += getParameterHtml("missile_cycle", 300, 5000, 100, settings->getInt(ANIMATION_MISSILE_CYCLE_TIME), "Загроза ракет");
-    html += getParameterHtml("kab_cycle", 300, 3000, 5000, settings->getInt(ANIMATION_KAB_CYCLE_TIME), "Загроза КАБ");
+    html += getParameterHtml("kab_cycle", 300, 5000, 100, settings->getInt(ANIMATION_KAB_CYCLE_TIME), "Загроза КАБ");
     html += getParameterHtml("ballistic_cycle", 300, 5000, 100, settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME), "Загроза балістичних ракет");
     html += getParameterHtml("explosion_cycle", 300, 5000, 100, settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME), "Вибухи");
     html += "<label class=\"label\">Налаштування кольорів</label>";
