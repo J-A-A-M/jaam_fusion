@@ -125,7 +125,8 @@ bool AnimationManager::createAnimation(uint16_t type,
                                     uint32_t cycles,
                                     uint8_t startBrightness,
                                     uint8_t endBrightness,
-                                    uint16_t region_id)
+                                    uint16_t region_id,
+                                    int bit)
 {
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] ERROR: Strip is nullptr\n");
@@ -191,6 +192,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             animations[slot]->isActive = true;
             animations[slot]->startTime = getStartTime(type);
             animations[slot]->region_id = region_id;
+            animations[slot]->bit = bit;
             
             memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
 
@@ -200,7 +202,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             for (int i = 0; i < posCount; ++i) {
                 LOG.printf("%d ", positions[i]);
             }
-            LOG.printf(" period=%u, cycles=%u, startBrightness=%u, endBrightness=%u\n", period, cycles, startBrightness, endBrightness);
+            LOG.printf(" period=%u, cycles=%u, startBrightness=%u, endBrightness=%u, bit=%d\n", period, cycles, startBrightness, endBrightness, bit);
 
             // Зберігаємо початковий колір для першого LED
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
@@ -558,7 +560,7 @@ void AnimationManager::adaptAllAnimationColors() {
                     int ledIdx = anim->positions[k];
                     // Адаптуємо колір для кожного LED
                     LOG.printf("[DEBUG] changed color for led %d\n", ledIdx);
-                    anim->color = ledActualColor(anim->strip, ledIdx, true);
+                    anim->color = ledActualColor(anim->strip, ledIdx, true, anim->bit);
                 }
             }
         }
@@ -587,6 +589,8 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
             is_enabled = settings->getBool(ENABLE_BALLISTIC);
         } else if (bit == 9) {
             is_enabled = settings->getBool(ENABLE_EXPLOSIONS);
+        } else if (bit == 10) {
+            is_enabled = settings->getBool(ENABLE_RECON_DRONES);
         }
 
         // Якщо тип тривоги дозволено показувати - встановлюємо колір
@@ -608,6 +612,9 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             } else if (bit == 9) {
                 color = colorFromHex(settings->getString(COLOR_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            } else if (bit == 10) {
+                color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
             break; // Зупиняємося на першому дозволеному біті
@@ -674,14 +681,19 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     return color;
 }
 
-uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted) {
+uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted, int bit) {
     uint32_t color = 0;
     uint8_t brightness = 0;
 
     if (strip == strip_main) {
         auto regions = getRegionsForLed(position);
-        int highest_bit = findHighestBitForLed(position);
-        
+        int highest_bit = -1;
+
+        if (bit != -1) {
+            highest_bit = bit;
+        } else {
+            highest_bit = findHighestBitForLed(position);
+        }
         if (highest_bit != -1) {
             std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
             color = result.first;
@@ -702,7 +714,13 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         }
     } 
     if (strip == strip_bg) {
-        int highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+        int highest_bit = -1;
+
+        if (bit != -1) {
+            highest_bit = bit;
+        } else {
+            highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+        }
         
         if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == 0) {
             // Якщо немає тривог, встановлюємо колір домашнього району

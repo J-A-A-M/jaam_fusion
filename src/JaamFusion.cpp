@@ -179,7 +179,8 @@ const char* ALERT_TYPES[] = {
     "Missiles", // bit 6
     "KAB",      // bit 7
     "Ballistic",// bit 8
-    "Explosion" // bit 9
+    "Explosion", // bit 9
+    "Recon Drones" // bit 10
 };
 const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
 
@@ -233,7 +234,7 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
 
     switch (actualBit) {
         case -1: 
-            color = animation.ledActualColor(strip, led_position, true);               
+            color = animation.ledActualColor(strip, led_position);               
             animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
             cycles = (settings.getInt(ALERT_OFF_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
@@ -328,7 +329,8 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
         cycles,
         startBrightness,
         endBrightness,
-        region_id
+        region_id,
+        actualBit
     )) {
         LOG.println("[ERROR] Failed to create animation");
         return;
@@ -1556,7 +1558,6 @@ void websocketProcess() {
             1000,
             180,
             50,
-
             200
         );
     }
@@ -1723,30 +1724,30 @@ void mainThreadProcess() {
         if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                for(uint32_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
+                // for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                //     uint32_t color = animation.ledActualColor(strip, i);
+                //     strip->setPixelColor(i, color);
+                // }
                 strip->show();
             });
         }
         if (strip_bg != nullptr) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                uint32_t color = animation.stripActualColor(strip);
-                for (uint32_t i = 0; i < strip->numPixels(); i++) {
-                    strip->setPixelColor(i, color);
-                }
+                // uint32_t color = animation.stripActualColor(strip);
+                // for (uint32_t i = 0; i < strip->numPixels(); i++) {
+                //     strip->setPixelColor(i, color);
+                // }
                 strip->show();
             });
         }
         if (strip_service != nullptr) {
             animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
+                // for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                //     uint32_t color = animation.ledActualColor(strip, i);
+                //     strip->setPixelColor(i, color);
+                // }
                 strip->show();
             });
         }
