@@ -3,8 +3,6 @@
 #include <WebServer.h>
 #include <WiFiManager.h>
 #include "JaamSettings.h"
-#include "JaamLed.h"
-#include "JaamAnimation.h"
 
 class JaamWeb {
 public:

@@ -22,7 +22,8 @@ struct AnimationParams {
     uint8_t startBrightness;
     uint8_t endBrightness;
     bool isActive;
-    uint32_t startTime;
+    uint32_t startTime;        // Глобальний час для синхронізації фази
+    uint32_t localStartTime;   // Локальний час початку для розрахунку тривалості
     uint16_t region_id;
     uint32_t lastLogTime = 0;
     int bit;

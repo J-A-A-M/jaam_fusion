@@ -55,7 +55,14 @@ void AnimationManager::setSettings(JaamSettings* settings) {
 
 // Методи синхронізації анімацій
 void AnimationManager::setSynchronizedMode(bool enabled) {
+    bool wasEnabled = synchronizedMode;
     synchronizedMode = enabled;
+    
+    // Якщо синхронізацію вмикають - скидаємо всі глобальні часи
+    if (enabled && !wasEnabled) {
+        resetAllGlobalTimes();
+    }
+    
     LOG.printf("[ANIMATION] Synchronized mode %s\n", enabled ? "enabled" : "disabled");
 }
 
@@ -190,7 +197,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             animations[slot]->startBrightness = startBrightness;
             animations[slot]->endBrightness = endBrightness;
             animations[slot]->isActive = true;
-            animations[slot]->startTime = getStartTime(type);
+            animations[slot]->startTime = getStartTime(type);        // Глобальний час для синхронізації
+            animations[slot]->localStartTime = millis();             // Локальний час для тривалості
             animations[slot]->region_id = region_id;
             animations[slot]->bit = bit;
             
@@ -274,6 +282,9 @@ void AnimationManager::clearAllAnimations() {
         activeAnimationsCount = 0;
         xSemaphoreGive(animMutex);
     }
+    
+    // Скидаємо всі глобальні часи після очищення всіх анімацій
+    resetAllGlobalTimes();
 }
 
 void AnimationManager::logActiveAnimations() {
@@ -308,25 +319,36 @@ void AnimationManager::logActiveAnimations() {
 
 void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
     uint32_t currentTime = millis();
-    float elapsed = (currentTime - anim->startTime) / float(anim->period);
     
+    // Розраховуємо тривалість анімації від локального часу початку
+    float localElapsed = (currentTime - anim->localStartTime) / float(anim->period);
+    
+    // Для синхронного режиму розраховуємо фазу від глобального часу
+    float elapsed;
+    if (synchronizedMode) {
+        elapsed = (currentTime - anim->startTime) / float(anim->period);
+    } else {
+        elapsed = localElapsed;
+    }
 
     // Логування раз на секунду
     // if (currentTime - anim->lastLogTime >= 1000) {
     //     LOG.printf("[ANIMATION PROGRESS] type=%s, region=%d, period=%u, cycles=%u, elapsed=%d\n", typeName, anim->region_id, anim->period, anim->cycles, (int)elapsed);
     //     anim->lastLogTime = currentTime;
     // }
-    if (elapsed >= anim->cycles) {
+
+    // Перевіряємо завершення анімації за локальним часом
+    if (localElapsed >= anim->cycles) {
         anim->isActive = false;
         // LOG: Кінець анімації
-        uint32_t duration = millis() - anim->startTime;
+        uint32_t duration = millis() - anim->localStartTime;
         const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
         
         LOG.printf("[ANIMATION] END type=%s, region=%d, leds=", typeName, anim->region_id);
         for (int i = 0; i < anim->posCount; ++i) {
             LOG.printf("%d ", anim->positions[i]);
         }
-        LOG.printf(" period=%u, cycles=%u, duration=%u ms, elapsed=%u\n", anim->period, anim->cycles, duration, elapsed);
+        LOG.printf(" period=%u, cycles=%u, duration=%u ms, localElapsed=%.2f\n", anim->period, anim->cycles, duration, localElapsed);
         cleanupAnimation(anim, index);
         return;
     }
