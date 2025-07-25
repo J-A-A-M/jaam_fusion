@@ -176,11 +176,11 @@ String JaamWeb::getScripts() {
     return html;
 }
 
-String JaamWeb::getParameterHtml(const char* name, int min, int max, int value, const char* label) {
+String JaamWeb::getParameterHtml(const char* name, int min, int max, int step, int value, const char* label) {
     String html = "<div class='slider-container'>";
     html += "<span class='value' id='" + String(name) + "Value'>[" + String(value) + "]</span>";
     html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
-    html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' class='slider' id='" + String(name) + "' oninput='updateSliderValue(\"" + String(name) + "\", this.value)' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
+    html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' step='" + String(step) + "' class='slider' id='" + String(name) + "' oninput='updateSliderValue(\"" + String(name) + "\", this.value)' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
     html += "</div>";
     return html;
 }
@@ -354,37 +354,63 @@ String JaamWeb::getHtmlTemplate() {
     html += getTextInputHtml("service_led_pin", String(settings->getInt(SERVICE_LED_PIN)).c_str(), "Сервісна стрічка (пін)", "-1");
     html += getDropdownHtml("service_led_color_format", "Сервісна стрічка (формат кольору)", SERVICE_LED_COLOR_FORMAT, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
     html += getDropdownHtml("service_led_frequency", "Сервісна стрічка (частота)", SERVICE_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
-    html += "<label class=\"label\">Налаштування таймінгів</label>";
-    html += getParameterHtml("alert_on", 1, 10, settings->getInt(ALERT_ON_TIME), "Початок тривог");
-    html += getParameterHtml("notifications_on", 1, 10, settings->getInt(EXPLOSION_TIME), "Додаткові режими тривог");
+    html += "<label class=\"label\">Налаштування анімацій</label>";
+    html += getDropdownHtml("alert_on_animation", "Початок тривог", ANIMATION_ALERT_ON_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("alert_off_animation", "Відбій тривог", ANIMATION_ALERT_OFF_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("drone_animation", "Загроза ударних БПЛА", ANIMATION_DRONE_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("recon_drone_animation", "Розвідувальні БПЛА", ANIMATION_RECON_DRONE_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("missile_animation", "Загроза ракет", ANIMATION_MISSILE_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("kab_animation", "Загроза КАБ", ANIMATION_KAB_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("ballistic_animation", "Загроза балістичних ракет", ANIMATION_BALLISTIC_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += getDropdownHtml("explosion_animation", "Вибухи", ANIMATION_EXPLOSION_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+    html += "<label class=\"label\">Налаштування таймінгів (в секундах)</label>";
+    html += getParameterHtml("alert_on_time", 5, 600, 5, settings->getInt(ALERT_ON_TIME), "Початок тривог");
+    html += getParameterHtml("alert_off_time", 5, 600, 5, settings->getInt(ALERT_OFF_TIME), "Відбій тривог");
+    html += getParameterHtml("drone_time", 5, 600, 5, settings->getInt(DRONE_TIME), "Загроза ударних БПЛА");
+    html += getParameterHtml("recon_drone_time", 5, 600, 5, settings->getInt(RECON_DRONE_TIME), "Розвідувальні БПЛА");
+    html += getParameterHtml("missile_time", 5, 600, 5, settings->getInt(MISSILE_TIME), "Загроза ракет");
+    html += getParameterHtml("kab_time", 5, 600, 5, settings->getInt(KAB_TIME), "Загроза КАБ");
+    html += getParameterHtml("ballistic_time", 5, 600, 5, settings->getInt(BALLISTIC_TIME), "Загроза балістичних ракет");
+    html += getParameterHtml("explosion_time", 5, 600, 5, settings->getInt(EXPLOSION_TIME), "Вибухи");
+    html += "<label class=\"label\">Налаштування цикла (в мілісекундах)</label>";
+    html += getParameterHtml("alert_on_cycle", 300, 5000, 100, settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME), "Початок тривог");
+    html += getParameterHtml("alert_off_cycle", 300, 5000, 100, settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME), "Відбій тривог");
+    html += getParameterHtml("drone_cycle", 300, 5000, 100, settings->getInt(ANIMATION_DRONE_CYCLE_TIME), "Загроза ударних БПЛА");
+    html += getParameterHtml("recon_drone_cycle", 300, 5000, 100, settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME), "Розвідувальні БПЛА");
+    html += getParameterHtml("missile_cycle", 300, 5000, 100, settings->getInt(ANIMATION_MISSILE_CYCLE_TIME), "Загроза ракет");
+    html += getParameterHtml("kab_cycle", 300, 5000, 100, settings->getInt(ANIMATION_KAB_CYCLE_TIME), "Загроза КАБ");
+    html += getParameterHtml("ballistic_cycle", 300, 5000, 100, settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME), "Загроза балістичних ракет");
+    html += getParameterHtml("explosion_cycle", 300, 5000, 100, settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME), "Вибухи");
     html += "<label class=\"label\">Налаштування кольорів</label>";
     html += getColorPickerHtml("color_alert", settings->getString(COLOR_ALERT), "Тривога");
     html += getColorPickerHtml("color_clear", settings->getString(COLOR_CLEAR), "Відбій");
     html += getColorPickerHtml("color_explosion", settings->getString(COLOR_EXPLOSION), "Вибухи");
     html += getColorPickerHtml("color_missiles", settings->getString(COLOR_MISSILES), "Ракети");
-    html += getColorPickerHtml("color_drones", settings->getString(COLOR_DRONES), "БПЛА");
+    html += getColorPickerHtml("color_drones", settings->getString(COLOR_DRONES), "Ударні БПЛА");
+    html += getColorPickerHtml("color_recon_drones", settings->getString(COLOR_RECON_DRONES), "Розвідувальні БПЛА");
     html += getColorPickerHtml("color_kab", settings->getString(COLOR_KABS), "КАБ");
     html += getColorPickerHtml("color_ballistic", settings->getString(COLOR_BALLISTIC), "Балістичні ракети");
     html += getColorPickerHtml("color_home", settings->getString(COLOR_HOME_DISTRICT), "Домашній регіон");
     html += getColorPickerHtml("color_bg", settings->getString(COLOR_BG), "Задня підсітка");
     html += "<label class=\"label\">Налаштування яскравості</label>";
     html += getDropdownHtml("brightness_mode", "Режим яскравості", BRIGHTNESS_MODE, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
-    html += getParameterHtml("day_start", 0, 24, settings->getInt(DAY_START), "Початок дня");
-    html += getParameterHtml("night_start", 0, 24, settings->getInt(NIGHT_START), "Початок ночі");
-    html += getParameterHtml("brightness", 0, 100, settings->getInt(BRIGHTNESS), "Загальна");
-    html += getParameterHtml("brightness_day", 0, 100, settings->getInt(BRIGHTNESS_DAY), "День");
-    html += getParameterHtml("brightness_night", 0, 100, settings->getInt(BRIGHTNESS_NIGHT), "Нічь");
-    html += getParameterHtml("brightness_alert", 0, 100, settings->getInt(BRIGHTNESS_ALERT), "Тривога");
-    html += getParameterHtml("brightness_clear", 0, 100, settings->getInt(BRIGHTNESS_CLEAR), "Без тривоги");
-    html += getParameterHtml("brightness_explosion", 0, 100, settings->getInt(BRIGHTNESS_EXPLOSION), "Вибухи, дрони, ракети");
-    html += getParameterHtml("brightness_home_district", 0, 100, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Домашній регіон");
-    html += getParameterHtml("brightness_bg", 0, 100, settings->getInt(BRIGHTNESS_BG), "Фонова стрічка");
-    html += getParameterHtml("brightness_service", 0, 100, settings->getInt(BRIGHTNESS_SERVICE), "Сервісні діоди");
+    html += getParameterHtml("day_start", 0, 24, 1, settings->getInt(DAY_START), "Початок дня");
+    html += getParameterHtml("night_start", 0, 24, 1, settings->getInt(NIGHT_START), "Початок ночі");
+    html += getParameterHtml("brightness", 0, 100, 1, settings->getInt(BRIGHTNESS), "Загальна");
+    html += getParameterHtml("brightness_day", 0, 100, 1, settings->getInt(BRIGHTNESS_DAY), "День");
+    html += getParameterHtml("brightness_night", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT), "Нічь");
+    html += getParameterHtml("brightness_alert", 0, 100, 1, settings->getInt(BRIGHTNESS_ALERT), "Тривога");
+    html += getParameterHtml("brightness_clear", 0, 100, 1, settings->getInt(BRIGHTNESS_CLEAR), "Без тривоги");
+    html += getParameterHtml("brightness_explosion", 0, 100, 1, settings->getInt(BRIGHTNESS_EXPLOSION), "Вибухи, дрони, ракети, балістика");
+    html += getParameterHtml("brightness_home_district", 0, 100, 1, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Домашній регіон");
+    html += getParameterHtml("brightness_bg", 0, 100, 1, settings->getInt(BRIGHTNESS_BG), "Фонова стрічка");
+    html += getParameterHtml("brightness_service", 0, 100, 1, settings->getInt(BRIGHTNESS_SERVICE), "Сервісні діоди");
     html += "<label class=\"label\">Налаштування тривог</label>";
-    html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Загроза КАБ або баллістичниз ракет");
+    html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Загроза КАБ");
     html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Загроза крилатих та авіаційних ракет");
-    html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Загроза БПЛА");
-    //html += getBoolParameterHtml("enable_ballistic", settings->getBool(ENABLE_BALLISTIC), "Загроза балістичних ракет");
+    html += getBoolParameterHtml("enable_drones", settings->getBool(ENABLE_DRONES), "Загроза ударних БПЛА");
+    html += getBoolParameterHtml("enable_recon_drones", settings->getBool(ENABLE_RECON_DRONES), "Розвідувальні БПЛА");
+    html += getBoolParameterHtml("enable_ballistic", settings->getBool(ENABLE_BALLISTIC), "Загроза балістичних ракет");
     html += getBoolParameterHtml("enable_explosions", settings->getBool(ENABLE_EXPLOSIONS), "Вибухи");
     html += getBoolParameterHtml("enable_battery", settings->getBool(ENABLE_BATTERY_MONITORING), "Моніторинг батареї");
     html += getTextInputHtml("battery_pin", String(settings->getInt(BATTERY_PIN)).c_str(), "ADC пін батареї", "-1");
@@ -575,6 +601,10 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_DRONES, valuePtr);
             LOG.printf("[WEB] Setting color_drones: raw=%s\n", valuePtr);
         }
+        if (name == "color_recon_drones") {
+            settings->saveString(COLOR_RECON_DRONES, valuePtr);
+            LOG.printf("[WEB] Setting color_recon_drones: raw=%s\n", valuePtr);
+        }
         if (name == "color_kab") {
             settings->saveString(COLOR_KABS, valuePtr);
             LOG.printf("[WEB] Setting color_kab: raw=%s\n", valuePtr);
@@ -644,13 +674,15 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_day") {
             settings->saveInt(BRIGHTNESS_DAY, intValue);
             LOG.printf("[WEB] Setting brightness_day: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptStripBrightness = true;
+            // needAdaptColors = true;
+            // needAdaptAnimationColors = true;
         } else if (name == "brightness_night") {
             settings->saveInt(BRIGHTNESS_NIGHT, intValue);
             LOG.printf("[WEB] Setting brightness_night: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptStripBrightness = true;
+            // needAdaptColors = true;
+            // needAdaptAnimationColors = true;
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);
@@ -736,6 +768,11 @@ void JaamWeb::handleParameter() {
             settings->saveBool(ENABLE_DRONES, boolValue);
             LOG.printf("[WEB] Setting enable_drones: %d\n", boolValue);
             needAdaptColors = true;
+        } else if (name == "enable_recon_drones") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_RECON_DRONES, boolValue);
+            LOG.printf("[WEB] Setting enable_recon_drones: %d\n", boolValue);
+            needAdaptColors = true;
         } else if (name == "enable_ballistic") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BALLISTIC, boolValue);
@@ -755,12 +792,78 @@ void JaamWeb::handleParameter() {
         } else if (name == "night_start") {
             settings->saveInt(NIGHT_START, intValue);
             LOG.printf("[WEB] Setting night_start: %d\n", intValue);
-        } else if (name == "alert_on") {
+        } else if (name == "alert_on_time") {
             settings->saveInt(ALERT_ON_TIME, intValue);
-            LOG.printf("[WEB] Setting alert_on: %d\n", intValue);
-        } else if (name == "notifications_on") {
+            LOG.printf("[WEB] Setting alert_on_time: %d\n", intValue);
+        } else if (name == "alert_off_time") {
+            settings->saveInt(ALERT_OFF_TIME, intValue);
+            LOG.printf("[WEB] Setting alert_off_time: %d\n", intValue);
+        } else if (name == "drone_time") {
+            settings->saveInt(DRONE_TIME, intValue);
+            LOG.printf("[WEB] Setting drone_time: %d\n", intValue);
+        } else if (name == "recon_drone_time") {
+            settings->saveInt(RECON_DRONE_TIME, intValue);
+            LOG.printf("[WEB] Setting recon_drone_time: %d\n", intValue);
+        } else if (name == "missile_time") {
+            settings->saveInt(MISSILE_TIME, intValue);
+            LOG.printf("[WEB] Setting missile_time: %d\n", intValue);
+        } else if (name == "kab_time") {
+            settings->saveInt(KAB_TIME, intValue);
+            LOG.printf("[WEB] Setting kab_time: %d\n", intValue);
+        } else if (name == "ballistic_time") {
+            settings->saveInt(BALLISTIC_TIME, intValue);
+            LOG.printf("[WEB] Setting ballistic_time: %d\n", intValue);
+        } else if (name == "explosion_time") {
             settings->saveInt(EXPLOSION_TIME, intValue);
-            LOG.printf("[WEB] Setting night_start: %d\n", intValue);
+            LOG.printf("[WEB] Setting explosion_time: %d\n", intValue);
+        } else if (name == "alert_on_cycle") {
+            settings->saveInt(ANIMATION_ALERT_ON_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting alert_on_cycle: %d\n", intValue);
+        } else if (name == "alert_off_cycle") {
+            settings->saveInt(ANIMATION_ALERT_OFF_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting alert_off_cycle: %d\n", intValue);
+        } else if (name == "drone_cycle") {
+            settings->saveInt(ANIMATION_DRONE_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting drone_cycle: %d\n", intValue);
+        } else if (name == "recon_drone_cycle") {
+            settings->saveInt(ANIMATION_RECON_DRONE_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting recon_drone_cycle: %d\n", intValue);
+        } else if (name == "missile_cycle") {
+            settings->saveInt(ANIMATION_MISSILE_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting missile_cycle: %d\n", intValue);
+        } else if (name == "kab_cycle") {
+            settings->saveInt(ANIMATION_KAB_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting kab_cycle: %d\n", intValue);
+        } else if (name == "ballistic_cycle") {
+            settings->saveInt(ANIMATION_BALLISTIC_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting ballistic_cycle: %d\n", intValue);
+        } else if (name == "explosion_cycle") {
+            settings->saveInt(ANIMATION_EXPLOSION_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting explosion_cycle: %d\n", intValue);
+        } else if (name == "alert_on_animation") {
+            settings->saveInt(ANIMATION_ALERT_ON_TYPE, intValue);
+            LOG.printf("[WEB] Setting alert_on_animation: %d\n", intValue);
+        } else if (name == "alert_off_animation") {
+            settings->saveInt(ANIMATION_ALERT_OFF_TYPE, intValue);
+            LOG.printf("[WEB] Setting alert_off_animation: %d\n", intValue);
+        } else if (name == "drone_animation") {
+            settings->saveInt(ANIMATION_DRONE_TYPE, intValue);
+            LOG.printf("[WEB] Setting drone_animation: %d\n", intValue);
+        } else if (name == "recon_drone_animation") {
+            settings->saveInt(ANIMATION_RECON_DRONE_TYPE, intValue);
+            LOG.printf("[WEB] Setting recon_drone_animation: %d\n", intValue);
+        } else if (name == "missile_animation") {
+            settings->saveInt(ANIMATION_MISSILE_TYPE, intValue);
+            LOG.printf("[WEB] Setting missile_animation: %d\n", intValue);
+        } else if (name == "kab_animation") {
+            settings->saveInt(ANIMATION_KAB_TYPE, intValue);
+            LOG.printf("[WEB] Setting kab_animation: %d\n", intValue);
+        } else if (name == "ballistic_animation") {
+            settings->saveInt(ANIMATION_BALLISTIC_TYPE, intValue);
+            LOG.printf("[WEB] Setting ballistic_animation: %d\n", intValue);
+        } else if (name == "explosion_animation") {
+            settings->saveInt(ANIMATION_EXPLOSION_TYPE, intValue);
+            LOG.printf("[WEB] Setting explosion_animation: %d\n", intValue);
         } else if (name == "enable_battery") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BATTERY_MONITORING, boolValue);

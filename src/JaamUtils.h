@@ -471,6 +471,8 @@ inline int getHighestActualBit(int sourceBit) {
             is_enabled = settings.getBool(ENABLE_BALLISTIC);
         } else if (bit == 9) {
             is_enabled = settings.getBool(ENABLE_EXPLOSIONS);
+        } else if (bit == 10) {
+            is_enabled = settings.getBool(ENABLE_RECON_DRONES);
         }
 
         // Якщо тип тривоги дозволено показувати - встановлюємо колір
@@ -487,6 +489,8 @@ inline int getHighestActualBit(int sourceBit) {
                 actualBit = 8;
             } else if (bit == 9) {
                 actualBit = 9;
+            } else if (bit == 10) {
+                actualBit = 10;
             }
             break; // Зупиняємося на першому дозволеному біті
         }

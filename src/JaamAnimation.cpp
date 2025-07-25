@@ -50,7 +50,7 @@ void AnimationManager::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
 
-bool AnimationManager::createAnimation(AnimationParams::Type type, 
+bool AnimationManager::createAnimation(uint16_t type, 
                                     Adafruit_NeoPixel* strip,
                                     int* positions, 
                                     int posCount,
@@ -60,7 +60,8 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
                                     uint32_t cycles,
                                     uint8_t startBrightness,
                                     uint8_t endBrightness,
-                                    uint16_t region_id)
+                                    uint16_t region_id,
+                                    int bit)
 {
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] ERROR: Strip is nullptr\n");
@@ -126,25 +127,17 @@ bool AnimationManager::createAnimation(AnimationParams::Type type,
             animations[slot]->isActive = true;
             animations[slot]->startTime = millis();
             animations[slot]->region_id = region_id;
+            animations[slot]->bit = bit;
             
             memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
 
             // LOG: Початок анімації
-            const char* typeName = "unknown";
-            switch (type) {
-                case AnimationParams::Type::FADE: typeName = "FADE"; break;
-                case AnimationParams::Type::BLINK: typeName = "BLINK"; break;
-                case AnimationParams::Type::BLEND_FADE: typeName = "BLEND_FADE"; break;
-                case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
-                case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
-                case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
-                case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
-            }
+            const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
             LOG.printf("[ANIMATION] START type=%s, region=%d, leds=", typeName, region_id);
             for (int i = 0; i < posCount; ++i) {
                 LOG.printf("%d ", positions[i]);
             }
-            LOG.printf(" period=%u, cycles=%u, startBrightness=%u, endBrightness=%u\n", period, cycles, startBrightness, endBrightness);
+            LOG.printf(" period=%u, cycles=%u, startBrightness=%u, endBrightness=%u, bit=%d\n", period, cycles, startBrightness, endBrightness, bit);
 
             // Зберігаємо початковий колір для першого LED
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
@@ -238,24 +231,7 @@ void AnimationManager::logActiveAnimations() {
                     continue;
                 }
 
-                const char* typeName = "unknown";
-                switch (anim->type) {
-                    case AnimationParams::Type::FADE:
-                        typeName = "FADE";
-                        break;
-                    case AnimationParams::Type::BLINK:
-                        typeName = "BLINK";
-                        break;
-                    case AnimationParams::Type::BLEND_FADE:
-                        typeName = "BLEND_FADE";
-                        break;
-                    case AnimationParams::Type::PULSE:
-                        typeName = "PULSE";
-                        break;
-                    case AnimationParams::Type::ONE_WAY_BLEND_FADE:
-                        typeName = "ONE_WAY_BLEND_FADE";
-                        break;
-                }
+                const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
 
                 LOG.printf("[DEBUG] Animation %d: strip=%s, LED=%d, region=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
                          i, stripName, anim->positions, anim->region_id, typeName, anim->startBrightness, anim->endBrightness, anim->period, anim->cycles);
@@ -279,16 +255,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
         anim->isActive = false;
         // LOG: Кінець анімації
         uint32_t duration = millis() - anim->startTime;
-        const char* typeName = "unknown";
-        switch (anim->type) {
-            case AnimationParams::Type::FADE: typeName = "FADE"; break;
-            case AnimationParams::Type::BLINK: typeName = "BLINK"; break;
-            case AnimationParams::Type::BLEND_FADE: typeName = "BLEND_FADE"; break;
-            case AnimationParams::Type::PULSE: typeName = "PULSE"; break;
-            case AnimationParams::Type::ONE_WAY_BLEND_FADE: typeName = "ONE_WAY_BLEND_FADE"; break;
-            case AnimationParams::Type::RUNNING_LIGHT: typeName = "RUNNING_LIGHT"; break;
-            case AnimationParams::Type::SET_BRIGHTNESS: typeName = "SET_BRIGHTNESS"; break;
-        }
+        const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
         
         LOG.printf("[ANIMATION] END type=%s, region=%d, leds=", typeName, anim->region_id);
         for (int i = 0; i < anim->posCount; ++i) {
@@ -300,25 +267,25 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
     }
 
     switch (anim->type) {
-        case AnimationParams::Type::FADE:
+        case 0:
             updateFadeAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::BLINK:
+        case 1:
             updateBlinkAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::BLEND_FADE:
+        case 2:
             updateBlendFadeAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::PULSE:
+        case 3:
             updatePulseAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::ONE_WAY_BLEND_FADE:
+        case 4:
             updateOneWayBlendAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::RUNNING_LIGHT:
+        case 5:
             updateRunningLightAnimation(anim, elapsed);
             break;
-        case AnimationParams::Type::SET_BRIGHTNESS:
+        case 6:
             updateSetBrightnessAnimation(anim, elapsed);
             break;
     }
@@ -528,7 +495,7 @@ void AnimationManager::adaptAllAnimationColors() {
                     int ledIdx = anim->positions[k];
                     // Адаптуємо колір для кожного LED
                     LOG.printf("[DEBUG] changed color for led %d\n", ledIdx);
-                    anim->color = ledActualColor(anim->strip, ledIdx, true);
+                    anim->color = ledActualColor(anim->strip, ledIdx, true, anim->bit);
                 }
             }
         }
@@ -557,6 +524,8 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
             is_enabled = settings->getBool(ENABLE_BALLISTIC);
         } else if (bit == 9) {
             is_enabled = settings->getBool(ENABLE_EXPLOSIONS);
+        } else if (bit == 10) {
+            is_enabled = settings->getBool(ENABLE_RECON_DRONES);
         }
 
         // Якщо тип тривоги дозволено показувати - встановлюємо колір
@@ -578,6 +547,9 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             } else if (bit == 9) {
                 color = colorFromHex(settings->getString(COLOR_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+            } else if (bit == 10) {
+                color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             }
             break; // Зупиняємося на першому дозволеному біті
@@ -644,14 +616,19 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     return color;
 }
 
-uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted) {
+uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted, int bit) {
     uint32_t color = 0;
     uint8_t brightness = 0;
 
     if (strip == strip_main) {
         auto regions = getRegionsForLed(position);
-        int highest_bit = findHighestBitForLed(position);
-        
+        int highest_bit = -1;
+
+        if (bit != -1) {
+            highest_bit = bit;
+        } else {
+            highest_bit = findHighestBitForLed(position);
+        }
         if (highest_bit != -1) {
             std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
             color = result.first;
@@ -672,7 +649,13 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         }
     } 
     if (strip == strip_bg) {
-        int highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+        int highest_bit = -1;
+
+        if (bit != -1) {
+            highest_bit = bit;
+        } else {
+            highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+        }
         
         if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == 0) {
             // Якщо немає тривог, встановлюємо колір домашнього району

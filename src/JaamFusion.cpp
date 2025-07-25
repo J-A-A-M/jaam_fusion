@@ -54,7 +54,7 @@ std::vector<int>    allLedsBg;
 
 // --- ANIMATION Configuration ---
 AnimationManager        animation;
-AnimationParams::Type   animType;
+uint16_t                animType;
 
 // --- MAP Configuration ---
 std::map<uint16_t, uint16_t>    alertsMap;
@@ -178,7 +178,8 @@ const char* ALERT_TYPES[] = {
     "Missiles", // bit 6
     "KAB",      // bit 7
     "Ballistic",// bit 8
-    "Explosion" // bit 9
+    "Explosion", // bit 9
+    "Recon Drones" // bit 10
 };
 const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
 
@@ -220,8 +221,8 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
     uint32_t initialColor = 0x000000; // Початковий колір для анімації
     uint32_t period;
     uint32_t cycles;
-    uint8_t startBrightness = 50;
-    uint8_t endBrightness = 255;
+    uint8_t startBrightness = 255;
+    uint8_t endBrightness = 50;
     uint8_t ledCount;
 
     int actualBit = getHighestActualBit(bit);
@@ -232,58 +233,66 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
 
     switch (actualBit) {
         case -1: 
-            color = animation.ledActualColor(strip, led_position, true);               
-            animType = AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            cycles = 1;
-            period = 10000;
+            color = animation.ledActualColor(strip, led_position);               
+            animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
+            cycles = (settings.getInt(ALERT_OFF_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
+            period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             break;
         case 0:
             color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
-            animType = (increase) ? AnimationParams::Type::FADE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            startBrightness = (increase) ? 50 : led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-            endBrightness = (increase) ? led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT)): 50; 
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(ALERT_ON_TIME) * 60 : 1;
+            animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : 4;
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+            endBrightness = 50; 
+            period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
             break;
-        case 5:
+        case 5: 
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : 4;
+            period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
             break;
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : 4;
+            period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
             break;
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE; 
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1;   
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : 4;
+            period = (increase) ? settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(KAB_TIME) * 1000)/settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 1;
             break;
         case 8:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50; 
+            animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : 4;
+            period = (increase) ? settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(BALLISTIC_TIME) * 1000)/settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME)  : 1;
             break;
         case 9:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 100; 
-            animType = (increase) ? AnimationParams::Type::PULSE : AnimationParams::Type::ONE_WAY_BLEND_FADE;
-            period = (increase) ? 1000 : 10000;
-            cycles = (increase) ? settings.getInt(EXPLOSION_TIME) * 60 : 1; 
+            endBrightness = 50;
+            animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : 4;
+            period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 1000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
+            break;
+        case 10:
+            color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 50;
+            animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : 4;
+            period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
             break;
         default:
             LOG.printf("[ANIMATION] LED %d: unknown bit %d\n", led_position, actualBit);
@@ -319,7 +328,8 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
         cycles,
         startBrightness,
         endBrightness,
-        region_id
+        region_id,
+        actualBit
     )) {
         LOG.println("[ERROR] Failed to create animation");
         return;
@@ -871,7 +881,7 @@ void initStripMain() {
 
     legacy = settings.getInt(LEGACY);
 
-    if (legacy == LEGACY::JAAM_3_0) {
+    if (legacy == LEGACY::MAKET) {
         num_leds_main = 273;
     } else {
         num_leds_main = 26;
@@ -882,7 +892,7 @@ void initStripMain() {
         LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(MAIN_LED_PIN), num_leds_main, ledType, 
                    settings.getInt(MAIN_LED_COLOR_FORMAT), settings.getInt(MAIN_LED_FREQUENCY));
-        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 0, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::MAIN_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
@@ -916,7 +926,7 @@ void initStripBg() {
         LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), ledType,
                    settings.getInt(BG_LED_COLOR_FORMAT), settings.getInt(BG_LED_FREQUENCY));
-        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 0, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::BG_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
@@ -949,7 +959,7 @@ void initStripService() {
         LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    settings.getInt(SERVICE_LED_PIN), num_leds_service, ledType,
                    settings.getInt(SERVICE_LED_COLOR_FORMAT), settings.getInt(SERVICE_LED_FREQUENCY));
-        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 0, DefaultColors::OFF, ledType);
+        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::SERVICE_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {
@@ -1134,7 +1144,7 @@ void initLegacy() {
     legacy = settings.getInt(LEGACY);
     num_leds_main = 26; // Default value
 
-    if (legacy == LEGACY::JAAM_3_0) {
+    if (legacy == LEGACY::MAKET) {
         num_leds_main = 273;
         settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
         settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
@@ -1463,21 +1473,21 @@ void animations() {
     int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
     switch(typeRand) {
         case 0:
-            animType = AnimationParams::Type::FADE;
+            animType = 0; // FADE
             break;
         case 1:
-            animType = AnimationParams::Type::BLINK;
+            animType = 1; // BLINK
             break;
         case 2:
-            animType = AnimationParams::Type::BLEND_FADE;
+            animType = 2; // BLEND_FADE
             break;
         case 3:
-            animType = AnimationParams::Type::PULSE;
+            animType = 3; // PULSE
             break;
         default:
-            animType = AnimationParams::Type::FADE;
+            animType = 0; // FADE
     }
-    //animType = AnimationParams::Type::BLEND_FADE;
+    //animType = 2; // BLEND_FADE
 
     // Випадкові параметри для анімації з використанням конфігурації
     uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
@@ -1538,7 +1548,7 @@ void websocketProcess() {
         animation.clearAllAnimations();
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
-            AnimationParams::Type::RUNNING_LIGHT,
+            5, // RUNNING_LIGHT
             strip_main,         
             {}, // not used in RUNNING_LIGHT        
             0,            
@@ -1713,36 +1723,36 @@ void mainThreadProcess() {
         if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                for(uint32_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
+                // for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                //     uint32_t color = animation.ledActualColor(strip, i);
+                //     strip->setPixelColor(i, color);
+                // }
                 strip->show();
             });
         }
         if (strip_bg != nullptr) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                uint32_t color = animation.stripActualColor(strip);
-                for (uint32_t i = 0; i < strip->numPixels(); i++) {
-                    strip->setPixelColor(i, color);
-                }
+                // uint32_t color = animation.stripActualColor(strip);
+                // for (uint32_t i = 0; i < strip->numPixels(); i++) {
+                //     strip->setPixelColor(i, color);
+                // }
                 strip->show();
             });
         }
         if (strip_service != nullptr) {
             animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
+                // for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                //     uint32_t color = animation.ledActualColor(strip, i);
+                //     strip->setPixelColor(i, color);
+                // }
                 strip->show();
             });
         }
         // int ledsIdx[1] = { 0 };
         // if (!animation.createAnimation(
-        //     AnimationParams::Type::SET_BRIGHTNESS,
+        //     6, // SET_BRIGHTNESS
         //     strip_main,
         //     ledsIdx,
         //     1,
@@ -1829,9 +1839,18 @@ void displayProcess() {
 // --- SETUP ---
 void setup() {
     LOG.begin(115200);
-    delay(2000);
 
     checkFreeHeap("LOG initialization");
+
+    initSettings();
+    checkFreeHeap("settings initialization");
+    
+    initStrip();
+    checkFreeHeap("LED strips initialization");
+    brightnessProcess();
+
+    initDisplay();
+    checkFreeHeap("display initialization");
 
     initStorage();
     checkFreeHeap("SPIFFS initialization");
@@ -1839,17 +1858,8 @@ void setup() {
     initChipID();
     checkFreeHeap("chipID initialization");
 
-    initSettings();
-    checkFreeHeap("settings initialization");
-
-    initDisplay();
-    checkFreeHeap("display initialization");
-
     initMapping();
     checkFreeHeap("LED mapping initialization");
-
-    initStrip();
-    checkFreeHeap("LED strips initialization");
 
     initBattery();
     checkFreeHeap("battery initialization");
@@ -1882,6 +1892,7 @@ void setup() {
     async.setInterval(animations, ANIMATION_INTERVAL);
 #endif
     //async.setInterval(animationsLog, 1000);
+    async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(memoryProcess, MEMORY_CHECK_INTERVAL);
     async.setInterval(wifiProcess, WIFI_CHECK_INTERVAL);
 #if !defined(TEST_ANIMATION)
@@ -1889,7 +1900,7 @@ void setup() {
 #endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
-    async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
+    
     async.setInterval(batteryProcess, 10000); // кожні 10 секунд
     async.setInterval(displayProcess, 1000); // кожну секунду
     checkFreeHeap("async tasks configuration");

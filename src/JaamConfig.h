@@ -4,11 +4,12 @@
 // --- Default Colors ---
 namespace DefaultColors {
     static const uint32_t MAIN_STRIP = 0x00FF00;  // Green
-    static const uint32_t SERVICE_STRIP = 0xFFFFFF;  // Blue
-    static const uint32_t OFF = 0x000000;  // Blue
-    static const uint32_t POWER = 0xFF0000;  // Green
+    static const uint32_t BG_STRIP = 0x0000FF;  // Blue
+    static const uint32_t SERVICE_STRIP = 0xFFFFFF;  // White
+    static const uint32_t OFF = 0x000000;  // Black
+    static const uint32_t POWER = 0xFF0000;  // Red
     static const uint32_t WIFI = 0x0000FF;  // Blue
-    static const uint32_t DATA = 0x00FF00;  // Blue
+    static const uint32_t DATA = 0x00FF00;  // Green
     static const uint32_t HA = 0xFFFF00;  // Blue
     static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
 }
@@ -128,7 +129,7 @@ static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
 #if ARDUINO_ESP32_DEV
   {0, "Плата JAAM 1.3"},
   {3, "Плата JAAM 2.1"},
-  {4, "Плата JAAM 3.0"},
+  {4, "Макетна збірка"},
 #endif
   {1, "Початок на Закарпатті"},
   {2, "Початок на Одещині"},
@@ -140,7 +141,7 @@ enum LEGACY {
     ZAKARPATTIA = 1,
     ODESA = 2,
     JAAM_2_1 = 3,
-    JAAM_3_0 = 4,
+    MAKET = 4,
     CUSTOM_MAPPING = 5
 };
 
@@ -149,6 +150,17 @@ static SettingListItem LED_MODE_OPTIONS[] = {
   {0, "Область"},
   {1, "Обласний центр"},
   {2, "Область + Обласний центр"}
+};
+
+constexpr int ANIMATION_TYPES_COUNT = 7;
+static SettingListItem ANIMATION_TYPES[] = {
+  {0, "FADE"},
+  {1, "BLINK"},
+  {2, "BLEND_FADE"},
+  {3, "PULSE"},
+  {4, "ONE_WAY_BLEND_FADE"},
+  {5, "RUNNING_LIGHT", true},
+  {6, "SET_BRIGHTNESS", true}
 };
 
 enum Type {
@@ -202,6 +214,7 @@ enum Type {
     COLOR_MISSILES,
     COLOR_KABS,
     COLOR_DRONES,
+    COLOR_RECON_DRONES,
     COLOR_BALLISTIC,
     COLOR_HOME_DISTRICT,
     COLOR_BG_NEIGHBOR_ALERT,
@@ -209,6 +222,7 @@ enum Type {
     ENABLE_EXPLOSIONS,
     ENABLE_MISSILES,
     ENABLE_DRONES,
+    ENABLE_RECON_DRONES,
     ENABLE_KABS,
     ENABLE_BALLISTIC,
     BRIGHTNESS_ALERT,
@@ -306,6 +320,11 @@ enum Type {
     TIME_ZONE,
     ALERT_ON_TIME,
     ALERT_OFF_TIME,
+    DRONE_TIME,
+    RECON_DRONE_TIME,
+    MISSILE_TIME,
+    KAB_TIME,
+    BALLISTIC_TIME,
     EXPLOSION_TIME,
     ALERT_BLINK_TIME,
     MAIN_LED_COLOR_FORMAT,
@@ -316,6 +335,22 @@ enum Type {
     SERVICE_LED_FREQUENCY,
     BATTERY_PIN,
     ENABLE_BATTERY_MONITORING,
+    ANIMATION_ALERT_ON_TYPE,
+    ANIMATION_ALERT_OFF_TYPE,
+    ANIMATION_DRONE_TYPE,
+    ANIMATION_RECON_DRONE_TYPE,
+    ANIMATION_MISSILE_TYPE,
+    ANIMATION_KAB_TYPE,
+    ANIMATION_BALLISTIC_TYPE,
+    ANIMATION_EXPLOSION_TYPE,
+    ANIMATION_ALERT_ON_CYCLE_TIME,
+    ANIMATION_ALERT_OFF_CYCLE_TIME,
+    ANIMATION_DRONE_CYCLE_TIME,
+    ANIMATION_RECON_DRONE_CYCLE_TIME,
+    ANIMATION_MISSILE_CYCLE_TIME,
+    ANIMATION_KAB_CYCLE_TIME,
+    ANIMATION_BALLISTIC_CYCLE_TIME,
+    ANIMATION_EXPLOSION_CYCLE_TIME,
 };
 
 static SettingListItem DISTRICTS[MAX_REGIONS] = {
