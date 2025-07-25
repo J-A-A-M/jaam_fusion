@@ -601,6 +601,10 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_DRONES, valuePtr);
             LOG.printf("[WEB] Setting color_drones: raw=%s\n", valuePtr);
         }
+        if (name == "color_recon_drones") {
+            settings->saveString(COLOR_RECON_DRONES, valuePtr);
+            LOG.printf("[WEB] Setting color_recon_drones: raw=%s\n", valuePtr);
+        }
         if (name == "color_kab") {
             settings->saveString(COLOR_KABS, valuePtr);
             LOG.printf("[WEB] Setting color_kab: raw=%s\n", valuePtr);
@@ -670,13 +674,15 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_day") {
             settings->saveInt(BRIGHTNESS_DAY, intValue);
             LOG.printf("[WEB] Setting brightness_day: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptStripBrightness = true;
+            // needAdaptColors = true;
+            // needAdaptAnimationColors = true;
         } else if (name == "brightness_night") {
             settings->saveInt(BRIGHTNESS_NIGHT, intValue);
             LOG.printf("[WEB] Setting brightness_night: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptStripBrightness = true;
+            // needAdaptColors = true;
+            // needAdaptAnimationColors = true;
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);

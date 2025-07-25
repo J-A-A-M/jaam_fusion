@@ -25,6 +25,7 @@ struct AnimationParams {
     uint32_t startTime;
     uint16_t region_id;
     uint32_t lastLogTime = 0;
+    int bit;
 };
 
 // Структура для інформації про вільний LED
@@ -78,7 +79,8 @@ class AnimationManager {
                            uint32_t cycles = 5,
                            uint8_t startBrightness = 50,
                            uint8_t endBrightness = 255,
-                           uint16_t region_id = 0);
+                           uint16_t region_id = 0,
+                           int bit = 0);
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
@@ -89,7 +91,7 @@ class AnimationManager {
         void adaptAllAnimationColors();
         uint32_t colorFromHex(const char* hex);
         uint32_t stripActualColor(Adafruit_NeoPixel* strip, bool adapted = true);
-        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true);
+        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = -1);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
         uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
         void showAllStrips();
