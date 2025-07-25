@@ -2,6 +2,9 @@
 #include "JaamConfig.h"
 #include "JaamUtils.h"
 
+// Ініціалізація статичних змінних для синхронізації
+uint32_t AnimationManager::globalStartTimes[ANIMATION_TYPES_COUNT] = {0};
+bool AnimationManager::globalTimesInitialized[ANIMATION_TYPES_COUNT] = {false};
 
 // Трансформує "#RRGGBB" у uint32_t для setPixelColor
 uint32_t AnimationManager::colorFromHex(const char* hex) {
@@ -36,7 +39,7 @@ uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float f
     return (r << 16) | (g << 8) | b;
 }
 
-AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr) {
+AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr), synchronizedMode(false) {
     animMutex = xSemaphoreCreateMutex();
     for (int i = 0; i < MAX_ANIMATIONS; i++) {
         animations[i] = nullptr;
@@ -48,6 +51,68 @@ AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0),
 
 void AnimationManager::setSettings(JaamSettings* settings) {
     this->settings = settings;
+}
+
+// Методи синхронізації анімацій
+void AnimationManager::setSynchronizedMode(bool enabled) {
+    synchronizedMode = enabled;
+    LOG.printf("[ANIMATION] Synchronized mode %s\n", enabled ? "enabled" : "disabled");
+}
+
+bool AnimationManager::isSynchronizedMode() const {
+    return synchronizedMode;
+}
+
+void AnimationManager::resetAllGlobalTimes() {
+    for (int i = 0; i < ANIMATION_TYPES_COUNT; i++) {
+        globalTimesInitialized[i] = false;
+        globalStartTimes[i] = 0;
+    }
+    LOG.printf("[ANIMATION] All global start times reset\n");
+}
+
+uint32_t AnimationManager::getStartTime(uint16_t animationType) {
+    if (synchronizedMode) {
+        if (animationType >= ANIMATION_TYPES_COUNT) {
+            return millis();
+        }
+        
+        if (!globalTimesInitialized[animationType]) {
+            initializeGlobalStartTime(animationType);
+        }
+        
+        return globalStartTimes[animationType];
+    } else {
+        // Асинхронний режим - повертаємо поточний час
+        return millis();
+    }
+}
+
+void AnimationManager::initializeGlobalStartTime(uint16_t animationType) {
+    if (animationType < ANIMATION_TYPES_COUNT) {
+        globalStartTimes[animationType] = millis();
+        globalTimesInitialized[animationType] = true;
+        LOG.printf("[ANIMATION] Initialized global start time for type %d: %u\n", animationType, globalStartTimes[animationType]);
+    }
+}
+
+void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
+    if (!synchronizedMode || animationType >= ANIMATION_TYPES_COUNT) return;
+    
+    // Перевіряємо чи є активні анімації цього типу
+    bool hasActiveAnimations = false;
+    for (int i = 0; i < MAX_ANIMATIONS; i++) {
+        if (animations[i] != nullptr && animations[i]->isActive && animations[i]->type == animationType) {
+            hasActiveAnimations = true;
+            break;
+        }
+    }
+    
+    // Якщо немає активних анімацій цього типу - скидаємо глобальний час
+    if (!hasActiveAnimations) {
+        globalTimesInitialized[animationType] = false;
+        LOG.printf("[ANIMATION] Reset global time for type %d\n", animationType);
+    }
 }
 
 bool AnimationManager::createAnimation(uint16_t type, 
@@ -124,7 +189,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             animations[slot]->startBrightness = startBrightness;
             animations[slot]->endBrightness = endBrightness;
             animations[slot]->isActive = true;
-            animations[slot]->startTime = millis();
+            animations[slot]->startTime = getStartTime(type);
             animations[slot]->region_id = region_id;
             
             memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
@@ -702,6 +767,8 @@ void AnimationManager::removeLedFromAnimation(AnimationParams* anim, int ledIdx,
 void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     if (anim == nullptr) return;
     char hexColor[8];
+    uint16_t animationType = anim->type;
+    
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < anim->posCount; ++i) {
             // Визначаємо дефолтний колір для стрічки
@@ -734,6 +801,9 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     delete anim;
     animations[index] = nullptr;
     activeCount--;
+    
+    // Перевіряємо чи потрібно скинути глобальний час для цього типу
+    checkAndResetGlobalTime(animationType);
     
     LOG.printf("[ANIMATION] Cleaned up animation slot %d, color %s, active count: %d\n", index, hexColor, activeCount);
 }

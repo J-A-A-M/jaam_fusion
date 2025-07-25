@@ -71,6 +71,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ENABLE_RECON_DRONES, {"erd", 1}},
     {ENABLE_KABS, {"ekab", 1}},
     {ENABLE_BALLISTIC, {"ebal", 1}},
+    {ENABLE_SYNC_ANIMATIONS, {"esa", 0}},
     {BRIGHTNESS_ALERT, {"ba", 100}},
     {BRIGHTNESS_CLEAR, {"bc", 100}},
     {BRIGHTNESS_NEW_ALERT, {"bna", 100}},

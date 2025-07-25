@@ -16,8 +16,6 @@ public:
 private:
     WebServer server;
     JaamSettings* settings;
-    AnimationManager animation; 
-    JaamLed led;
     Adafruit_NeoPixel* strip_main;
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;

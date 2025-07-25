@@ -49,6 +49,15 @@ class AnimationManager {
         };
         ActiveAnimation activeAnimations[MAX_ANIMATIONS];
         int activeAnimationsCount;
+        
+        // Синхронізація анімацій
+        bool synchronizedMode;
+        static uint32_t globalStartTimes[ANIMATION_TYPES_COUNT];
+        static bool globalTimesInitialized[ANIMATION_TYPES_COUNT];
+        
+        uint32_t getStartTime(uint16_t animationType);
+        void initializeGlobalStartTime(uint16_t animationType);
+        void checkAndResetGlobalTime(uint16_t animationType);
 
         void updateAnimation(AnimationParams* anim, int index);
         void updateFadeAnimation(AnimationParams* anim, float elapsed);
@@ -93,6 +102,11 @@ class AnimationManager {
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
         uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
         void showAllStrips();
+        
+        // Методи синхронізації
+        void setSynchronizedMode(bool enabled);
+        bool isSynchronizedMode() const;
+        void resetAllGlobalTimes();
 };
 
 

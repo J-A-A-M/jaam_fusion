@@ -24,6 +24,7 @@ extern volatile bool needReconnectServiceStrip;
 extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
+extern volatile bool needUpdateAnimationsMode;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 
@@ -355,6 +356,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getDropdownHtml("service_led_color_format", "Сервісна стрічка (формат кольору)", SERVICE_LED_COLOR_FORMAT, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
     html += getDropdownHtml("service_led_frequency", "Сервісна стрічка (частота)", SERVICE_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
     html += "<label class=\"label\">Налаштування анімацій</label>";
+    html += getBoolParameterHtml("enable_sync_animations", settings->getBool(ENABLE_SYNC_ANIMATIONS), "Синхронні анімації");
     html += getDropdownHtml("alert_on_animation", "Початок тривог", ANIMATION_ALERT_ON_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
     html += getDropdownHtml("alert_off_animation", "Відбій тривог", ANIMATION_ALERT_OFF_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
     html += getDropdownHtml("drone_animation", "Загроза ударних БПЛА", ANIMATION_DRONE_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
@@ -772,6 +774,11 @@ void JaamWeb::handleParameter() {
             settings->saveBool(ENABLE_EXPLOSIONS, boolValue);
             LOG.printf("[WEB] Setting enable_explosions: %d\n", boolValue);
             needAdaptColors = true;
+        } else if (name == "enable_sync_animations") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_SYNC_ANIMATIONS, boolValue);
+            LOG.printf("[WEB] Setting enable_sync_animations: %d\n", boolValue);
+            needUpdateAnimationsMode = true;
         } else if (name == "brightness_mode") {
             settings->saveInt(BRIGHTNESS_MODE, intValue);
             LOG.printf("[WEB] Setting brightness_mode: %d\n", intValue);
