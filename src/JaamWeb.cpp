@@ -849,6 +849,9 @@ void JaamWeb::handleParameter() {
         } else if (name == "drone_animation") {
             settings->saveInt(ANIMATION_DRONE_TYPE, intValue);
             LOG.printf("[WEB] Setting drone_animation: %d\n", intValue);
+        } else if (name == "recon_drone_animation") {
+            settings->saveInt(ANIMATION_RECON_DRONE_TYPE, intValue);
+            LOG.printf("[WEB] Setting recon_drone_animation: %d\n", intValue);
         } else if (name == "missile_animation") {
             settings->saveInt(ANIMATION_MISSILE_TYPE, intValue);
             LOG.printf("[WEB] Setting missile_animation: %d\n", intValue);
