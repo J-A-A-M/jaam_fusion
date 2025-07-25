@@ -285,6 +285,14 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
             period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 1000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
             break;
+        case 10:
+            color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            endBrightness = 50;
+            animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : 4;
+            period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
+            break;
         default:
             LOG.printf("[ANIMATION] LED %d: unknown bit %d\n", led_position, actualBit);
             return;
