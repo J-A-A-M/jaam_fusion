@@ -768,6 +768,11 @@ void JaamWeb::handleParameter() {
             settings->saveBool(ENABLE_DRONES, boolValue);
             LOG.printf("[WEB] Setting enable_drones: %d\n", boolValue);
             needAdaptColors = true;
+        } else if (name == "enable_recon_drones") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(ENABLE_RECON_DRONES, boolValue);
+            LOG.printf("[WEB] Setting enable_recon_drones: %d\n", boolValue);
+            needAdaptColors = true;
         } else if (name == "enable_ballistic") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BALLISTIC, boolValue);
@@ -796,6 +801,9 @@ void JaamWeb::handleParameter() {
         } else if (name == "drone_time") {
             settings->saveInt(DRONE_TIME, intValue);
             LOG.printf("[WEB] Setting drone_time: %d\n", intValue);
+        } else if (name == "recon_drone_time") {
+            settings->saveInt(RECON_DRONE_TIME, intValue);
+            LOG.printf("[WEB] Setting recon_drone_time: %d\n", intValue);
         } else if (name == "missile_time") {
             settings->saveInt(MISSILE_TIME, intValue);
             LOG.printf("[WEB] Setting missile_time: %d\n", intValue);
@@ -817,6 +825,9 @@ void JaamWeb::handleParameter() {
         } else if (name == "drone_cycle") {
             settings->saveInt(ANIMATION_DRONE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting drone_cycle: %d\n", intValue);
+        } else if (name == "recon_drone_cycle") {
+            settings->saveInt(ANIMATION_RECON_DRONE_CYCLE_TIME, intValue);
+            LOG.printf("[WEB] Setting recon_drone_cycle: %d\n", intValue);
         } else if (name == "missile_cycle") {
             settings->saveInt(ANIMATION_MISSILE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting missile_cycle: %d\n", intValue);
