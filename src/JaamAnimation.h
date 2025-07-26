@@ -58,7 +58,6 @@ class AnimationManager {
         static bool globalTimesInitialized[ANIMATION_TYPES_COUNT];
         
         uint32_t getStartTime(uint16_t animationType);
-        void initializeGlobalStartTime(uint16_t animationType);
         void checkAndResetGlobalTime(uint16_t animationType);
 
         void updateAnimation(AnimationParams* anim, int index);

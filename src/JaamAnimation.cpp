@@ -71,9 +71,12 @@ bool AnimationManager::isSynchronizedMode() const {
 }
 
 void AnimationManager::resetAllGlobalTimes() {
-    for (int i = 0; i < ANIMATION_TYPES_COUNT; i++) {
-        globalTimesInitialized[i] = false;
-        globalStartTimes[i] = 0;
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < ANIMATION_TYPES_COUNT; i++) {
+            globalTimesInitialized[i] = false;
+            globalStartTimes[i] = 0;
+        }
+        xSemaphoreGive(animMutex);
     }
     LOG.printf("[ANIMATION] All global start times reset\n");
 }
@@ -84,22 +87,21 @@ uint32_t AnimationManager::getStartTime(uint16_t animationType) {
             return millis();
         }
         
-        if (!globalTimesInitialized[animationType]) {
-            initializeGlobalStartTime(animationType);
+        uint32_t result = millis();
+        if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+            if (!globalTimesInitialized[animationType]) {
+                globalStartTimes[animationType] = millis();
+                globalTimesInitialized[animationType] = true;
+                LOG.printf("[ANIMATION] Initialized global start time for type %d: %u\n", animationType, globalStartTimes[animationType]);
+            }
+            result = globalStartTimes[animationType];
+            xSemaphoreGive(animMutex);
         }
         
-        return globalStartTimes[animationType];
+        return result;
     } else {
         // Асинхронний режим - повертаємо поточний час
         return millis();
-    }
-}
-
-void AnimationManager::initializeGlobalStartTime(uint16_t animationType) {
-    if (animationType < ANIMATION_TYPES_COUNT) {
-        globalStartTimes[animationType] = millis();
-        globalTimesInitialized[animationType] = true;
-        LOG.printf("[ANIMATION] Initialized global start time for type %d: %u\n", animationType, globalStartTimes[animationType]);
     }
 }
 
@@ -117,7 +119,10 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
     
     // Якщо немає активних анімацій цього типу - скидаємо глобальний час
     if (!hasActiveAnimations) {
-        globalTimesInitialized[animationType] = false;
+        if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+            globalTimesInitialized[animationType] = false;
+            xSemaphoreGive(animMutex);
+        }
         LOG.printf("[ANIMATION] Reset global time for type %d\n", animationType);
     }
 }
