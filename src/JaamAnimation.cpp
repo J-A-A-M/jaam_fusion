@@ -82,23 +82,19 @@ void AnimationManager::resetAllGlobalTimes() {
 }
 
 uint32_t AnimationManager::getStartTime(uint16_t animationType) {
+    // УВАГА: Цей метод викликається коли animMutex вже захоплений!
     if (synchronizedMode) {
         if (animationType >= ANIMATION_TYPES_COUNT) {
             return millis();
         }
         
-        uint32_t result = millis();
-        if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-            if (!globalTimesInitialized[animationType]) {
-                globalStartTimes[animationType] = millis();
-                globalTimesInitialized[animationType] = true;
-                LOG.printf("[ANIMATION] Initialized global start time for type %d: %u\n", animationType, globalStartTimes[animationType]);
-            }
-            result = globalStartTimes[animationType];
-            xSemaphoreGive(animMutex);
+        if (!globalTimesInitialized[animationType]) {
+            globalStartTimes[animationType] = millis();
+            globalTimesInitialized[animationType] = true;
+            LOG.printf("[ANIMATION] Initialized global start time for type %d: %u\n", animationType, globalStartTimes[animationType]);
         }
         
-        return result;
+        return globalStartTimes[animationType];
     } else {
         // Асинхронний режим - повертаємо поточний час
         return millis();
@@ -202,7 +198,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             animations[slot]->startBrightness = startBrightness;
             animations[slot]->endBrightness = endBrightness;
             animations[slot]->isActive = true;
-            animations[slot]->startTime = getStartTime(type);        // Глобальний час для синхронізації
+            animations[slot]->startTime = getStartTime(type);        // Глобальний час для синхронізації (мютекс вже захоплений)
             animations[slot]->localStartTime = millis();             // Локальний час для тривалості
             animations[slot]->region_id = region_id;
             animations[slot]->bit = bit;
