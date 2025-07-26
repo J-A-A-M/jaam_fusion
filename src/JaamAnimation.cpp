@@ -39,6 +39,18 @@ uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float f
     return (r << 16) | (g << 8) | b;
 }
 
+// Допоміжний метод для визначення назви стрічки
+const char* AnimationManager::getStripName(Adafruit_NeoPixel* strip) {
+    if (strip == strip_main && strip_main != nullptr) {
+        return "main";
+    } else if (strip == strip_bg && strip_bg != nullptr) {
+        return "bg";
+    } else if (strip == strip_service && strip_service != nullptr) {
+        return "service";
+    }
+    return "unknown";
+}
+
 AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr), synchronizedMode(false) {
     animMutex = xSemaphoreCreateMutex();
     for (int i = 0; i < MAX_ANIMATIONS; i++) {
@@ -207,7 +219,9 @@ bool AnimationManager::createAnimation(uint16_t type,
 
             // LOG: Початок анімації
             const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
-            LOG.printf("[ANIMATION] START type=%s, region=%d, leds=", typeName, region_id);
+            const char* stripName = getStripName(strip);
+            
+            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, leds=", stripName, typeName, region_id);
             for (int i = 0; i < posCount; ++i) {
                 LOG.printf("%d ", positions[i]);
             }
@@ -294,16 +308,9 @@ void AnimationManager::logActiveAnimations() {
         for (int i = 0; i < MAX_ANIMATIONS; i++) {
             if (animations[i] != nullptr && animations[i]->isActive) {
                 AnimationParams* anim = animations[i];
-                const char* stripName = "unknown";
-                if (anim->strip == strip_main && strip_main != nullptr) {
-                    stripName = "main";
-                } else if (anim->strip == strip_bg && strip_bg != nullptr) {
-                    stripName = "bg";
-                } else if (anim->strip == strip_service && strip_service != nullptr) {
-                    stripName = "service";
-                }
+                const char* stripName = getStripName(anim->strip);
 
-                if (stripName == "unknown") {
+                if (strcmp(stripName, "unknown") == 0) {
                     LOG.printf("[DEBUG] Animation %d: strip is nullptr\n", i);
                     continue;
                 }
@@ -344,8 +351,9 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
         // LOG: Кінець анімації
         uint32_t duration = millis() - anim->localStartTime;
         const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
+        const char* stripName = getStripName(anim->strip);
         
-        LOG.printf("[ANIMATION] END type=%s, region=%d, leds=", typeName, anim->region_id);
+        LOG.printf("[ANIMATION] END strip=%s, type=%s, region=%d, leds=", stripName, typeName, anim->region_id);
         for (int i = 0; i < anim->posCount; ++i) {
             LOG.printf("%d ", anim->positions[i]);
         }
@@ -846,7 +854,9 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     // Перевіряємо чи потрібно скинути глобальний час для цього типу
     checkAndResetGlobalTime(animationType);
     
-    LOG.printf("[ANIMATION] Cleaned up animation slot %d, color %s, active count: %d\n", index, hexColor, activeCount);
+    const char* stripName = getStripName(anim->strip);
+    
+    LOG.printf("[ANIMATION] Cleaned up animation slot %d, strip=%s, color %s, active count: %d\n", index, stripName, hexColor, activeCount);
 }
 
 std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds) {
