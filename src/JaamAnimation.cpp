@@ -165,6 +165,10 @@ bool AnimationManager::createAnimation(uint16_t type,
         LOG.printf("[ANIMATION] ERROR: Strip is nullptr\n");
         return false;
     }
+    
+    // Отримуємо startTime до захоплення animMutex щоб уникнути deadlock
+    uint32_t startTime = getStartTime(type);
+    
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         // Для кожного LED видаляємо його зі старої анімації (якщо є)
         for (int posIdx = 0; posIdx < posCount; ++posIdx) {
@@ -223,7 +227,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             animations[slot]->startBrightness = startBrightness;
             animations[slot]->endBrightness = endBrightness;
             animations[slot]->isActive = true;
-            animations[slot]->startTime = getStartTime(type);        // Глобальний час для синхронізації (мютекс вже захоплений)
+            animations[slot]->startTime = startTime;                 // Використовуємо заздалегідь отриманий час
             animations[slot]->localStartTime = millis();             // Локальний час для тривалості
             animations[slot]->region_id = region_id;
             animations[slot]->bit = bit;
