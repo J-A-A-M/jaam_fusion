@@ -38,6 +38,7 @@ class AnimationManager {
     private:
         static const int MAX_ANIMATIONS = 280;     
         SemaphoreHandle_t animMutex;
+        SemaphoreHandle_t globalTimesMutex;  // Окремий мютекс для синхронізації global start times
         int activeCount;
         JaamSettings* settings;
         JaamLed led;

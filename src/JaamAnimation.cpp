@@ -53,6 +53,7 @@ const char* AnimationManager::getStripName(Adafruit_NeoPixel* strip) {
 
 AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr), synchronizedMode(false) {
     animMutex = xSemaphoreCreateMutex();
+    globalTimesMutex = xSemaphoreCreateMutex();
     for (int i = 0; i < MAX_ANIMATIONS; i++) {
         animations[i] = nullptr;
         activeAnimations[i].strip = nullptr;
@@ -83,34 +84,42 @@ bool AnimationManager::isSynchronizedMode() const {
 }
 
 void AnimationManager::resetAllGlobalTimes() {
-    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < ANIMATION_TYPES_COUNT; i++) {
             globalTimesInitialized[i] = false;
             globalStartTimes[i] = 0;
         }
-        xSemaphoreGive(animMutex);
+        xSemaphoreGive(globalTimesMutex);
     }
     LOG.printf("[ANIMATION] All global start times reset\n");
 }
 
 uint32_t AnimationManager::getStartTime(uint16_t animationType) {
-    // УВАГА: Цей метод викликається коли animMutex вже захоплений!
+    uint32_t currentTime = millis();
+    
     if (synchronizedMode) {
         if (animationType >= ANIMATION_TYPES_COUNT) {
-            return millis();
+            LOG.printf("[ANIMATION] Invalid animation type %d, returning current time\n", animationType);
+            return currentTime;
         }
         
-        if (!globalTimesInitialized[animationType]) {
-            globalStartTimes[animationType] = millis();
-            globalTimesInitialized[animationType] = true;
-            LOG.printf("[ANIMATION] Initialized global start time for type %d: %u\n", animationType, globalStartTimes[animationType]);
+        if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
+            if (!globalTimesInitialized[animationType]) {
+                globalStartTimes[animationType] = currentTime;
+                globalTimesInitialized[animationType] = true;
+                LOG.printf("[ANIMATION] Initialized global time for type %d (%s): %u\n", 
+                          animationType, 
+                          ANIMATION_TYPES[animationType].name,
+                          globalStartTimes[animationType]);
+            }
+            
+            uint32_t returnTime = globalStartTimes[animationType];
+            xSemaphoreGive(globalTimesMutex);
+            return returnTime;
         }
-        
-        return globalStartTimes[animationType];
-    } else {
-        // Асинхронний режим - повертаємо поточний час
-        return millis();
     }
+    // Асинхронний режим або якщо не вдалося захопити мютекс - повертаємо поточний час
+    return currentTime;
 }
 
 void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
@@ -127,11 +136,15 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
     
     // Якщо немає активних анімацій цього типу - скидаємо глобальний час
     if (!hasActiveAnimations) {
-        if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-            globalTimesInitialized[animationType] = false;
-            xSemaphoreGive(animMutex);
+        if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
+            if (globalTimesInitialized[animationType]) {
+                globalTimesInitialized[animationType] = false;
+                globalStartTimes[animationType] = 0;
+                LOG.printf("[ANIMATION] Reset global time for type %d (%s)\n", 
+                          animationType, ANIMATION_TYPES[animationType].name);
+            }
+            xSemaphoreGive(globalTimesMutex);
         }
-        LOG.printf("[ANIMATION] Reset global time for type %d\n", animationType);
     }
 }
 
@@ -815,15 +828,15 @@ void AnimationManager::removeLedFromAnimation(AnimationParams* anim, int ledIdx,
 
 void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     if (anim == nullptr) return;
-    char hexColor[8];
+    String positionsStr = "";
     uint16_t animationType = anim->type;
-    
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < anim->posCount; ++i) {
             // Визначаємо дефолтний колір для стрічки
             uint32_t color = ledActualColor(anim->strip, anim->positions[i]);
-            snprintf(hexColor, sizeof(hexColor), "#%06X", color);
-            anim->strip->setPixelColor(anim->positions[i], color);   
+            anim->strip->setPixelColor(anim->positions[i], color);
+            positionsStr += String(anim->positions[i]);
+            if (i < anim->posCount - 1) positionsStr += " ";
         }
         anim->strip->show();
         xSemaphoreGive(stripMutex);
@@ -855,8 +868,8 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     checkAndResetGlobalTime(animationType);
     
     const char* stripName = getStripName(anim->strip);
-    
-    LOG.printf("[ANIMATION] Cleaned up animation slot %d, strip=%s, color %s, active count: %d\n", index, stripName, hexColor, activeCount);
+
+    LOG.printf("[ANIMATION] Cleaned up animation slot %d, strip=%s, leds=%s, active count: %d\n", index, stripName, positionsStr, activeCount);
 }
 
 std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds) {
