@@ -2,6 +2,9 @@
 #include "JaamConfig.h"
 #include "JaamUtils.h"
 
+// Ініціалізація статичних змінних для синхронізації
+uint32_t AnimationManager::globalStartTimes[ANIMATION_TYPES_COUNT] = {0};
+bool AnimationManager::globalTimesInitialized[ANIMATION_TYPES_COUNT] = {false};
 
 // Трансформує "#RRGGBB" у uint32_t для setPixelColor
 uint32_t AnimationManager::colorFromHex(const char* hex) {
@@ -36,8 +39,21 @@ uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float f
     return (r << 16) | (g << 8) | b;
 }
 
-AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr) {
+// Допоміжний метод для визначення назви стрічки
+const char* AnimationManager::getStripName(Adafruit_NeoPixel* strip) {
+    if (strip == strip_main && strip_main != nullptr) {
+        return "main";
+    } else if (strip == strip_bg && strip_bg != nullptr) {
+        return "bg";
+    } else if (strip == strip_service && strip_service != nullptr) {
+        return "service";
+    }
+    return "unknown";
+}
+
+AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr), synchronizedMode(false) {
     animMutex = xSemaphoreCreateMutex();
+    globalTimesMutex = xSemaphoreCreateMutex();
     for (int i = 0; i < MAX_ANIMATIONS; i++) {
         animations[i] = nullptr;
         activeAnimations[i].strip = nullptr;
@@ -48,6 +64,88 @@ AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0),
 
 void AnimationManager::setSettings(JaamSettings* settings) {
     this->settings = settings;
+}
+
+// Методи синхронізації анімацій
+void AnimationManager::setSynchronizedMode(bool enabled) {
+    bool wasEnabled = synchronizedMode;
+    synchronizedMode = enabled;
+    
+    // Якщо синхронізацію вмикають - скидаємо всі глобальні часи
+    if (enabled && !wasEnabled) {
+        resetAllGlobalTimes();
+    }
+    
+    LOG.printf("[ANIMATION] Synchronized mode %s\n", enabled ? "enabled" : "disabled");
+}
+
+bool AnimationManager::isSynchronizedMode() const {
+    return synchronizedMode;
+}
+
+void AnimationManager::resetAllGlobalTimes() {
+    if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < ANIMATION_TYPES_COUNT; i++) {
+            globalTimesInitialized[i] = false;
+            globalStartTimes[i] = 0;
+        }
+        xSemaphoreGive(globalTimesMutex);
+    }
+    LOG.printf("[ANIMATION] All global start times reset\n");
+}
+
+uint32_t AnimationManager::getStartTime(uint16_t animationType) {
+    uint32_t currentTime = millis();
+    
+    if (synchronizedMode) {
+        if (animationType >= ANIMATION_TYPES_COUNT) {
+            LOG.printf("[ANIMATION] Invalid animation type %d, returning current time\n", animationType);
+            return currentTime;
+        }
+        
+        if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
+            if (!globalTimesInitialized[animationType]) {
+                globalStartTimes[animationType] = currentTime;
+                globalTimesInitialized[animationType] = true;
+                LOG.printf("[ANIMATION] Initialized global time for type %d (%s): %u\n", 
+                          animationType, 
+                          ANIMATION_TYPES[animationType].name,
+                          globalStartTimes[animationType]);
+            }
+            
+            uint32_t returnTime = globalStartTimes[animationType];
+            xSemaphoreGive(globalTimesMutex);
+            return returnTime;
+        }
+    }
+    // Асинхронний режим або якщо не вдалося захопити мютекс - повертаємо поточний час
+    return currentTime;
+}
+
+void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
+    if (!synchronizedMode || animationType >= ANIMATION_TYPES_COUNT) return;
+    
+    // Перевіряємо чи є активні анімації цього типу
+    bool hasActiveAnimations = false;
+    for (int i = 0; i < MAX_ANIMATIONS; i++) {
+        if (animations[i] != nullptr && animations[i]->isActive && animations[i]->type == animationType) {
+            hasActiveAnimations = true;
+            break;
+        }
+    }
+    
+    // Якщо немає активних анімацій цього типу - скидаємо глобальний час
+    if (!hasActiveAnimations) {
+        if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
+            if (globalTimesInitialized[animationType]) {
+                globalTimesInitialized[animationType] = false;
+                globalStartTimes[animationType] = 0;
+                LOG.printf("[ANIMATION] Reset global time for type %d (%s)\n", 
+                          animationType, ANIMATION_TYPES[animationType].name);
+            }
+            xSemaphoreGive(globalTimesMutex);
+        }
+    }
 }
 
 bool AnimationManager::createAnimation(uint16_t type, 
@@ -67,6 +165,10 @@ bool AnimationManager::createAnimation(uint16_t type,
         LOG.printf("[ANIMATION] ERROR: Strip is nullptr\n");
         return false;
     }
+    
+    // Отримуємо startTime до захоплення animMutex щоб уникнути deadlock
+    uint32_t startTime = getStartTime(type);
+    
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         // Для кожного LED видаляємо його зі старої анімації (якщо є)
         for (int posIdx = 0; posIdx < posCount; ++posIdx) {
@@ -125,7 +227,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             animations[slot]->startBrightness = startBrightness;
             animations[slot]->endBrightness = endBrightness;
             animations[slot]->isActive = true;
-            animations[slot]->startTime = millis();
+            animations[slot]->startTime = startTime;                 // Використовуємо заздалегідь отриманий час
+            animations[slot]->localStartTime = millis();             // Локальний час для тривалості
             animations[slot]->region_id = region_id;
             animations[slot]->bit = bit;
             
@@ -133,7 +236,9 @@ bool AnimationManager::createAnimation(uint16_t type,
 
             // LOG: Початок анімації
             const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
-            LOG.printf("[ANIMATION] START type=%s, region=%d, leds=", typeName, region_id);
+            const char* stripName = getStripName(strip);
+            
+            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, leds=", stripName, typeName, region_id);
             for (int i = 0; i < posCount; ++i) {
                 LOG.printf("%d ", positions[i]);
             }
@@ -209,6 +314,9 @@ void AnimationManager::clearAllAnimations() {
         activeAnimationsCount = 0;
         xSemaphoreGive(animMutex);
     }
+    
+    // Скидаємо всі глобальні часи після очищення всіх анімацій
+    resetAllGlobalTimes();
 }
 
 void AnimationManager::logActiveAnimations() {
@@ -217,16 +325,9 @@ void AnimationManager::logActiveAnimations() {
         for (int i = 0; i < MAX_ANIMATIONS; i++) {
             if (animations[i] != nullptr && animations[i]->isActive) {
                 AnimationParams* anim = animations[i];
-                const char* stripName = "unknown";
-                if (anim->strip == strip_main && strip_main != nullptr) {
-                    stripName = "main";
-                } else if (anim->strip == strip_bg && strip_bg != nullptr) {
-                    stripName = "bg";
-                } else if (anim->strip == strip_service && strip_service != nullptr) {
-                    stripName = "service";
-                }
+                const char* stripName = getStripName(anim->strip);
 
-                if (stripName == "unknown") {
+                if (strcmp(stripName, "unknown") == 0) {
                     LOG.printf("[DEBUG] Animation %d: strip is nullptr\n", i);
                     continue;
                 }
@@ -243,25 +344,37 @@ void AnimationManager::logActiveAnimations() {
 
 void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
     uint32_t currentTime = millis();
-    float elapsed = (currentTime - anim->startTime) / float(anim->period);
     
+    // Розраховуємо тривалість анімації від локального часу початку
+    float localElapsed = (currentTime - anim->localStartTime) / float(anim->period);
+    
+    // Для синхронного режиму розраховуємо фазу від глобального часу
+    float elapsed;
+    if (synchronizedMode) {
+        elapsed = (currentTime - anim->startTime) / float(anim->period);
+    } else {
+        elapsed = localElapsed;
+    }
 
     // Логування раз на секунду
     // if (currentTime - anim->lastLogTime >= 1000) {
     //     LOG.printf("[ANIMATION PROGRESS] type=%s, region=%d, period=%u, cycles=%u, elapsed=%d\n", typeName, anim->region_id, anim->period, anim->cycles, (int)elapsed);
     //     anim->lastLogTime = currentTime;
     // }
-    if (elapsed >= anim->cycles) {
+
+    // Перевіряємо завершення анімації за локальним часом
+    if (localElapsed >= anim->cycles) {
         anim->isActive = false;
         // LOG: Кінець анімації
-        uint32_t duration = millis() - anim->startTime;
+        uint32_t duration = millis() - anim->localStartTime;
         const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
+        const char* stripName = getStripName(anim->strip);
         
-        LOG.printf("[ANIMATION] END type=%s, region=%d, leds=", typeName, anim->region_id);
+        LOG.printf("[ANIMATION] END strip=%s, type=%s, region=%d, leds=", stripName, typeName, anim->region_id);
         for (int i = 0; i < anim->posCount; ++i) {
             LOG.printf("%d ", anim->positions[i]);
         }
-        LOG.printf(" period=%u, cycles=%u, duration=%u ms, elapsed=%u\n", anim->period, anim->cycles, duration, elapsed);
+        LOG.printf(" period=%u, cycles=%u, duration=%u ms, localElapsed=%.2f\n", anim->period, anim->cycles, duration, localElapsed);
         cleanupAnimation(anim, index);
         return;
     }
@@ -719,13 +832,15 @@ void AnimationManager::removeLedFromAnimation(AnimationParams* anim, int ledIdx,
 
 void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     if (anim == nullptr) return;
-    char hexColor[8];
+    String positionsStr = "";
+    uint16_t animationType = anim->type;
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < anim->posCount; ++i) {
             // Визначаємо дефолтний колір для стрічки
             uint32_t color = ledActualColor(anim->strip, anim->positions[i]);
-            snprintf(hexColor, sizeof(hexColor), "#%06X", color);
-            anim->strip->setPixelColor(anim->positions[i], color);   
+            anim->strip->setPixelColor(anim->positions[i], color);
+            positionsStr += String(anim->positions[i]);
+            if (i < anim->posCount - 1) positionsStr += " ";
         }
         anim->strip->show();
         xSemaphoreGive(stripMutex);
@@ -753,7 +868,12 @@ void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
     animations[index] = nullptr;
     activeCount--;
     
-    LOG.printf("[ANIMATION] Cleaned up animation slot %d, color %s, active count: %d\n", index, hexColor, activeCount);
+    // Перевіряємо чи потрібно скинути глобальний час для цього типу
+    checkAndResetGlobalTime(animationType);
+    
+    const char* stripName = getStripName(anim->strip);
+
+    LOG.printf("[ANIMATION] Cleaned up animation slot %d, strip=%s, leds=%s, active count: %d\n", index, stripName, positionsStr, activeCount);
 }
 
 std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds) {

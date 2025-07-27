@@ -71,6 +71,7 @@ bool                needReconnectBgStrip;
 bool                needReconnectServiceStrip;
 bool                needUpdateBatteryPin = false; // Flag to update battery pin in web settings
 bool                needReconfigureDisplay = false; // Flag to reconfigure display settings
+bool                needUpdateAnimationsMode = false; // Flag to update animations mode
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -1785,6 +1786,12 @@ void mainThreadProcess() {
         display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
         needReconfigureDisplay = false;
     }
+
+    if (needUpdateAnimationsMode) {
+        LOG.printf("[MAIN] Animations sync mode %s\n", settings.getInt(ENABLE_SYNC_ANIMATIONS) ? "ENABLED" : "DISABLED");
+        animation.setSynchronizedMode(settings.getInt(ENABLE_SYNC_ANIMATIONS));
+        needUpdateAnimationsMode = false;
+    }
 }
 
 void brightnessProcess() {
@@ -1883,6 +1890,8 @@ void setup() {
     
     // Передаємо settings в AnimationManager
     animation.setSettings(&settings);
+    // Встановлюємо режим роботи анімацій
+    animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
     led.setSettings(&settings);
     battery.setSettings(&settings);
     checkFreeHeap("animation and LED settings");
