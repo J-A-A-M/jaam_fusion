@@ -792,7 +792,7 @@ void socketConnect() {
         apiConnected = true;
         servicePin(DATA);
         clearAllAlertsMaps();
-        animation.clearAllAnimations();
+        //animation.clearAllAnimations();
         LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
         char chipIdInfo[25];
         sprintf(chipIdInfo, "chip_id:%s", chipID);
