@@ -15,6 +15,26 @@
 
 static const char* CUSTOM_MAP_PATH = "/custom_map.json";
 
+// Масив з описом типів тривог
+static const char* ALERT_TYPES[] = {
+    "Air",      // bit 0
+    "Artillery", // bit 1
+    "Urban",    // bit 2
+    "Chemical", // bit 3
+    "Nuclear",  // bit 4
+    "Drones",   // bit 5
+    "Missiles", // bit 6
+    "KAB",      // bit 7
+    "Ballistic",// bit 8
+    "Explosion", // bit 9
+    "Recon Drones" // bit 10
+};
+static const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
+
+// Alert priority order - from highest to lowest priority
+static const int ALERT_PRIORITY_ORDER[] = {9, 8, 7, 6, 5, 10, 0};
+static const int ALERT_PRIORITY_COUNT = sizeof(ALERT_PRIORITY_ORDER) / sizeof(ALERT_PRIORITY_ORDER[0]);
+
 // External variables declarations
 extern uint32_t                         lastWebsocketConnectTime;
 extern uint32_t                         lastWifiConnectTime;
@@ -339,11 +359,31 @@ inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
         return -1; // Якщо біт 0 не встановлений і потрібно перевіряти наявність біта 0, повертаємо -1
     }
 
-    uint8_t position = 0;
-    while (value >>= 1) {
-        position++;
+    // Пошук найвищого біту за пріоритетом
+    for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
+        int bit = ALERT_PRIORITY_ORDER[i];
+        if (value & (1 << bit)) {
+            return bit;
+        }
     }
-    return position;
+    
+    return -1; // Жоден з пріоритетних бітів не встановлений
+}
+
+// Функція для порівняння пріоритетів двох бітів (повертає true, якщо bit1 має вищий пріоритет за bit2)
+inline bool hasHigherPriority(int bit1, int bit2) {
+    if (bit1 == -1) return false;
+    if (bit2 == -1) return true;
+    
+    // Знаходимо індекси в масиві пріоритетів
+    int index1 = -1, index2 = -1;
+    for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
+        if (ALERT_PRIORITY_ORDER[i] == bit1) index1 = i;
+        if (ALERT_PRIORITY_ORDER[i] == bit2) index2 = i;
+    }
+    
+    // Менший індекс означає вищий пріоритет
+    return index1 != -1 && index2 != -1 && index1 < index2;
 }
 
 // Функція для пошуку найстаршого біту для конкретного LED
@@ -354,7 +394,7 @@ inline int findHighestBitForLed(int position) {
         return -1; // LED не належить жодному регіону
     }
 
-    uint8_t globalHighestBit = 0;
+    uint8_t globalHighestBit = -1;
     uint16_t highestBitRegion = 0;
     bool foundAnyBit = false;
 
@@ -364,7 +404,7 @@ inline int findHighestBitForLed(int position) {
         if (it != alertsMap.end() && it->second > 0) {
             int currentHighestBit = findHighestBit16(it->second);
             
-            if (currentHighestBit != -1 && (!foundAnyBit || currentHighestBit > globalHighestBit)) {
+            if (currentHighestBit != -1 && (!foundAnyBit || hasHigherPriority(currentHighestBit, globalHighestBit))) {
                 globalHighestBit = currentHighestBit;
                 highestBitRegion = regionId;
                 foundAnyBit = true;
@@ -454,8 +494,24 @@ inline bool isLedInHomeRegion(int led_position) {
 inline int getHighestActualBit(int sourceBit) {
     int actualBit = -1;
     
-    // Перебираємо біти від найвищого до найнижчого
-    for (int bit = sourceBit; bit >= 0; bit--) {
+    // Знаходимо позицію sourceBit в ALERT_PRIORITY_ORDER
+    int sourceBitIndex = -1;
+    for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
+        if (ALERT_PRIORITY_ORDER[i] == sourceBit) {
+            sourceBitIndex = i;
+            break;
+        }
+    }
+    
+    // Якщо sourceBit не знайдено в пріоритетах, повертаємо -1
+    if (sourceBitIndex == -1) {
+        return -1;
+    }
+    
+    // Перебираємо біти за порядком пріоритету, починаючи з sourceBit
+    for (int i = sourceBitIndex; i < ALERT_PRIORITY_COUNT; ++i) {
+        int bit = ALERT_PRIORITY_ORDER[i];
+        
         bool is_enabled = false;
         
         // Перевіряємо чи дозволено показувати цей тип тривоги
@@ -475,24 +531,10 @@ inline int getHighestActualBit(int sourceBit) {
             is_enabled = settings.getBool(ENABLE_RECON_DRONES);
         }
 
-        // Якщо тип тривоги дозволено показувати - встановлюємо колір
+        // Якщо тип тривоги дозволено показувати - встановлюємо його і виходимо
         if (is_enabled) {
-            if (bit == 0) {
-                actualBit = 0;
-            } else if (bit == 5) {
-                actualBit = 5;
-            } else if (bit == 6) {
-                actualBit = 6;
-            } else if (bit == 7) {
-                actualBit = 7;
-            } else if (bit == 8) {
-                actualBit = 8;
-            } else if (bit == 9) {
-                actualBit = 9;
-            } else if (bit == 10) {
-                actualBit = 10;
-            }
-            break; // Зупиняємося на першому дозволеному біті
+            actualBit = bit;
+            break; // Зупиняємося на першому дозволеному біті за пріоритетом
         }
     }
     return actualBit;

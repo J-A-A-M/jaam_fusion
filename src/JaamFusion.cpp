@@ -168,22 +168,6 @@ struct AlertDiff {
     bool has_changes;
 };
 
-// Масив з описом типів тривог
-const char* ALERT_TYPES[] = {
-    "Air",      // bit 0
-    "Artillery", // bit 1
-    "Urban",    // bit 2
-    "Chemical", // bit 3
-    "Nuclear",  // bit 4
-    "Drones",   // bit 5
-    "Missiles", // bit 6
-    "KAB",      // bit 7
-    "Ballistic",// bit 8
-    "Explosion", // bit 9
-    "Recon Drones" // bit 10
-};
-const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
-
 void servicePin(ServiceLed type) {
     if (strip_service != nullptr) {
         uint32_t color = getServicePinColor(type);
@@ -229,6 +213,7 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
     int actualBit = getHighestActualBit(bit);
 
     if (increase && actualBit != bit) {
+        LOG.printf("[ANIMATION] actualBit %d != bit. Animation aborted %d\n", actualBit, bit);
         return;
     }
 
@@ -243,14 +228,12 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
             color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
             animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : 4;
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
-            endBrightness = 50; 
             period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
             break;
         case 5: 
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50; 
             animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : 4;
             period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
@@ -258,7 +241,6 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50; 
             animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : 4;
             period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
@@ -266,7 +248,6 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50; 
             animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : 4;
             period = (increase) ? settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(KAB_TIME) * 1000)/settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 1;
@@ -274,7 +255,6 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
         case 8:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50; 
             animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : 4;
             period = (increase) ? settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(BALLISTIC_TIME) * 1000)/settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME)  : 1;
@@ -282,7 +262,6 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
         case 9:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50;
             animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : 4;
             period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 1000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
@@ -290,7 +269,6 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
         case 10:
             color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            endBrightness = 50;
             animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : 4;
             period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
@@ -429,7 +407,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                             int highestBitRegion = findHighestBit16(alerts_it->second);
                             LOG.printf("[%d] ", highestBitRegion);
 
-                            if (highestBitLed < highestBitRegion) {
+                            if (hasHigherPriority(highestBitRegion, highestBitLed)) {
                                 highestBitLed = highestBitRegion;
                             }
                         }
@@ -447,7 +425,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             
 
-            if (actualBitDiff > actualBitLed) {
+            if (hasHigherPriority(actualBitDiff,actualBitLed)) {
                 for (int i = 0; i < ledCount; ++i) {
                     animateLed(strip_main,leds[i], actualBitDiff, region_id, true);
                     if (isLedInHomeRegion(leds[i])) {
@@ -575,7 +553,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
                     // Оновлюємо найвищий біт для LED
                     auto it = led_bits_diff.find(led_position);
-                    if (it == led_bits_diff.end() || highest_bit_diff > it->second.highest_bit) {
+                    if (it == led_bits_diff.end() || hasHigherPriority(highest_bit_diff, it->second.highest_bit)) {
                         led_bits_diff[led_position] = {highest_bit_diff, diff.region_id};
                     }
                 }
@@ -597,7 +575,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
                             // Оновлюємо найвищий біт для LED
                             auto it = led_bits_alerts.find(led_position);
-                            if (it == led_bits_alerts.end() || highest_bit_region > it->second.highest_bit) {
+                            if (it == led_bits_alerts.end() || hasHigherPriority(highest_bit_region, it->second.highest_bit)) {
                                 led_bits_alerts[led_position] = {highest_bit_region, region_id};
                             }
                         }
@@ -642,18 +620,18 @@ void onMessageCallback(WebsocketsMessage msg) {
                     int diff_bit = led.second.highest_bit;
                     int alerts_bit = alerts_it->second.highest_bit;
 
-                    if (diff_bit > alerts_bit) {
-                        //LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
-                        //    led.first, led.second.region_id, alerts_bit, diff_bit);
+                    if (hasHigherPriority(diff_bit, alerts_bit)) {
+                        LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
+                            led.first, led.second.region_id, alerts_bit, diff_bit);
                             animateLed(strip_main, led.first, diff_bit, led.second.region_id, true);
                             if (isLedInHomeRegion(led.first)) {
                                 needToAnimateBgHomeRegion = true;
                                 homeRegionBit = diff_bit;
                                 homeRegionIncrease = true;
                             }
-                    } else if (diff_bit < alerts_bit) {
-                        //LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
-                        //    led.first, led.second.region_id, alerts_bit, diff_bit);
+                    } else if (hasHigherPriority(alerts_bit, diff_bit)) {
+                        LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
+                            led.first, led.second.region_id, alerts_bit, diff_bit);
                             animateLed(strip_main, led.first, diff_bit, led.second.region_id, false);
                             if (isLedInHomeRegion(led.first)) {
                                 needToAnimateBgHomeRegion = true;
