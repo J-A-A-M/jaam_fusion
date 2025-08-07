@@ -170,7 +170,7 @@ bool AnimationManager::createAnimation(uint16_t type,
     uint32_t startTime = getStartTime(type);
     
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        // Для кожного LED видаляємо його зі старої анімації (якщо є)
+        // Для кожного LED перевіряємо пріоритет існуючих анімацій
         for (int posIdx = 0; posIdx < posCount; ++posIdx) {
             int ledPos = positions[posIdx];
             for (int i = 0; i < activeAnimationsCount; ++i) {
@@ -178,6 +178,23 @@ bool AnimationManager::createAnimation(uint16_t type,
                     activeAnimations[i].ledIndex == ledPos) {
                     int animIdx = activeAnimations[i].animationIndex;
                     if (animations[animIdx] != nullptr) {
+                        int existingBit = animations[animIdx]->bit;
+                        
+                        const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
+                        const char* stripName = getStripName(strip);
+                        // Перевіряємо пріоритет: якщо існуюча анімація має вищий або рівний пріоритет або це відбій тривоги
+                        if (!hasHigherPriority(bit, existingBit) && bit!= -1) {
+                            
+                            LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d, led=%d: existing animation has higher priority (bit %d vs %d)\n", 
+                                      stripName, typeName, region_id, ledPos, existingBit, bit);
+                            xSemaphoreGive(animMutex);
+                            return false;
+                        } else {
+                            LOG.printf("[ANIMATION] REPLACING strip=%s, type=%s, region=%d, led=%d: existing animation bit %d replaced with %d\n", 
+                                      stripName, typeName, region_id, ledPos, existingBit, bit);
+                        }
+                        
+                        // Якщо нова анімація має вищий пріоритет - видаляємо стару
                         removeLedFromAnimation(animations[animIdx], ledPos, animIdx);
                         // Після видалення масив зсувається, тому треба зменшити i
                         i--;
@@ -648,22 +665,22 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
             } else if (bit == 5) {
                 color = colorFromHex(settings->getString(COLOR_DRONES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_DRONES));
             } else if (bit == 6) {
                 color = colorFromHex(settings->getString(COLOR_MISSILES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_MISSILES));
             } else if (bit == 7) {
                 color = colorFromHex(settings->getString(COLOR_KABS));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_KABS));
             } else if (bit == 8) {
                 color = colorFromHex(settings->getString(COLOR_BALLISTIC));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BALLISTIC));
             } else if (bit == 9) {
                 color = colorFromHex(settings->getString(COLOR_EXPLOSION));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
             } else if (bit == 10) {
                 color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_RECON_DRONES));
             }
             break; // Зупиняємося на першому дозволеному біті
         }

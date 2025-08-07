@@ -403,7 +403,12 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness_night", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT), "Нічь");
     html += getParameterHtml("brightness_alert", 0, 100, 1, settings->getInt(BRIGHTNESS_ALERT), "Тривога");
     html += getParameterHtml("brightness_clear", 0, 100, 1, settings->getInt(BRIGHTNESS_CLEAR), "Без тривоги");
-    html += getParameterHtml("brightness_explosion", 0, 100, 1, settings->getInt(BRIGHTNESS_EXPLOSION), "Вибухи, дрони, ракети, балістика");
+    html += getParameterHtml("brightness_explosion", 0, 100, 1, settings->getInt(BRIGHTNESS_EXPLOSION), "Вибухи");
+    html += getParameterHtml("brightness_missiles", 0, 100, 1, settings->getInt(BRIGHTNESS_MISSILES), "Крилаті та авіаційні ракети");
+    html += getParameterHtml("brightness_drones", 0, 100, 1, settings->getInt(BRIGHTNESS_DRONES), "Ударні БПЛА");
+    html += getParameterHtml("brightness_recon_drones", 0, 100, 1, settings->getInt(BRIGHTNESS_RECON_DRONES), "Розвідувальні БПЛА");
+    html += getParameterHtml("brightness_kabs", 0, 100, 1, settings->getInt(BRIGHTNESS_KABS), "КАБ");
+    html += getParameterHtml("brightness_ballistic", 0, 100, 1, settings->getInt(BRIGHTNESS_BALLISTIC), "Балістичні ракети");
     html += getParameterHtml("brightness_home_district", 0, 100, 1, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Домашній регіон");
     html += getParameterHtml("brightness_bg", 0, 100, 1, settings->getInt(BRIGHTNESS_BG), "Фонова стрічка");
     html += getParameterHtml("brightness_service", 0, 100, 1, settings->getInt(BRIGHTNESS_SERVICE), "Сервісні діоди");
@@ -698,6 +703,31 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, intValue);
             LOG.printf("[WEB] Setting brightness_explosion: %d\n", intValue);
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else if (name == "brightness_missiles") {
+            settings->saveInt(BRIGHTNESS_MISSILES, intValue);
+            LOG.printf("[WEB] Setting brightness_missiles: %d\n", intValue);
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else if (name == "brightness_drones") {
+            settings->saveInt(BRIGHTNESS_DRONES, intValue);
+            LOG.printf("[WEB] Setting brightness_drones: %d\n", intValue);
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else if (name == "brightness_recon_drones") {
+            settings->saveInt(BRIGHTNESS_RECON_DRONES, intValue);
+            LOG.printf("[WEB] Setting brightness_recon_drones: %d\n", intValue  );
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else if (name == "brightness_kabs") {
+            settings->saveInt(BRIGHTNESS_KABS, intValue);
+            LOG.printf("[WEB] Setting brightness_kabs: %d\n", intValue);
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else if (name == "brightness_ballistic") {
+            settings->saveInt(BRIGHTNESS_BALLISTIC, intValue);
+            LOG.printf("[WEB] Setting brightness_ballistic: %d\n", intValue);
             needAdaptColors = true;
             needAdaptAnimationColors = true;
         } else if (name == "brightness_home_district") {

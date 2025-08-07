@@ -370,10 +370,11 @@ inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
     return -1; // Жоден з пріоритетних бітів не встановлений
 }
 
-// Функція для порівняння пріоритетів двох бітів (повертає true, якщо bit1 має вищий пріоритет за bit2)
+// Функція для порівняння пріоритетів двох бітів (повертає true, якщо bit1 має вищий пріоритет за bit2 або рівний пріоритет)
 inline bool hasHigherPriority(int bit1, int bit2) {
     if (bit1 == -1) return false;
     if (bit2 == -1) return true;
+    if (bit1 == bit2) return true;
     
     // Знаходимо індекси в масиві пріоритетів
     int index1 = -1, index2 = -1;
