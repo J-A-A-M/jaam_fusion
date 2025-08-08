@@ -219,7 +219,8 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
 
     switch (actualBit) {
         case -1: 
-            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));               
+            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));  
+            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));             
             animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
             cycles = (settings.getInt(ALERT_OFF_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);

@@ -30,6 +30,7 @@ public:
     
     // Convert percentage to 0-255 scale
     static uint8_t brightnessAbsolute(uint8_t percent);
+    static uint8_t brightnessParabolic(uint8_t percent);
     static uint8_t brightnessMapped(uint8_t percent);
 
     // Перевірка ініціалізації стрічки

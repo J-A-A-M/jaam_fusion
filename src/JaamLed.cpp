@@ -10,7 +10,14 @@ void JaamLed::setSettings(JaamSettings* settings) {
 }
 
 uint8_t JaamLed::brightnessAbsolute(uint8_t percent) {
-    // Використовуємо пряму параболічну залежність
+    // Пряме лінійне перетворення відсотків в абсолютні значення 0-255
+    if (percent > 100) percent = 100;  // Обмеження максимального значення
+    return (uint8_t)((percent * 255) / 100);
+
+}
+
+uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
+    // // Використовуємо пряму параболічну залежність
     float normalized = percent / 100.0f;
     float squared = normalized * normalized;
     return (uint8_t)(squared * 255.0f);

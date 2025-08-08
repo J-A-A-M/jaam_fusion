@@ -625,7 +625,7 @@ void AnimationManager::adaptAllAnimationColors() {
                     int ledIdx = anim->positions[k];
                     // Адаптуємо колір для кожного LED
                     LOG.printf("[DEBUG] changed color for led %d\n", ledIdx);
-                    anim->color = ledActualColor(anim->strip, ledIdx, true, anim->bit);
+                    anim->color = ledActualColor(anim->strip, ledIdx, false, anim->bit);
                 }
             }
         }
