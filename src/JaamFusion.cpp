@@ -207,8 +207,8 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
     uint32_t initialColor = 0x000000; // Початковий колір для анімації
     uint32_t period;
     uint32_t cycles;
-    uint8_t startBrightness = 255;
-    uint8_t endBrightness = 50;
+    uint8_t startBrightness;
+    uint8_t endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ANIMATION_END));
     uint8_t ledCount;
 
     int actualBit = getHighestActualBit(bit);
@@ -1485,7 +1485,7 @@ void animations() {
     uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
     uint32_t cycles = 30; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
-    uint8_t endBrightness = 255; //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
+    uint8_t endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ANIMATION_END)); //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
     
     // Створення анімації з обробкою помилок
     if (!animation.createAnimation(

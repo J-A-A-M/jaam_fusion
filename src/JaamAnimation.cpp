@@ -635,17 +635,22 @@ void AnimationManager::adaptAllAnimationColors() {
 
 void AnimationManager::adaptAllAnimationBrightness() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        uint8_t globalEnd = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ANIMATION_END));
         for (int i = 0; i < MAX_ANIMATIONS; i++) {
             if (animations[i] != nullptr && animations[i]->isActive) {
                 AnimationParams* anim = animations[i];
                 int bit = anim->bit; // може бути -1 (clear)
                 if (bit >= -1) {
                     std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(bit);
-                    uint8_t newBrightness = result.second;
-                    if (newBrightness != anim->startBrightness) {
-                        LOG.printf("[ANIMATION] Adapt brightness anim %d: bit=%d %u->%u\n", i, bit, anim->startBrightness, newBrightness);
-                        anim->startBrightness = newBrightness;
+                    uint8_t newStart = result.second;
+                    if (newStart != anim->startBrightness) {
+                        LOG.printf("[ANIMATION] Adapt startBrightness anim %d: bit=%d %u->%u\n", i, bit, anim->startBrightness, newStart);
+                        anim->startBrightness = newStart;
                     }
+                }
+                if (anim->endBrightness != globalEnd) {
+                    LOG.printf("[ANIMATION] Adapt endBrightness anim %d: %u->%u\n", i, anim->endBrightness, globalEnd);
+                    anim->endBrightness = globalEnd;
                 }
             }
         }

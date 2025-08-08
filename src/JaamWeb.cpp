@@ -413,6 +413,7 @@ String JaamWeb::getHtmlTemplate() {
     html += getParameterHtml("brightness_home_district", 0, 100, 1, settings->getInt(BRIGHTNESS_HOME_DISTRICT), "Домашній регіон");
     html += getParameterHtml("brightness_bg", 0, 100, 1, settings->getInt(BRIGHTNESS_BG), "Фонова стрічка");
     html += getParameterHtml("brightness_service", 0, 100, 1, settings->getInt(BRIGHTNESS_SERVICE), "Сервісні діоди");
+    html += getParameterHtml("brightness_animation_end", 0, 100, 1, settings->getInt(BRIGHTNESS_ANIMATION_END), "Кінцева яскравість анімацій");
     html += "<label class=\"label\">Налаштування тривог</label>";
     html += getBoolParameterHtml("enable_kabs", settings->getBool(ENABLE_KABS), "Загроза КАБ");
     html += getBoolParameterHtml("enable_missiles", settings->getBool(ENABLE_MISSILES), "Загроза крилатих та авіаційних ракет");
@@ -745,6 +746,10 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
             needAdaptColors = true; 
+        } else if (name == "brightness_animation_end") {
+            settings->saveInt(BRIGHTNESS_ANIMATION_END, intValue);
+            LOG.printf("[WEB] Setting brightness_animation_end: %d\n", intValue);
+            needAdaptAnimationBrightness = true;
         } else if (name == "main_led_color_format") {
             settings->saveInt(MAIN_LED_COLOR_FORMAT, intValue);
             LOG.printf("[WEB] Setting main_led_color_format: %d\n", intValue);
@@ -824,7 +829,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_mode") {
             settings->saveInt(BRIGHTNESS_MODE, intValue);
             LOG.printf("[WEB] Setting brightness_mode: %d\n", intValue);
-        } else if (name == "day_start") {
+               } else if (name == "day_start") {
             settings->saveInt(DAY_START, intValue);
             LOG.printf("[WEB] Setting day_start: %d\n", intValue);
         } else if (name == "night_start") {
