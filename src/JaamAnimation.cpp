@@ -633,16 +633,38 @@ void AnimationManager::adaptAllAnimationColors() {
     }
 }
 
+void AnimationManager::adaptAllAnimationBrightness() {
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < MAX_ANIMATIONS; i++) {
+            if (animations[i] != nullptr && animations[i]->isActive) {
+                AnimationParams* anim = animations[i];
+                int bit = anim->bit; // може бути -1 (clear)
+                if (bit >= -1) {
+                    std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(bit);
+                    uint8_t newBrightness = result.second;
+                    if (newBrightness != anim->startBrightness) {
+                        LOG.printf("[ANIMATION] Adapt brightness anim %d: bit=%d %u->%u\n", i, bit, anim->startBrightness, newBrightness);
+                        anim->startBrightness = newBrightness;
+                    }
+                }
+            }
+        }
+        xSemaphoreGive(animMutex);
+    }
+}
+
 std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int highest_bit) {
     uint32_t color = 0;
     uint8_t brightness = 0;
     
     // Перебираємо біти від найвищого до найнижчого
-    for (int bit = highest_bit; bit >= 0; bit--) {
+    for (int bit = highest_bit; bit >= -1; bit--) {
         bool is_enabled = false;
         
         // Перевіряємо чи дозволено показувати цей тип тривоги
-        if (bit == 0) {
+        if (bit == -1) {
+            is_enabled = true; // Відбій завжди показуємо
+        } else if (bit == 0) {
             is_enabled = true; // Alert завжди показуємо
         } else if (bit == 5) {
             is_enabled = settings->getBool(ENABLE_DRONES);
@@ -660,7 +682,10 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
 
         // Якщо тип тривоги дозволено показувати - встановлюємо колір
         if (is_enabled) {
-            if (bit == 0) {
+            if (bit == -1) {
+                color = colorFromHex(settings->getString(COLOR_CLEAR));
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
+            } else if (bit == 0) {
                 color = colorFromHex(settings->getString(COLOR_ALERT));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
             } else if (bit == 5) {

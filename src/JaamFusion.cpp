@@ -65,6 +65,7 @@ bool                needAdaptAnimationColors = false;
 bool                needAdaptStripBrightness = false;
 bool                needReconnectWebsocket = false;
 bool                needAdaptColors = false;
+bool                needAdaptAnimationBrightness = false;
 bool                needRecalculateLeds = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
@@ -1706,10 +1707,17 @@ void mainThreadProcess() {
     }
 
     if (needAdaptAnimationColors) {
+        LOG.printf("[WEB] Adjusting animation colors\n");
         animation.adaptAllAnimationColors();
         needAdaptAnimationColors = false;
     }
+    if (needAdaptAnimationBrightness) {
+        LOG.printf("[WEB] Adjusting animation brightness\n");
+        animation.adaptAllAnimationBrightness();
+        needAdaptAnimationBrightness = false;
+    }
     if (needAdaptStripBrightness) {
+        LOG.printf("[WEB] Adjusting strip brightness\n");
         needAdaptStripBrightness = false;
         if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {

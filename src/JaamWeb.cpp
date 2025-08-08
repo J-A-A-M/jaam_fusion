@@ -17,6 +17,7 @@ uint8_t temprature_sens_read();
 extern volatile bool needAdaptAnimationColors;
 extern volatile bool needAdaptStripBrightness;
 extern volatile bool needAdaptColors;
+extern volatile bool needAdaptAnimationBrightness;
 extern volatile bool needReconnectWebsocket;
 extern volatile bool needReconnectMainStrip;
 extern volatile bool needReconnectBgStrip;
@@ -694,52 +695,52 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, intValue);
             LOG.printf("[WEB] Setting brightness_clear: %d\n", intValue);
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, intValue);
             LOG.printf("[WEB] Setting brightness_explosion: %d\n", intValue);
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_missiles") {
             settings->saveInt(BRIGHTNESS_MISSILES, intValue);
             LOG.printf("[WEB] Setting brightness_missiles: %d\n", intValue);
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_drones") {
             settings->saveInt(BRIGHTNESS_DRONES, intValue);
             LOG.printf("[WEB] Setting brightness_drones: %d\n", intValue);
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_recon_drones") {
             settings->saveInt(BRIGHTNESS_RECON_DRONES, intValue);
             LOG.printf("[WEB] Setting brightness_recon_drones: %d\n", intValue  );
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_kabs") {
             settings->saveInt(BRIGHTNESS_KABS, intValue);
             LOG.printf("[WEB] Setting brightness_kabs: %d\n", intValue);
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_ballistic") {
             settings->saveInt(BRIGHTNESS_BALLISTIC, intValue);
             LOG.printf("[WEB] Setting brightness_ballistic: %d\n", intValue);
             needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting brightness_home_district: %d\n", intValue);
             needAdaptColors = true; 
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, intValue);
             LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);
             needAdaptColors = true; 
-            needAdaptAnimationColors = true;
+            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
