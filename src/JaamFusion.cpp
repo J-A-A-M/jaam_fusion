@@ -58,6 +58,7 @@ uint16_t                animType;
 
 // --- MAP Configuration ---
 std::map<uint16_t, uint16_t>    alertsMap;
+std::map<uint16_t, uint8_t>     temperatureMap;
 RegionLedMapEntry               customMap[MAX_REGIONS];
 
 // --- TASKS Configuration ---
@@ -195,7 +196,7 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     return diff;
 }
 
-void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t region_id, bool increase = true) {
+void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
     //LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
 
     if (strip == nullptr) {
@@ -301,6 +302,7 @@ void animateLed(Adafruit_NeoPixel* strip, int led_position, int bit, uint16_t re
     if (!animation.createAnimation(
         animType,
         strip,
+        map_mode,
         ledsPtr,
         ledCount,
         color,
@@ -345,7 +347,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // 4) Перевіряємо тип пакета
     uint8_t type = data[0];
-    if (type != TYPE_ALERTS_BATCH && type != TYPE_NOTIFICATIONS_BATCH) {
+    if (type != TYPE_ALERTS_BATCH && type != TYPE_NOTIFICATIONS_BATCH && type != TYPE_WEATHER_BATCH) {
         LOG.printf("[ERROR] message type unknown\n");
         return;
     }
@@ -420,7 +422,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             if (hasHigherPriority(actualBitDiff,actualBitRegion)) {
                 for (int i = 0; i < ledCount; ++i) {
-                    animateLed(strip_main,leds[i], actualBitDiff, region_id, true);
+                    animateLed(strip_main, MapModes::ALERT, leds[i], actualBitDiff, region_id, true);
                     if (isLedInHomeRegion(leds[i])) {
                         needToAnimateBgHomeRegion = true;
                         homeRegionBit = actualBitDiff;
@@ -431,7 +433,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0 && strip_bg != nullptr) {
             LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
                 settings.getInt(HOME_DISTRICT), homeRegionBit);
-            animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
+            animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
         }else {
             LOG.println("[WEBSOCKET] No changes in home region LEDs");
         }
@@ -636,7 +638,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 if (hasHigherPriority(diff_bit, alerts_bit)) {
                     LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
                         led.first, led.second.region_id, alerts_bit, diff_bit);
-                        animateLed(strip_main, led.first, diff_bit, led.second.region_id, true);
+                        animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, true);
                         if (isLedInHomeRegion(led.first)) {
                             needToAnimateBgHomeRegion = true;
                             homeRegionBit = diff_bit;
@@ -646,7 +648,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 if (hasHigherPriority(alerts_bit, diff_bit)) {
                     LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
                         led.first, led.second.region_id, alerts_bit, diff_bit);
-                        animateLed(strip_main, led.first, diff_bit, led.second.region_id, false);
+                        animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, false);
                         if (isLedInHomeRegion(led.first)) {
                             needToAnimateBgHomeRegion = true;
                             homeRegionBit = diff_bit;
@@ -657,13 +659,45 @@ void onMessageCallback(WebsocketsMessage msg) {
             if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0 && strip_bg != nullptr) {
                 LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
                     settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
-                animateLed(strip_bg, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
+                animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
             }else {
                 LOG.println("[WEBSOCKET] No changes in home region LEDs");
             }
         }
         //LOG.println();
         alertsHash = actualHash;
+    }
+    if(type == TYPE_WEATHER_BATCH) {
+        LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH received\n");
+        bodyLen = len - HEADER_SZ;
+
+        // payloadLen має ділитися на RECORD_LZ
+        if (bodyLen == 0 || (bodyLen % RECORD_LZ) != 0) {
+            // некоректний фрейм — пропускаємо і реконнектимось
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_LZ\n");
+            needReconnectWebsocket = true;
+            return;
+        }
+
+        // Обчислюємо кількість записів
+        size_t count = bodyLen / RECORD_LZ;
+
+        // Розбираємо count записів по RECORD_LZ
+        const uint8_t* ptr = data + HEADER_SZ;
+
+        LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH data processing\n");
+
+        bool needToAnimateBgHomeRegion = false;
+        int homeRegionBit = 0;
+
+        for (size_t i = 0; i < count; ++i) {
+            uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
+            uint8_t flags8 = ptr[2]; // flags8 займає 1 байт
+            temperatureMap[region_id] = flags8; // Зберігаємо температуру для регіону
+            LOG.printf("[WEBSOCKET] weather region %u: flags8=%u\n", region_id, flags8);
+            ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
+        }
+        needAdaptColors = true;
     }
     if (!isFirstDataFetchCompleted) {
         LOG.printf("[WEBSOCKET] init processing\n");
@@ -1491,6 +1525,7 @@ void animations() {
     if (!animation.createAnimation(
         animType,
         strip,
+        MapModes::ALERT,
         ledsIdx,
         1,
         color,
@@ -1541,7 +1576,8 @@ void websocketProcess() {
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
             5, // RUNNING_LIGHT
-            strip_main,         
+            strip_main,  
+            MapModes::ALERT,       
             {}, // not used in RUNNING_LIGHT        
             0,            
             0xFF0000,      
@@ -1753,6 +1789,7 @@ void mainThreadProcess() {
         // if (!animation.createAnimation(
         //     6, // SET_BRIGHTNESS
         //     strip_main,
+        //     MapModes::ALERT,
         //     ledsIdx,
         //     1,
         //     0x000000, // Колір не важливий для SET_BRIGHTNESS

@@ -332,6 +332,7 @@ String JaamWeb::getHtmlTemplate() {
     //html += getDropdownHtml("district_mode_zp", "Режим леда Запорізької області", DISTRICT_MODE_ZP, LED_MODE_OPTIONS, LED_MODE_COUNT);
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
     html += getDropdownHtml("bg_led_mode", "Режим фонової підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
+    html += getDropdownHtml("map_mode", "Режим мапи", MAP_MODE, MAP_MODES, MAP_MODES_COUNT);
     html += "<label class=\"label\">Загальні налаштування</label>";
     html += getTextInputHtml("device_name", settings->getString(DEVICE_NAME), "Назва пристрою", "JAAM");
     html += getTextInputHtml("device_description", settings->getString(DEVICE_DESCRIPTION), "Опис пристрою", "JAAM Informer");
@@ -676,6 +677,10 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Setting bg_led_mode: %d\n", intValue);
             needAdaptColors = true;
             needAdaptAnimationColors = true;
+        } else if (name == "map_mode") {
+            settings->saveInt(MAP_MODE, intValue);
+            LOG.printf("[WEB] Setting map_mode: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, intValue);
             LOG.printf("[WEB] Setting brightness: %d\n", intValue);

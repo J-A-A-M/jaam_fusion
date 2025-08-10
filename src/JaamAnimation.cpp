@@ -2,6 +2,46 @@
 #include "JaamConfig.h"
 #include "JaamUtils.h"
 
+// Helper: HSV -> RGB (returns 0xRRGGBB)
+static inline uint32_t hsvToRgb(float h, float s, float v) {
+    while (h < 0) h += 360.0f;
+    while (h >= 360.0f) h -= 360.0f;
+    float c = v * s;
+    float x = c * (1 - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+    float m = v - c;
+    float r1 = 0, g1 = 0, b1 = 0;
+    if (h < 60) { r1 = c; g1 = x; b1 = 0; }
+    else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
+    else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
+    else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
+    else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
+    else { r1 = c; g1 = 0; b1 = x; }
+    uint8_t R = (uint8_t)roundf((r1 + m) * 255.0f);
+    uint8_t G = (uint8_t)roundf((g1 + m) * 255.0f);
+    uint8_t B = (uint8_t)roundf((b1 + m) * 255.0f);
+    return ((uint32_t)R << 16) | ((uint32_t)G << 8) | B;
+}
+
+// Helper: decode encoded temperature byte (7 bits value, 1 bit sign: 0=+, 1=-)
+static inline int decodeTemperature(uint8_t enc) {
+    int magnitude = (int)(enc & 0x7F);
+    bool negative = (enc & 0x80) != 0; // last bit is sign
+    return negative ? -magnitude : magnitude;
+}
+
+// Helper: convert temperature (C) to color using violet->red gradient via HSV
+static inline uint32_t colorFromTemperature(int tempC, int minC, int maxC) {
+    if (maxC <= minC) {
+        maxC = minC + 1;
+    }
+    if (tempC < minC) tempC = minC;
+    if (tempC > maxC) tempC = maxC;
+    float factor = (float)(tempC - minC) / (float)(maxC - minC); // 0..1
+    // Hue: 270° (violet) -> 0° (red)
+    float hue = (1.0f - factor) * 270.0f;
+    return hsvToRgb(hue, 1.0f, 1.0f);
+}
+
 // Ініціалізація статичних змінних для синхронізації
 uint32_t AnimationManager::globalStartTimes[ANIMATION_TYPES_COUNT] = {0};
 bool AnimationManager::globalTimesInitialized[ANIMATION_TYPES_COUNT] = {false};
@@ -148,8 +188,9 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
     }
 }
 
-bool AnimationManager::createAnimation(uint16_t type, 
+bool AnimationManager::   createAnimation(uint16_t type, 
                                     Adafruit_NeoPixel* strip,
+                                    uint8_t map_mode,
                                     int* positions, 
                                     int posCount,
                                     uint32_t color,
@@ -236,6 +277,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             
             animations[slot]->type = type;
             animations[slot]->strip = strip;
+            animations[slot]->mapMode = map_mode;  // Зберігаємо режим мапування
             animations[slot]->posCount = posCount;
             animations[slot]->color = color;
             animations[slot]->initialColor = initialColor;
@@ -393,6 +435,9 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
         }
         LOG.printf(" period=%u, cycles=%u, duration=%u ms, localElapsed=%.2f\n", anim->period, anim->cycles, duration, localElapsed);
         cleanupAnimation(anim, index);
+        return;
+    }
+    if (anim->mapMode != settings->getInt(MAP_MODE)) {
         return;
     }
 
@@ -727,13 +772,37 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
     }
     if (strip == strip_bg) {
         if (settings->getInt(BG_LED_MODE) == 0) {
+            switch (settings->getInt(MAP_MODE)) {
+                case MapModes::OFF: 
+                    color = DefaultColors::OFF;
+                    brightness = 0;
+                    break;
+                case MapModes::ALERT: 
+                    color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                    break;
+                case MapModes::WEATHER: {
+                    // Use home district temperature for background strip
+                    uint16_t home = settings->getInt(HOME_DISTRICT);
+                    auto it = temperatureMap.find(home);
+                    if (it != temperatureMap.end()) {
+                        int t = decodeTemperature(it->second);
+                        int minT = settings->getInt(WEATHER_MIN_TEMP);
+                        int maxT = settings->getInt(WEATHER_MAX_TEMP);
+                        color = colorFromTemperature(t, minT, maxT);
+                    } else {
+                        color = colorFromHex(settings->getString(COLOR_BG));
+                    }
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                    break;
+                }
+            }
             LOG.printf("[COLOR] bg strip color HOME_DISTRICT\n");
-            color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
         } else {
             LOG.printf("[COLOR] bg strip color SELF\n");
             color = colorFromHex(settings->getString(COLOR_BG));
+            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
         }
-        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
     } 
     if (strip == strip_service) {
         LOG.printf("[COLOR] service strip color\n");
@@ -781,50 +850,108 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     uint8_t brightness = 0;
 
     if (strip == strip_main) {
-        auto regions = getRegionsForLed(position);
-        int highest_bit = -1;
+        switch (settings->getInt(MAP_MODE)) {
+            case MapModes::OFF: 
+                color = DefaultColors::OFF;
+                brightness = 0;
+                break;
+            case MapModes::ALERT: { 
+                auto regions = getRegionsForLed(position);
+                int highest_bit = -1;
 
-        if (bit != -1) {
-            highest_bit = bit;
-        } else {
-            highest_bit = findHighestBitForLed(position);
-        }
-        if (highest_bit != -1) {
-            std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
-            color = result.first;
-            brightness = result.second;
-        } else {
-            
-            color = colorFromHex(settings->getString(COLOR_CLEAR));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
-            
-            // Якщо немає тривог, перевіряємо чи є домашній район
-            for (uint16_t region_id : regions) {
-                if (region_id == settings->getInt(HOME_DISTRICT)) {
-                    color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
-                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
-                    break;
+                if (bit != -1) {
+                    highest_bit = bit;
+                } else {
+                    highest_bit = findHighestBitForLed(position);
                 }
+                if (highest_bit != -1) {
+                    std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+                    color = result.first;
+                    brightness = result.second;
+                } else {
+                    
+                    color = colorFromHex(settings->getString(COLOR_CLEAR));
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
+                    
+                    // Якщо немає тривог, перевіряємо чи є домашній район
+                    for (uint16_t region_id : regions) {
+                        if (region_id == settings->getInt(HOME_DISTRICT)) {
+                            color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
+                            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            case MapModes::WEATHER: {
+                // Compute average temperature of all regions mapped to this LED
+                auto regions = getRegionsForLed(position);
+                long sum = 0;
+                int cnt = 0;
+                for (uint16_t region_id : regions) {
+                    auto it = temperatureMap.find(region_id);
+                    if (it != temperatureMap.end()) {
+                        int t = decodeTemperature(it->second);
+                        sum += t;
+                        cnt++;
+                    }
+                }
+                if (cnt > 0) {
+                    int avg = (int)(sum / cnt);
+                    int minT = settings->getInt(WEATHER_MIN_TEMP);
+                    int maxT = settings->getInt(WEATHER_MAX_TEMP);
+                    color = colorFromTemperature(avg, minT, maxT);
+                } else {
+                    // No temperature data for this LED
+                    color = colorFromHex(settings->getString(COLOR_CLEAR));
+                }
+                brightness = 255;
+                break;
             }
         }
     } 
     if (strip == strip_bg) {
-        int highest_bit = -1;
+        switch (settings->getInt(MAP_MODE)) {
+            case MapModes::OFF: 
+                color = DefaultColors::OFF;
+                brightness = 0;
+                break;
+            case MapModes::ALERT: { 
+                int highest_bit = -1;
 
-        if (bit != -1) {
-            highest_bit = bit;
-        } else {
-            highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+                if (bit != -1) {
+                    highest_bit = bit;
+                } else {
+                    highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+                }
+                
+                if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == 0) {
+                    // Якщо немає тривог, встановлюємо колір домашнього району
+                    std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+                    color = result.first;
+                } else {
+                    color = colorFromHex(settings->getString(COLOR_BG));
+                }
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                break;
+            }
+            case MapModes::WEATHER: {
+                // Use home district temperature for background strip
+                uint16_t home = settings->getInt(HOME_DISTRICT);
+                auto it = temperatureMap.find(home);
+                if (it != temperatureMap.end()) {
+                    int t = decodeTemperature(it->second);
+                    int minT = settings->getInt(WEATHER_MIN_TEMP);
+                    int maxT = settings->getInt(WEATHER_MAX_TEMP);
+                    color = colorFromTemperature(t, minT, maxT);
+                } else {
+                    color = colorFromHex(settings->getString(COLOR_BG));
+                }
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                break;
+            }
         }
-        
-        if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == 0) {
-            // Якщо немає тривог, встановлюємо колір домашнього району
-            std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
-            color = result.first;
-        } else {
-            color = colorFromHex(settings->getString(COLOR_BG));
-        }
-        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
     } 
     if (strip == strip_service) {
         color = getServicePinColor(position);
