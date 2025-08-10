@@ -108,7 +108,7 @@ bool needDivider = false;
 void clearAllAlertsMaps() {
     // Логування стану пам'яті перед очищенням
     size_t memBefore = ESP.getFreeHeap();
-    LOG.printf("[MEMORY] Free heap before clearing maps: %u bytes\n", memBefore);
+    LOG.printf("[MEMORY] Free heap before clearing alert maps: %u bytes\n", memBefore);
     
     // Очищаємо всі map'и
     alertsMap.clear();
@@ -118,16 +118,43 @@ void clearAllAlertsMaps() {
     std::map<uint16_t, uint16_t>().swap(alertsMap);
 
     // Принудове очищення пам'яті
-    forceMemoryCleanup("after maps clearing");
+    forceMemoryCleanup("after alert maps clearing");
     
     // Дефрагментація пам'яті
-    defragmentMemory("after maps clearing");
+    defragmentMemory("after alert maps clearing");
     
     // Логування результату
     size_t memAfter = ESP.getFreeHeap();
     int memReclaimed = (int)(memAfter - memBefore);
     
-    LOG.printf("[MAIN] Clearing all alerts maps completed\n");
+    LOG.printf("[MAIN] Clearing all alert alerts maps completed\n");
+    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n", 
+               memReclaimed, memBefore, memAfter);
+}
+
+void clearAllWeatherMaps() {
+    // Логування стану пам'яті перед очищенням
+    size_t memBefore = ESP.getFreeHeap();
+    LOG.printf("[MEMORY] Free heap before clearing weather maps: %u bytes\n", memBefore);
+    
+    // Очищаємо всі map'и
+    temperatureMap.clear();
+    
+    // Додаткове очищення пам'яті після clear()
+    // Для std::map викликаємо shrink_to_fit через swap з пустими контейнерами
+    std::map<uint16_t, uint8_t>().swap(temperatureMap);
+
+    // Принудове очищення пам'яті
+    forceMemoryCleanup("after weather maps clearing");
+    
+    // Дефрагментація пам'яті
+    defragmentMemory("after weather maps clearing");
+    
+    // Логування результату
+    size_t memAfter = ESP.getFreeHeap();
+    int memReclaimed = (int)(memAfter - memBefore);
+    
+    LOG.printf("[MAIN] Clearing all weather maps completed\n");
     LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n", 
                memReclaimed, memBefore, memAfter);
 }
@@ -138,6 +165,7 @@ void rebootDevice(int time = 2000, bool async = false) {
     
     // Clean up all resources before reboot
     clearAllAlertsMaps();
+    clearAllWeatherMaps();
     animation.clearAllAnimations();
     
     // Close websocket connection properly
@@ -687,13 +715,12 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH data processing\n");
 
-        bool needToAnimateBgHomeRegion = false;
-        int homeRegionBit = 0;
+        clearAllWeatherMaps(); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint8_t flags8 = ptr[2]; // flags8 займає 1 байт
-            temperatureMap[region_id] = flags8; // Зберігаємо температуру для регіону
+            temperatureMap[region_id] = static_cast<int8_t>(flags8);; // Зберігаємо температуру для регіону
             LOG.printf("[WEBSOCKET] weather region %u: flags8=%u\n", region_id, flags8);
             ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
         }
@@ -817,6 +844,7 @@ void socketConnect() {
         apiConnected = true;
         servicePin(DATA);
         clearAllAlertsMaps();
+        clearAllWeatherMaps();
         //animation.clearAllAnimations();
         LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
         char chipIdInfo[25];
@@ -1572,6 +1600,7 @@ void websocketProcess() {
         websocketReconnect = true;
         isFirstDataFetchCompleted = false;
         clearAllAlertsMaps();
+        clearAllWeatherMaps();
         animation.clearAllAnimations();
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
