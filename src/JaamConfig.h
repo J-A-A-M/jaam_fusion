@@ -14,6 +14,13 @@ namespace DefaultColors {
     static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
 }
 
+// --- MAP Modes ---
+namespace MapModes {
+    static const int OFF = 0;
+    static const int ALERT = 1;
+    static const int WEATHER = 2;
+}
+
 // --- Animation Configuration ---
 namespace AnimationConfig {
     static const uint32_t MIN_PERIOD = 1000;
@@ -46,8 +53,10 @@ static const uint32_t MAIN_THREAD_CHECK_INTERVAL = 500;     // 0.5 seconds
 // --- Packet structure ---
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
 static constexpr uint8_t  TYPE_NOTIFICATIONS_BATCH = 0xA2;
+static constexpr uint8_t  TYPE_WEATHER_BATCH = 0xA3;
 static constexpr size_t   HEADER_SZ         = 1;            // лише 1 байт – type
 static constexpr size_t   RECORD_SZ         = 4;            // 2B region_id + 2B flags16
+static constexpr size_t   RECORD_LZ         = 3;            // 2B region_id + 2B flags8
 static constexpr size_t   HASH_SZ           = 4;            // 2B actual + 2B prev
 
 // --- Region to LED mapping (fixed, задається один раз) ---
@@ -83,6 +92,18 @@ constexpr int LED_FREQUENCIES_COUNT = 2;
 static SettingListItem LED_FREQUENCIES[] = {
     {NEO_KHZ400, "400 КГц"},
     {NEO_KHZ800, "800 КГц (рекомендовано)"}
+};
+
+constexpr int MAP_MODES_COUNT = 3;
+static SettingListItem MAP_MODES[] = {
+  {0, "Вимкнено"},
+  {1, "Тривога"},
+  // {6, "Енергосистема", false},
+  {2, "Погода"},
+  // {7, "Радіація", false},
+  // {3, "Прапор", false},
+  // {4, "Випадкові кольори", false},
+  // {5, "Лампа", false},
 };
 
 constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;

@@ -332,6 +332,7 @@ String JaamWeb::getHtmlTemplate() {
     //html += getDropdownHtml("district_mode_zp", "Режим леда Запорізької області", DISTRICT_MODE_ZP, LED_MODE_OPTIONS, LED_MODE_COUNT);
     html += getDropdownHtml("home_district", "Домашній регіон", HOME_DISTRICT, DISTRICTS, MAX_REGIONS);
     html += getDropdownHtml("bg_led_mode", "Режим фонової підствітки", BG_LED_MODE, BG_LED_MODES, BG_LED_MODES_COUNT);
+    html += getDropdownHtml("map_mode", "Режим мапи", MAP_MODE, MAP_MODES, MAP_MODES_COUNT);
     html += "<label class=\"label\">Загальні налаштування</label>";
     html += getTextInputHtml("device_name", settings->getString(DEVICE_NAME), "Назва пристрою", "JAAM");
     html += getTextInputHtml("device_description", settings->getString(DEVICE_DESCRIPTION), "Опис пристрою", "JAAM Informer");
@@ -356,6 +357,9 @@ String JaamWeb::getHtmlTemplate() {
     html += getTextInputHtml("service_led_pin", String(settings->getInt(SERVICE_LED_PIN)).c_str(), "Сервісна стрічка (пін)", "-1");
     html += getDropdownHtml("service_led_color_format", "Сервісна стрічка (формат кольору)", SERVICE_LED_COLOR_FORMAT, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
     html += getDropdownHtml("service_led_frequency", "Сервісна стрічка (частота)", SERVICE_LED_FREQUENCY, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
+    html += "<label class=\"label\">Налаштування погоди</label>";
+    html += getParameterHtml("weather_min_temp", -40, 40, 1, settings->getInt(WEATHER_MIN_TEMP), "Мінімальна температура (°C)");
+    html += getParameterHtml("weather_max_temp", -40, 40, 1, settings->getInt(WEATHER_MAX_TEMP), "Максимальна температура (°C)");
     html += "<label class=\"label\">Налаштування анімацій</label>";
     html += getBoolParameterHtml("enable_sync_animations", settings->getBool(ENABLE_SYNC_ANIMATIONS), "Синхронні анімації");
     html += getDropdownHtml("alert_on_animation", "Початок тривог", ANIMATION_ALERT_ON_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
@@ -676,6 +680,10 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Setting bg_led_mode: %d\n", intValue);
             needAdaptColors = true;
             needAdaptAnimationColors = true;
+        } else if (name == "map_mode") {
+            settings->saveInt(MAP_MODE, intValue);
+            LOG.printf("[WEB] Setting map_mode: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, intValue);
             LOG.printf("[WEB] Setting brightness: %d\n", intValue);
@@ -917,6 +925,14 @@ void JaamWeb::handleParameter() {
             settings->saveBool(KYIV_LED, boolValue);
             needRecalculateLeds = true;
             LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
+        } else if (name == "weather_min_temp") {
+            settings->saveInt(WEATHER_MIN_TEMP, intValue);
+            needAdaptColors = true;
+            LOG.printf("[WEB] Set weather_min_temp: %d\n", intValue);
+        } else if (name == "weather_max_temp") {
+            settings->saveInt(WEATHER_MAX_TEMP, intValue);
+            needAdaptColors = true;
+            LOG.printf("[WEB] Set weather_max_temp: %d\n", intValue);
         }
 
         server.send(200, "text/plain", "OK");

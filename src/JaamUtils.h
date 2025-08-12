@@ -39,6 +39,7 @@ static const int ALERT_PRIORITY_COUNT = sizeof(ALERT_PRIORITY_ORDER) / sizeof(AL
 extern uint32_t                         lastWebsocketConnectTime;
 extern uint32_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
+extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
 extern JaamSettings                     settings;
 extern JaamBattery                      battery;
 extern JaamStorage                      storage;

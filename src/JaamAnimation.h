@@ -12,6 +12,7 @@ extern Adafruit_NeoPixel* strip_service;
 // Структура для параметрів анімації
 struct AnimationParams {
     Adafruit_NeoPixel* strip;
+    uint8_t mapMode;
     uint16_t type;
     int* positions;
     int posCount;
@@ -82,6 +83,7 @@ class AnimationManager {
         void setSettings(JaamSettings* settings);
         bool createAnimation(uint16_t type, 
                            Adafruit_NeoPixel* strip,
+                           uint8_t map_mode,
                            int* positions, 
                            int posCount,
                            uint32_t color,
