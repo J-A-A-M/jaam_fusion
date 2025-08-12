@@ -188,7 +188,7 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
     }
 }
 
-bool AnimationManager::   createAnimation(uint16_t type, 
+bool AnimationManager::createAnimation(uint16_t type, 
                                     Adafruit_NeoPixel* strip,
                                     uint8_t map_mode,
                                     int* positions, 
