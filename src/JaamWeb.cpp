@@ -18,6 +18,8 @@ extern volatile bool needAdaptAnimationColors;
 extern volatile bool needAdaptStripBrightness;
 extern volatile bool needAdaptColors;
 extern volatile bool needAdaptAnimationBrightness;
+extern volatile bool needAdaptAnimationPeriod;
+extern volatile bool needAdaptAnimationType;
 extern volatile bool needReconnectWebsocket;
 extern volatile bool needReconnectMainStrip;
 extern volatile bool needReconnectBgStrip;
@@ -870,51 +872,67 @@ void JaamWeb::handleParameter() {
         } else if (name == "alert_on_cycle") {
             settings->saveInt(ANIMATION_ALERT_ON_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting alert_on_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "alert_off_cycle") {
             settings->saveInt(ANIMATION_ALERT_OFF_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting alert_off_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "drone_cycle") {
             settings->saveInt(ANIMATION_DRONE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting drone_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "recon_drone_cycle") {
             settings->saveInt(ANIMATION_RECON_DRONE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting recon_drone_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "missile_cycle") {
             settings->saveInt(ANIMATION_MISSILE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting missile_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "kab_cycle") {
             settings->saveInt(ANIMATION_KAB_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting kab_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "ballistic_cycle") {
             settings->saveInt(ANIMATION_BALLISTIC_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting ballistic_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "explosion_cycle") {
             settings->saveInt(ANIMATION_EXPLOSION_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting explosion_cycle: %d\n", intValue);
+            needAdaptAnimationPeriod = true;
         } else if (name == "alert_on_animation") {
             settings->saveInt(ANIMATION_ALERT_ON_TYPE, intValue);
             LOG.printf("[WEB] Setting alert_on_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "alert_off_animation") {
             settings->saveInt(ANIMATION_ALERT_OFF_TYPE, intValue);
             LOG.printf("[WEB] Setting alert_off_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "drone_animation") {
             settings->saveInt(ANIMATION_DRONE_TYPE, intValue);
             LOG.printf("[WEB] Setting drone_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "recon_drone_animation") {
             settings->saveInt(ANIMATION_RECON_DRONE_TYPE, intValue);
             LOG.printf("[WEB] Setting recon_drone_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "missile_animation") {
             settings->saveInt(ANIMATION_MISSILE_TYPE, intValue);
             LOG.printf("[WEB] Setting missile_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "kab_animation") {
             settings->saveInt(ANIMATION_KAB_TYPE, intValue);
             LOG.printf("[WEB] Setting kab_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "ballistic_animation") {
             settings->saveInt(ANIMATION_BALLISTIC_TYPE, intValue);
             LOG.printf("[WEB] Setting ballistic_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "explosion_animation") {
             settings->saveInt(ANIMATION_EXPLOSION_TYPE, intValue);
             LOG.printf("[WEB] Setting explosion_animation: %d\n", intValue);
+            needAdaptAnimationType = true;
         } else if (name == "enable_battery") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BATTERY_MONITORING, boolValue);

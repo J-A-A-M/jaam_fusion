@@ -67,6 +67,8 @@ bool                needAdaptStripBrightness = false;
 bool                needReconnectWebsocket = false;
 bool                needAdaptColors = false;
 bool                needAdaptAnimationBrightness = false;
+bool                needAdaptAnimationPeriod = false;
+bool                needAdaptAnimationType = false;
 bool                needRecalculateLeds = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
@@ -1780,6 +1782,16 @@ void mainThreadProcess() {
         LOG.printf("[WEB] Adjusting animation brightness\n");
         animation.adaptAllAnimationBrightness();
         needAdaptAnimationBrightness = false;
+    }
+    if (needAdaptAnimationPeriod) {
+        LOG.printf("[WEB] Adjusting animation period\n");
+        animation.adaptAllAnimationPeriod();
+        needAdaptAnimationPeriod = false;
+    }
+    if (needAdaptAnimationType) {
+        LOG.printf("[WEB] Adjusting animation type\n");
+        animation.adaptAllAnimationType();
+        needAdaptAnimationType = false;
     }
     if (needAdaptStripBrightness) {
         LOG.printf("[WEB] Adjusting strip brightness\n");

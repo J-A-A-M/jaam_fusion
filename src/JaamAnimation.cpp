@@ -703,6 +703,100 @@ void AnimationManager::adaptAllAnimationBrightness() {
     }
 }
 
+void AnimationManager::adaptAllAnimationPeriod() {
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < MAX_ANIMATIONS; i++) {
+            if (animations[i] != nullptr && animations[i]->isActive) {
+                AnimationParams* anim = animations[i];
+                int bit = anim->bit; // може бути -1 (clear)
+                uint32_t newPeriod = anim->period; // default keep
+                uint32_t newCycles = anim->cycles;  // default keep
+                uint32_t totalTimeMs = 0;           // базовий час для перерахунку циклів
+                switch (bit) {
+                    case -1: // clear / alert off
+                        newPeriod = settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(ALERT_OFF_TIME) * 1000UL;
+                        break;
+                    case 0:
+                        newPeriod = settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(ALERT_ON_TIME) * 1000UL;
+                        break;
+                    case 5:
+                        newPeriod = settings->getInt(ANIMATION_DRONE_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(DRONE_TIME) * 1000UL;
+                        break;
+                    case 6:
+                        newPeriod = settings->getInt(ANIMATION_MISSILE_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(MISSILE_TIME) * 1000UL;
+                        break;
+                    case 7:
+                        newPeriod = settings->getInt(ANIMATION_KAB_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(KAB_TIME) * 1000UL;
+                        break;
+                    case 8:
+                        newPeriod = settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(BALLISTIC_TIME) * 1000UL;
+                        break;
+                    case 9:
+                        newPeriod = settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(EXPLOSION_TIME) * 1000UL;
+                        break;
+                    case 10:
+                        newPeriod = settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);
+                        totalTimeMs = settings->getInt(RECON_DRONE_TIME) * 1000UL;
+                        break;
+                    default:
+                        break; // leave unchanged for unknown bit
+                }
+                if (newPeriod > 0 && totalTimeMs > 0) {
+                    uint32_t recomputed = totalTimeMs / newPeriod;
+                    if (recomputed == 0) {
+                        recomputed = 1; // мінімум один цикл
+                    }
+                    newCycles = recomputed;
+                }
+                if (newPeriod != anim->period) {
+                    LOG.printf("[ANIMATION] Adapt period anim %d: bit=%d %u->%u\n", i, bit, anim->period, newPeriod);
+                    anim->period = newPeriod;
+                }
+                if (newCycles != anim->cycles) {
+                    LOG.printf("[ANIMATION] Adapt cycles anim %d: bit=%d %u->%u (period=%u)\n", i, bit, anim->cycles, newCycles, anim->period);
+                    anim->cycles = newCycles;
+                }
+            }
+        }
+        xSemaphoreGive(animMutex);
+    }
+}
+
+void AnimationManager::adaptAllAnimationType() {
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < MAX_ANIMATIONS; i++) {
+            if (animations[i] != nullptr && animations[i]->isActive) {
+                AnimationParams* anim = animations[i];
+                int bit = anim->bit; // може бути -1
+                uint16_t newType = anim->type; // keep by default
+                switch (bit) {
+                    case -1: newType = settings->getInt(ANIMATION_ALERT_OFF_TYPE); break;
+                    case 0:  newType = settings->getInt(ANIMATION_ALERT_ON_TYPE); break;
+                    case 5:  newType = settings->getInt(ANIMATION_DRONE_TYPE); break;
+                    case 6:  newType = settings->getInt(ANIMATION_MISSILE_TYPE); break;
+                    case 7:  newType = settings->getInt(ANIMATION_KAB_TYPE); break;
+                    case 8:  newType = settings->getInt(ANIMATION_BALLISTIC_TYPE); break;
+                    case 9:  newType = settings->getInt(ANIMATION_EXPLOSION_TYPE); break;
+                    case 10: newType = settings->getInt(ANIMATION_RECON_DRONE_TYPE); break;
+                    default: break;
+                }
+                if (newType != anim->type) {
+                    LOG.printf("[ANIMATION] Adapt type anim %d: bit=%d %u->%u\n", i, bit, anim->type, newType);
+                    anim->type = newType;
+                }
+            }
+        }
+        xSemaphoreGive(animMutex);
+    }
+}
+
 std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int highest_bit) {
     uint32_t color = 0;
     uint8_t brightness = 0;
