@@ -4,7 +4,8 @@
 import json
 import time
 import requests
-from typing import Tuple, Optional
+-from typing import Tuple, Optional
++from typing import Tuple
 
 
 def get_coordinates_from_nominatim(location_name, country="Ukraine"):
