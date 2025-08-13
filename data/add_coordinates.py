@@ -4,7 +4,7 @@
 import json
 import time
 import requests
-from typing import Dict, Tuple, Optional
+from typing import Tuple, Optional
 
 
 def get_coordinates_from_nominatim(location_name: str, country: str = "Ukraine") -> Optional[Tuple[float, float]]:
