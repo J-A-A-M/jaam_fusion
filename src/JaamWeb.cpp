@@ -28,6 +28,7 @@ extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needUpdateAnimationsMode;
+extern volatile bool needAdaptClimate;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 
@@ -180,11 +181,33 @@ String JaamWeb::getScripts() {
     return html;
 }
 
-String JaamWeb::getParameterHtml(const char* name, int min, int max, int step, int value, const char* label) {
+String JaamWeb::getParameterHtml(const char* name, float min, float max, float step, float value, const char* label) {
+    // Determine decimal precision based on step (e.g., 0.1 -> 1 decimal, 0.01 -> 2 decimals)
+    int decimals = 0;
+    float s = step;
+    while (s > 0.0f && s < 1.0f && decimals < 4) { // cap at 4 decimals to avoid long strings
+        s *= 10.0f;
+        decimals++;
+    }
+
+    auto toStringWithDecimals = [decimals](float v) -> String {
+        char buf[24];
+        if (decimals > 0) {
+            // Build format like "%.1f", "%.2f"
+            char fmt[8];
+            snprintf(fmt, sizeof(fmt), "%%.%df", decimals);
+            snprintf(buf, sizeof(buf), fmt, v);
+        } else {
+            // No decimals needed
+            snprintf(buf, sizeof(buf), "%.0f", v);
+        }
+        return String(buf);
+    };
+
     String html = "<div class='slider-container'>";
-    html += "<span class='value' id='" + String(name) + "Value'>[" + String(value) + "]</span>";
+    html += "<span class='value' id='" + String(name) + "Value'>[" + toStringWithDecimals(value) + "]</span>";
     html += "<label for='" + String(name) + "'>" + String(label) + ":</label>";
-    html += "<input type='range' min='" + String(min) + "' max='" + String(max) + "' value='" + String(value) + "' step='" + String(step) + "' class='slider' id='" + String(name) + "' oninput='updateSliderValue(\"" + String(name) + "\", this.value)' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
+    html += "<input type='range' min='" + toStringWithDecimals(min) + "' max='" + toStringWithDecimals(max) + "' value='" + toStringWithDecimals(value) + "' step='" + toStringWithDecimals(step) + "' class='slider' id='" + String(name) + "' oninput='updateSliderValue(\"" + String(name) + "\", this.value)' onchange='updateParameter(\"" + String(name) + "\", this.value)'>";
     html += "</div>";
     return html;
 }
@@ -362,6 +385,10 @@ String JaamWeb::getHtmlTemplate() {
     html += "<label class=\"label\">Налаштування погоди</label>";
     html += getParameterHtml("weather_min_temp", -40, 40, 1, settings->getInt(WEATHER_MIN_TEMP), "Мінімальна температура (°C)");
     html += getParameterHtml("weather_max_temp", -40, 40, 1, settings->getInt(WEATHER_MAX_TEMP), "Максимальна температура (°C)");
+    html += "<label class=\"label\">Налаштування темпертарури</label>";
+    html += getParameterHtml("temp_correction", -10.0f, 10, 0.1f, settings->getFloat(TEMP_CORRECTION), "Корегування температури (°C)");
+    html += getParameterHtml("hum_correction", -20.0f, 20, 0.5f, settings->getFloat(HUM_CORRECTION), "Корегування вологості (%)");
+    html += getParameterHtml("pressure_correction", -50.0f, 50, 1.0f, settings->getFloat(PRESSURE_CORRECTION), "Корегування атмосферного тиску (мм.рт.ст.)");
     html += "<label class=\"label\">Налаштування анімацій</label>";
     html += getBoolParameterHtml("enable_sync_animations", settings->getBool(ENABLE_SYNC_ANIMATIONS), "Синхронні анімації");
     html += getDropdownHtml("alert_on_animation", "Початок тривог", ANIMATION_ALERT_ON_TYPE, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
@@ -654,6 +681,7 @@ void JaamWeb::handleParameter() {
         const char* namePtr = name.c_str();
         const char* valuePtr = value.c_str();
         int intValue = value.toInt();
+        float floatValue = value.toFloat();
 
         if (name == "legacy") {
             settings->saveInt(LEGACY, intValue);
@@ -951,6 +979,18 @@ void JaamWeb::handleParameter() {
             settings->saveInt(WEATHER_MAX_TEMP, intValue);
             needAdaptColors = true;
             LOG.printf("[WEB] Set weather_max_temp: %d\n", intValue);
+        } else if (name == "temp_correction") {
+            settings->saveFloat(TEMP_CORRECTION, floatValue);
+            needAdaptClimate = true;
+            LOG.printf("[WEB] Set temp_correction: %.2f\n", floatValue);
+        } else if (name == "hum_correction") {
+            settings->saveFloat(HUM_CORRECTION, floatValue);
+            needAdaptClimate = true;
+            LOG.printf("[WEB] Set hum_correction: %.2f\n", floatValue);
+        } else if (name == "pressure_correction") {
+            settings->saveFloat(PRESSURE_CORRECTION, floatValue);
+            needAdaptClimate = true;
+            LOG.printf("[WEB] Set pressure_correction: %.2f\n", floatValue);
         }
 
         server.send(200, "text/plain", "OK");
