@@ -3,6 +3,7 @@
 #include "JaamSettings.h"
 #include "JaamBattery.h"
 #include "JaamStorage.h"
+#include "JaamClimateSensor.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -12,7 +13,6 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <SPIFFS.h>
-
 static const char* CUSTOM_MAP_PATH = "/custom_map.json";
 
 // Масив з описом типів тривог
@@ -47,6 +47,7 @@ extern bool                             wifiConnected;
 extern bool                             apiConnected;
 extern uint8_t                          legacy;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
+extern JaamClimateSensor                climate;
 
 struct JaamFirmware {
     int major = 0;
@@ -718,6 +719,11 @@ inline String getSystemInfoJson() {
     doc["websocketUptime"] = websocketUptime;
     doc["wifiUptime"] = wifiUptime;
     
+    // Climate sensor data (only if any sensor is available)
+    doc["localTemp"] = climate.getTemperature(settings.getFloat(TEMP_CORRECTION));
+    doc["localHumidity"] = climate.getHumidity(settings.getFloat(HUM_CORRECTION));
+    doc["localPressure"] = climate.getPressure(settings.getFloat(PRESSURE_CORRECTION));
+
     String response;
     serializeJson(doc, response);
     return response;

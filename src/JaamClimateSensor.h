@@ -1,3 +1,5 @@
+#pragma once
+
 #if BME280_ENABLED
 #include <forcedBMX280.h>
 #endif

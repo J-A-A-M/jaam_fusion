@@ -328,6 +328,11 @@ String JaamWeb::getHtmlTemplate() {
     html += "<span class='metric-label'>Батарея:</span>";
     html += "<span class='metric-value' id='batteryVoltage'>--</span>";
     html += "</div>";
+    html += "<div class='system-metric'>";
+    html += "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>";
+    html += "<span class='metric-label'>Температура:</span>";
+    html += "<span class='metric-value' id='localTemp'>--</span>";
+    html += "</div>";
     html += "</div>";
 
     // Alerts Information Panel (об'єднано)
@@ -495,6 +500,11 @@ String JaamWeb::getHtmlTemplate() {
     html += "      }";
     html += "      if(document.getElementById('batteryVoltage')) {";
     html += "        document.getElementById('batteryVoltage').textContent = data.batteryVoltage ? data.batteryVoltage.toFixed(2) + ' V' : '--';";
+    html += "      }";
+    html += "      if (data.localTemp > -100) {";
+    html += "        document.getElementById('localTemp').textContent = data.localTemp.toFixed(1) + ' °C';";
+    html += "      } else {";
+    html += "        document.getElementById('localTemp').textContent = '--';";
     html += "      }";
     html += "    })";
     html += "    .catch(error => console.error('Error fetching system info:', error));";
