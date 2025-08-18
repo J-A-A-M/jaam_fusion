@@ -21,6 +21,7 @@
 #include "JaamUtils.h"
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
+#include "JaamClimateSensor.h"
 
 using namespace websockets;
 
@@ -40,6 +41,7 @@ JaamLed             led;
 JaamBattery         battery;
 JaamStorage         storage;
 JaamDisplay         display;
+JaamClimateSensor   climate;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -69,6 +71,7 @@ bool                needAdaptColors = false;
 bool                needAdaptAnimationBrightness = false;
 bool                needAdaptAnimationPeriod = false;
 bool                needAdaptAnimationType = false;
+bool                needAdaptClimate = false;
 bool                needRecalculateLeds = false;
 bool                needReconnectMainStrip;
 bool                needReconnectBgStrip;
@@ -1249,6 +1252,23 @@ void initDisplay() {
     display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Jaam Fusion v" + String(VERSION) + " Слава Україні!");
 }
 
+void initSensors() {
+//  lightSensor.begin(legacy);
+//   if (lightSensor.isLightSensorAvailable()) {
+//     lightSensorCycle();
+//   }
+//   if (isAnalogLightSensorEnabled()) {
+//     lightSensor.setPhotoresistorPin(settings.getInt(LIGHT_SENSOR_PIN));
+//   }
+
+  // init climate sensor
+  climate.begin();
+  // try to get climate sensor data
+  climate.read();
+
+  //initDisplayModes();
+}
+
 void initMapping() {
     LOG.println("[INIT] Init mapping");
     // Ініціалізуємо мапінг регіонів
@@ -1715,6 +1735,15 @@ void freeMinLedsLog() {
     LOG.println();
 }
 
+// --- Climate Process ---
+void climateProcess() {
+  if (!climate.isAnySensorAvailable()) return;
+  climate.read();
+  //updateHaTempSensors();
+  //updateHaHumSensors();
+  //updateHaPressureSensors();
+}
+
 void mainThreadProcess() {
     // Ця функція виконується в основному циклі
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
@@ -1868,6 +1897,12 @@ void mainThreadProcess() {
         animation.setSynchronizedMode(settings.getInt(ENABLE_SYNC_ANIMATIONS));
         needUpdateAnimationsMode = false;
     }
+
+    if (needAdaptClimate) {
+        LOG.println("[MAIN] Adapting climate settings");
+        climateProcess();
+        needAdaptClimate = false;
+    }
 }
 
 void brightnessProcess() {
@@ -1947,6 +1982,9 @@ void setup() {
     initBattery();
     checkFreeHeap("battery initialization");
 
+    initSensors();
+    checkFreeHeap("sensors initialization");
+
     // initWifi();
     // checkFreeHeap("WiFi initialization");
 
@@ -1988,6 +2026,7 @@ void setup() {
     
     async.setInterval(batteryProcess, 10000); // кожні 10 секунд
     async.setInterval(displayProcess, 1000); // кожну секунду
+    async.setInterval(climateProcess, 10000); // кожні 10 секунд
     checkFreeHeap("async tasks configuration");
     
     checkFreeHeap("web interface initialization");

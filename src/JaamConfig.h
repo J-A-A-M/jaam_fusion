@@ -56,7 +56,7 @@ static constexpr uint8_t  TYPE_NOTIFICATIONS_BATCH = 0xA2;
 static constexpr uint8_t  TYPE_WEATHER_BATCH = 0xA3;
 static constexpr size_t   HEADER_SZ         = 1;            // лише 1 байт – type
 static constexpr size_t   RECORD_SZ         = 4;            // 2B region_id + 2B flags16
-static constexpr size_t   RECORD_LZ         = 3;            // 2B region_id + 2B flags8
+static constexpr size_t   RECORD_LZ         = 3;            // 2B region_id + 1B flags8
 static constexpr size_t   HASH_SZ           = 4;            // 2B actual + 2B prev
 
 // --- Region to LED mapping (fixed, задається один раз) ---
