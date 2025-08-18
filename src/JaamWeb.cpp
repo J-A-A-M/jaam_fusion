@@ -1114,6 +1114,11 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/system-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/alerts-info", HTTP_GET, [this]() { this->handleAlertsInfo(); });
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/ui-schema", HTTP_GET, [this]() { this->handleUiSchema(); });
+    server.on("/ui-schema", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    // Dynamic UI page that renders based on /ui-schema
+    server.on("/ui", HTTP_GET, [this]() { this->handleUiPage(); });
+    server.on("/ui", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/favicon.png", HTTP_GET, [this]() { server.send(204); });
     server.onNotFound([this]() { this->handleNotFound(); });
 
@@ -1136,6 +1141,326 @@ void JaamWeb::handleSystemInfo() {
 void JaamWeb::handleAlertsInfo() {
     setCrossOrigin();
     String response = getAlertsJson();
+    server.send(200, "application/json", response);
+}
+
+void JaamWeb::handleUiPage() {
+    // Serve a dynamic UI page that mirrors getHtmlTemplate design but renders from /ui-schema
+    String html = "<!DOCTYPE html><html>";
+    html += "<head>";
+    html += "<title>JAAM UI</title>";
+    html += getMeta();
+    html += getStyles();
+    // Reuse system theme and utils scripts
+    html += getScripts();
+    html += "</head><body>";
+    html += "<div class='container'>";
+    html += "<div class='header-container'>";
+    html += "<h1>JAAM LED Control (Dynamic UI)</h1>";
+    html += "<button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>";
+    html += "<svg viewBox='0 0 24 24'><path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/></svg></button>";
+    html += "</div>";
+
+    // System panel reused
+    html += "<div class='system-panel' id='systemPanel'>";
+    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M5 3C3.89543 3 3 3.89543 3 5H1V7H3V9H1V11H3V13H1V15H3V17H1V19H3C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19H13C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19H23V17H21V15H23V13H21V11H23V9H21V7H23V5H21C21 3.89543 20.1046 3 19 3H15C13.8954 3 13 3.89543 13 5H11C11 3.89543 10.1046 3 9 3H5ZM11 7V9H13V7H11ZM11 11V13H13V11H11ZM11 15V17H13V15H11ZM5 5H9V19H5V5ZM15 5H19V19H15V5Z'/></svg><span class='metric-label'>Пам'ять:</span><span class='metric-value' id='memoryUsage'>--</span><div class='memory-bar'><div class='memory-fill' id='memoryBar' style='width:0%'></div></div></div>";
+    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M7,2V4H6V6H4V7H2V9H4V11H2V13H4V15H2V17H4V18H6V20H7V22H9V20H11V22H13V20H15V22H17V20H18V18H20V17H22V15H20V13H22V11H20V9H22V7H20V6H18V4H17V2H15V4H13V2H11V4H9V2M8,6H16V18H8V6M10,8V16H14V8H10Z'/></svg><span class='metric-label'>Процесор:</span><span class='metric-value' id='cpuTemp'>--°C</span></div>";
+    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'/></svg><span class='metric-label'>Час роботи:</span><span class='metric-value' id='uptime'>--</span></div>";
+    html += "<div class='system-metric'><svg class='metric-icon' viewBox='-1.5 0 19 19'><path d='M14.897 7.404a.553.553 0 0 1-.392-.163 9.192 9.192 0 0 0-13.01 0 .554.554 0 1 1-.784-.783 10.3 10.3 0 0 1 14.578 0 .554.554 0 0 1-.392.946zm-2.172 2.172a.553.553 0 0 1-.392-.162 6.127 6.127 0 0 0-8.666 0 .554.554 0 0 1-.784-.784 7.23 7.23 0 0 1 10.233 0 .554.554 0 0 1-.391.946zm-2.173 2.173a.553.553 0 0 1-.392-.162 3.054 3.054 0 0 0-4.32 0 .554.554 0 1 1-.784-.784 4.163 4.163 0 0 1 5.888 0 .554.554 0 0 1-.392.946zm-1.141 2.048a1.403 1.403 0 1 1-1.403-1.403 1.403 1.403 0 0 1 1.403 1.403z'/></svg><span class='metric-label'>WiFi:</span><span class='metric-value' id='wifiSignal'>-- dBm</span></div>";
+    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M6 20v-2h12v2H6zm6-18C7.48 2 4 5.48 4 10c0 3.87 3.13 7.43 7.55 11.54.29.26.71.26 1 0C16.87 17.43 20 13.87 20 10c0-4.52-3.48-8-8-8zm0 17C8.14 15.24 6 12.39 6 10c0-3.31 2.69-6 6-6s6 2.69 6 6c0 2.39-2.14 5.24-6 9z'/></svg><span class='metric-label'>WiFi uptime:</span><span class='metric-value' id='wifiUptime'>--</span></div>";
+    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2a7.71,7.71,0,0,0-1,15.37v.77h-1a1,1,0,0,0-1,1H2.35V21H9.11a1,1,0,0,0,1,1h3.86a1,1,0,0,0,1-1h6.76V19.11H14.89a1,1,0,0,0-1-1H13v-.77A7.71,7.71,0,0,0,12,2m0,1.67a15.43,15.43,0,0,1,1.21,2.9H10.81A15.83,15.83,0,0,1,12,3.67m-2.15.42a14,14,0,0,0-1,2.48H7A5.78,5.78,0,0,1,9.88,4.09m4.3,0A5.73,5.73,0,0,1,17,6.57H15.17a13,13,0,0,0-1-2.47m-8,4.4H8.48a7.48,7.48,0,0,0-.07,1,7.77,7.77,0,0,0,.07,1H6.33a5.23,5.23,0,0,1-.09-1,5,5,0,0,1,.09-1m3.74,0h3.58a7.48,7.48,0,0,1,.07,1,7.77,7.77,0,0,1-.07,1H10.41a7.77,7.77,0,0,1-.07-1,7.48,7.48,0,0,1,.07-1m5.45,0h1.87a5,5,0,0,1,.09,1,5.23,5.23,0,0,1-.09,1H15.58a7.77,7.77,0,0,0,.07-1,7.48,7.48,0,0,0-.07-1m-8.4,3.85h1.7a13.53,13.53,0,0,0,1,2.47A5.76,5.76,0,0,1,7,12.35m4,0h2.2A15.43,15.43,0,0,1,12,15.25a15.83,15.83,0,0,1-1.22-2.9m4.36,0H17a5.75,5.75,0,0,1-2.85,2.48A13.41,13.41,0,0,0,15.17,12.35Z'/></svg><span class='metric-label'>Websocket:</span><span class='metric-value' id='websocketUptime'>--</span></div>";
+    html += "</div>"; // system-panel
+
+    // Alerts panel reused (just shell); content filled by updateAlertsInfo()
+    html += "<div class='alerts-panel' id='alertsPanel'>";
+    html += "<div class='alert-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/></svg><span class='metric-label'>Активні тривоги:</span><span class='metric-value' id='alertsContent'><span class='alerts-loading'>Завантаження...</span></span></div>";
+    html += "<div id='alertsDetailsPanel'></div>";
+    html += "</div>";
+
+    // Placeholder where controls will be rendered
+    html += "<div id='uiControls'></div>";
+
+    // Rendering + utility scripts
+    html += "<script>";
+    html += R"JS(
+function getMemoryColor(percent){ if(percent < 50) return '#28a745'; if(percent < 75) return '#ffc107'; return '#dc3545'; }
+function updateSystemInfo(){ fetch('/system-info').then(r=>r.json()).then(data=>{ document.getElementById('memoryUsage').textContent = Math.round(data.usedHeap/1024) + '/' + Math.round(data.totalHeap/1024) + ' KB'; const memoryBar = document.getElementById('memoryBar'); memoryBar.style.width = data.memoryUsagePercent + '%'; memoryBar.style.backgroundColor = getMemoryColor(data.memoryUsagePercent); document.getElementById('cpuTemp').textContent = data.cpuTemp.toFixed(1) + '°C'; const hours = Math.floor(data.uptime / 3600); const minutes = Math.floor((data.uptime % 3600) / 60); document.getElementById('uptime').textContent = hours + 'г ' + minutes + 'хв'; document.getElementById('wifiSignal').textContent = data.wifiRSSI + ' dBm'; const wsHours = Math.floor(data.websocketUptime / 3600); const wsMinutes = Math.floor((data.websocketUptime % 3600) / 60); if (data.websocketUptime > 0) { document.getElementById('websocketUptime').textContent = wsHours + 'г ' + wsMinutes + 'хв'; } else { document.getElementById('websocketUptime').textContent = 'Відключено'; } const wifiHours = Math.floor(data.wifiUptime / 3600); const wifiMinutes = Math.floor((data.wifiUptime % 3600) / 60); if (data.wifiUptime > 0) { document.getElementById('wifiUptime').textContent = wifiHours + 'г ' + wifiMinutes + 'хв'; } else { document.getElementById('wifiUptime').textContent = 'Відключено'; } if(document.getElementById('batteryVoltage')) { document.getElementById('batteryVoltage').textContent = data.batteryVoltage ? data.batteryVoltage.toFixed(2) + ' V' : '--'; } const localTempEl = document.getElementById('localTemp'); if (localTempEl) { if (data.localTemp > -100) { localTempEl.textContent = data.localTemp.toFixed(1) + ' °C'; } else { localTempEl.textContent = '--'; } } }).catch(err=>console.error('Error fetching system info:', err)); }
+function updateAlertsInfo(){ fetch('/alerts-info').then(r=>r.json()).then(data=>{ const alertsContent = document.getElementById('alertsContent'); if (!data.regions || data.regions.length === 0) { alertsContent.innerHTML = '<span class="alerts-no-alerts">Немає активних тривог</span>'; document.getElementById('alertsDetailsPanel').innerHTML=''; return; } let activeRegions = data.regions.length; let totalAlerts = 0; data.regions.forEach(region=>{ Object.values(region.alerts).forEach(alert=>{ if(alert) totalAlerts++; }); }); alertsContent.innerHTML = '<span class="alerts-error">' + activeRegions + ' регіонів (' + totalAlerts + ' тривог)</span>'; const alertsDetailsPanel = document.getElementById('alertsDetailsPanel'); let detailsHtml = ''; const alertTypes = [ {key:'air',label:'Повітряна тривога',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'artillery',label:'Артобстріл',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'urban',label:'Вуличні бої',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'chemical',label:'Хімічна',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'nuclear',label:'Ядерна',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'drones',label:'Дрони',icon:'<svg class="alert-detail-icon" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#921D14"/><path fill-rule="evenodd" clip-rule="evenodd" d="M16 29.998c7.73 0 14-6.267 14-13.998S23.73 2.002 16 2.002 2 8.269 2 16s6.269 13.998 14 13.998M4.625 16C4.7 14.7 7.5 14.3 10.5 14.3h1l9.4-6 .5-.2h2.9v15.8h-2.9l-.5-.2-9.4-6h-1c-3 0-5.8-.4-5.875-1.7" fill="#fff"/></svg>'}, {key:'missiles',label:'Ракети',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'kab',label:'КАБ',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'ballistic',label:'Балістична',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}, {key:'explosion',label:'Вибухи',icon:'<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'} ]; data.regions.forEach(region=>{ let icons=''; alertTypes.forEach(type=>{ if(region.alerts && region.alerts[type.key]){ icons += '<span title="'+type.label+'">'+type.icon+'</span>'; } }); detailsHtml += '<div class="alert-detail-row"><span class="alert-detail-region">'+region.regionName+'</span>'+icons+'</div>'; }); alertsDetailsPanel.innerHTML = detailsHtml; }).catch(err=>{ console.error('Error fetching alerts info:', err); document.getElementById('alertsContent').innerHTML = '<span class="alerts-error">Помилка завантаження</span>'; document.getElementById('alertsDetailsPanel').innerHTML=''; }); }
+function updateParameter(name, value){ var valueElement=document.getElementById(name + 'Value'); if(valueElement){ valueElement.textContent='['+value+']'; } fetch('/parameter?name=' + name + '&value=' + value).then(r=>{ if(!r.ok){ console.error('Error updating parameter:', name, value); } }).catch(e=>console.error('Network error:', e)); }
+function updateSliderValue(name, value){ var valueElement=document.getElementById(name + 'Value'); if(valueElement){ valueElement.textContent='['+value+']'; } }
+function updateBoolParameter(name, checked){ fetch('/parameter?name=' + name + '&value=' + (checked ? 1 : 0)); }
+function updateColor(name, value){ fetch('/color?name=' + name + '&value=' + encodeURIComponent(value)); }
+function updateTextParameter(name, value){ fetch('/text?name=' + name + '&value=' + encodeURIComponent(value)).then(r=>{ if(!r.ok){ console.error('Error updating text parameter:', name, value); } }).catch(e=>console.error('Network error:', e)); }
+async function fetchSchema(){ const res = await fetch('/ui-schema'); return await res.json(); }
+function optionEl(id, name, sub){ const opt = document.createElement('option'); opt.value = id; opt.textContent = sub ? ('-- ' + name) : name; return opt; }
+function labelEl(text){ const label = document.createElement('label'); label.className='label'; label.textContent = text; return label; }
+function groupDiv(){ const div=document.createElement('div'); div.className='form-group'; return div; }
+function renderControl(ctrl, lists){ const type=ctrl[0]; if(type==='label'){ return labelEl(ctrl[1]); } if(type==='dropdown'){ const [_, name, label, list, current]=ctrl; const div=groupDiv(); const lab=document.createElement('label'); lab.setAttribute('for', name); lab.textContent=label+':'; const sel=document.createElement('select'); sel.className='form-control'; sel.id=name; sel.name=name; const opts=lists[list]||[]; for(const o of opts){ const el=optionEl(o[0], o[1], o[2]); if (String(o[0])===String(current)) el.selected=true; sel.appendChild(el);} sel.onchange=(e)=>updateParameter(name, e.target.value); div.appendChild(lab); div.appendChild(sel); return div; } if(type==='bool'){ const [_, name, label, current]=ctrl; const div=document.createElement('div'); div.className='switch-container'; const input=document.createElement('input'); input.type='checkbox'; input.id=name; input.className='switch'; input.checked=!!current; input.onchange=(e)=>updateBoolParameter(name, e.target.checked); const lab=document.createElement('label'); lab.setAttribute('for', name); lab.textContent=label; div.appendChild(input); div.appendChild(lab); return div; } if(type==='text'){ const [_, name, label, current, placeholder]=ctrl; const div=document.createElement('div'); div.className='text-input-container'; const lab=document.createElement('label'); lab.setAttribute('for', name); lab.textContent=label+':'; const inp=document.createElement('input'); inp.type='text'; inp.id=name; inp.value=current; inp.placeholder=placeholder||''; inp.className='text-input'; inp.onchange=(e)=>updateTextParameter(name, e.target.value); div.appendChild(lab); div.appendChild(inp); return div; } if(type==='color'){ const [_, name, label, current]=ctrl; const div=document.createElement('div'); div.className='color-picker-container'; const span=document.createElement('span'); span.className='value'; const inp=document.createElement('input'); inp.type='color'; inp.id=name; inp.value=current; inp.onchange=(e)=>updateColor(name, e.target.value); span.appendChild(inp); const lab=document.createElement('label'); lab.setAttribute('for', name); lab.textContent=label; div.appendChild(span); div.appendChild(lab); return div; } if(type==='slider'){ const [_, name, label, min, max, step, current]=ctrl; const div=document.createElement('div'); div.className='slider-container'; const val=document.createElement('span'); val.className='value'; val.id=name+'Value'; val.textContent='['+current+']'; const lab=document.createElement('label'); lab.setAttribute('for', name); lab.textContent=label+':'; const rng=document.createElement('input'); rng.type='range'; rng.min=min; rng.max=max; rng.step=step; rng.value=current; rng.className='slider'; rng.id=name; rng.oninput=(e)=>updateSliderValue(name, e.target.value); rng.onchange=(e)=>updateParameter(name, e.target.value); div.appendChild(val); div.appendChild(lab); div.appendChild(rng); return div; } return document.createTextNode(''); }
+async function renderUI(){ try { const schema = await fetchSchema(); const lists = schema.dropdown_lists || {}; const controls = schema.controls || []; const root = document.getElementById('uiControls'); root.innerHTML=''; for(const ctrl of controls){ root.appendChild(renderControl(ctrl, lists)); } } catch(e){ console.error('UI render error', e); } }
+document.addEventListener('DOMContentLoaded', ()=>{ renderUI(); updateSystemInfo(); updateAlertsInfo(); setInterval(updateSystemInfo,5000); setInterval(updateAlertsInfo,10000); });
+)JS";
+    html += "</script>";
+
+    html += "</div></body></html>";
+    server.send(200, "text/html", html);
+}
+
+// Helper to push dropdown options to a JsonArray as compact lists: [id, name, sub]
+static void appendOptionsList(JsonArray arr, SettingListItem items[], int itemCount) {
+    for (int i = 0; i < itemCount; ++i) {
+        if (items[i].ignore) continue;
+        JsonArray opt = arr.add<JsonArray>();
+        opt.add(items[i].id);
+        opt.add(items[i].name);
+        opt.add(items[i].sub ? 1 : 0);
+    }
+}
+
+void JaamWeb::handleUiSchema() {
+    setCrossOrigin();
+
+    JsonDocument doc;
+    // Top-level models glossary (compact field lists)
+    {
+        JsonObject models = doc["models"].to<JsonObject>();
+        JsonArray mD = models["dropdown"].to<JsonArray>(); // Dropdown
+        // Use 'list' to refer to a named options list in top-level dropdown_lists
+        mD.add("name"); mD.add("label"); mD.add("list"); mD.add("current");
+        JsonArray mB = models["bool"].to<JsonArray>(); // Bool
+        mB.add("name"); mB.add("label"); mB.add("current");
+        JsonArray mT = models["text"].to<JsonArray>(); // Text
+        mT.add("name"); mT.add("label"); mT.add("current"); mT.add("placeholder");
+        JsonArray mC = models["color"].to<JsonArray>(); // Color
+        mC.add("name"); mC.add("label"); mC.add("current");
+        JsonArray mS = models["slider"].to<JsonArray>(); // Slider
+        mS.add("name"); mS.add("label"); mS.add("min"); mS.add("max"); mS.add("step"); mS.add("current");
+        JsonArray mL = models["label"].to<JsonArray>(); // Label (section header)
+        mL.add("label");
+        // Option item compact model spec at top-level as well
+        JsonArray mO = models["option"].to<JsonArray>(); // Option item for dropdowns
+        mO.add("id"); mO.add("name"); mO.add("sub");
+    }
+
+    // Top-level dropdown option lists to be referenced by name from controls
+    {
+        JsonObject dropdownLists = doc["dropdown_lists"].to<JsonObject>();
+        {
+            JsonArray arr = dropdownLists["legacy"].to<JsonArray>();
+            appendOptionsList(arr, LEGACY_OPTIONS, LEGACY_OPTIONS_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["display_model"].to<JsonArray>();
+            appendOptionsList(arr, DISPLAY_TYPES, DISPLAY_TYPES_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["display_height"].to<JsonArray>();
+            appendOptionsList(arr, DISPLAY_HEIGHTS, DISPLAY_HEIGHT_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["display_rotation"].to<JsonArray>();
+            appendOptionsList(arr, DISPLAY_ROTATIONS, DISPLAY_ROTATION_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["districts"].to<JsonArray>();
+            appendOptionsList(arr, DISTRICTS, MAX_REGIONS);
+        }
+        {
+            JsonArray arr = dropdownLists["bg_led_mode"].to<JsonArray>();
+            appendOptionsList(arr, BG_LED_MODES, BG_LED_MODES_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["map_mode"].to<JsonArray>();
+            appendOptionsList(arr, MAP_MODES, MAP_MODES_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["led_color_formats"].to<JsonArray>();
+            appendOptionsList(arr, LED_COLOR_FORMATS, LED_COLOR_FORMATS_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["led_frequencies"].to<JsonArray>();
+            appendOptionsList(arr, LED_FREQUENCIES, LED_FREQUENCIES_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["animation_types"].to<JsonArray>();
+            appendOptionsList(arr, ANIMATION_TYPES, ANIMATION_TYPES_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["auto_brightness_modes"].to<JsonArray>();
+            appendOptionsList(arr, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
+        }
+    }
+
+    JsonArray controls = doc["controls"].to<JsonArray>();
+
+    // Helper to add a dropdown control referencing a named list and reading current from settings key
+    auto addDropdown = [&](const char* name, const char* label, const char* listId, Type key){
+        JsonArray c = controls.add<JsonArray>();
+        c.add("dropdown"); c.add(name); c.add(label); c.add(listId); c.add(settings->getInt(key));
+    };
+
+    // Helper to add a label/section header
+    auto addLabel = [&](const char* text){
+        JsonArray group = controls.add<JsonArray>();
+        group.add("label"); group.add(text);
+    };
+
+    // Helper to add a boolean control
+    auto addBool = [&](const char* name, const char* label, Type key){
+        JsonArray c = controls.add<JsonArray>();
+        c.add("bool"); c.add(name); c.add(label); c.add(settings->getBool(key));
+    };
+
+    auto addText = [&](const char* name, const char* label, const String& value, const char* placeholder){
+        JsonArray c = controls.add<JsonArray>();
+        c.add("text"); c.add(name); c.add(label); c.add(value); c.add(placeholder);
+    };
+
+    auto addSlider = [&](const char* name, const char* label, float minv, float maxv, float step, float current){
+        JsonArray c = controls.add<JsonArray>();
+        c.add("slider"); c.add(name); c.add(label); c.add(minv); c.add(maxv); c.add(step); c.add(current);
+    };
+
+    auto addColor = [&](const char* name, const char* label, Type key){
+        JsonArray c = controls.add<JsonArray>();
+        c.add("color"); c.add(name); c.add(label); c.add(String(settings->getString(key)));
+    };
+
+    addDropdown("legacy", "Режим прошивки", "legacy", LEGACY);
+
+    // Display settings
+    addLabel("Налаштування дисплея");
+    addDropdown("display_model", "Тип дисплея", "display_model", DISPLAY_MODEL);
+    addDropdown("display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT);
+    addDropdown("display_rotation", "Поворот дисплея", "display_rotation", DISPLAY_ROTATION);
+    addBool("invert_display", "Інвертувати дисплей", INVERT_DISPLAY);
+    addBool("kyiv_led", "Київ як окремий LED", KYIV_LED);
+    addDropdown("home_district", "Домашній регіон", "districts", HOME_DISTRICT);
+    addDropdown("bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
+    addDropdown("map_mode", "Режим мапи", "map_mode", MAP_MODE);
+
+    // Загальні налаштування
+    addLabel("Загальні налаштування");
+
+    addText("device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
+    addText("device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
+    addText("broadcast_name", "Ім'я в мережі", String(settings->getString(BROADCAST_NAME)), "jaam");
+
+    // Мережеві налаштування
+    addLabel("Мережеві налаштування");
+    addText("ws_server_host", "Сервер WebSocket", String(settings->getString(WS_SERVER_HOST)), "ws.jaam.net.ua");
+    addText("ws_server_port", "Порт WebSocket", String(settings->getInt(WS_SERVER_PORT)), "80");
+    addText("ntp_host", "NTP сервер", String(settings->getString(NTP_HOST)), "time.google.com");
+
+    // Home Assistant
+    addLabel("Home Assistant");
+    addText("ha_mqtt_user", "MQTT користувач", String(settings->getString(HA_MQTT_USER)), "");
+    addText("ha_mqtt_password", "MQTT пароль", String(settings->getString(HA_MQTT_PASSWORD)), "");
+    addText("ha_broker_address", "Адреса брокера", String(settings->getString(HA_BROKER_ADDRESS)), "");
+
+    // Піни LED стрічок
+    addLabel("Піни LED стрічок");
+    addText("main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13");
+    addDropdown("main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT);
+    addDropdown("main_led_frequency", "Основна стрічка (частота)", "led_frequencies", MAIN_LED_FREQUENCY);
+    addText("bg_led_pin", "Фонова стрічка (пін)", String(settings->getInt(BG_LED_PIN)), "-1");
+    addText("bg_led_count", "Фонова стрічка (кількість)", String(settings->getInt(BG_LED_COUNT)), "0");
+    addDropdown("bg_led_color_format", "Фонова стрічка (формат кольору)", "led_color_formats", BG_LED_COLOR_FORMAT);
+    addDropdown("bg_led_frequency", "Фонова стрічка (частота)", "led_frequencies", BG_LED_FREQUENCY);
+    addText("service_led_pin", "Сервісна стрічка (пін)", String(settings->getInt(SERVICE_LED_PIN)), "-1");
+    addDropdown("service_led_color_format", "Сервісна стрічка (формат кольору)", "led_color_formats", SERVICE_LED_COLOR_FORMAT);
+    addDropdown("service_led_frequency", "Сервісна стрічка (частота)", "led_frequencies", SERVICE_LED_FREQUENCY);
+
+    // Налаштування погоди / температури — sliders
+    addLabel("Налаштування погоди");
+    addSlider("weather_min_temp", "Мінімальна температура (°C)", -40, 40, 1, settings->getInt(WEATHER_MIN_TEMP));
+    addSlider("weather_max_temp", "Максимальна температура (°C)", -40, 40, 1, settings->getInt(WEATHER_MAX_TEMP));
+
+    addLabel("Налаштування темпертарури");
+    addSlider("temp_correction", "Корегування температури (°C)", -10.0f, 10.0f, 0.1f, settings->getFloat(TEMP_CORRECTION));
+    addSlider("hum_correction", "Корегування вологості (%)", -20.0f, 20.0f, 0.5f, settings->getFloat(HUM_CORRECTION));
+    addSlider("pressure_correction", "Корегування атмосферного тиску (мм.рт.ст.)", -50.0f, 50.0f, 1.0f, settings->getFloat(PRESSURE_CORRECTION));
+
+    // Налаштування анімацій
+    addLabel("Налаштування анімацій");
+    addBool("enable_sync_animations", "Синхронні анімації", ENABLE_SYNC_ANIMATIONS);
+    addDropdown("alert_on_animation", "Початок тривог", "animation_types", ANIMATION_ALERT_ON_TYPE);
+    addDropdown("alert_off_animation", "Відбій тривог", "animation_types", ANIMATION_ALERT_OFF_TYPE);
+    addDropdown("drone_animation", "Загроза ударних БПЛА", "animation_types", ANIMATION_DRONE_TYPE);
+    addDropdown("recon_drone_animation", "Розвідувальні БПЛА", "animation_types", ANIMATION_RECON_DRONE_TYPE);
+    addDropdown("missile_animation", "Загроза ракет", "animation_types", ANIMATION_MISSILE_TYPE);
+    addDropdown("kab_animation", "Загроза КАБ", "animation_types", ANIMATION_KAB_TYPE);
+    addDropdown("ballistic_animation", "Загроза балістичних ракет", "animation_types", ANIMATION_BALLISTIC_TYPE);
+    addDropdown("explosion_animation", "Вибухи", "animation_types", ANIMATION_EXPLOSION_TYPE);
+
+    // Таймінги (секунди)
+    addLabel("Налаштування таймінгів (в секундах)");
+    addSlider("alert_on_time", "Початок тривог", 5, 600, 5, settings->getInt(ALERT_ON_TIME));
+    addSlider("alert_off_time", "Відбій тривог", 5, 600, 5, settings->getInt(ALERT_OFF_TIME));
+    addSlider("drone_time", "Загроза ударних БПЛА", 5, 600, 5, settings->getInt(DRONE_TIME));
+    addSlider("recon_drone_time", "Розвідувальні БПЛА", 5, 600, 5, settings->getInt(RECON_DRONE_TIME));
+    addSlider("missile_time", "Загроза ракет", 5, 600, 5, settings->getInt(MISSILE_TIME));
+    addSlider("kab_time", "Загроза КАБ", 5, 600, 5, settings->getInt(KAB_TIME));
+    addSlider("ballistic_time", "Загроза балістичних ракет", 5, 600, 5, settings->getInt(BALLISTIC_TIME));
+    addSlider("explosion_time", "Вибухи", 5, 600, 5, settings->getInt(EXPLOSION_TIME));
+
+    // Цикли (мс)
+    addLabel("Налаштування цикла (в мілісекундах)");
+    addSlider("alert_on_cycle", "Початок тривог", 300, 5000, 100, settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME));
+    addSlider("alert_off_cycle", "Відбій тривог", 300, 5000, 100, settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME));
+    addSlider("drone_cycle", "Загроза ударних БПЛА", 300, 5000, 100, settings->getInt(ANIMATION_DRONE_CYCLE_TIME));
+    addSlider("recon_drone_cycle", "Розвідувальні БПЛА", 300, 5000, 100, settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME));
+    addSlider("missile_cycle", "Загроза ракет", 300, 5000, 100, settings->getInt(ANIMATION_MISSILE_CYCLE_TIME));
+    addSlider("kab_cycle", "Загроза КАБ", 300, 5000, 100, settings->getInt(ANIMATION_KAB_CYCLE_TIME));
+    addSlider("ballistic_cycle", "Загроза балістичних ракет", 300, 5000, 100, settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME));
+    addSlider("explosion_cycle", "Вибухи", 300, 5000, 100, settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME));
+
+    // Кольори
+    addLabel("Налаштування кольорів");
+    addColor("color_alert", "Тривога", COLOR_ALERT);
+    addColor("color_clear", "Відбій", COLOR_CLEAR);
+    addColor("color_explosion", "Вибухи", COLOR_EXPLOSION);
+    addColor("color_missiles", "Ракети", COLOR_MISSILES);
+    addColor("color_drones", "Ударні БПЛА", COLOR_DRONES);
+    addColor("color_recon_drones", "Розвідувальні БПЛА", COLOR_RECON_DRONES);
+    addColor("color_kab", "КАБ", COLOR_KABS);
+    addColor("color_ballistic", "Балістичні ракети", COLOR_BALLISTIC);
+    addColor("color_home", "Домашній регіон", COLOR_HOME_DISTRICT);
+    addColor("color_bg", "Задня підсітка", COLOR_BG);
+
+    // Яскравість
+    addLabel("Налаштування яскравості");
+    addDropdown("brightness_mode", "Режим яскравості", "auto_brightness_modes", BRIGHTNESS_MODE);
+    addSlider("day_start", "Початок дня", 0, 24, 1, settings->getInt(DAY_START));
+    addSlider("night_start", "Початок ночі", 0, 24, 1, settings->getInt(NIGHT_START));
+    addSlider("brightness", "Загальна", 0, 100, 1, settings->getInt(BRIGHTNESS));
+    addSlider("brightness_day", "День", 0, 100, 1, settings->getInt(BRIGHTNESS_DAY));
+    addSlider("brightness_night", "Нічь", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT));
+    addSlider("brightness_alert", "Тривога", 0, 100, 1, settings->getInt(BRIGHTNESS_ALERT));
+    addSlider("brightness_clear", "Без тривоги", 0, 100, 1, settings->getInt(BRIGHTNESS_CLEAR));
+    addSlider("brightness_explosion", "Вибухи", 0, 100, 1, settings->getInt(BRIGHTNESS_EXPLOSION));
+    addSlider("brightness_missiles", "Крилаті та авіаційні ракети", 0, 100, 1, settings->getInt(BRIGHTNESS_MISSILES));
+    addSlider("brightness_drones", "Ударні БПЛА", 0, 100, 1, settings->getInt(BRIGHTNESS_DRONES));
+    addSlider("brightness_recon_drones", "Розвідувальні БПЛА", 0, 100, 1, settings->getInt(BRIGHTNESS_RECON_DRONES));
+    addSlider("brightness_kabs", "КАБ", 0, 100, 1, settings->getInt(BRIGHTNESS_KABS));
+    addSlider("brightness_ballistic", "Балістичні ракети", 0, 100, 1, settings->getInt(BRIGHTNESS_BALLISTIC));
+    addSlider("brightness_home_district", "Домашній регіон", 0, 100, 1, settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+    addSlider("brightness_bg", "Фонова стрічка", 0, 100, 1, settings->getInt(BRIGHTNESS_BG));
+    addSlider("brightness_service", "Сервісні діоди", 0, 100, 1, settings->getInt(BRIGHTNESS_SERVICE));
+    addSlider("brightness_animation_end", "Кінцева яскравість анімацій", 0, 100, 1, settings->getInt(BRIGHTNESS_ANIMATION_END));
+
+    // Налаштування тривог
+    addLabel("Налаштування тривог");
+    addBool("enable_kabs", "Загроза КАБ", ENABLE_KABS);
+    addBool("enable_missiles", "Загроза крилатих та авіаційних ракет", ENABLE_MISSILES);
+    addBool("enable_drones", "Загроза ударних БПЛА", ENABLE_DRONES);
+    addBool("enable_recon_drones", "Розвідувальні БПЛА", ENABLE_RECON_DRONES);
+    addBool("enable_ballistic", "Загроза балістичних ракет", ENABLE_BALLISTIC);
+    addBool("enable_explosions", "Вибухи", ENABLE_EXPLOSIONS);
+    addBool("enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING);
+    addText("battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");
+
+    String response;
+    serializeJson(doc, response);
     server.send(200, "application/json", response);
 }
 

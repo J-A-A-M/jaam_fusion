@@ -29,6 +29,8 @@ private:
     void handleTextParameter();
     void handleSystemInfo();
     void handleAlertsInfo();
+    void handleUiSchema();
+    void handleUiPage();
     String getMeta();
     String getStyles();
     String getScripts();
