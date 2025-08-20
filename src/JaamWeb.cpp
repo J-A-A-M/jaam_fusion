@@ -1145,40 +1145,107 @@ void JaamWeb::handleAlertsInfo() {
 }
 
 void JaamWeb::handleUiPage() {
-    // Serve a dynamic UI page that mirrors getHtmlTemplate design but renders from /ui-schema
-    String html = "<!DOCTYPE html><html>";
-    html += "<head>";
-    html += "<title>JAAM UI</title>";
-    html += getMeta();
-    html += getStyles();
-    // Reuse system theme and utils scripts
-    html += getScripts();
-    html += "</head><body>";
-    html += "<div class='container'>";
-    html += "<div class='header-container'>";
-    html += "<h1>JAAM LED Control (Dynamic UI)</h1>";
-    html += "<button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>";
-    html += "<svg viewBox='0 0 24 24'><path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/></svg></button>";
-    html += "</div>";
+        // Serve a dynamic UI page that mirrors getHtmlTemplate design but renders from /ui-schema
+        String html;
+        html.reserve(12000);
 
-    // System panel reused
-    html += "<div class='system-panel' id='systemPanel'>";
-    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M5 3C3.89543 3 3 3.89543 3 5H1V7H3V9H1V11H3V13H1V15H3V17H1V19H3C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19H13C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19H23V17H21V15H23V13H21V11H23V9H21V7H23V5H21C21 3.89543 20.1046 3 19 3H15C13.8954 3 13 3.89543 13 5H11C11 3.89543 10.1046 3 9 3H5ZM11 7V9H13V7H11ZM11 11V13H13V11H11ZM11 15V17H13V15H11ZM5 5H9V19H5V5ZM15 5H19V19H15V5Z'/></svg><span class='metric-label'>Пам'ять:</span><span class='metric-value' id='memoryUsage'>--</span><div class='memory-bar'><div class='memory-fill' id='memoryBar' style='width:0%'></div></div></div>";
-    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M7,2V4H6V6H4V7H2V9H4V11H2V13H4V15H2V17H4V18H6V20H7V22H9V20H11V22H13V20H15V22H17V20H18V18H20V17H22V15H20V13H22V11H20V9H22V7H20V6H18V4H17V2H15V4H13V2H11V4H9V2M8,6H16V18H8V6M10,8V16H14V8H10Z'/></svg><span class='metric-label'>Процесор:</span><span class='metric-value' id='cpuTemp'>--°C</span></div>";
-    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'/></svg><span class='metric-label'>Час роботи:</span><span class='metric-value' id='uptime'>--</span></div>";
-    html += "<div class='system-metric'><svg class='metric-icon' viewBox='-1.5 0 19 19'><path d='M14.897 7.404a.553.553 0 0 1-.392-.163 9.192 9.192 0 0 0-13.01 0 .554.554 0 1 1-.784-.783 10.3 10.3 0 0 1 14.578 0 .554.554 0 0 1-.392.946zm-2.172 2.172a.553.553 0 0 1-.392-.162 6.127 6.127 0 0 0-8.666 0 .554.554 0 0 1-.784-.784 7.23 7.23 0 0 1 10.233 0 .554.554 0 0 1-.391.946zm-2.173 2.173a.553.553 0 0 1-.392-.162 3.054 3.054 0 0 0-4.32 0 .554.554 0 1 1-.784-.784 4.163 4.163 0 0 1 5.888 0 .554.554 0 0 1-.392.946zm-1.141 2.048a1.403 1.403 0 1 1-1.403-1.403 1.403 1.403 0 0 1 1.403 1.403z'/></svg><span class='metric-label'>WiFi:</span><span class='metric-value' id='wifiSignal'>-- dBm</span></div>";
-    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M6 20v-2h12v2H6zm6-18C7.48 2 4 5.48 4 10c0 3.87 3.13 7.43 7.55 11.54.29.26.71.26 1 0C16.87 17.43 20 13.87 20 10c0-4.52-3.48-8-8-8zm0 17C8.14 15.24 6 12.39 6 10c0-3.31 2.69-6 6-6s6 2.69 6 6c0 2.39-2.14 5.24-6 9z'/></svg><span class='metric-label'>WiFi uptime:</span><span class='metric-value' id='wifiUptime'>--</span></div>";
-    html += "<div class='system-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2a7.71,7.71,0,0,0-1,15.37v.77h-1a1,1,0,0,0-1,1H2.35V21H9.11a1,1,0,0,0,1,1h3.86a1,1,0,0,0,1-1h6.76V19.11H14.89a1,1,0,0,0-1-1H13v-.77A7.71,7.71,0,0,0,12,2m0,1.67a15.43,15.43,0,0,1,1.21,2.9H10.81A15.83,15.83,0,0,1,12,3.67m-2.15.42a14,14,0,0,0-1,2.48H7A5.78,5.78,0,0,1,9.88,4.09m4.3,0A5.73,5.73,0,0,1,17,6.57H15.17a13,13,0,0,0-1-2.47m-8,4.4H8.48a7.48,7.48,0,0,0-.07,1,7.77,7.77,0,0,0,.07,1H6.33a5.23,5.23,0,0,1-.09-1,5,5,0,0,1,.09-1m3.74,0h3.58a7.48,7.48,0,0,1,.07,1,7.77,7.77,0,0,1-.07,1H10.41a7.77,7.77,0,0,1-.07-1,7.48,7.48,0,0,1,.07-1m5.45,0h1.87a5,5,0,0,1,.09,1,5.23,5.23,0,0,1-.09,1H15.58a7.77,7.77,0,0,0,.07-1,7.48,7.48,0,0,0-.07-1m-8.4,3.85h1.7a13.53,13.53,0,0,0,1,2.47A5.76,5.76,0,0,1,7,12.35m4,0h2.2A15.43,15.43,0,0,1,12,15.25a15.83,15.83,0,0,1-1.22-2.9m4.36,0H17a5.75,5.75,0,0,1-2.85,2.48A13.41,13.41,0,0,0,15.17,12.35Z'/></svg><span class='metric-label'>Websocket:</span><span class='metric-value' id='websocketUptime'>--</span></div>";
-    html += "</div>"; // system-panel
+        // Head start
+        html += R"HTML(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JAAM UI</title>
+)HTML";
+        // Inject meta/styles/scripts from existing helpers
+        html += getMeta();
+        html += getStyles();
+        html += getScripts(); // Reuse system theme and utils scripts
 
-    // Alerts panel reused (just shell); content filled by updateAlertsInfo()
-    html += "<div class='alerts-panel' id='alertsPanel'>";
-    html += "<div class='alert-metric'><svg class='metric-icon' viewBox='0 0 24 24'><path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/></svg><span class='metric-label'>Активні тривоги:</span><span class='metric-value' id='alertsContent'><span class='alerts-loading'>Завантаження...</span></span></div>";
-    html += "<div id='alertsDetailsPanel'></div>";
-    html += "</div>";
+        // Body start
+        html += R"HTML(
+</head>
+<body>
+    <div class='container'>
+        <div class='header-container'>
+            <h1>JAAM LED Control (Dynamic UI)</h1>
+            <button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>
+                <svg viewBox='0 0 24 24'>
+                    <path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
+                </svg>
+            </button>
+        </div>
 
-    // Placeholder where controls will be rendered
-    html += "<div id='uiControls'></div>";
+        <!-- System panel -->
+        <div class='system-panel' id='systemPanel'>
+            <div class='system-metric'>
+                <svg class='metric-icon' viewBox='0 0 24 24'>
+                    <path d='M5 3C3.89543 3 3 3.89543 3 5H1V7H3V9H1V11H3V13H1V15H3V17H1V19H3C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19H13C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19H23V17H21V15H23V13H21V11H23V9H21V7H23V5H21C21 3.89543 20.1046 3 19 3H15C13.8954 3 13 3.89543 13 5H11C11 3.89543 10.1046 3 9 3H5ZM11 7V9H13V7H11ZM11 11V13H13V11H11ZM11 15V17H13V15H11ZM5 5H9V19H5V5ZM15 5H19V19H15V5Z'/>
+                </svg>
+                <span class='metric-label'>Пам'ять:</span>
+                <span class='metric-value' id='memoryUsage'>--</span>
+                <div class='memory-bar'>
+                    <div class='memory-fill' id='memoryBar' style='width:0%'></div>
+                </div>
+            </div>
+
+            <div class='system-metric'>
+                <svg class='metric-icon' viewBox='0 0 24 24'>
+                    <path d='M7,2V4H6V6H4V7H2V9H4V11H2V13H4V15H2V17H4V18H6V20H7V22H9V20H11V22H13V20H15V22H17V20H18V18H20V17H22V15H20V13H22V11H20V9H22V7H20V6H18V4H17V2H15V4H13V2H11V4H9V2M8,6H16V18H8V6M10,8V16H14V8H10Z'/>
+                </svg>
+                <span class='metric-label'>Процесор:</span>
+                <span class='metric-value' id='cpuTemp'>--°C</span>
+            </div>
+
+            <div class='system-metric'>
+                <svg class='metric-icon' viewBox='0 0 24 24'>
+                    <path d='M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'/>
+                </svg>
+                <span class='metric-label'>Час роботи:</span>
+                <span class='metric-value' id='uptime'>--</span>
+            </div>
+
+            <div class='system-metric'>
+                <svg class='metric-icon' viewBox='-1.5 0 19 19'>
+                    <path d='M14.897 7.404a.553.553 0 0 1-.392-.163 9.192 9.192 0 0 0-13.01 0 .554.554 0 1 1-.784-.783 10.3 10.3 0 0 1 14.578 0 .554.554 0 0 1-.392.946zm-2.172 2.172a.553.553 0 0 1-.392-.162 6.127 6.127 0 0 0-8.666 0 .554.554 0 0 1-.784-.784 7.23 7.23 0 0 1 10.233 0 .554.554 0 0 1-.391.946zm-2.173 2.173a.553.553 0 0 1-.392-.162 3.054 3.054 0 0 0-4.32 0 .554.554 0 1 1-.784-.784 4.163 4.163 0 0 1 5.888 0 .554.554 0 0 1-.392.946zm-1.141 2.048a1.403 1.403 0 1 1-1.403-1.403 1.403 1.403 0 0 1 1.403 1.403z'/>
+                </svg>
+                <span class='metric-label'>WiFi:</span>
+                <span class='metric-value' id='wifiSignal'>-- dBm</span>
+            </div>
+
+            <div class='system-metric'>
+                <svg class='metric-icon' viewBox='0 0 24 24'>
+                    <path d='M6 20v-2h12v2H6zm6-18C7.48 2 4 5.48 4 10c0 3.87 3.13 7.43 7.55 11.54.29.26.71.26 1 0C16.87 17.43 20 13.87 20 10c0-4.52-3.48-8-8-8zm0 17C8.14 15.24 6 12.39 6 10c0-3.31 2.69-6 6-6s6 2.69 6 6c0 2.39-2.14 5.24-6 9z'/>
+                </svg>
+                <span class='metric-label'>WiFi uptime:</span>
+                <span class='metric-value' id='wifiUptime'>--</span>
+            </div>
+
+            <div class='system-metric'>
+                <svg class='metric-icon' viewBox='0 0 24 24'>
+                    <path d='M12,2a7.71,7.71,0,0,0-1,15.37v.77h-1a1,1,0,0,0-1,1H2.35V21H9.11a1,1,0,0,0,1,1h3.86a1,1,0,0,0,1-1h6.76V19.11H14.89a1,1,0,0,0-1-1H13v-.77A7.71,7.71,0,0,0,12,2m0,1.67a15.43,15.43,0,0,1,1.21,2.9H10.81A15.83,15.83,0,0,1,12,3.67m-2.15.42a14,14,0,0,0-1,2.48H7A5.78,5.78,0,0,1,9.88,4.09m4.3,0A5.73,5.73,0,0,1,17,6.57H15.17a13,13,0,0,0-1-2.47m-8,4.4H8.48a7.48,7.48,0,0,0-.07,1,7.77,7.77,0,0,0,.07,1H6.33a5.23,5.23,0,0,1-.09-1,5,5,0,0,1,.09-1m3.74,0h3.58a7.48,7.48,0,0,1,.07,1,7.77,7.77,0,0,1-.07,1H10.41a7.77,7.77,0,0,1-.07-1,7.48,7.48,0,0,1,.07-1m5.45,0h1.87a5,5,0,0,1,.09,1,5.23,5.23,0,0,1-.09,1H15.58a7.77,7.77,0,0,0,.07-1,7.48,7.48,0,0,0-.07-1m-8.4,3.85h1.7a13.53,13.53,0,0,0,1,2.47A5.76,5.76,0,0,1,7,12.35m4,0h2.2A15.43,15.43,0,0,1,12,15.25a15.83,15.83,0,0,1-1.22-2.9m4.36,0H17a5.75,5.75,0,0,1-2.85,2.48A13.41,13.41,0,0,0,15.17,12.35Z'/>
+                </svg>
+                <span class='metric-label'>Websocket:</span>
+                <span class='metric-value' id='websocketUptime'>--</span>
+            </div>
+        </div>
+
+        <!-- Alerts panel (content filled by updateAlertsInfo) -->
+        <div class='alerts-panel' id='alertsPanel'>
+            <div class='alert-metric'>
+                <svg class='metric-icon' viewBox='0 0 24 24'>
+                    <path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/>
+                </svg>
+                <span class='metric-label'>Активні тривоги:</span>
+                <span class='metric-value' id='alertsContent'>
+                    <span class='alerts-loading'>Завантаження...</span>
+                </span>
+            </div>
+            <div id='alertsDetailsPanel'></div>
+        </div>
+
+        <!-- Dynamic controls root -->
+        <div id='uiControls'></div>
+)HTML";
 
     // Rendering + utility scripts
     html += "<script>";
@@ -1199,9 +1266,14 @@ function renderControl(ctrl, lists){ const type=ctrl[0]; if(type==='label'){ ret
 async function renderUI(){ try { const schema = await fetchSchema(); const lists = schema.dropdown_lists || {}; const controls = schema.controls || []; const root = document.getElementById('uiControls'); root.innerHTML=''; for(const ctrl of controls){ root.appendChild(renderControl(ctrl, lists)); } } catch(e){ console.error('UI render error', e); } }
 document.addEventListener('DOMContentLoaded', ()=>{ renderUI(); updateSystemInfo(); updateAlertsInfo(); setInterval(updateSystemInfo,5000); setInterval(updateAlertsInfo,10000); });
 )JS";
-    html += "</script>";
+        html += "</script>";
 
-    html += "</div></body></html>";
+        // Close body/html
+        html += R"HTML(
+    </div>
+</body>
+</html>
+)HTML";
     server.send(200, "text/html", html);
 }
 
