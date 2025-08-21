@@ -17,11 +17,9 @@ private:
     Adafruit_NeoPixel* strip_main;
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;
-    String getHtmlTemplate();
     void handleNotFound();
     void setCrossOrigin();
     void sendCrossOriginHeader();
-    void handleRoot();
     void handleMapEditor();
     void handleSaveMap();
     void handleParameter();
@@ -34,9 +32,4 @@ private:
     String getMeta();
     String getStyles();
     String getScripts();
-    String getParameterHtml(const char* name, float min, float max, float step, float value, const char* label);
-    String getBoolParameterHtml(const char* name, bool value, const char* label);
-    String getColorPickerHtml(const char* name, const char* value, const char* label);
-    String getDropdownHtml(const String& name, const String& label, Type settingKey, SettingListItem items[], int itemCount);
-    String getTextInputHtml(const char* name, const char* value, const char* label, const char* placeholder = "");
 };

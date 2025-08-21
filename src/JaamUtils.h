@@ -704,25 +704,18 @@ inline String getSystemInfoJson() {
     // WiFi uptime metric (in seconds)
     uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
     
+
+    // Climate sensor data (only if any sensor is available)
+    float localTemp = climate.getTemperature(settings.getFloat(TEMP_CORRECTION));
+    float localHumidity = climate.getHumidity(settings.getFloat(HUM_CORRECTION));
+    float localPressure = climate.getPressure(settings.getFloat(PRESSURE_CORRECTION));
+
+    // Battery voltage
+    float batteryVoltage = battery.readVoltage();
+
     // Create JSON response (keep legacy numeric fields for backward compatibility)
     JsonDocument doc;
-    doc["freeHeap"] = freeHeap;
-    doc["totalHeap"] = totalHeap;
-    doc["usedHeap"] = usedHeap;
-    doc["maxBlock"] = maxBlock;
-    doc["cpuTemp"] = cpuTemp;
-    doc["uptime"] = uptime;
-    doc["batteryVoltage"] = battery.readVoltage();
-    doc["memoryUsagePercent"] = (float)usedHeap / totalHeap * 100.0;
-    doc["fragmentationPercent"] = (1.0f - ((float)maxBlock / (float)freeHeap)) * 100.0;
-    doc["wifiRSSI"] = wifiRSSI;
-    doc["websocketUptime"] = websocketUptime;
-    doc["wifiUptime"] = wifiUptime;
-    
-    // Climate sensor data (only if any sensor is available)
-    doc["localTemp"] = climate.getTemperature(settings.getFloat(TEMP_CORRECTION));
-    doc["localHumidity"] = climate.getHumidity(settings.getFloat(HUM_CORRECTION));
-    doc["localPressure"] = climate.getPressure(settings.getFloat(PRESSURE_CORRECTION));
+
 
     // New: schema for System panel rendering
     // models describe compact list fields
@@ -744,7 +737,6 @@ inline String getSystemInfoJson() {
     const char* ICON_CPU = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M7,2V4H6V6H4V7H2V9H4V11H2V13H4V15H2V17H4V18H6V20H7V22H9V20H11V22H13V20H15V22H17V20H18V18H20V17H22V15H20V13H22V11H20V9H22V7H20V6H18V4H17V2H15V4H13V2H11V4H9V2M8,6H16V18H8V6M10,8V16H14V8H10Z'/></svg>";
     const char* ICON_CLOCK = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'/></svg>";
     const char* ICON_WIFI = "<svg class='metric-icon' viewBox='-1.5 0 19 19'><path d='M14.897 7.404a.553.553 0 0 1-.392-.163 9.192 9.192 0 0 0-13.01 0 .554.554 0 1 1-.784-.783 10.3 10.3 0 0 1 14.578 0 .554.554 0 0 1-.392.946zm-2.172 2.172a.553.553 0 0 1-.392-.162 6.127 6.127 0 0 0-8.666 0 .554.554 0 0 1-.784-.784 7.23 7.23 0 0 1 10.233 0 .554.554 0 0 1-.391.946zm-2.173 2.173a.553.553 0 0 1-.392-.162 3.054 3.054 0 0 0-4.32 0 .554.554 0 1 1-.784-.784 4.163 4.163 0 0 1 5.888 0 .554.554 0 0 1-.392.946zm-1.141 2.048a1.403 1.403 0 1 1-1.403-1.403 1.403 1.403 0 0 1 1.403 1.403z'/></svg>";
-    const char* ICON_UPTIME = ICON_CLOCK; // reuse
     const char* ICON_WS = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,2a7.71,7.71,0,0,0-1,15.37v.77h-1a1,1,0,0,0-1,1H2.35V21H9.11a1,1,0,0,0,1,1h3.86a1,1,0,0,0,1-1h6.76V19.11H14.89a1,1,0,0,0-1-1H13v-.77A7.71,7.71,0,0,0,12,2m0,1.67a15.43,15.43,0,0,1,1.21,2.9H10.81A15.83,15.83,0,0,1,12,3.67m-2.15.42a14,14,0,0,0-1,2.48H7A5.78,5.78,0,0,1,9.88,4.09m4.3,0A5.73,5.73,0,0,1,17,6.57H15.17a13,13,0,0,0-1-2.47m-8,4.4H8.48a7.48,7.48,0,0,0-.07,1,7.77,7.77,0,0,0,.07,1H6.33a5.23,5.23,0,0,1-.09-1,5,5,0,0,1,.09-1m3.74,0h3.58a7.48,7.48,0,0,1,.07,1,7.77,7.77,0,0,1-.07,1H10.41a7.77,7.77,0,0,1-.07-1,7.48,7.48,0,0,1,.07-1m5.45,0h1.87a5,5,0,0,1,.09,1,5.23,5.23,0,0,1-.09,1H15.58a7.77,7.77,0,0,0,.07-1,7.48,7.48,0,0,0-.07-1m-8.4,3.85h1.7a13.53,13.53,0,0,0,1,2.47A5.76,5.76,0,0,1,7,12.35m4,0h2.2A15.43,15.43,0,0,1,12,15.25a15.83,15.83,0,0,1-1.22-2.9m4.36,0H17a5.75,5.75,0,0,1-2.85,2.48A13.41,13.41,0,0,0,15.17,12.35Z'/></svg>";
 
     JsonArray system = doc["system"].to<JsonArray>();
@@ -778,7 +770,7 @@ inline String getSystemInfoJson() {
         item.add("time");
         item.add("uptime");
         item.add("Час роботи");
-        item.add(ICON_UPTIME);
+        item.add(ICON_CLOCK);
         item.add(uptime);
     }
 
@@ -815,8 +807,7 @@ inline String getSystemInfoJson() {
 
     // Battery voltage if available (> 0)
     {    
-        float bv = battery.readVoltage();
-        if (bv > 0.01f) {
+        if (batteryVoltage > 0.01f) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("batteryVoltage");
@@ -824,45 +815,42 @@ inline String getSystemInfoJson() {
             item.add("V");
             // reuse CPU icon placeholder, or define battery icon later
             item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(bv);
+            item.add(batteryVoltage);
         }
     }
 
-    // Local temperature if valid (> -100 sentinel)
+    // Climate sensor data (only if any sensor is available)
     {    
-        float lt = doc["localTemp"] | -101.0f;
-        if (lt > -100.0f) {
+        if (localTemp > -100.0f) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("localTemp");
             item.add("Температура");
             item.add("°C");
             item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(lt);
+            item.add(localTemp);
         }
     }
     {   
-        float lh = doc["localHumidity"] | -1.0f;
-        if (lh > -1.0f) {
+        if (localHumidity > -1.0f) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("localHumidity");
             item.add("Вологість");
             item.add("%");
             item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(lh);
+            item.add(localHumidity);
         }
     }
     {
-        float lp = doc["localPressure"] | -1.0f;
-        if (lp > -1.0f) {
+        if (localPressure > -1.0f) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("localPressure");
             item.add("Тиск");
             item.add("hPa");
             item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(lp);
+            item.add(localPressure);
         }
     }
 
