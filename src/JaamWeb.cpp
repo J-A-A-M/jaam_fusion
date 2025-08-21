@@ -652,7 +652,7 @@ function updateParameter(name, value) {
         valueElement.textContent = '[' + value + ']';
     }
     
-    fetch('/parameter?name=' + name + '&value=' + value)
+    fetch('/parameter?name=' + encodeURIComponent(name) + '&value=' + encodeURIComponent(value))
         .then(r => {
             if (!r.ok) {
                 console.error('Error updating parameter:', name, value);
@@ -1487,6 +1487,11 @@ void JaamWeb::handleUiSchema() {
 
         JsonDocument modelsDoc;
         DeserializationError err = deserializeJson(modelsDoc, modelsJson);
+        if (err) {
+            LOG.printf("[WEB] Failed to parse models JSON: %s\n", err.c_str());
+            server.send(500, "application/json", "{\"error\":\"Internal server error\"}");
+            return;
+        }
         doc["models"].set(modelsDoc.as<JsonObject>());
     }
 
@@ -1624,7 +1629,7 @@ void JaamWeb::handleUiSchema() {
     addSlider("weather_min_temp", "Мінімальна температура (°C)", -40, 40, 1, settings->getInt(WEATHER_MIN_TEMP));
     addSlider("weather_max_temp", "Максимальна температура (°C)", -40, 40, 1, settings->getInt(WEATHER_MAX_TEMP));
 
-    addLabel("Налаштування темпертарури");
+    addLabel("Налаштування температури");
     addSlider("temp_correction", "Корегування температури (°C)", -10.0f, 10.0f, 0.1f, settings->getFloat(TEMP_CORRECTION));
     addSlider("hum_correction", "Корегування вологості (%)", -20.0f, 20.0f, 0.5f, settings->getFloat(HUM_CORRECTION));
     addSlider("pressure_correction", "Корегування атмосферного тиску (мм.рт.ст.)", -50.0f, 50.0f, 1.0f, settings->getFloat(PRESSURE_CORRECTION));
@@ -1674,7 +1679,7 @@ void JaamWeb::handleUiSchema() {
     addColor("color_kab", "КАБ", COLOR_KABS);
     addColor("color_ballistic", "Балістичні ракети", COLOR_BALLISTIC);
     addColor("color_home", "Домашній регіон", COLOR_HOME_DISTRICT);
-    addColor("color_bg", "Задня підсітка", COLOR_BG);
+    addColor("color_bg", "Задня підсвітка", COLOR_BG);
 
     // Яскравість
     addLabel("Налаштування яскравості");
@@ -1683,7 +1688,7 @@ void JaamWeb::handleUiSchema() {
     addSlider("night_start", "Початок ночі", 0, 24, 1, settings->getInt(NIGHT_START));
     addSlider("brightness", "Загальна", 0, 100, 1, settings->getInt(BRIGHTNESS));
     addSlider("brightness_day", "День", 0, 100, 1, settings->getInt(BRIGHTNESS_DAY));
-    addSlider("brightness_night", "Нічь", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT));
+    addSlider("brightness_night", "Ніч", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT));
     addSlider("brightness_alert", "Тривога", 0, 100, 1, settings->getInt(BRIGHTNESS_ALERT));
     addSlider("brightness_clear", "Без тривоги", 0, 100, 1, settings->getInt(BRIGHTNESS_CLEAR));
     addSlider("brightness_explosion", "Вибухи", 0, 100, 1, settings->getInt(BRIGHTNESS_EXPLOSION));

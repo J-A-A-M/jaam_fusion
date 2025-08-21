@@ -703,15 +703,6 @@ inline String getSystemInfoJson() {
     
     // WiFi uptime metric (in seconds)
     uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
-    
-
-    // Climate sensor data (only if any sensor is available)
-    float localTemp = climate.getTemperature(settings.getFloat(TEMP_CORRECTION));
-    float localHumidity = climate.getHumidity(settings.getFloat(HUM_CORRECTION));
-    float localPressure = climate.getPressure(settings.getFloat(PRESSURE_CORRECTION));
-
-    // Battery voltage
-    float batteryVoltage = battery.readVoltage();
 
     // Create JSON response (keep legacy numeric fields for backward compatibility)
     JsonDocument doc;
@@ -807,50 +798,50 @@ inline String getSystemInfoJson() {
 
     // Battery voltage if available (> 0)
     {    
-        if (batteryVoltage > 0.01f) {
+        if (battery.isEnabled()) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("batteryVoltage");
             item.add("Батарея");
             item.add("V");
             // reuse CPU icon placeholder, or define battery icon later
-            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(batteryVoltage);
+            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16.67,4H15V2H9V4H7.33A1.33,1.33 0 0,0 6,5.33V20.67C6,21.4 6.6,22 7.33,22H16.67A1.33,1.33 0 0,0 18,20.67V5.33C18,4.6 17.4,4 16.67,4Z' /></svg>");
+            item.add(battery.readVoltage());
         }
     }
 
     // Climate sensor data (only if any sensor is available)
     {    
-        if (localTemp > -100.0f) {
+        if (climate.isTemperatureAvailable()) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("localTemp");
             item.add("Температура");
             item.add("°C");
-            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(localTemp);
+            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M15,13V5A3,3 0 0,0 9,5V13A5,5 0 1,0 15,13M12,4A1,1 0 0,1 13,5V8H11V5A1,1 0 0,1 12,4Z' /></svg>");
+            item.add(climate.getTemperature(settings.getFloat(TEMP_CORRECTION)));
         }
     }
     {   
-        if (localHumidity > -1.0f) {
+        if (climate.isHumidityAvailable()) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("localHumidity");
             item.add("Вологість");
             item.add("%");
-            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(localHumidity);
+            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,3.25C12,3.25 6,10 6,14C6,17.32 8.69,20 12,20A6,6 0 0,0 18,14C18,10 12,3.25 12,3.25Z' /></svg>");
+            item.add(climate.getHumidity(settings.getFloat(HUM_CORRECTION)));
         }
     }
     {
-        if (localPressure > -1.0f) {
+        if (climate.isPressureAvailable()) {
             item = system.add<JsonArray>();
             item.add("number");
             item.add("localPressure");
             item.add("Тиск");
             item.add("hPa");
-            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M16,4V3.5A1.5,1.5 0 0,0 14.5,2A1.5,1.5 0 0,0 13,3.5V4H7A2,2 0 0,0 5,6V20A2,2 0 0,0 7,22H17A2,2 0 0,0 19,20V6A2,2 0 0,0 17,4H16M7,6H17V20H7V6Z' /></svg>");
-            item.add(localPressure);
+            item.add("<svg class='metric-icon' viewBox='0 0 24 24'><path d='M6,14A1,1 0 0,1 7,13A1,1 0 0,1 8,14A5,5 0 0,0 13,19A1,1 0 0,1 12,20A1,1 0 0,1 11,19A7,7 0 0,1 4,12A1,1 0 0,1 5,11A1,1 0 0,1 6,12M17,10A2,2 0 0,1 19,12A7,7 0 0,1 12,19A2,2 0 0,1 10,17A4,4 0 0,0 14,13A2,2 0 0,1 12,11A2,2 0 0,1 14,9A4,4 0 0,0 10,5A2,2 0 0,1 12,3A7,7 0 0,1 19,10A2,2 0 0,1 17,12A2,2 0 0,1 15,10H17Z' /></svg>");
+            item.add(climate.getPressure(settings.getFloat(PRESSURE_CORRECTION)));
         }
     }
 
