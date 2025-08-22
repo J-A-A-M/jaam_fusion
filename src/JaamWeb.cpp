@@ -652,7 +652,11 @@ function updateParameter(name, value) {
         valueElement.textContent = '[' + value + ']';
     }
     
-    fetch('/parameter?name=' + encodeURIComponent(name) + '&value=' + encodeURIComponent(value))
+    fetch('/parameter', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'name=' + encodeURIComponent(name) + '&value=' + encodeURIComponent(value)
+    })
         .then(r => {
             if (!r.ok) {
                 console.error('Error updating parameter:', name, value);
@@ -669,15 +673,27 @@ function updateSliderValue(name, value) {
 }
 
 function updateBoolParameter(name, checked) {
-    fetch('/parameter?name=' + name + '&value=' + (checked ? 1 : 0));
+    fetch('/parameter', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'name=' + encodeURIComponent(name) + '&value=' + (checked ? 1 : 0)
+    });
 }
 
 function updateColor(name, value) {
-    fetch('/color?name=' + name + '&value=' + encodeURIComponent(value));
+    fetch('/color', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'name=' + encodeURIComponent(name) + '&value=' + encodeURIComponent(value)
+    });
 }
 
 function updateTextParameter(name, value) {
-    fetch('/text?name=' + name + '&value=' + encodeURIComponent(value))
+    fetch('/text', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'name=' + encodeURIComponent(name) + '&value=' + encodeURIComponent(value)
+    })
         .then(r => {
             if (!r.ok) {
                 console.error('Error updating text parameter:', name, value);
@@ -1355,16 +1371,19 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
 
 
     // Налаштування веб-сервера
-    server.enableCORS();
+    //server.enableCORS();
     server.on("/", HTTP_GET, [this]() { this->handleUiPage(); });
     server.on("/", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/map-editor", HTTP_GET, [this]() { this->handleMapEditor(); });
     server.on("/save-map", HTTP_POST, [this]() { this->handleSaveMap(); });
-    server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
+    //server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
+    server.on("/parameter", HTTP_POST, [this]() { this->handleParameter(); });
     server.on("/parameter", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
+    //server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
+    server.on("/color", HTTP_POST, [this]() { this->handleColorParameter(); });
     server.on("/color", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
+    //server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
+    server.on("/text", HTTP_POST, [this]() { this->handleTextParameter(); });
     server.on("/text", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/system-info", HTTP_GET, [this]() { this->handleSystemInfo(); });
     server.on("/system-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });

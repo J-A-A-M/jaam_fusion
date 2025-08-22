@@ -842,7 +842,7 @@ inline String getSystemInfoJson() {
             item.add("number");
             item.add("localPressure");
             item.add("Тиск");
-            item.add("hPa");
+            item.add("mmHg");
             item.add(ICON_PRESSURE);
             item.add(climate.getPressure(settings.getFloat(PRESSURE_CORRECTION)));
         }
