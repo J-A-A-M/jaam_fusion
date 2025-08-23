@@ -114,12 +114,51 @@ body {
     margin-bottom: 20px;
 }
 
+.header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 h1 {
     margin: 0;
     font-size: 1.5em;
 }
 
-/* Перемикач теми */
+/* Кнопки управління */
+.control-button {
+    background: none;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-button:hover {
+    background-color: var(--panel-bg);
+}
+
+.control-button.active {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.control-button svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--text-color);
+    transition: fill 0.3s ease;
+}
+
+.control-button.active svg {
+    fill: white;
+}
+
+/* Перемикач теми - залишаємо для зворотної сумісності */
 .theme-toggle {
     background: none;
     border: 1px solid var(--border-color);
@@ -1079,6 +1118,105 @@ function switchSection(sectionId) {
     }
 }
 
+// Panel visibility functionality
+let systemPanelVisible = true;
+let alertsPanelVisible = true;
+
+function toggleSystemPanel() {
+    const panel = document.getElementById('systemPanel');
+    const button = document.getElementById('systemPanelToggle');
+    
+    if (!panel || !button) return;
+    
+    systemPanelVisible = !systemPanelVisible;
+    
+    if (systemPanelVisible) {
+        panel.style.display = 'flex';
+        button.classList.add('active');
+    } else {
+        panel.style.display = 'none';
+        button.classList.remove('active');
+    }
+    
+    // Save state to localStorage
+    try {
+        localStorage.setItem('jaam-system-panel-visible', systemPanelVisible);
+    } catch (e) {
+        console.warn('Unable to save system panel state to localStorage', e);
+    }
+}
+
+function toggleAlertsPanel() {
+    const panel = document.getElementById('alertsPanel');
+    const button = document.getElementById('alertsPanelToggle');
+    
+    if (!panel || !button) return;
+    
+    alertsPanelVisible = !alertsPanelVisible;
+    
+    if (alertsPanelVisible) {
+        panel.style.display = 'block';
+        button.classList.add('active');
+    } else {
+        panel.style.display = 'none';
+        button.classList.remove('active');
+    }
+    
+    // Save state to localStorage
+    try {
+        localStorage.setItem('jaam-alerts-panel-visible', alertsPanelVisible);
+    } catch (e) {
+        console.warn('Unable to save alerts panel state to localStorage', e);
+    }
+}
+
+function loadPanelStates() {
+    try {
+        // Load system panel state
+        const systemState = localStorage.getItem('jaam-system-panel-visible');
+        if (systemState !== null) {
+            systemPanelVisible = systemState === 'true';
+        }
+        
+        // Load alerts panel state
+        const alertsState = localStorage.getItem('jaam-alerts-panel-visible');
+        if (alertsState !== null) {
+            alertsPanelVisible = alertsState === 'true';
+        }
+    } catch (e) {
+        console.warn('Unable to load panel states from localStorage', e);
+    }
+}
+
+function applyPanelStates() {
+    const systemPanel = document.getElementById('systemPanel');
+    const systemButton = document.getElementById('systemPanelToggle');
+    const alertsPanel = document.getElementById('alertsPanel');
+    const alertsButton = document.getElementById('alertsPanelToggle');
+    
+    // Apply system panel state
+    if (systemPanel && systemButton) {
+        if (systemPanelVisible) {
+            systemPanel.style.display = 'flex';
+            systemButton.classList.add('active');
+        } else {
+            systemPanel.style.display = 'none';
+            systemButton.classList.remove('active');
+        }
+    }
+    
+    // Apply alerts panel state
+    if (alertsPanel && alertsButton) {
+        if (alertsPanelVisible) {
+            alertsPanel.style.display = 'block';
+            alertsButton.classList.add('active');
+        } else {
+            alertsPanel.style.display = 'none';
+            alertsButton.classList.remove('active');
+        }
+    }
+}
+
 function createNavigationMenu(sections) {
     const navHtml = sections.map(section => 
         `<div class="nav-item" data-section="${section.id}" onclick="switchSection('${section.id}')" style="border-left: 3px solid ${section.color}">
@@ -1112,7 +1250,9 @@ function loadSavedSection(sections) {
 
 // Startup tasks
 document.addEventListener('DOMContentLoaded', () => {
+    loadPanelStates();
     renderUI();
+    applyPanelStates();
     updateSystemInfo();
     updateAlertsInfo();
     setInterval(updateSystemInfo, 5000);
@@ -1658,7 +1798,11 @@ void JaamWeb::handleUiPage() {
 <!DOCTYPE html>
 <html>
 <head>
-<title>JAAM UI</title>
+<title>)HTML";
+        String deviceName = settings->getString(DEVICE_NAME);
+        if (deviceName.isEmpty()) deviceName = "JAAM";
+        html += deviceName;
+        html += R"HTML(</title>
 )HTML";
         // Inject meta/styles/scripts from existing helpers
         html += getMeta();
@@ -1671,12 +1815,28 @@ void JaamWeb::handleUiPage() {
 <body>
     <div class='container'>
         <div class='header-container'>
-            <h1>JAAM LED Control (Dynamic UI)</h1>
-            <button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>
-                <svg viewBox='0 0 24 24'>
-                    <path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
-                </svg>
-            </button>
+            <h1>)HTML";
+        String deviceDesc = settings->getString(DEVICE_DESCRIPTION);
+        if (deviceDesc.isEmpty()) deviceDesc = "JAAM LED Control";
+        html += deviceDesc;
+        html += R"HTML(</h1>
+            <div class='header-buttons'>
+                <button class='control-button' id='systemPanelToggle' onclick='toggleSystemPanel()' title='Показати/сховати системну панель'>
+                    <svg viewBox='0 0 24 24'>
+                        <path d='M13,9V7H11V9H13M13,17V11H11V17H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
+                    </svg>
+                </button>
+                <button class='control-button' id='alertsPanelToggle' onclick='toggleAlertsPanel()' title='Показати/сховати панель тривог'>
+                    <svg viewBox='0 0 24 24'>
+                        <path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/>
+                    </svg>
+                </button>
+                <button class='control-button theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>
+                    <svg viewBox='0 0 24 24'>
+                        <path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <!-- System panel (rendered dynamically from /system-info schema) -->
@@ -2072,7 +2232,9 @@ void JaamWeb::handleSaveMap() {
 void JaamWeb::handleMapEditor() {
     String html = "<!DOCTYPE html><html>";
     html += "<head>";
-    html += "<title>JAAM LED Control</title>";
+    String deviceName = settings->getString(DEVICE_NAME);
+    if (deviceName.isEmpty()) deviceName = "JAAM";
+    html += "<title>" + deviceName + "</title>";
     html += getMeta();
     html += getStyles();
     html += getScripts();
