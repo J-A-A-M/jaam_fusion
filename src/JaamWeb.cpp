@@ -519,8 +519,9 @@ h1 {
 .info-icon {
     width: 18px;
     height: 18px;
-    margin-right: 12px;
+    margin-right: 5px;
     flex-shrink: 0;
+    fill: currentColor;
 }
 
 .info-text {
@@ -590,9 +591,17 @@ function getMemoryColor(percent) {
 
 function formatDuration(seconds) {
     seconds = Math.max(0, Math.floor(seconds || 0));
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return h + 'г ' + m + 'хв';
+    
+    const days = Math.floor(seconds / 86400); // 86400 seconds in a day
+    const remainingAfterDays = seconds % 86400;
+    const h = Math.floor(remainingAfterDays / 3600);
+    const m = Math.floor((remainingAfterDays % 3600) / 60);
+    
+    if (days > 0) {
+        return days + 'д ' + h + 'г ' + m + 'хв';
+    } else {
+        return h + 'г ' + m + 'хв';
+    }
 }
 
 function createMetricContainer() {
@@ -867,7 +876,7 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'info') {
-        const [_, text, color, icon] = ctrl;
+        const [_, text, color, icon, section] = ctrl;
         const div = document.createElement('div');
         div.className = 'info-panel';
         div.style.backgroundColor = color + '20'; // Add transparency
@@ -877,21 +886,18 @@ function renderControl(ctrl, lists) {
         const metric = document.createElement('div');
         metric.className = 'info-metric';
         
-        // Create SVG icon
-        const svg = document.createElement('svg');
-        svg.className = 'info-icon';
-        svg.setAttribute('viewBox', '0 0 24 24');
-        svg.style.fill = color;
-        
-        const path = document.createElement('path');
-        path.setAttribute('d', icon);
-        svg.appendChild(path);
+        // Create SVG icon using the same method as system-metric
+        const svgStr = `<svg class='info-icon' viewBox='0 0 24 24'><path d='${icon}'/></svg>`;
+        const iconNode = svgNode(svgStr);
+        if (iconNode.nodeType !== 3) {
+            iconNode.classList.add('info-icon');
+        }
         
         const textSpan = document.createElement('span');
         textSpan.className = 'info-text';
         textSpan.textContent = text;
         
-        metric.appendChild(svg);
+        metric.appendChild(iconNode);
         metric.appendChild(textSpan);
         div.appendChild(metric);
         
@@ -2032,8 +2038,8 @@ void JaamWeb::handleUiSchema() {
     };
 
     // Загальні налаштування
-    addDropdown("general", "legacy", "Режим прошивки", "legacy", LEGACY);
     addInfo("general", "Оберіть режим прошивки відповідно до вашої версії пристрою", "#007bff", "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");  
+    addDropdown("general", "legacy", "Режим прошивки", "legacy", LEGACY);
     addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
     addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
@@ -2063,7 +2069,6 @@ void JaamWeb::handleUiSchema() {
     addInfoSuccess("network", "З'єднання встановлено. Перевірте налаштування при проблемах зі з'єднанням.");
 
     // Піни LED стрічок
-    addLabel("hardware", "Піни LED стрічок");
     addInfo("hardware", "Конфігурація апаратних пінів та параметрів LED стрічок", "#6f42c1", "M9,7H11V17H9V19H15V17H13V7H15V5H9V7M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
     addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13");
     addDropdown("hardware", "main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT);
@@ -2081,6 +2086,7 @@ void JaamWeb::handleUiSchema() {
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");
 
     // Налаштування погоди / температури — sliders
+    addInfo("climate", "Налаштування погодних переметрів та кліматичних сенсорів", "#34f396", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");
     addLabel("climate", "Налаштування погоди");
     addSlider("climate", "weather_min_temp", "Мінімальна температура (°C)", -40, 40, 1, settings->getInt(WEATHER_MIN_TEMP));
     addSlider("climate", "weather_max_temp", "Максимальна температура (°C)", -40, 40, 1, settings->getInt(WEATHER_MAX_TEMP));
@@ -2091,8 +2097,7 @@ void JaamWeb::handleUiSchema() {
     addSlider("climate", "pressure_correction", "Корегування атмосферного тиску (мм.рт.ст.)", -50.0f, 50.0f, 1.0f, settings->getFloat(PRESSURE_CORRECTION));
 
     // Налаштування анімацій
-    addLabel("animations", "Налаштування анімацій");
-    addInfo("animations", "Оберіть типи анімацій для різних видів тривог та подій", "#fd7e14", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");
+    addInfo("animations", "Оберіть типи і налаштування анімацій для різних видів тривог та подій", "#fd7e14", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");
     addBool("animations", "enable_sync_animations", "Синхронні анімації", ENABLE_SYNC_ANIMATIONS);
     addDropdown("animations", "alert_on_animation", "Початок тривог", "animation_types", ANIMATION_ALERT_ON_TYPE);
     addDropdown("animations", "alert_off_animation", "Відбій тривог", "animation_types", ANIMATION_ALERT_OFF_TYPE);

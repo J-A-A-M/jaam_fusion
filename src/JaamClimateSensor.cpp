@@ -132,15 +132,15 @@ bool JaamClimateSensor::isPressureAvailable() {
 }
 
 float JaamClimateSensor::getTemperature(float tempCorrection) {
-  return round((localTemp + tempCorrection) * 10.0) / 10.0;
+  return localTemp + tempCorrection;
 }
 
 float JaamClimateSensor::getHumidity(float humCorrection) {
-  return round((localHum + humCorrection) * 10.0) / 10.0;
+  return localHum + humCorrection;
 }
 
 float JaamClimateSensor::getPressure(float pressCorrection) {
-  return round((localPressure + pressCorrection) * 10.0) / 10.0;
+  return localPressure + pressCorrection;
 }
 
 String JaamClimateSensor::getSensorModel() {

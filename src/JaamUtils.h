@@ -158,6 +158,11 @@ static void fillFwVersion(char* result, JaamFirmware firmware) {
     strcpy(result, version.c_str());
 }
 
+static float roundToDecimal(float value, int decimals) {
+    float multiplier = powf(10.0f, decimals);
+    return roundf(value * multiplier) / multiplier;
+}
+
 // Генерація customMap (викликається окремо при зміні налаштувань)
 inline void generateCustomRegionMap() {
     // Очистити customMap перед копіюванням нового mapping
@@ -697,7 +702,7 @@ inline String getSystemInfoJson() {
     size_t totalHeap = ESP.getHeapSize();
     size_t usedHeap = totalHeap - freeHeap;
     size_t maxBlock = ESP.getMaxAllocHeap();
-    float cpuTemp = round((temperatureRead()) * 10.0) / 10.0;
+    float cpuTemp = roundToDecimal(temperatureRead(), 0);
     uint32_t uptime = millis() / 1000; // uptime in seconds
     
     // WiFi information
@@ -822,7 +827,7 @@ inline String getSystemInfoJson() {
             item.add("Температура");
             item.add("°C");
             item.add(ICON_TEMPERATURE);
-            item.add(climate.getTemperature(settings.getFloat(TEMP_CORRECTION)));
+            item.add(roundToDecimal(climate.getTemperature(settings.getFloat(TEMP_CORRECTION)), 0));
         }
     }
     {   
@@ -833,7 +838,7 @@ inline String getSystemInfoJson() {
             item.add("Вологість");
             item.add("%");
             item.add(ICON_HUMIDITY);
-            item.add(climate.getHumidity(settings.getFloat(HUM_CORRECTION)));
+            item.add(roundToDecimal(climate.getHumidity(settings.getFloat(HUM_CORRECTION)), 0));
         }
     }
     {
@@ -844,7 +849,7 @@ inline String getSystemInfoJson() {
             item.add("Тиск");
             item.add("mmHg");
             item.add(ICON_PRESSURE);
-            item.add(climate.getPressure(settings.getFloat(PRESSURE_CORRECTION)));
+            item.add(roundToDecimal(climate.getPressure(settings.getFloat(PRESSURE_CORRECTION)), 0));
         }
     }
 
