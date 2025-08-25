@@ -2081,7 +2081,7 @@ void JaamWeb::handleUiSchema() {
     addDropdown("hardware", "service_led_color_format", "Сервісна стрічка (формат кольору)", "led_color_formats", SERVICE_LED_COLOR_FORMAT);
     addDropdown("hardware", "service_led_frequency", "Сервісна стрічка (частота)", "led_frequencies", SERVICE_LED_FREQUENCY);
     addInfoError("hardware", "Увага: неправильна конфігурація пінів може призвести до пошкодження пристрою!");
-    addLabel("hardware", "Батарея>");
+    addLabel("hardware", "Батарея");
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING);
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");
 

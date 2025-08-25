@@ -159,8 +159,11 @@ static void fillFwVersion(char* result, JaamFirmware firmware) {
 }
 
 static float roundToDecimal(float value, int decimals) {
-    float multiplier = powf(10.0f, decimals);
-    return roundf(value * multiplier) / multiplier;
+    if (decimals < 0) decimals = 0;
+    if (decimals > 3) decimals = 3; 
+    static const float mults[] = {1.0f, 10.0f, 100.0f, 1000.0f};
+    float m = mults[decimals];
+    return roundf(value * m) / m;
 }
 
 // Генерація customMap (викликається окремо при зміні налаштувань)
@@ -720,11 +723,8 @@ inline String getSystemInfoJson() {
     // WiFi uptime metric (in seconds)
     uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
 
-    // Create JSON response (keep legacy numeric fields for backward compatibility)
     JsonDocument doc;
 
-
-    // New: schema for System panel rendering
     // models describe compact list fields
     JsonObject models = doc["system_models"].to<JsonObject>();
     {
@@ -814,7 +814,7 @@ inline String getSystemInfoJson() {
             item.add("Батарея");
             item.add("V");
             item.add(ICON_BATTERY);
-            item.add(battery.readVoltage());
+            item.add(roundToDecimal(battery.readVoltage(), 2));
         }
     }
 
