@@ -1103,6 +1103,7 @@ void reconnectStrips() {
         needReconnectServiceStrip = false;
     }
     needAdaptStripBrightness = true;
+    needAdaptColors = true;
     
     // Оновлюємо посилання в веб-інтерфейсі
     web.begin(strip_main, strip_bg, strip_service);
