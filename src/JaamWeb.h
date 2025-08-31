@@ -29,6 +29,7 @@ private:
     void handleAlertsInfo();
     void handleUiSchema();
     void handleUiPage();
+    void handleMapData();
     String getMeta();
     String getStyles();
     String getScripts();

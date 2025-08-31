@@ -1767,6 +1767,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema", HTTP_GET, [this]() { this->handleUiSchema(); });
     server.on("/ui-schema", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/map-data", HTTP_GET, [this]() { this->handleMapData(); });
+    server.on("/map-data", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     // Dynamic UI page that renders based on /ui-schema
 
     server.on("/favicon.png", HTTP_GET, [this]() { server.send(204); });
@@ -1791,6 +1793,46 @@ void JaamWeb::handleSystemInfo() {
 void JaamWeb::handleAlertsInfo() {
     setCrossOrigin();
     String response = getAlertsJson();
+    server.send(200, "application/json", response);
+}
+
+void JaamWeb::handleMapData() {
+    setCrossOrigin();
+    
+    JsonDocument doc;
+    JsonArray regions = doc["regions"].to<JsonArray>();
+    
+    // Load current custom map
+    storage.loadCustomMap(customMap);
+    
+    for (int i = 0; i < MAX_REGIONS; ++i) {
+        if ((DISTRICTS[i].id == 0 && i > 0)) {
+            continue;
+        }
+        
+        JsonObject region = regions.add<JsonObject>();
+        region["id"] = DISTRICTS[i].id;
+        region["name"] = DISTRICTS[i].name;
+        region["sub"] = DISTRICTS[i].sub;
+        
+        // Find LED positions for this region
+        String leds_str = "";
+        for (int j = 0; j < MAX_REGIONS; ++j) {
+            if (customMap[j].region_id == DISTRICTS[i].id) {
+                JsonArray leds = region["leds"].to<JsonArray>();
+                for (int k = 0; k < customMap[j].led_count; ++k) {
+                    leds.add(customMap[j].led_positions[k]);
+                    if (k > 0) leds_str += ", ";
+                    leds_str += String(customMap[j].led_positions[k]);
+                }
+                break;
+            }
+        }
+        region["leds_string"] = leds_str;
+    }
+    
+    String response;
+    serializeJson(doc, response);
     server.send(200, "application/json", response);
 }
 
@@ -2243,45 +2285,144 @@ void JaamWeb::handleMapEditor() {
     html += getMeta();
     html += getStyles();
     html += getScripts();
+    
+    // Add map editor specific JavaScript
+    html += R"HTML(
+<style>
+    #saveBtn {
+        background: var(--success-color, #28a745) !important;
+        color: white !important;
+        border: none !important;
+        padding: 8px 16px !important;
+        border-radius: 4px !important;
+        cursor: pointer !important;
+        font-size: 14px !important;
+        transition: background 0.3s ease !important;
+        min-width: 140px !important;
+    }
+    #saveBtn:hover:not(:disabled) {
+        background: var(--success-hover, #218838) !important;
+    }
+    #saveBtn:disabled {
+        background: var(--text-secondary, #6c757d) !important;
+        color: white !important;
+        cursor: not-allowed !important;
+    }
+    #saveBtn:focus {
+        outline: 2px solid var(--accent-color, #007bff) !important;
+        outline-offset: 2px !important;
+    }
+    #mapContent {
+        max-width: 600px !important;
+        margin: 20px auto !important;
+        background: var(--panel-bg, var(--main-bg)) !important;
+        border: 1px solid var(--border-color, #dee2e6) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3) !important;
+        padding: 20px !important;
+        transition: background-color 0.3s ease !important;
+    }
+</style>
+<script>
+// Map editor functionality
+function loadMapData() {
+    fetch('/map-data')
+        .then(response => response.json())
+        .then(data => {
+            renderMapEditor(data.regions);
+        })
+        .catch(err => {
+            console.error('Error fetching map data:', err);
+            document.getElementById('mapContent').innerHTML = 
+                '<div style="color: var(--error-color); text-align: center; padding: 20px;">Помилка завантаження даних карти</div>';
+        });
+}
+
+function renderMapEditor(regions) {
+    const container = document.getElementById('mapContent');
+    // Clear loading message
+    container.innerHTML = '';
+    
+    const form = document.createElement('form');
+    form.id = 'mapForm';
+    form.action = '/save-map';
+    form.method = 'post';
+    
+    regions.forEach(region => {
+        const div = document.createElement('div');
+        div.className = 'text-input-container';
+        
+        const label = document.createElement('label');
+        label.setAttribute('for', 'region_' + region.id);
+        
+        const displayName = region.sub ? 
+            '&nbsp;&nbsp;&nbsp;&nbsp;' + region.name : 
+            '<b>' + region.name + '</b>';
+        label.innerHTML = displayName;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'region_' + region.id;
+        input.name = 'region_' + region.id;
+        input.value = region.leds_string || '';
+        input.placeholder = 'номери LED, через кому';
+        input.className = 'text-input';
+        
+        div.appendChild(label);
+        div.appendChild(input);
+        form.appendChild(div);
+    });
+    
+    container.appendChild(form);
+    
+    // Enable save button
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Зберегти карту';
+    }
+}
+
+function saveMap() {
+    const form = document.getElementById('mapForm');
+    if (form) {
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Збереження...';
+        }
+        form.submit();
+    }
+}
+
+// Load map data when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    loadMapData();
+});
+</script>
+)HTML";
+    
     html += "</head><body>";
 
     html += "<div class='container'>";
     html += "<div class='header-container'>";
     html += "<h1>Редактор власної карти LED</h1>";
-    html += "<button class='theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'><svg viewBox='0 0 24 24'><path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/></svg></button>";
+    html += "<div class='header-buttons'>";
+    html += "<button id='saveBtn' onclick='saveMap()' disabled class='control-button' title='Зберегти карту'>Завантаження...</button>";
+    html += "<button class='control-button theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>";
+    html += "<svg viewBox='0 0 24 24'>";
+    html += "<path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>";
+    html += "</svg>";
+    html += "</button>";
+    html += "</div>";
+    html += "</div>";
     html += "</div>";
     
-    // Навігація та перемикач теми
-    html += "<a href='/' style='display: block; margin-bottom: 20px; color: var(--text-color); text-decoration: none;'>&larr; На головну</a>";
-
-    html += "<form action='/save-map' method='post'>";
-
-    storage.loadCustomMap(customMap);
-
-    for (int i = 0; i < MAX_REGIONS; ++i) {
-        if ((DISTRICTS[i].id == 0 && i > 0)) {
-            continue;
-        }
-        String leds_str = "";
-        for (int j = 0; j < MAX_REGIONS; ++j) {
-            if (customMap[j].region_id == DISTRICTS[i].id) {
-                for (int k = 0; k < customMap[j].led_count; ++k) {
-                    leds_str += String(customMap[j].led_positions[k]);
-                    if (k < customMap[j].led_count - 1) leds_str += ", ";
-                }
-                break;
-            }
-        }
-        
-        String displayName = DISTRICTS[i].sub ? "&nbsp;&nbsp;&nbsp;&nbsp;" + String(DISTRICTS[i].name) : "<b>" + String(DISTRICTS[i].name) + "</b>";
-        
-        // Використання структури та класів з головної сторінки
-        html += "<div class='text-input-container'>";
-        html += "<label for='region_" + String(DISTRICTS[i].id) + "'>" + displayName + "</label>";
-        html += "<input type='text' id='region_" + String(DISTRICTS[i].id) + "' name='region_" + String(DISTRICTS[i].id) + "' value='" + leds_str + "' placeholder='номери LED, через кому' class='text-input'>";
-        html += "</div>";
-    }
-
-    html += "<button type='submit' class='btn-submit'>Зберегти Карту</button></form></div></body></html>";
+    // Container for dynamically loaded map content
+    html += "<div id='mapContent'>";
+    html += "<div style='text-align: center; padding: 20px; color: var(--secondary-text);'>Завантаження даних карти...</div>";
+    html += "</div>";
+    
+    html += "</div></body></html>";
     server.send(200, "text/html", html);
 }
