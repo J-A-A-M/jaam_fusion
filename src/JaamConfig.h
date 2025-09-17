@@ -21,6 +21,13 @@ namespace MapModes {
     static const int WEATHER = 2;
 }
 
+// --- BG Led Modes ---
+namespace BgLedModes {
+    static const int HOME_REGION = 0;
+    static const int CUSTOM_COLOR = 1;
+    static const int COLOR_MAP = 2;
+}
+
 // --- Animation Configuration ---
 namespace AnimationConfig {
     static const uint32_t MIN_PERIOD = 1000;

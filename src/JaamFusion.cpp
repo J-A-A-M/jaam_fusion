@@ -1800,7 +1800,7 @@ void mainThreadProcess() {
             LOG.printf("[WEB] Adjusting bg colors\n");
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 switch (settings.getInt(BG_LED_MODE)) {
-                    case 2: {
+                    case BgLedModes::COLOR_MAP: {
                         for(uint32_t i = 0; i < strip->numPixels(); i++) {
                             uint32_t color = animation.ledActualColor(strip, i);
                             strip->setPixelColor(i, color);

@@ -1007,10 +1007,9 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     } 
     if (strip == strip_bg) {
         switch (settings->getInt(BG_LED_MODE)) {
-            case 2: // Індивідуальні кольори
+            case BgLedModes::COLOR_MAP: // Індивідуальні кольори
                 color = getBgLedColor(position);
                 return color;
-
         }
         switch (settings->getInt(MAP_MODE)) {
             case MapModes::OFF: 
@@ -1030,11 +1029,6 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     // Якщо немає тривог, встановлюємо колір домашнього району
                     std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                     color = result.first;
-                } else if (settings->getInt(BG_LED_MODE) == 2) {
-                    // Режим індивідуальних кольорів
-                    // Потрібно передати storage через параметр або інший спосіб
-                    // Поки що використаємо стандартний колір
-                    color = colorFromHex(settings->getString(COLOR_BG));
                 } else {
                     color = colorFromHex(settings->getString(COLOR_BG));
                 }
