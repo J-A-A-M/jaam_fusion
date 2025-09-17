@@ -62,6 +62,7 @@ uint16_t                animType;
 std::map<uint16_t, uint16_t>    alertsMap;
 std::map<uint16_t, uint8_t>     temperatureMap;
 RegionLedMapEntry               customMap[MAX_REGIONS];
+uint32_t                        bgLedColors[MAX_BG_LEDS];
 
 // --- TASKS Configuration ---
 bool                needAdaptAnimationColors = false;
@@ -744,9 +745,21 @@ void onMessageCallback(WebsocketsMessage msg) {
         }
         if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == 0) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.stripActualColor(strip);
-                for(uint32_t i = 0; i < strip->numPixels(); i++) {
-                    strip->setPixelColor(i, color);
+                switch (settings.getInt(BG_LED_MODE)) {
+                    case 2: {
+                        for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                            uint32_t color = animation.ledActualColor(strip, i);
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
+                    default: {
+                        uint32_t color = animation.stripActualColor(strip);
+                        for(int i = 0; i < strip->numPixels(); i++) {
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
                 }
                 strip->show();
             });
@@ -1274,6 +1287,8 @@ void initMapping() {
     LOG.println("[INIT] Init mapping");
     // Ініціалізуємо мапінг регіонів
     generateCustomRegionMap();
+    // Ініціалізуємо кольори задніх LED
+    generateBgLedColorsMap();
 }
 
 
@@ -1784,9 +1799,21 @@ void mainThreadProcess() {
         if (strip_bg != nullptr) {
             LOG.printf("[WEB] Adjusting bg colors\n");
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.stripActualColor(strip);
-                for (int i = 0; i < strip->numPixels(); i++) {
-                    strip->setPixelColor(i, color);
+                switch (settings.getInt(BG_LED_MODE)) {
+                    case 2: {
+                        for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                            uint32_t color = animation.ledActualColor(strip, i);
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
+                    default: {
+                        uint32_t color = animation.stripActualColor(strip);
+                        for(int i = 0; i < strip->numPixels(); i++) {
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
                 }
                 strip->show();
             });               
@@ -1926,9 +1953,21 @@ void brightnessProcess() {
         if (strip_bg != nullptr) {
             animation.safeStripOperation(strip_bg, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
-                uint32_t color = animation.stripActualColor(strip);
-                for(int i = 0; i < strip->numPixels(); i++) {
-                    strip->setPixelColor(i, color);
+                switch (settings.getInt(BG_LED_MODE)) {
+                    case 2: {
+                        for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                            uint32_t color = animation.ledActualColor(strip, i);
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
+                    default: {
+                        uint32_t color = animation.stripActualColor(strip);
+                        for(int i = 0; i < strip->numPixels(); i++) {
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
                 }
                 strip->show();
             });

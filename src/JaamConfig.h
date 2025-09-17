@@ -69,6 +69,14 @@ struct RegionLedMapEntry {
     uint8_t led_count;
 };
 
+// --- Background LED color mapping ---
+constexpr int MAX_BG_LEDS = 300;                            // Максимум задніх LED
+
+struct BgLedColorEntry {
+    uint16_t led_index;
+    uint32_t color;
+};
+
 struct SettingListItem {
   uint16_t id;
   const char* name;

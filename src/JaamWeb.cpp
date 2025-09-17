@@ -31,6 +31,7 @@ extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
+extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
@@ -2510,32 +2511,16 @@ void JaamWeb::handleBgColorsData() {
     JsonArray colors = data["colors"].to<JsonArray>();
     
     if (bgLedCount > 0) {
-        uint32_t* ledColors = new uint32_t[bgLedCount];
-        int actualCount = 0;
-        
-        // Завантажуємо кольори з файлу або встановлюємо чорний за замовчуванням
-        if (!storage->loadBgLedColors(ledColors, bgLedCount, actualCount)) {
-            // Якщо файл не знайдено, встановлюємо всі кольори чорними
-            for (int i = 0; i < bgLedCount; ++i) {
-                ledColors[i] = 0x000000;
-            }
-            actualCount = bgLedCount;
-        }
-        
-        // Додаємо кольори до JSON
+        // Використовуємо глобальну структуру bgLedColors
         for (int i = 0; i < bgLedCount; ++i) {
             JsonObject color = colors.add<JsonObject>();
             color["led"] = i;
-            if (i < actualCount) {
-                String colorHex = String(ledColors[i], HEX);
-                while (colorHex.length() < 6) colorHex = "0" + colorHex;
-                color["color"] = colorHex;
-            } else {
-                color["color"] = "000000"; // Чорний за замовчуванням
-            }
+            
+            uint32_t ledColor = getBgLedColor(i);
+            String colorHex = String(ledColor, HEX);
+            while (colorHex.length() < 6) colorHex = "0" + colorHex;
+            color["color"] = colorHex;
         }
-        
-        delete[] ledColors;
     }
     
     String response;
@@ -2574,7 +2559,13 @@ void JaamWeb::handleSaveBgColors() {
     }
     
     if (storage->saveBgLedColors(colors, bgLedCount)) {
-        LOG.println("[WEB] BG LED colors saved successfully.");
+        // Оновлюємо глобальну структуру кольорів
+        for (int i = 0; i < bgLedCount && i < MAX_BG_LEDS; ++i) {
+            bgLedColors[i] = colors[i];
+        }
+        
+        LOG.println("[WEB] BG LED colors saved successfully and global structure updated.");
+        needAdaptColors = true;
         server.sendHeader("Location", "/bg-color-editor", true);
         server.send(303);
     } else {

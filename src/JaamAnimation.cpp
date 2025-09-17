@@ -1006,6 +1006,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         }
     } 
     if (strip == strip_bg) {
+        switch (settings->getInt(BG_LED_MODE)) {
+            case 2: // Індивідуальні кольори
+                color = getBgLedColor(position);
+                return color;
+
+        }
         switch (settings->getInt(MAP_MODE)) {
             case MapModes::OFF: 
                 color = DefaultColors::OFF;

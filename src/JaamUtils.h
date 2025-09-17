@@ -58,6 +58,7 @@ extern bool                             wifiConnected;
 extern bool                             apiConnected;
 extern uint8_t                          legacy;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
+extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 extern JaamClimateSensor                climate;
 
 struct JaamFirmware {
@@ -256,6 +257,51 @@ inline void generateCustomRegionMap() {
     //         }
     //     }
     // }
+}
+
+// Генерація bgLedColors (викликається при ініціалізації)
+inline void generateBgLedColorsMap() {
+    // Очистити масив кольорів
+    memset(bgLedColors, 0, sizeof(bgLedColors));
+    
+    int bgLedCount = settings.getInt(BG_LED_COUNT);
+    if (bgLedCount <= 0 || bgLedCount > MAX_BG_LEDS) {
+        LOG.println("[INIT] BG LED count not configured or invalid.");
+        return;
+    }
+    
+    // Спробувати завантажити кольори з файлу
+    uint32_t* tempColors = new uint32_t[bgLedCount];
+    int actualCount = 0;
+    
+    if (storage.loadBgLedColors(tempColors, bgLedCount, actualCount)) {
+        // Копіюємо завантажені кольори
+        for (int i = 0; i < bgLedCount; ++i) {
+            if (i < actualCount) {
+                bgLedColors[i] = tempColors[i];
+            } else {
+                bgLedColors[i] = 0x000000; // Чорний за замовчуванням
+            }
+        }
+        LOG.printf("[INIT] Loaded %d BG LED colors from file.\n", actualCount);
+    } else {
+        // Встановити всі кольори чорними за замовчуванням
+        for (int i = 0; i < bgLedCount; ++i) {
+            bgLedColors[i] = 0x000000;
+        }
+        LOG.printf("[INIT] Set %d BG LED colors to default black.\n", bgLedCount);
+    }
+    
+    delete[] tempColors;
+}
+
+// Отримати колір для конкретного LED
+inline uint32_t getBgLedColor(int ledIndex) {
+    int bgLedCount = settings.getInt(BG_LED_COUNT);
+    if (ledIndex >= 0 && ledIndex < bgLedCount && ledIndex < MAX_BG_LEDS) {
+        return bgLedColors[ledIndex];
+    }
+    return 0x000000; // Чорний за замовчуванням для неіснуючих LED
 }
 
 // Повертає потрібний mapping (customMap або стандартний)
