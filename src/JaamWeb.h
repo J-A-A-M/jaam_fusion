@@ -3,17 +3,20 @@
 #include <WebServer.h>
 #include <WiFiManager.h>
 #include "JaamSettings.h"
+#include "JaamStorage.h"
 
 class JaamWeb {
 public:
-    JaamWeb() : server(80), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr) {}
+    JaamWeb() : server(80), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr), storage(nullptr) {}
     void setSettings(JaamSettings* settings);
+    void setStorage(JaamStorage* storage);
     void begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service);
     void handleClient();
 
 private:
     WebServer server;
     JaamSettings* settings;
+    JaamStorage* storage;
     Adafruit_NeoPixel* strip_main;
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;
@@ -22,6 +25,9 @@ private:
     void sendCrossOriginHeader();
     void handleMapEditor();
     void handleSaveMap();
+    void handleBgColorEditor();
+    void handleBgColorsData();
+    void handleSaveBgColors();
     void handleParameter();
     void handleColorParameter();
     void handleTextParameter();

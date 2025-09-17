@@ -1308,6 +1308,7 @@ void initWeb() {
     }
     web.begin(strip_main, strip_bg, strip_service);
     web.setSettings(&settings);
+    web.setStorage(&storage);
     webInitialized = true;
 }
 

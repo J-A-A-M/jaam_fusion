@@ -113,10 +113,11 @@ static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
   {2, "Сенсор освітлення"}
 };
 
-constexpr int BG_LED_MODES_COUNT = 2;
+constexpr int BG_LED_MODES_COUNT = 3;
 static SettingListItem BG_LED_MODES[] = {
   {0, "Домашній Регіон"},
   {1, "Власний колір"},
+  {2, "Індивідуальні кольори"},
 };
 
 constexpr int DISPLAY_TYPES_COUNT = 4;
