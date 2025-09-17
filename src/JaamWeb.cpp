@@ -1067,7 +1067,7 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'button') {
-        const [_, name, label, url] = ctrl;
+        const [_, name, label, color, url] = ctrl;
         const div = document.createElement('div');
         div.className = 'button-container';
         
@@ -1075,6 +1075,8 @@ function renderControl(ctrl, lists) {
         btn.type = 'button';
         btn.className = 'form-button';
         btn.textContent = label;
+        btn.style.backgroundColor = color;
+        btn.style.borderColor = color;
         btn.onclick = () => window.open(url, '_blank');
         
         div.appendChild(btn);
@@ -1994,7 +1996,7 @@ void JaamWeb::handleUiSchema() {
           "text":     ["name", "label", "current", "placeholder", "section"],
           "color":    ["name", "label", "current", "section"],
           "slider":   ["name", "label", "min", "max", "step", "current", "section"],
-          "button":   ["name", "label", "url", "section"],
+          "button":   ["name", "label", "color", "url", "section"],
           "label":    ["label", "section"],
           "info":     ["text", "color", "icon", "section"],
           "option":   ["id", "name", "sub"]
@@ -2127,9 +2129,9 @@ void JaamWeb::handleUiSchema() {
     };
 
     // Helper to add button
-    auto addButton = [&](const char* section, const char* text, const char* bg_color, const char* uri){
+    auto addButton = [&](const char* section, const char* name, const char* text, const char* bg_color, const char* uri){
         JsonArray c = controls.add<JsonArray>();
-        c.add("button"); c.add(bg_color); c.add(text); c.add(uri); c.add(section);
+        c.add("button"); c.add(name); c.add(text); c.add(bg_color); c.add(uri); c.add(section);
     };
 
     // Helper to add different types of info panels
@@ -2148,14 +2150,14 @@ void JaamWeb::handleUiSchema() {
     addDropdown("general", "legacy", "Режим прошивки", "legacy", LEGACY);
 
     // Додаємо кнопку для редактора мапи
-    addButton("general", "Редактор мапи", "bg_color_editor", "/map-editor");
+    addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor");
 
     addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
     addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
     
     // Додаємо кнопку для редактора кольорів індивідуальних ледів
-    addButton("general", "Редактор кольорів", "bg_color_editor", "/bg-color-editor");
+    addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor");
     
     addDropdown("general", "map_mode", "Режим мапи", "map_mode", MAP_MODE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
