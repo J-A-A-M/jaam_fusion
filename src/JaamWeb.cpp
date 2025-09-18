@@ -1350,7 +1350,7 @@ void JaamWeb::handleColorParameter() {
         }
         if (name == "color_missiles") {
             settings->saveString(COLOR_MISSILES, valuePtr);
-            LOG.printf("[WEB] Setting color_color_missiles: raw=%s\n", valuePtr);
+            LOG.printf("[WEB] Setting color_missiles: raw=%s\n", valuePtr);
         }
         if (name == "color_drones") {
             settings->saveString(COLOR_DRONES, valuePtr);
@@ -1683,7 +1683,7 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(KYIV_LED, boolValue);
             needRecalculateLeds = true;
-            LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
+            LOG.printf("[WEB] Set kyiv_led: %d\n", intValue);
         } else if (name == "weather_min_temp") {
             settings->saveInt(WEATHER_MIN_TEMP, intValue);
             needAdaptColors = true;
