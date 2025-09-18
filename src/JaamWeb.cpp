@@ -29,12 +29,18 @@ extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
+extern volatile bool needToRegenerateBgColorMap;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
+extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 
 
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
+}
+
+void JaamWeb::setStorage(JaamStorage* storage) {
+    this->storage = storage;
 }
 
 String JaamWeb::getMeta() {
@@ -528,6 +534,39 @@ h1 {
     font-size: 12px;
     font-weight: 500;
     line-height: 1.4;
+}
+
+/* Button container styles */
+.button-container {
+    margin: 15px 0;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.form-button {
+    background: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    min-width: 120px;
+    text-align: center;
+}
+
+.form-button:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.form-button:active {
+    transform: translateY(0);
 }
 </style>
 )HTML";
@@ -1028,6 +1067,23 @@ function renderControl(ctrl, lists) {
         return div;
     }
     
+    if (type === 'button') {
+        const [_, name, label, color, url] = ctrl;
+        const div = document.createElement('div');
+        div.className = 'button-container';
+        
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'form-button';
+        btn.textContent = label;
+        btn.style.backgroundColor = color;
+        btn.style.borderColor = color;
+        btn.onclick = () => window.open(url, '_blank');
+        
+        div.appendChild(btn);
+        return div;
+    }
+    
     return document.createTextNode('');
 }
 
@@ -1057,7 +1113,7 @@ async function renderUI() {
             let section = 'general'; // Default section
             
             // Extract section based on control type and position
-            if (type === 'dropdown' || type === 'bool' || type === 'text' || type === 'color' || type === 'slider') {
+            if (type === 'dropdown' || type === 'bool' || type === 'text' || type === 'color' || type === 'slider' || type === 'button') {
                 section = ctrl[ctrl.length - 1] || 'general';
             } else if (type === 'label') {
                 section = ctrl[2] || 'general';
@@ -1294,7 +1350,7 @@ void JaamWeb::handleColorParameter() {
         }
         if (name == "color_missiles") {
             settings->saveString(COLOR_MISSILES, valuePtr);
-            LOG.printf("[WEB] Setting color_color_missiles: raw=%s\n", valuePtr);
+            LOG.printf("[WEB] Setting color_missiles: raw=%s\n", valuePtr);
         }
         if (name == "color_drones") {
             settings->saveString(COLOR_DRONES, valuePtr);
@@ -1627,7 +1683,7 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(KYIV_LED, boolValue);
             needRecalculateLeds = true;
-            LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
+            LOG.printf("[WEB] Set kyiv_led: %d\n", intValue);
         } else if (name == "weather_min_temp") {
             settings->saveInt(WEATHER_MIN_TEMP, intValue);
             needAdaptColors = true;
@@ -1707,6 +1763,7 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(BG_LED_COUNT, value.toInt());
             LOG.printf("[WEB] Setting bg_led_count: %s\n", valuePtr);
             needReconnectBgStrip = true;
+            needToRegenerateBgColorMap = true;
         } else if (name == "service_led_pin") {
             settings->saveInt(SERVICE_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting service_led_pin: %s\n", valuePtr);
@@ -1752,6 +1809,10 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/map-editor", HTTP_GET, [this]() { this->handleMapEditor(); });
     server.on("/save-map", HTTP_POST, [this]() { this->handleSaveMap(); });
+    server.on("/bg-color-editor", HTTP_GET, [this]() { this->handleBgColorEditor(); });
+    server.on("/bg-colors-data", HTTP_GET, [this]() { this->handleBgColorsData(); });
+    server.on("/bg-colors-data", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/save-bg-colors", HTTP_POST, [this]() { this->handleSaveBgColors(); });
     //server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
     server.on("/parameter", HTTP_POST, [this]() { this->handleParameter(); });
     server.on("/parameter", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
@@ -1803,7 +1864,7 @@ void JaamWeb::handleMapData() {
     JsonArray regions = doc["regions"].to<JsonArray>();
     
     // Load current custom map
-    storage.loadCustomMap(customMap);
+    storage->loadCustomMap(customMap);
     
     for (int i = 0; i < MAX_REGIONS; ++i) {
         if ((DISTRICTS[i].id == 0 && i > 0)) {
@@ -1937,6 +1998,7 @@ void JaamWeb::handleUiSchema() {
           "text":     ["name", "label", "current", "placeholder", "section"],
           "color":    ["name", "label", "current", "section"],
           "slider":   ["name", "label", "min", "max", "step", "current", "section"],
+          "button":   ["name", "label", "color", "url", "section"],
           "label":    ["label", "section"],
           "info":     ["text", "color", "icon", "section"],
           "option":   ["id", "name", "sub"]
@@ -2068,6 +2130,12 @@ void JaamWeb::handleUiSchema() {
         c.add("info"); c.add(text); c.add(color); c.add(icon); c.add(section);
     };
 
+    // Helper to add button
+    auto addButton = [&](const char* section, const char* name, const char* text, const char* bg_color, const char* uri){
+        JsonArray c = controls.add<JsonArray>();
+        c.add("button"); c.add(name); c.add(text); c.add(bg_color); c.add(uri); c.add(section);
+    };
+
     // Helper to add different types of info panels
     auto addInfoSuccess = [&](const char* section, const char* text){
         addInfo(section, text, "#28a745", "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z");
@@ -2082,9 +2150,17 @@ void JaamWeb::handleUiSchema() {
     // Загальні налаштування
     addInfo("general", "Оберіть режим прошивки відповідно до вашої версії пристрою", "#007bff", "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");  
     addDropdown("general", "legacy", "Режим прошивки", "legacy", LEGACY);
+
+    // Додаємо кнопку для редактора мапи
+    addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor");
+
     addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
     addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
+    
+    // Додаємо кнопку для редактора кольорів індивідуальних ледів
+    addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor");
+    
     addDropdown("general", "map_mode", "Режим мапи", "map_mode", MAP_MODE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
     addText("general", "device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
@@ -2223,6 +2299,11 @@ void JaamWeb::handleUiSchema() {
 }
 
 void JaamWeb::handleSaveMap() {
+    if (storage == nullptr) {
+        LOG.println("[WEB] Storage is not set");
+        server.send(500, "text/plain", "Storage not initialized");
+        return;
+    }
 
     for (int i = 0; i < server.args(); ++i) {
         String argName = server.argName(i);
@@ -2264,7 +2345,7 @@ void JaamWeb::handleSaveMap() {
         }
     }
 
-    if (storage.saveCustomMap(customMap)) {
+    if (storage->saveCustomMap(customMap)) {
         //generateCustomRegionMap();
         needRecalculateLeds = true;
         LOG.println("[WEB] Custom map saved successfully.");
@@ -2421,6 +2502,270 @@ document.addEventListener('DOMContentLoaded', () => {
     // Container for dynamically loaded map content
     html += "<div id='mapContent'>";
     html += "<div style='text-align: center; padding: 20px; color: var(--secondary-text);'>Завантаження даних карти...</div>";
+    html += "</div>";
+    
+    html += "</div></body></html>";
+    server.send(200, "text/html", html);
+}
+
+void JaamWeb::handleBgColorsData() {
+    setCrossOrigin();
+    
+    JsonDocument doc;
+    JsonObject data = doc.to<JsonObject>();
+    
+    int bgLedCount = settings->getInt(BG_LED_COUNT);
+    data["count"] = bgLedCount;
+    
+    JsonArray colors = data["colors"].to<JsonArray>();
+    
+    if (bgLedCount > 0) {
+        // Використовуємо глобальну структуру bgLedColors
+        for (int i = 0; i < bgLedCount; ++i) {
+            JsonObject color = colors.add<JsonObject>();
+            color["led"] = i;
+            
+            uint32_t ledColor = getBgLedColor(i);
+            String colorHex = String(ledColor, HEX);
+            while (colorHex.length() < 6) colorHex = "0" + colorHex;
+            color["color"] = colorHex;
+        }
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
+}
+
+void JaamWeb::handleSaveBgColors() {
+    LOG.println("[WEB] Handling save BG colors request");
+    if (storage == nullptr) {
+        LOG.println("[WEB] Storage is not set");
+        server.send(500, "text/plain", "Storage not initialized");
+        return;
+    }
+    
+    int bgLedCount = settings->getInt(BG_LED_COUNT);
+    if (bgLedCount <= 0) {
+        server.send(400, "text/plain", "BG LED count not configured");
+        return;
+    }
+    
+    uint32_t* colors = new uint32_t[bgLedCount];
+    
+    // Ініціалізуємо чорним кольором
+    for (int i = 0; i < bgLedCount; ++i) {
+        colors[i] = 0x000000;
+    }
+    
+    // Парсимо кольори з POST даних
+    for (int i = 0; i < bgLedCount; ++i) {
+        String paramName = "color_" + String(i);
+        if (server.hasArg(paramName)) {
+            String colorStr = server.arg(paramName);
+            // Видаляємо символ '#' якщо є
+            if (colorStr.startsWith("#")) {
+                colorStr = colorStr.substring(1);
+            }
+            colors[i] = strtol(colorStr.c_str(), nullptr, 16);
+            LOG.printf("[WEB] Setting LED %d color: %s -> 0x%06X\n", i, colorStr.c_str(), colors[i]);
+        }
+    }
+    
+    if (storage->saveBgLedColors(colors, bgLedCount)) {
+        LOG.println("[WEB] BG LED colors saved successfully and global structure updated.");
+        needToRegenerateBgColorMap = true;
+        needAdaptColors = true;
+        server.sendHeader("Location", "/bg-color-editor", true);
+        server.send(303);
+    } else {
+        LOG.println("[WEB] BG LED colors saving error.");
+        server.send(500, "text/plain", "BG LED colors save error");
+    }
+    
+    delete[] colors;
+}
+
+void JaamWeb::handleBgColorEditor() {
+    String html = "<!DOCTYPE html><html>";
+    html += "<head>";
+    String deviceName = settings->getString(DEVICE_NAME);
+    if (deviceName.isEmpty()) deviceName = "JAAM";
+    html += "<title>" + deviceName + "</title>";
+    html += getMeta();
+    html += getStyles();
+    html += getScripts();
+    
+    // Add BG color editor specific JavaScript
+    html += R"HTML(
+<style>
+    #saveBtn {
+        background: var(--success-color, #28a745) !important;
+        color: white !important;
+        border: none !important;
+        padding: 8px 16px !important;
+        border-radius: 4px !important;
+        cursor: pointer !important;
+        font-size: 14px !important;
+        transition: background 0.3s ease !important;
+        min-width: 140px !important;
+    }
+    #saveBtn:hover:not(:disabled) {
+        background: var(--success-hover, #218838) !important;
+    }
+    #saveBtn:disabled {
+        background: var(--text-secondary, #6c757d) !important;
+        color: white !important;
+        cursor: not-allowed !important;
+    }
+    #saveBtn:focus {
+        outline: 2px solid var(--accent-color, #007bff) !important;
+        outline-offset: 2px !important;
+    }
+    #colorContent {
+        max-width: 600px !important;
+        margin: 20px auto !important;
+        background: var(--panel-bg, var(--main-bg)) !important;
+        border: 1px solid var(--border-color, #dee2e6) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3) !important;
+        padding: 20px !important;
+        transition: background-color 0.3s ease !important;
+    }
+    .led-color-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .led-color-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--panel-bg);
+    }
+    .led-color-item label {
+        font-size: 12px;
+        margin-bottom: 5px;
+        color: var(--text-color);
+    }
+    .led-color-picker {
+        width: 80px;
+        height: 40px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+</style>
+<script>
+// BG color editor functionality
+function loadColorData() {
+    fetch('/bg-colors-data')
+        .then(response => response.json())
+        .then(data => {
+            renderColorEditor(data);
+        })
+        .catch(err => {
+            console.error('Error fetching color data:', err);
+            document.getElementById('colorContent').innerHTML = 
+                '<div style="color: var(--error-color); text-align: center; padding: 20px;">Помилка завантаження даних кольорів</div>';
+        });
+}
+
+function renderColorEditor(data) {
+    const container = document.getElementById('colorContent');
+    // Clear loading message
+    container.innerHTML = '';
+    
+    if (data.count === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--secondary-text);">Кількість задніх LED не налаштована. Будь ласка, спочатку налаштуйте кількість LED в розділі "Налаштування".</div>';
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.id = 'colorForm';
+    form.action = '/save-bg-colors';
+    form.method = 'post';
+    
+    const info = document.createElement('div');
+    info.innerHTML = '<p style="margin-bottom: 20px; color: var(--text-color);">Налаштування індивідуальних кольорів для ' + data.count + ' задніх LED. Чорний колір означає відсутність підсвітки.</p>';
+    form.appendChild(info);
+    
+    const grid = document.createElement('div');
+    grid.className = 'led-color-grid';
+    
+    data.colors.forEach(colorData => {
+        const item = document.createElement('div');
+        item.className = 'led-color-item';
+        
+        const label = document.createElement('label');
+        label.textContent = 'LED ' + colorData.led;
+        label.setAttribute('for', 'color_' + colorData.led);
+        
+        const picker = document.createElement('input');
+        picker.type = 'color';
+        picker.id = 'color_' + colorData.led;
+        picker.name = 'color_' + colorData.led;
+        picker.value = '#' + colorData.color.padStart(6, '0');
+        picker.className = 'led-color-picker';
+        
+        item.appendChild(label);
+        item.appendChild(picker);
+        grid.appendChild(item);
+    });
+    
+    form.appendChild(grid);
+    container.appendChild(form);
+    
+    // Enable save button
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Зберегти кольори';
+    }
+}
+
+function saveColors() {
+    const form = document.getElementById('colorForm');
+    if (form) {
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Збереження...';
+        }
+        form.submit();
+    }
+}
+
+// Load color data when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    loadColorData();
+});
+</script>
+)HTML";
+    
+    html += "</head><body>";
+
+    html += "<div class='container'>";
+    html += "<div class='header-container'>";
+    html += "<h1>Редактор кольорів задніх LED</h1>";
+    html += "<div class='header-buttons'>";
+    html += "<button id='saveBtn' onclick='saveColors()' disabled class='control-button' title='Зберегти кольори'>Завантаження...</button>";
+    html += "<button class='control-button theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>";
+    html += "<svg viewBox='0 0 24 24'>";
+    html += "<path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>";
+    html += "</svg>";
+    html += "</button>";
+    html += "</div>";
+    html += "</div>";
+    html += "</div>";
+    
+    // Container for dynamically loaded color content
+    html += "<div id='colorContent'>";
+    html += "<div style='text-align: center; padding: 20px; color: var(--secondary-text);'>Завантаження даних кольорів...</div>";
     html += "</div>";
     
     html += "</div></body></html>";

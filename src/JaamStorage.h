@@ -16,9 +16,12 @@ public:
     bool begin();
     bool saveCustomMap(const RegionLedMapEntry* map);
     bool loadCustomMap(RegionLedMapEntry* map);
+    bool saveBgLedColors(const uint32_t* colors, int count);
+    bool loadBgLedColors(uint32_t* colors, int maxCount, int& actualCount);
     void getStorageInfo();
     void getFilesInfo();
 
 private:
     static const char* CUSTOM_MAP_PATH;
+    static const char* BG_LED_COLORS_PATH;
 };

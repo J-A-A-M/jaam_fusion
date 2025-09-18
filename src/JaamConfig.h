@@ -21,6 +21,13 @@ namespace MapModes {
     static const int WEATHER = 2;
 }
 
+// --- BG Led Modes ---
+namespace BgLedModes {
+    static const int HOME_REGION = 0;
+    static const int CUSTOM_COLOR = 1;
+    static const int COLOR_MAP = 2;
+}
+
 // --- Animation Configuration ---
 namespace AnimationConfig {
     static const uint32_t MIN_PERIOD = 1000;
@@ -69,6 +76,14 @@ struct RegionLedMapEntry {
     uint8_t led_count;
 };
 
+// --- Background LED color mapping ---
+constexpr int MAX_BG_LEDS = 300;                            // Максимум задніх LED
+
+struct BgLedColorEntry {
+    uint16_t led_index;
+    uint32_t color;
+};
+
 struct SettingListItem {
   uint16_t id;
   const char* name;
@@ -113,10 +128,11 @@ static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
   {2, "Сенсор освітлення"}
 };
 
-constexpr int BG_LED_MODES_COUNT = 2;
+constexpr int BG_LED_MODES_COUNT = 3;
 static SettingListItem BG_LED_MODES[] = {
   {0, "Домашній Регіон"},
   {1, "Власний колір"},
+  {2, "Індивідуальні кольори"},
 };
 
 constexpr int DISPLAY_TYPES_COUNT = 4;
