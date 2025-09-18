@@ -2573,12 +2573,8 @@ void JaamWeb::handleSaveBgColors() {
     }
     
     if (storage->saveBgLedColors(colors, bgLedCount)) {
-        // Оновлюємо глобальну структуру кольорів
-        for (int i = 0; i < bgLedCount && i < MAX_BG_LEDS; ++i) {
-            bgLedColors[i] = colors[i];
-        }
-        
         LOG.println("[WEB] BG LED colors saved successfully and global structure updated.");
+        needToRegenerateBgColorMap = true;
         needAdaptColors = true;
         server.sendHeader("Location", "/bg-color-editor", true);
         server.send(303);
