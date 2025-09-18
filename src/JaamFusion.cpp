@@ -74,9 +74,9 @@ volatile bool needAdaptAnimationPeriod = false;
 volatile bool needAdaptAnimationType = false;
 volatile bool needAdaptClimate = false;
 volatile bool needRecalculateLeds = false;
-volatile bool needReconnectMainStrip;
-volatile bool needReconnectBgStrip;
-volatile bool needReconnectServiceStrip;
+volatile bool needReconnectMainStrip = false;
+volatile bool needReconnectBgStrip = false;
+volatile bool needReconnectServiceStrip = false;
 volatile bool needUpdateBatteryPin = false;
 volatile bool needReconfigureDisplay = false;
 volatile bool needUpdateAnimationsMode = false;
@@ -900,7 +900,7 @@ void cleanup() {
         animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
-            for(uint16_t i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
+            for(uint16_t i = 0; i < strip->numPixels(); i++) {
                 strip->setPixelColor(i, DefaultColors::OFF);
             }
             strip->show();
@@ -913,7 +913,7 @@ void cleanup() {
         animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
-            for(int i = 0; i < num_leds_service; i++) {
+            for(uint16_t i = 0; i < strip->numPixels(); i++) {
                 strip->setPixelColor(i, DefaultColors::OFF);
             }
             strip->show();

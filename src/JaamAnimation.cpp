@@ -1026,7 +1026,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     }
                     
                     if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
-                        // Якщо немає тривог, встановлюємо колір домашнього району
+                        // Якщо є тривога й режим HOME_REGION — застосовуємо колір тривоги для домашнього району
                         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                         color = result.first;
                     } else {
