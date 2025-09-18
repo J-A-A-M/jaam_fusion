@@ -65,22 +65,22 @@ RegionLedMapEntry               customMap[MAX_REGIONS];
 uint32_t                        bgLedColors[MAX_BG_LEDS];
 
 // --- TASKS Configuration ---
-bool                needAdaptAnimationColors = false;
-bool                needAdaptStripBrightness = false;
-bool                needReconnectWebsocket = false;
-bool                needAdaptColors = false;
-bool                needAdaptAnimationBrightness = false;
-bool                needAdaptAnimationPeriod = false;
-bool                needAdaptAnimationType = false;
-bool                needAdaptClimate = false;
-bool                needRecalculateLeds = false;
-bool                needReconnectMainStrip;
-bool                needReconnectBgStrip;
-bool                needReconnectServiceStrip;
-bool                needUpdateBatteryPin = false; // Flag to update battery pin in web settings
-bool                needReconfigureDisplay = false; // Flag to reconfigure display settings
-bool                needUpdateAnimationsMode = false; // Flag to update animations mode
-bool                needToRegenerateBgColorMap = false; // Flag to regenerate background leds color map
+volatile bool needAdaptAnimationColors = false;
+volatile bool needAdaptStripBrightness = false;
+volatile bool needReconnectWebsocket = false;
+volatile bool needAdaptColors = false;
+volatile bool needAdaptAnimationBrightness = false;
+volatile bool needAdaptAnimationPeriod = false;
+volatile bool needAdaptAnimationType = false;
+volatile bool needAdaptClimate = false;
+volatile bool needRecalculateLeds = false;
+volatile bool needReconnectMainStrip;
+volatile bool needReconnectBgStrip;
+volatile bool needReconnectServiceStrip;
+volatile bool needUpdateBatteryPin = false;
+volatile bool needReconfigureDisplay = false;
+volatile bool needUpdateAnimationsMode = false;
+volatile bool needToRegenerateBgColorMap = false;
 
 
 // --- WIFI Configuration ---
