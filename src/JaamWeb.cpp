@@ -29,6 +29,7 @@ extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
+extern volatile bool needToRegenerateBgColorMap;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
@@ -1762,6 +1763,7 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(BG_LED_COUNT, value.toInt());
             LOG.printf("[WEB] Setting bg_led_count: %s\n", valuePtr);
             needReconnectBgStrip = true;
+            needToRegenerateBgColorMap = true;
         } else if (name == "service_led_pin") {
             settings->saveInt(SERVICE_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting service_led_pin: %s\n", valuePtr);
@@ -2297,6 +2299,11 @@ void JaamWeb::handleUiSchema() {
 }
 
 void JaamWeb::handleSaveMap() {
+    if (storage == nullptr) {
+        LOG.println("[WEB] Storage is not set");
+        server.send(500, "text/plain", "Storage not initialized");
+        return;
+    }
 
     for (int i = 0; i < server.args(); ++i) {
         String argName = server.argName(i);
@@ -2532,6 +2539,11 @@ void JaamWeb::handleBgColorsData() {
 
 void JaamWeb::handleSaveBgColors() {
     LOG.println("[WEB] Handling save BG colors request");
+    if (storage == nullptr) {
+        LOG.println("[WEB] Storage is not set");
+        server.send(500, "text/plain", "Storage not initialized");
+        return;
+    }
     
     int bgLedCount = settings->getInt(BG_LED_COUNT);
     if (bgLedCount <= 0) {

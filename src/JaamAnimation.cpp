@@ -865,7 +865,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
         color = DefaultColors::MAIN_STRIP;
     }
     if (strip == strip_bg) {
-        if (settings->getInt(BG_LED_MODE) == 0) {
+        if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
             switch (settings->getInt(MAP_MODE)) {
                 case MapModes::OFF: 
                     color = DefaultColors::OFF;
@@ -1006,49 +1006,50 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         }
     } 
     if (strip == strip_bg) {
-        switch (settings->getInt(BG_LED_MODE)) {
-            case BgLedModes::COLOR_MAP: // Індивідуальні кольори
-                color = getBgLedColor(position);
-                return color;
-        }
-        switch (settings->getInt(MAP_MODE)) {
-            case MapModes::OFF: 
-                color = DefaultColors::OFF;
-                brightness = 0;
-                break;
-            case MapModes::ALERT: { 
-                int highest_bit = -1;
+        if (settings->getInt(BG_LED_MODE) == BgLedModes::COLOR_MAP) {
+            // Пер-LED кольори для бекграунду
+            color = getBgLedColor(position);
+            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+        } else {
+            switch (settings->getInt(MAP_MODE)) {
+                case MapModes::OFF: 
+                    color = DefaultColors::OFF;
+                    brightness = 0;
+                    break;
+                case MapModes::ALERT: { 
+                    int highest_bit = -1;
 
-                if (bit != -1) {
-                    highest_bit = bit;
-                } else {
-                    highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+                    if (bit != -1) {
+                        highest_bit = bit;
+                    } else {
+                        highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+                    }
+                    
+                    if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
+                        // Якщо немає тривог, встановлюємо колір домашнього району
+                        std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+                        color = result.first;
+                    } else {
+                        color = colorFromHex(settings->getString(COLOR_BG));
+                    }
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                    break;
                 }
-                
-                if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == 0) {
-                    // Якщо немає тривог, встановлюємо колір домашнього району
-                    std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
-                    color = result.first;
-                } else {
-                    color = colorFromHex(settings->getString(COLOR_BG));
+                case MapModes::WEATHER: {
+                    // Use home district temperature for background strip
+                    uint16_t home = settings->getInt(HOME_DISTRICT);
+                    auto it = temperatureMap.find(home);
+                    if (it != temperatureMap.end()) {
+                        int t = decodeTemperature(it->second);
+                        int minT = settings->getInt(WEATHER_MIN_TEMP);
+                        int maxT = settings->getInt(WEATHER_MAX_TEMP);
+                        color = colorFromTemperature(t, minT, maxT);
+                    } else {
+                        color = colorFromHex(settings->getString(COLOR_BG));
+                    }
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                    break;
                 }
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-                break;
-            }
-            case MapModes::WEATHER: {
-                // Use home district temperature for background strip
-                uint16_t home = settings->getInt(HOME_DISTRICT);
-                auto it = temperatureMap.find(home);
-                if (it != temperatureMap.end()) {
-                    int t = decodeTemperature(it->second);
-                    int minT = settings->getInt(WEATHER_MIN_TEMP);
-                    int maxT = settings->getInt(WEATHER_MAX_TEMP);
-                    color = colorFromTemperature(t, minT, maxT);
-                } else {
-                    color = colorFromHex(settings->getString(COLOR_BG));
-                }
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
-                break;
             }
         }
     } 

@@ -80,6 +80,8 @@ bool                needReconnectServiceStrip;
 bool                needUpdateBatteryPin = false; // Flag to update battery pin in web settings
 bool                needReconfigureDisplay = false; // Flag to reconfigure display settings
 bool                needUpdateAnimationsMode = false; // Flag to update animations mode
+bool                needToRegenerateBgColorMap = false; // Flag to regenerate background leds color map
+
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -464,7 +466,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
             }
         }
-        if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0 && strip_bg != nullptr) {
+        if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION && strip_bg != nullptr) {
             LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
                 settings.getInt(HOME_DISTRICT), homeRegionBit);
             animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
@@ -743,23 +745,11 @@ void onMessageCallback(WebsocketsMessage msg) {
                 strip->show();
             });
         }
-        if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == 0) {
+        if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                switch (settings.getInt(BG_LED_MODE)) {
-                    case 2: {
-                        for(uint32_t i = 0; i < strip->numPixels(); i++) {
-                            uint32_t color = animation.ledActualColor(strip, i);
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
-                    default: {
-                        uint32_t color = animation.stripActualColor(strip);
-                        for(int i = 0; i < strip->numPixels(); i++) {
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
+                uint32_t color = animation.stripActualColor(strip);
+                for(int i = 0; i < strip->numPixels(); i++) {
+                    strip->setPixelColor(i, color);
                 }
                 strip->show();
             });
@@ -1765,6 +1755,12 @@ void mainThreadProcess() {
     // Ця функція виконується в основному циклі
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
 
+    if (needToRegenerateBgColorMap) {
+        LOG.println("[MAIN] Regenerating BG LED color map");
+        generateBgLedColorsMap();
+        needToRegenerateBgColorMap = false;
+    }
+
     if (needReconnectMainStrip || needReconnectBgStrip || needReconnectServiceStrip) {
         LOG.println("[MAIN] Reconnecting LED strip");
         reconnectStrips();
@@ -1954,7 +1950,7 @@ void brightnessProcess() {
             animation.safeStripOperation(strip_bg, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
                 switch (settings.getInt(BG_LED_MODE)) {
-                    case 2: {
+                    case BgLedModes::COLOR_MAP: {
                         for(uint32_t i = 0; i < strip->numPixels(); i++) {
                             uint32_t color = animation.ledActualColor(strip, i);
                             strip->setPixelColor(i, color);
