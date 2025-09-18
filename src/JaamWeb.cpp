@@ -1113,7 +1113,7 @@ async function renderUI() {
             let section = 'general'; // Default section
             
             // Extract section based on control type and position
-            if (type === 'dropdown' || type === 'bool' || type === 'text' || type === 'color' || type === 'slider') {
+            if (type === 'dropdown' || type === 'bool' || type === 'text' || type === 'color' || type === 'slider' || type === 'button') {
                 section = ctrl[ctrl.length - 1] || 'general';
             } else if (type === 'label') {
                 section = ctrl[2] || 'general';
