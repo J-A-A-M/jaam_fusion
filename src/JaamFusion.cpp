@@ -1939,42 +1939,18 @@ void brightnessProcess() {
         if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
-                for(uint32_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
                 strip->show();
             });
         }
         if (strip_bg != nullptr) {
             animation.safeStripOperation(strip_bg, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
-                switch (settings.getInt(BG_LED_MODE)) {
-                    case BgLedModes::COLOR_MAP: {
-                        for(uint32_t i = 0; i < strip->numPixels(); i++) {
-                            uint32_t color = animation.ledActualColor(strip, i);
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
-                    default: {
-                        uint32_t color = animation.stripActualColor(strip);
-                        for(int i = 0; i < strip->numPixels(); i++) {
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
-                }
                 strip->show();
             });
         }
         if (strip_service != nullptr) {
             animation.safeStripOperation(strip_service, [currentBrightness](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(currentBrightness));
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
                 strip->show();
             });
         }
