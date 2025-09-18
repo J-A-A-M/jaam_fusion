@@ -1098,6 +1098,11 @@ void reconnectStrips() {
         needReconnectMainStrip = false;
     }
     if (needReconnectBgStrip) {
+        // Перезбираємо список індексів для BG
+        allLedsBg.clear();
+        for (uint32_t i = 0; i < (uint32_t)settings.getInt(BG_LED_COUNT); ++i) {
+            allLedsBg.push_back(i);
+        }
         reconnectStripBg();
         needReconnectBgStrip = false;
     }
