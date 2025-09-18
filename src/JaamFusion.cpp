@@ -692,7 +692,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                         }
                 }
             }
-            if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == 0 && strip_bg != nullptr) {
+            if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION && strip_bg != nullptr) {
                 LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
                     settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
                 animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
@@ -738,7 +738,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.printf("[WEBSOCKET] init processing\n");
         if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                for(uint16_t i = 0; i < strip->numPixels(); i++) {
                     uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }
@@ -748,7 +748,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 uint32_t color = animation.stripActualColor(strip);
-                for(int i = 0; i < strip->numPixels(); i++) {
+                for(uint16_t i = 0; i < strip->numPixels(); i++) {
                     strip->setPixelColor(i, color);
                 }
                 strip->show();
@@ -887,7 +887,7 @@ void cleanup() {
         animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
-            for(int i = 0; i < strip->numPixels(); i++) {
+            for(uint16_t i = 0; i < strip->numPixels(); i++) {
                 strip->setPixelColor(i, DefaultColors::OFF);
             }
             strip->show();
@@ -900,7 +900,7 @@ void cleanup() {
         animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->clear();
             // Встановлюємо дефолтний колір
-            for(int i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
+            for(uint16_t i = 0; i < settings.getInt(BG_LED_COUNT); i++) {
                 strip->setPixelColor(i, DefaultColors::OFF);
             }
             strip->show();
@@ -928,7 +928,7 @@ void cleanupSingleStrip(Adafruit_NeoPixel*& strip, uint32_t defaultColor) {
         animation.safeStripOperation(strip, [&strip, defaultColor](Adafruit_NeoPixel* stripPtr) {
             stripPtr->clear();
             // Встановлюємо дефолтний колір
-            for(uint32_t i = 0; i < strip->numPixels(); i++) {
+            for(uint16_t i = 0; i < strip->numPixels(); i++) {
                 stripPtr->setPixelColor(i, defaultColor);
             }
             stripPtr->show();
@@ -1002,7 +1002,7 @@ void initStripBg() {
     //     animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
     //         strip->setBrightness(led.brightnessMapped(0));
     //         uint32_t color = animation.stripActualColor(strip);
-    //         for (int i = 0; i < strip->numPixels(); i++) {
+    //         for (uint16_t i = 0; i < strip->numPixels(); i++) {
     //             strip->setPixelColor(i, color);
     //         }
     //         strip->show();
@@ -1790,7 +1790,7 @@ void mainThreadProcess() {
         if (strip_main != nullptr) {
             LOG.printf("[WEB] Adjusting main colors\n");               
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for (int i = 0; i < strip->numPixels(); i++) {
+                for (uint16_t i = 0; i < strip->numPixels(); i++) {
                     uint32_t color = animation.ledActualColor(strip, i);
                     strip->setPixelColor(i, color);
                 }
@@ -1802,7 +1802,7 @@ void mainThreadProcess() {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 switch (settings.getInt(BG_LED_MODE)) {
                     case BgLedModes::COLOR_MAP: {
-                        for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
                             uint32_t color = animation.ledActualColor(strip, i);
                             strip->setPixelColor(i, color);
                         }
@@ -1810,7 +1810,7 @@ void mainThreadProcess() {
                     }
                     default: {
                         uint32_t color = animation.stripActualColor(strip);
-                        for(int i = 0; i < strip->numPixels(); i++) {
+                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
                             strip->setPixelColor(i, color);
                         }
                         break;
@@ -1858,7 +1858,7 @@ void mainThreadProcess() {
         if (strip_main != nullptr) {
             animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                // for(uint32_t i = 0; i < strip->numPixels(); i++) {
+                // for(uint16_t i = 0; i < strip->numPixels(); i++) {
                 //     uint32_t color = animation.ledActualColor(strip, i);
                 //     strip->setPixelColor(i, color);
                 // }
@@ -1869,7 +1869,7 @@ void mainThreadProcess() {
             animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                 strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
                 // uint32_t color = animation.stripActualColor(strip);
-                // for (uint32_t i = 0; i < strip->numPixels(); i++) {
+                // for (uint16_t i = 0; i < strip->numPixels(); i++) {
                 //     strip->setPixelColor(i, color);
                 // }
                 strip->show();

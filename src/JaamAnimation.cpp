@@ -479,7 +479,7 @@ void AnimationManager::updateSetBrightnessAnimation(AnimationParams* anim, float
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         LOG.printf("[ANIMATION] updateSetBrightnessAnimation: %d\n", led.brightnessMapped(currentBrightness));
         anim->strip->setBrightness(led.brightnessMapped(currentBrightness));
-        for (int i = 0; i < anim->strip->numPixels(); i++) {
+        for (uint16_t i = 0; i < anim->strip->numPixels(); i++) {
             uint32_t color = ledActualColor(anim->strip, i);
             anim->strip->setPixelColor(i, color);
         }
