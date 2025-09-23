@@ -27,9 +27,11 @@ extern volatile bool needReconnectServiceStrip;
 extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
+extern volatile bool needReconfigureSound;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
+extern volatile bool needAdaptVolume;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
@@ -1704,6 +1706,33 @@ void JaamWeb::handleParameter() {
             settings->saveFloat(PRESSURE_CORRECTION, floatValue);
             needAdaptClimate = true;
             LOG.printf("[WEB] Set pressure_correction: %.2f\n", floatValue);
+        } else if (name == "sound_source") {
+            settings->saveInt(SOUND_SOURCE, intValue);
+            LOG.printf("[WEB] Setting sound_source: %d\n", intValue);
+        } else if (name == "melody_volume_day") {
+            settings->saveInt(MELODY_VOLUME_DAY, intValue);
+            needAdaptVolume = true;
+            LOG.printf("[WEB] Setting melody_volume_day: %d\n", intValue);
+        } else if (name == "melody_volume_night") {
+            settings->saveInt(MELODY_VOLUME_NIGHT, intValue);
+            needAdaptVolume = true;
+            LOG.printf("[WEB] Setting melody_volume_night: %d\n", intValue);
+        } else if (name == "sound_on_every_hour") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_EVERY_HOUR, boolValue);
+            LOG.printf("[WEB] Setting sound_on_every_hour: %d\n", boolValue);
+        } else if (name == "sound_on_button_click") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_BUTTON_CLICK, boolValue);
+            LOG.printf("[WEB] Setting sound_on_button_click: %d\n", boolValue);
+        } else if (name == "mute_sound_on_night") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(MUTE_SOUND_ON_NIGHT, boolValue);
+            LOG.printf("[WEB] Setting mute_sound_on_night: %d\n", boolValue);
+        } else if (name == "ignore_mute_on_alert") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(IGNORE_MUTE_ON_ALERT, boolValue);
+            LOG.printf("[WEB] Setting ignore_mute_on_alert: %d\n", boolValue);
         }
 
         server.send(200, "text/plain", "OK");
@@ -1772,7 +1801,20 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(BATTERY_PIN, value.toInt());
             needUpdateBatteryPin = true;
             LOG.printf("[WEB] Set battery_pin: %d\n", valuePtr);
+        } else if (name == "buzzer_pin") {
+            settings->saveInt(BUZZER_PIN, value.toInt());
+            needReconfigureSound = true;
+            LOG.printf("[WEB] Set buzzer_pin: %d\n", valuePtr);
+        } else if (name == "df_rx_pin") {
+            settings->saveInt(DF_RX_PIN, value.toInt());
+            needReconfigureSound = true;
+            LOG.printf("[WEB] Set df_rx_pin: %d\n", valuePtr);
+        } else if (name == "df_tx_pin") {
+            settings->saveInt(DF_TX_PIN, value.toInt());
+            needReconfigureSound = true;
+            LOG.printf("[WEB] Set df_tx_pin: %d\n", valuePtr);
         }
+
         server.send(200, "text/plain", "OK");
     } else {
         server.send(400, "text/plain", "Missing parameters");
@@ -2026,7 +2068,8 @@ void JaamWeb::handleUiSchema() {
           {"id": "climate", "name": "Клімат", "color": "#34f396"},
           {"id": "animations", "name": "Анімації", "color": "#fd7e14"},
           {"id": "brightness", "name": "Яскравість", "color": "#ffc107"},
-          {"id": "alerts", "name": "Тривоги", "color": "#6c757d"}
+          {"id": "alerts", "name": "Тривоги", "color": "#6c757d"},
+          {"id": "sound", "name": "Звук", "color": "#dc3545"}
         ]
         )JSON";
 
@@ -2086,6 +2129,10 @@ void JaamWeb::handleUiSchema() {
         {
             JsonArray arr = dropdownLists["auto_brightness_modes"].to<JsonArray>();
             appendOptionsList(arr, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["sound_sources"].to<JsonArray>();
+            appendOptionsList(arr, SOUND_SOURCES, SOUND_SOURCES_COUNT);
         }
     }
 
@@ -2186,7 +2233,7 @@ void JaamWeb::handleUiSchema() {
     addText("network", "ha_broker_address", "Адреса брокера", String(settings->getString(HA_BROKER_ADDRESS)), "");
     addInfoSuccess("network", "З'єднання встановлено. Перевірте налаштування при проблемах зі з'єднанням.");
 
-    // Піни LED стрічок
+    // Піни та апаратні налаштування
     addInfo("hardware", "Конфігурація апаратних пінів та параметрів LED стрічок", "#6f42c1", "M9,7H11V17H9V19H15V17H13V7H15V5H9V7M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
     addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13");
     addDropdown("hardware", "main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT);
@@ -2292,6 +2339,19 @@ void JaamWeb::handleUiSchema() {
     addBool("alerts", "enable_recon_drones", "Розвідувальні БПЛА", ENABLE_RECON_DRONES);
     addBool("alerts", "enable_ballistic", "Загроза балістичних ракет", ENABLE_BALLISTIC);
     addBool("alerts", "enable_explosions", "Вибухи", ENABLE_EXPLOSIONS);
+
+    // Налаштування звуку
+    addInfo("sound", "Налаштування звуку", "#6c757d", "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z");
+    addDropdown("sound", "sound_source", "Джерело звуку", "sound_sources", SOUND_SOURCE);
+    addText("sound", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1");
+    addText("sound", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1");
+    addText("sound", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1");
+    addSlider("sound", "melody_volume_day", "Гучність мелодії вдень", 0, 100, 1, settings->getInt(MELODY_VOLUME_DAY));
+    addSlider("sound", "melody_volume_night", "Гучність мелодії вночі", 0, 100, 1, settings->getInt(MELODY_VOLUME_NIGHT));
+    addBool("sound", "sound_on_every_hour", "Звукове сповіщення щогодини", SOUND_ON_EVERY_HOUR);
+    addBool("sound", "sound_on_button_click", "Сигнали при натисканні кнопки", SOUND_ON_BUTTON_CLICK);
+    addBool("sound", "mute_sound_on_night", "Вимикати всі звуки у нічний час", MUTE_SOUND_ON_NIGHT);
+    addBool("sound", "ignore_mute_on_alert", "Сигнали тривоги навіть у нічний час", IGNORE_MUTE_ON_ALERT);
 
     String response;
     serializeJson(doc, response);
