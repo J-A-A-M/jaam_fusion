@@ -47,8 +47,8 @@ static const char ICON_HUMIDITY[] PROGMEM = "<svg class='metric-icon' viewBox='0
 static const char ICON_PRESSURE[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M6,14A1,1 0 0,1 7,13A1,1 0 0,1 8,14A5,5 0 0,0 13,19A1,1 0 0,1 12,20A1,1 0 0,1 11,19A7,7 0 0,1 4,12A1,1 0 0,1 5,11A1,1 0 0,1 6,12M17,10A2,2 0 0,1 19,12A7,7 0 0,1 12,19A2,2 0 0,1 10,17A4,4 0 0,0 14,13A2,2 0 0,1 12,11A2,2 0 0,1 14,9A4,4 0 0,0 10,5A2,2 0 0,1 12,3A7,7 0 0,1 19,10A2,2 0 0,1 17,12A2,2 0 0,1 15,10H17Z' /></svg>";
 
 // External variables declarations
-extern uint32_t                         lastWebsocketConnectTime;
-extern uint32_t                         lastWifiConnectTime;
+extern time_t                         lastWebsocketConnectTime;
+extern time_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
 extern JaamSettings                     settings;

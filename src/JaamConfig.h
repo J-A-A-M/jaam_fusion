@@ -13,6 +13,17 @@ namespace DefaultColors {
     static const uint32_t HA = 0xFFFF00;  // Blue
     static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
 }
+// --- ALERT Modes ---
+namespace AlertModes {
+    static const int NO_ALERT = -1;
+    static const int ALERT = 0;
+    static const int DRONES = 5;
+    static const int MISSILES = 6;
+    static const int KABS = 7;
+    static const int BALLISTIC = 8;
+    static const int EXPLOSION = 9;
+    static const int RECON_DRONES = 10;
+}
 
 // --- MAP Modes ---
 namespace MapModes {
@@ -89,6 +100,14 @@ struct SettingListItem {
   const char* name;
   bool ignore;
   bool sub;
+};
+
+// Структура для зберігання diff
+struct AlertDiff {
+    uint16_t region_id;
+    uint16_t previous_flags;
+    uint16_t current_flags;
+    bool has_changes;
 };
 
 // --- Sound ---

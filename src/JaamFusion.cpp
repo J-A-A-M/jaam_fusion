@@ -85,12 +85,13 @@ volatile bool needReconfigureSound = false;
 volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
 volatile bool needAdaptVolume = false;
+volatile bool needUpdateHomeAlertBit = false;
 
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
 
-uint32_t            lastWifiConnectTime = 0;  // Track when WiFi was last connected
+time_t              lastWifiConnectTime = 0;  // Track when WiFi was last connected
 uint16_t            alertsHash = 0;
 bool                wifiConnected = false;
 
@@ -101,10 +102,12 @@ time_t              websocketLastPingTime = 0;
 bool                isFirstDataFetchCompleted = false;
 bool                apiConnected;
 bool                websocketReconnect = false;
-uint32_t            lastWebsocketConnectTime = 0;
+time_t              lastWebsocketConnectTime = 0;
 
 // --- OTHER Configuration ---
 uint8_t             legacy = 0;
+int                 alertBit = -1;
+time_t              lastHomeAlertChangeTime = 0;
 
 // --- CLOCK ---
 bool needDivider = false;
@@ -191,6 +194,143 @@ void rebootDevice(int time = 2000, bool async = false) {
     ESP.restart();
 }
 
+bool isItNightNow() {
+    int dayStart = settings.getInt(DAY_START);
+    int nightStart = settings.getInt(NIGHT_START);
+    // if day and night start time is equels it means it's always day, return day
+    if (dayStart == nightStart) return false;
+
+    int currentHour = timeClient.hour();
+
+    // handle case, when night start hour is bigger than day start hour, ex. night start at 22 and day start at 9
+    if (nightStart > dayStart) return currentHour >= nightStart || currentHour < dayStart ? true : false;
+
+    // handle case, when day start hour is bigger than night start hour, ex. night start at 1 and day start at 8
+    return currentHour < dayStart && currentHour >= nightStart ? true : false;
+}
+
+// --- SOUND Functions ---
+void playMelody(const char* melodyRtttl) {
+#if BUZZER_ENABLED
+  if (sound.isBuzzerEnabled() && (sound.soundSource == 0 || sound.soundSource == 2)) {
+    sound.playBuzzer(melodyRtttl);
+  } else {
+    LOG.println("Buzzer not enabled or sound source not valid (need 0 or 2): " + String(sound.soundSource));
+  }
+#endif
+}
+
+void playTrack(String track) {
+#if DFPLAYER_PRO_ENABLED
+  if (track != "" && (sound.soundSource == 1 || sound.soundSource == 2)) {
+    sound.playDFPlayer(track);
+  } else {
+    LOG.println("DFPlayer not enabled or sound source not valid (need 1 or 2): " + String(sound.soundSource));
+  }
+#endif
+}
+
+void playMelody(SoundType type) {
+#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+  switch (type) {
+  case MIN_OF_SILINCE:
+    playMelody(MOS_BEEP);
+    playTrack(DF_CLOCK_TICK);
+    break;
+  case MIN_OF_SILINCE_END:
+    playMelody(UA_ANTHEM);
+    playTrack(DF_UA_ANTHEM);
+    break;
+  case ALERT_ON:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT)));
+    break;
+  case ALERT_OFF:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT_END)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT_END)));
+    break;
+  case EXPLOSIONS:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_EXPLOSION)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_EXPLOSION)));
+    break;
+  case CRITICAL_MIG:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG)));
+    break; 
+  case CRITICAL_STRATEGIC:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC)));
+    break;
+  case CRITICAL_MIG_MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG_MISSILES)));
+    break;
+  case CRITICAL_BALLISTIC_MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_BALLISTIC_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_BALLISTIC_MISSILES)));
+    break;
+  case CRITICAL_STRATEGIC_MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC_MISSILES)));
+    break;
+  case REGULAR:
+    playMelody(CLOCK_BEEP);
+    playTrack(DF_CLOCK_BEEP);
+    break;
+  case SINGLE_CLICK:
+    playMelody(SINGLE_CLICK_SOUND);
+    playTrack(DF_CLOCK_TICK);
+    break;
+  case LONG_CLICK:
+    playMelody(LONG_CLICK_SOUND);
+    playTrack(DF_CLOCK_TICK);
+    break;
+  }
+#endif
+}
+
+bool needToPlaySound(SoundType type) {
+#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+  // do not play any sound before websocket connection
+  if (!isFirstDataFetchCompleted) return false;
+
+  // ignore mute on alert
+  if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
+
+  // disable sounds on night mode by time only
+  if (settings.getBool(MUTE_SOUND_ON_NIGHT) && isItNightNow()) return false;
+
+  switch (type) {
+  case MIN_OF_SILINCE:
+    return settings.getBool(SOUND_ON_MIN_OF_SL);
+  case MIN_OF_SILINCE_END:
+    return settings.getBool(SOUND_ON_MIN_OF_SL);
+  case ALERT_ON:
+    return settings.getBool(SOUND_ON_ALERT);
+  case ALERT_OFF:
+    return settings.getBool(SOUND_ON_ALERT_END);
+  case EXPLOSIONS:
+    return settings.getBool(SOUND_ON_EXPLOSION);
+  case CRITICAL_MIG:
+    return settings.getBool(SOUND_ON_CRITICAL_MIG);
+  case CRITICAL_STRATEGIC:
+    return settings.getBool(SOUND_ON_CRITICAL_STRATEGIC);
+  case CRITICAL_MIG_MISSILES:
+    return settings.getBool(SOUND_ON_CRITICAL_MIG_MISSILES);
+  case CRITICAL_BALLISTIC_MISSILES:
+    return settings.getBool(SOUND_ON_CRITICAL_BALLISTIC_MISSILES);
+  case CRITICAL_STRATEGIC_MISSILES:
+    return settings.getBool(SOUND_ON_CRITICAL_STRATEGIC_MISSILES);
+  case REGULAR:
+    return settings.getBool(SOUND_ON_EVERY_HOUR);
+  case SINGLE_CLICK:
+  case LONG_CLICK:
+    return settings.getBool(SOUND_ON_BUTTON_CLICK);
+  }
+#endif
+  return false;
+}
+
 // --- WEBSOCKET Functions ---
 
 void printHex(const String& data) {
@@ -200,14 +340,6 @@ void printHex(const String& data) {
     }
     LOG.println();
 }
-
-// Структура для зберігання diff
-struct AlertDiff {
-    uint16_t region_id;
-    uint16_t previous_flags;
-    uint16_t current_flags;
-    bool has_changes;
-};
 
 void servicePin(ServiceLed type) {
     if (strip_service != nullptr) {
@@ -219,12 +351,6 @@ void servicePin(ServiceLed type) {
     }
 }
 
-void checkServicePins() {
-    servicePin(POWER);
-    servicePin(WIFI);
-    servicePin(DATA);
-}
-
 // Функція для розрахунку diff
 AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16_t current_flags) {
     AlertDiff diff;
@@ -233,6 +359,50 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     diff.current_flags = current_flags;
     diff.has_changes = (previous_flags != current_flags);
     return diff;
+}
+
+void alertAction(int localAlertBit) {
+    if (localAlertBit != alertBit) {
+        LOG.printf("[ALERT] Home district alert status changed from %d to %d\n", alertBit, localAlertBit);
+        if (settings.getBool(SOUND_ON_ALERT) && hasHigherPriority(localAlertBit, alertBit)) {
+            switch (localAlertBit){
+                case AlertModes::ALERT:
+                    if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
+                    display.showServiceMessage("ТРИВОГА", "", 5000);
+                    break;
+                case AlertModes::DRONES:
+                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    display.showServiceMessage("БПЛА", "", 5000);
+                    break;
+                case AlertModes::MISSILES:
+                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    display.showServiceMessage("РАКЕТИ", "", 5000);
+                    break;
+                case AlertModes::KABS:
+                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    display.showServiceMessage("КАБ", "", 5000);
+                    break;
+                case AlertModes::BALLISTIC:
+                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    display.showServiceMessage("БАЛЛІСТИКА", "", 5000);
+                    break;
+                case AlertModes::EXPLOSION:
+                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    display.showServiceMessage("ВИБУХИ", "", 5000);
+                    break;
+                case AlertModes::RECON_DRONES:
+                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    display.showServiceMessage("РОЗВІДКА БПЛА", "", 5000);
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (settings.getBool(SOUND_ON_ALERT_END) && localAlertBit == AlertModes::NO_ALERT) {
+            if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
+            display.showServiceMessage("ВІДБІЙ", "", 5000);
+        }
+    }
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
@@ -473,6 +643,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
                 settings.getInt(HOME_DISTRICT), homeRegionBit);
             animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
+            alertAction(homeRegionBit);
         }else {
             LOG.println("[WEBSOCKET] No changes in home region LEDs");
         }
@@ -699,6 +870,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                 LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
                     settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
                 animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
+                alertAction(homeRegionBit);
+                alertBit = homeRegionBit;
             }else {
                 LOG.println("[WEBSOCKET] No changes in home region LEDs");
             }
@@ -1182,142 +1355,12 @@ void syncTime(int8_t attempts) {
     }
 }
 
-bool isItNightNow() {
-    int dayStart = settings.getInt(DAY_START);
-    int nightStart = settings.getInt(NIGHT_START);
-    // if day and night start time is equels it means it's always day, return day
-    if (dayStart == nightStart) return false;
-
-    int currentHour = timeClient.hour();
-
-    // handle case, when night start hour is bigger than day start hour, ex. night start at 22 and day start at 9
-    if (nightStart > dayStart) return currentHour >= nightStart || currentHour < dayStart ? true : false;
-
-    // handle case, when day start hour is bigger than night start hour, ex. night start at 1 and day start at 8
-    return currentHour < dayStart && currentHour >= nightStart ? true : false;
+// --- ALERT Functions ---
+int getAlertBit(uint16_t region_id) {
+    int highestBit = findHighestBitForRegion(region_id);
+    return highestBit;
 }
 
-// --- SOUND Functions ---
-void playMelody(const char* melodyRtttl) {
-#if BUZZER_ENABLED
-  if (sound.isBuzzerEnabled() && (sound.soundSource == 0 || sound.soundSource == 2)) {
-    sound.playBuzzer(melodyRtttl);
-  } else {
-    LOG.println("Buzzer not enabled or sound source not valid (need 0 or 2): " + String(sound.soundSource));
-  }
-#endif
-}
-
-void playTrack(String track) {
-#if DFPLAYER_PRO_ENABLED
-  if (track != "" && (sound.soundSource == 1 || sound.soundSource == 2)) {
-    sound.playDFPlayer(track);
-  } else {
-    LOG.println("DFPlayer not enabled or sound source not valid (need 1 or 2): " + String(sound.soundSource));
-  }
-#endif
-}
-
-void playMelody(SoundType type) {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
-  switch (type) {
-  case MIN_OF_SILINCE:
-    playMelody(MOS_BEEP);
-    playTrack(DF_CLOCK_TICK);
-    break;
-  case MIN_OF_SILINCE_END:
-    playMelody(UA_ANTHEM);
-    playTrack(DF_UA_ANTHEM);
-    break;
-  case ALERT_ON:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT)));
-    break;
-  case ALERT_OFF:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT_END)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT_END)));
-    break;
-  case EXPLOSIONS:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_EXPLOSION)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_EXPLOSION)));
-    break;
-  case CRITICAL_MIG:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG)));
-    break; 
-  case CRITICAL_STRATEGIC:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC)));
-    break;
-  case CRITICAL_MIG_MISSILES:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG_MISSILES)));
-    break;
-  case CRITICAL_BALLISTIC_MISSILES:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_BALLISTIC_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_BALLISTIC_MISSILES)));
-    break;
-  case CRITICAL_STRATEGIC_MISSILES:
-    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC_MISSILES)));
-    break;
-  case REGULAR:
-    playMelody(CLOCK_BEEP);
-    playTrack(DF_CLOCK_BEEP);
-    break;
-  case SINGLE_CLICK:
-    playMelody(SINGLE_CLICK_SOUND);
-    playTrack(DF_CLOCK_TICK);
-    break;
-  case LONG_CLICK:
-    playMelody(LONG_CLICK_SOUND);
-    playTrack(DF_CLOCK_TICK);
-    break;
-  }
-#endif
-}
-
-bool needToPlaySound(SoundType type) {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
-  // do not play any sound before websocket connection
-  if (!isFirstDataFetchCompleted) return false;
-
-  // ignore mute on alert
-  if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
-
-  // disable sounds on night mode by time only
-  if (settings.getBool(MUTE_SOUND_ON_NIGHT) && isItNightNow()) return false;
-
-  switch (type) {
-  case MIN_OF_SILINCE:
-    return settings.getBool(SOUND_ON_MIN_OF_SL);
-  case MIN_OF_SILINCE_END:
-    return settings.getBool(SOUND_ON_MIN_OF_SL);
-  case ALERT_ON:
-    return settings.getBool(SOUND_ON_ALERT);
-  case ALERT_OFF:
-    return settings.getBool(SOUND_ON_ALERT_END);
-  case EXPLOSIONS:
-    return settings.getBool(SOUND_ON_EXPLOSION);
-  case CRITICAL_MIG:
-    return settings.getBool(SOUND_ON_CRITICAL_MIG);
-  case CRITICAL_STRATEGIC:
-    return settings.getBool(SOUND_ON_CRITICAL_STRATEGIC);
-  case CRITICAL_MIG_MISSILES:
-    return settings.getBool(SOUND_ON_CRITICAL_MIG_MISSILES);
-  case CRITICAL_BALLISTIC_MISSILES:
-    return settings.getBool(SOUND_ON_CRITICAL_BALLISTIC_MISSILES);
-  case CRITICAL_STRATEGIC_MISSILES:
-    return settings.getBool(SOUND_ON_CRITICAL_STRATEGIC_MISSILES);
-  case REGULAR:
-    return settings.getBool(SOUND_ON_EVERY_HOUR);
-  case SINGLE_CLICK:
-  case LONG_CLICK:
-    return settings.getBool(SOUND_ON_BUTTON_CLICK);
-  }
-#endif
-  return false;
-}
 
 // --- BRIGHTNESS Functions ---
 uint8_t getCurrentBrightnes() {
@@ -2106,6 +2149,14 @@ void mainThreadProcess() {
         sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
 
         needAdaptVolume = false;
+    }
+
+    if (needUpdateHomeAlertBit) {
+        LOG.println("[MAIN] Updating home alert bit");
+        int localAlertBit = getAlertBit(settings.getInt(HOME_DISTRICT));
+        alertAction(localAlertBit);
+        alertBit = localAlertBit;
+        needUpdateHomeAlertBit = false;
     }
 }
 
