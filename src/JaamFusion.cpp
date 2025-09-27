@@ -86,6 +86,8 @@ volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
 volatile bool needAdaptVolume = false;
 volatile bool needUpdateHomeAlertBit = false;
+volatile bool needPlayTestMelody = false;
+volatile bool needPlayTestTrack = false;
 
 
 // --- WIFI Configuration ---
@@ -108,6 +110,8 @@ time_t              lastWebsocketConnectTime = 0;
 uint8_t             legacy = 0;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
+int                 testMelodyId = -1;
+int                 testTrackId = -1;
 
 // --- CLOCK ---
 bool needDivider = false;
@@ -2158,6 +2162,12 @@ void mainThreadProcess() {
         alertBit = localAlertBit;
         needUpdateHomeAlertBit = false;
     }
+
+    if (needPlayTestMelody) {
+        LOG.println("[MAIN] Playing test melody");
+        playMelody(MELODIES[testMelodyId]);
+        needPlayTestMelody = false;
+    }
 }
 
 void brightnessProcess() {
@@ -2298,12 +2308,11 @@ void setup() {
 #endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
-    
-    async.setInterval(batteryProcess, 10000); // кожні 10 секунд
-    async.setInterval(displayProcess, 1000); // кожну секунду
-    async.setInterval(climateProcess, 10000); // кожні 10 секунд
-    async.setInterval(volumeProcess, 1000); // кожну секунду
-    async.setInterval(beepHourProcess, 1000); // кожну секунду
+    async.setInterval(batteryProcess, BATTERY_CHECK_INTERVAL);
+    async.setInterval(displayProcess, DISPLAY_CHECK_INTERVAL);
+    async.setInterval(climateProcess, CLIMATE_CHECK_INTERVAL);
+    async.setInterval(volumeProcess, VOLUME_CHECK_INTERVAL);
+    async.setInterval(beepHourProcess, BEEP_HOUR_CHECK_INTERVAL);
 
     checkFreeHeap("async tasks configuration");
     

@@ -33,6 +33,10 @@ extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
 extern volatile bool needAdaptVolume;
 extern volatile bool needUpdateHomeAlertBit;
+extern volatile bool needPlayTestMelody;
+extern volatile bool needPlayTestTrack;
+extern volatile int testMelodyId;
+extern volatile int testTrackId;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
@@ -1714,12 +1718,18 @@ void JaamWeb::handleParameter() {
         } else if (name == "melody_on_alert") {
             settings->saveInt(MELODY_ON_ALERT, intValue);
             LOG.printf("[WEB] Setting melody_on_alert: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue;
         } else if (name == "melody_on_alert_end") {
             settings->saveInt(MELODY_ON_ALERT_END, intValue);
             LOG.printf("[WEB] Setting melody_on_alert_end: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue;
         } else if (name == "melody_on_explosion") {
             settings->saveInt(MELODY_ON_EXPLOSION, intValue);
-            LOG.printf("[WEB] Setting melody_on_explosion: %d\n", intValue); 
+            LOG.printf("[WEB] Setting melody_on_explosion: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
         } else if (name == "melody_volume_day") {
             settings->saveInt(MELODY_VOLUME_DAY, intValue);
             needAdaptVolume = true;

@@ -67,6 +67,11 @@ static const uint32_t WIFI_CHECK_INTERVAL = 1000;           // 1 second
 static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;      // 3 seconds
 static const uint32_t TIME_CHECK_INTERVAL = 60000;          // 1 minute
 static const uint32_t MAIN_THREAD_CHECK_INTERVAL = 500;     // 0.5 seconds
+static const uint32_t BATTERY_CHECK_INTERVAL = 10000;         // 10 seconds
+static const uint32_t DISPLAY_CHECK_INTERVAL = 1000;       // 1 second
+static const uint32_t CLIMATE_CHECK_INTERVAL = 10000;      // 10 seconds
+static const uint32_t VOLUME_CHECK_INTERVAL = 1000;        // 1 second
+static const uint32_t BEEP_HOUR_CHECK_INTERVAL = 1000;      //
 
 // --- Packet structure ---
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
