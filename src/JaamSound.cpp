@@ -32,6 +32,11 @@ void JaamSound::setBeepHour(int hour) {
 #if BUZZER_ENABLED
 void JaamSound::initBuzzer() {
     LOG.println("Init Buzzer");
+    if (!isBuzzerEnabled()) {
+        LOG.println("Buzzer pin is not set, skip init");
+        return;
+    }
+    delete player;
     player = new MelodyPlayer(buzzerPin, 0, LOW);
     player->setVolume(expMap(volumeCurrent, 0, 100, 0, 255));
     LOG.printf("Set initial volume to: %d\n", volumeCurrent);
@@ -70,6 +75,10 @@ bool JaamSound::isBuzzerPlaying() {
 #if BUZZER_ENABLED
     if (!isBuzzerEnabled()) {
         LOG.println("Buzzer not enabled, cannot check if playing");
+        return false;
+    }
+    if (player == nullptr) {
+        LOG.println("Buzzer not initialised, cannot check if playing");
         return false;
     }
     return player->isPlaying();

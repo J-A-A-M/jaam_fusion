@@ -1878,19 +1878,19 @@ void JaamWeb::handleTextParameter() {
         } else if (name == "battery_pin") {
             settings->saveInt(BATTERY_PIN, value.toInt());
             needUpdateBatteryPin = true;
-            LOG.printf("[WEB] Set battery_pin: %d\n", valuePtr);
+            LOG.printf("[WEB] Set battery_pin: %d\n", value.toInt());
         } else if (name == "buzzer_pin") {
             settings->saveInt(BUZZER_PIN, value.toInt());
             needReconfigureSound = true;
-            LOG.printf("[WEB] Set buzzer_pin: %d\n", valuePtr);
+            LOG.printf("[WEB] Set buzzer_pin: %d\n", value.toInt());
         } else if (name == "df_rx_pin") {
             settings->saveInt(DF_RX_PIN, value.toInt());
             needReconfigureSound = true;
-            LOG.printf("[WEB] Set df_rx_pin: %d\n", valuePtr);
+            LOG.printf("[WEB] Set df_rx_pin: %d\n", value.toInt());
         } else if (name == "df_tx_pin") {
             settings->saveInt(DF_TX_PIN, value.toInt());
             needReconfigureSound = true;
-            LOG.printf("[WEB] Set df_tx_pin: %d\n", valuePtr);
+            LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
         }
 
         server.send(200, "text/plain", "OK");

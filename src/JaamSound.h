@@ -16,11 +16,11 @@ class JaamSound {
     #if BUZZER_ENABLED
         MelodyPlayer* player;
         int expMap(int x, int in_min, int in_max, int out_min, int out_max) {
-            // Apply exponential transformation to the original input value x
-            float normalized = (float)(x - in_min) / (in_max - in_min);
-            float scaled = pow(normalized, 2);
-            
-            // Map the scaled value to the output range
+            if (in_max == in_min) return out_min;
+            float normalized = (float)(x - in_min) / (float)(in_max - in_min);
+            if (normalized < 0.0f) normalized = 0.0f;
+            if (normalized > 1.0f) normalized = 1.0f;
+            float scaled = normalized * normalized; // gamma≈2
             return (int)(scaled * (out_max - out_min) + out_min);
         }
     #endif
@@ -58,7 +58,10 @@ class JaamSound {
             buzzerPin(-1), 
             dfRxPin(-1), 
             dfTxPin(-1),
-            beepHour(-1)
+            beepHour(-1),
+            soundSource(2) /* Any */,
+            dynamicTracks(nullptr),
+            dynamicTrackNames(nullptr)
         {};
         void init(int buzzerPin, int rxPin, int txPin, int volCurrent, int volDay, int volNight);
         void setVolumeCurrent(int volume);
