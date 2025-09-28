@@ -1730,6 +1730,31 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Setting melody_on_explosion: %d\n", intValue);
             needPlayTestMelody = true;
             testMelodyId = intValue; 
+        } else if (name == "melody_on_drones") {
+            settings->saveInt(MELODY_ON_DRONES, intValue);
+            LOG.printf("[WEB] Setting melody_on_drones: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_missiles") {
+            settings->saveInt(MELODY_ON_MISSILES, intValue);
+            LOG.printf("[WEB] Setting melody_on_missiles: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_kabs") {
+            settings->saveInt(MELODY_ON_KABS, intValue);
+            LOG.printf("[WEB] Setting melody_on_kabs: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_ballistic") {
+            settings->saveInt(MELODY_ON_BALLISTIC, intValue);
+            LOG.printf("[WEB] Setting melody_on_ballistic: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_recon_drones") {
+            settings->saveInt(MELODY_ON_RECON_DRONES, intValue);
+            LOG.printf("[WEB] Setting melody_on_recon_drones: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
         } else if (name == "melody_volume_day") {
             settings->saveInt(MELODY_VOLUME_DAY, intValue);
             needAdaptVolume = true;
@@ -1750,6 +1775,26 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(SOUND_ON_EXPLOSION, boolValue);
             LOG.printf("[WEB] Setting sound_on_explosion: %d\n", boolValue);
+        } else if (name == "sound_on_drones") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_DRONES, boolValue);
+            LOG.printf("[WEB] Setting sound_on_drones: %d\n", boolValue);
+        } else if (name == "sound_on_missiles") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_MISSILES, boolValue);
+            LOG.printf("[WEB] Setting sound_on_missiles: %d\n", boolValue);
+        } else if (name == "sound_on_kabs") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_KABS, boolValue);
+            LOG.printf("[WEB] Setting sound_on_kabs: %d\n", boolValue);
+        } else if (name == "sound_on_ballistic") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_BALLISTIC, boolValue);
+            LOG.printf("[WEB] Setting sound_on_ballistic: %d\n", boolValue);
+        } else if (name == "sound_on_recon_drones") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_RECON_DRONES, boolValue);
+            LOG.printf("[WEB] Setting sound_on_recon_drones: %d\n", boolValue);
         } else if (name == "sound_on_every_hour") {
             bool boolValue = intValue != 0;
             settings->saveBool(SOUND_ON_EVERY_HOUR, boolValue);
@@ -2388,6 +2433,11 @@ void JaamWeb::handleUiSchema() {
     addBool("sound", "sound_on_alert", "Звукове сповіщення при тривозі у домашньому регіоні", SOUND_ON_ALERT);
     addBool("sound", "sound_on_alert_end", "Звукове сповіщення при завершенні тривоги у домашньому регіоні", SOUND_ON_ALERT_END);
     addBool("sound", "sound_on_explosion", "Звукове сповіщення при вибухах", SOUND_ON_EXPLOSION);
+    addBool("sound", "sound_on_drones", "Звукове сповіщення при загрозі ударних БПЛА", SOUND_ON_DRONES);
+    addBool("sound", "sound_on_recon_drones", "Звукове сповіщення при розвідувальних БПЛА", SOUND_ON_RECON_DRONES);
+    addBool("sound", "sound_on_missiles", "Звукове сповіщення при загрозі ракет", SOUND_ON_MISSILES);
+    addBool("sound", "sound_on_kabs", "Звукове сповіщення при загрозі КАБ", SOUND_ON_KABS);
+    addBool("sound", "sound_on_ballistic", "Звукове сповіщення при загрозі балістики", SOUND_ON_BALLISTIC);
     addBool("sound", "sound_on_every_hour", "Звукове сповіщення щогодини", SOUND_ON_EVERY_HOUR);
     addBool("sound", "sound_on_button_click", "Сигнали при натисканні кнопки", SOUND_ON_BUTTON_CLICK);
     addBool("sound", "mute_sound_on_night", "Вимикати всі звуки у нічний час", MUTE_SOUND_ON_NIGHT);
@@ -2395,6 +2445,11 @@ void JaamWeb::handleUiSchema() {
     addDropdown("sound", "melody_on_alert", "Мелодія при тривозі у домашньому регіоні (буззер)", "melodies", MELODY_ON_ALERT);
     addDropdown("sound", "melody_on_alert_end", "Мелодія при скасуванні тривоги у домашньому регіоні (буззер)", "melodies", MELODY_ON_ALERT_END);
     addDropdown("sound", "melody_on_explosion", "Мелодія при вибухах (буззер)", "melodies", MELODY_ON_EXPLOSION);
+    addDropdown("sound", "melody_on_drones", "Мелодія при загрозі ударних БПЛА (буззер)", "melodies", MELODY_ON_DRONES);
+    addDropdown("sound", "melody_on_recon_drones", "Мелодія при розвідувальних БПЛА (буззер)", "melodies", MELODY_ON_RECON_DRONES);
+    addDropdown("sound", "melody_on_missiles", "Мелодія при загрозі ракет (буззер)", "melodies", MELODY_ON_MISSILES);
+    addDropdown("sound", "melody_on_kabs", "Мелодія при загрозі КАБ (буззер)", "melodies", MELODY_ON_KABS);
+    addDropdown("sound", "melody_on_ballistic", "Мелодія при загрозі балістики (буззер)", "melodies", MELODY_ON_BALLISTIC);
 
 
     String response;

@@ -257,6 +257,26 @@ void playMelody(SoundType type) {
     playMelody(MELODIES[settings.getInt(MELODY_ON_EXPLOSION)]);
     playTrack(sound.getTrackById(settings.getInt(TRACK_ON_EXPLOSION)));
     break;
+  case DRONES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_DRONES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_DRONES)));
+    break;
+  case MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_MISSILES)));
+    break;
+  case KABS:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_KABS)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_KABS)));
+    break;
+  case BALLISTIC:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_BALLISTIC)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_BALLISTIC)));
+    break;
+  case RECON_DRONES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_RECON_DRONES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_RECON_DRONES)));
+    break;
   case CRITICAL_MIG:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG)]);
     playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG)));
@@ -315,6 +335,16 @@ bool needToPlaySound(SoundType type) {
     return settings.getBool(SOUND_ON_ALERT_END);
   case EXPLOSIONS:
     return settings.getBool(SOUND_ON_EXPLOSION);
+  case DRONES:
+    return settings.getBool(SOUND_ON_DRONES);
+  case MISSILES:
+    return settings.getBool(SOUND_ON_MISSILES);
+  case KABS:
+    return settings.getBool(SOUND_ON_KABS);
+  case BALLISTIC:
+    return settings.getBool(SOUND_ON_BALLISTIC);
+  case RECON_DRONES:
+    return settings.getBool(SOUND_ON_RECON_DRONES);
   case CRITICAL_MIG:
     return settings.getBool(SOUND_ON_CRITICAL_MIG);
   case CRITICAL_STRATEGIC:
@@ -375,19 +405,19 @@ void alertAction(int localAlertBit) {
                     display.showServiceMessage("ТРИВОГА", "", 5000);
                     break;
                 case AlertModes::DRONES:
-                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
                     display.showServiceMessage("БПЛА", "", 5000);
                     break;
                 case AlertModes::MISSILES:
-                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
                     display.showServiceMessage("РАКЕТИ", "", 5000);
                     break;
                 case AlertModes::KABS:
-                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
                     display.showServiceMessage("КАБ", "", 5000);
                     break;
                 case AlertModes::BALLISTIC:
-                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
                     display.showServiceMessage("БАЛЛІСТИКА", "", 5000);
                     break;
                 case AlertModes::EXPLOSION:
@@ -395,7 +425,7 @@ void alertAction(int localAlertBit) {
                     display.showServiceMessage("ВИБУХИ", "", 5000);
                     break;
                 case AlertModes::RECON_DRONES:
-                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
                     display.showServiceMessage("РОЗВІДКА БПЛА", "", 5000);
                     break;
                 default:
