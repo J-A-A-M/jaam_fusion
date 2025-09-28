@@ -1845,7 +1845,7 @@ void JaamWeb::handleTextParameter() {
         } else if (name == "ws_server_port") {
             settings->saveInt(WS_SERVER_PORT, value.toInt());
             needReconnectWebsocket = true;
-            LOG.printf("[WEB] Setting ws_server_port: %s\n", valuePtr);
+            LOG.printf("[WEB] Setting ws_server_port: %d\n", value.toInt());
         } else if (name == "ntp_host") {
             settings->saveString(NTP_HOST, valuePtr);
             LOG.printf("[WEB] Setting ntp_host: %s\n", valuePtr);
@@ -1907,7 +1907,7 @@ void JaamWeb::setCrossOrigin() {
 }
 
 void JaamWeb::sendCrossOriginHeader(){
-    LOG.printf("[WEB] sendCORSHeader");
+    LOG.println("[WEB] sendCORSHeader");
     setCrossOrigin();
     server.send(204);
 }

@@ -50,7 +50,7 @@ class JaamSound {
         JaamSound() : 
         #if DFPLAYER_PRO_ENABLED
             dfSerial(2), 
-            dfPlayerMaxVolume(15),
+            dfPlayerMaxVolume(30),
             maxFilesCount(50), 
         #endif
             dfConnected(false),
