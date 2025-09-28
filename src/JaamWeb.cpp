@@ -27,9 +27,16 @@ extern volatile bool needReconnectServiceStrip;
 extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
+extern volatile bool needReconfigureSound;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
+extern volatile bool needAdaptVolume;
+extern volatile bool needUpdateHomeAlertBit;
+extern volatile bool needPlayTestMelody;
+extern volatile bool needPlayTestTrack;
+extern volatile int testMelodyId;
+extern volatile int testTrackId;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
@@ -1418,6 +1425,7 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Setting home_district: %d\n", intValue);
             needAdaptColors = true;
             needAdaptAnimationColors = true;
+            needUpdateHomeAlertBit = true;
         } else if (name == "bg_led_mode") {
             settings->saveInt(BG_LED_MODE, intValue);
             LOG.printf("[WEB] Setting bg_led_mode: %d\n", intValue);
@@ -1704,6 +1712,105 @@ void JaamWeb::handleParameter() {
             settings->saveFloat(PRESSURE_CORRECTION, floatValue);
             needAdaptClimate = true;
             LOG.printf("[WEB] Set pressure_correction: %.2f\n", floatValue);
+        } else if (name == "sound_source") {
+            settings->saveInt(SOUND_SOURCE, intValue);
+            LOG.printf("[WEB] Setting sound_source: %d\n", intValue);
+        } else if (name == "melody_on_alert") {
+            settings->saveInt(MELODY_ON_ALERT, intValue);
+            LOG.printf("[WEB] Setting melody_on_alert: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue;
+        } else if (name == "melody_on_alert_end") {
+            settings->saveInt(MELODY_ON_ALERT_END, intValue);
+            LOG.printf("[WEB] Setting melody_on_alert_end: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue;
+        } else if (name == "melody_on_explosion") {
+            settings->saveInt(MELODY_ON_EXPLOSION, intValue);
+            LOG.printf("[WEB] Setting melody_on_explosion: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_drones") {
+            settings->saveInt(MELODY_ON_DRONES, intValue);
+            LOG.printf("[WEB] Setting melody_on_drones: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_missiles") {
+            settings->saveInt(MELODY_ON_MISSILES, intValue);
+            LOG.printf("[WEB] Setting melody_on_missiles: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_kabs") {
+            settings->saveInt(MELODY_ON_KABS, intValue);
+            LOG.printf("[WEB] Setting melody_on_kabs: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_ballistic") {
+            settings->saveInt(MELODY_ON_BALLISTIC, intValue);
+            LOG.printf("[WEB] Setting melody_on_ballistic: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_on_recon_drones") {
+            settings->saveInt(MELODY_ON_RECON_DRONES, intValue);
+            LOG.printf("[WEB] Setting melody_on_recon_drones: %d\n", intValue);
+            needPlayTestMelody = true;
+            testMelodyId = intValue; 
+        } else if (name == "melody_volume_day") {
+            settings->saveInt(MELODY_VOLUME_DAY, intValue);
+            needAdaptVolume = true;
+            LOG.printf("[WEB] Setting melody_volume_day: %d\n", intValue);
+        } else if (name == "melody_volume_night") {
+            settings->saveInt(MELODY_VOLUME_NIGHT, intValue);
+            needAdaptVolume = true;
+            LOG.printf("[WEB] Setting melody_volume_night: %d\n", intValue);
+        } else if (name == "sound_on_alert") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_ALERT, boolValue);
+            LOG.printf("[WEB] Setting sound_on_alert: %d\n", boolValue);
+        } else if (name == "sound_on_alert_end") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_ALERT_END, boolValue);
+            LOG.printf("[WEB] Setting sound_on_alert_end: %d\n", boolValue);
+        } else if (name == "sound_on_explosion") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_EXPLOSION, boolValue);
+            LOG.printf("[WEB] Setting sound_on_explosion: %d\n", boolValue);
+        } else if (name == "sound_on_drones") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_DRONES, boolValue);
+            LOG.printf("[WEB] Setting sound_on_drones: %d\n", boolValue);
+        } else if (name == "sound_on_missiles") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_MISSILES, boolValue);
+            LOG.printf("[WEB] Setting sound_on_missiles: %d\n", boolValue);
+        } else if (name == "sound_on_kabs") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_KABS, boolValue);
+            LOG.printf("[WEB] Setting sound_on_kabs: %d\n", boolValue);
+        } else if (name == "sound_on_ballistic") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_BALLISTIC, boolValue);
+            LOG.printf("[WEB] Setting sound_on_ballistic: %d\n", boolValue);
+        } else if (name == "sound_on_recon_drones") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_RECON_DRONES, boolValue);
+            LOG.printf("[WEB] Setting sound_on_recon_drones: %d\n", boolValue);
+        } else if (name == "sound_on_every_hour") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_EVERY_HOUR, boolValue);
+            LOG.printf("[WEB] Setting sound_on_every_hour: %d\n", boolValue);
+        } else if (name == "sound_on_button_click") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_BUTTON_CLICK, boolValue);
+            LOG.printf("[WEB] Setting sound_on_button_click: %d\n", boolValue);
+        } else if (name == "mute_sound_on_night") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(MUTE_SOUND_ON_NIGHT, boolValue);
+            LOG.printf("[WEB] Setting mute_sound_on_night: %d\n", boolValue);
+        } else if (name == "ignore_mute_on_alert") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(IGNORE_MUTE_ON_ALERT, boolValue);
+            LOG.printf("[WEB] Setting ignore_mute_on_alert: %d\n", boolValue);
         }
 
         server.send(200, "text/plain", "OK");
@@ -1738,7 +1845,7 @@ void JaamWeb::handleTextParameter() {
         } else if (name == "ws_server_port") {
             settings->saveInt(WS_SERVER_PORT, value.toInt());
             needReconnectWebsocket = true;
-            LOG.printf("[WEB] Setting ws_server_port: %s\n", valuePtr);
+            LOG.printf("[WEB] Setting ws_server_port: %d\n", value.toInt());
         } else if (name == "ntp_host") {
             settings->saveString(NTP_HOST, valuePtr);
             LOG.printf("[WEB] Setting ntp_host: %s\n", valuePtr);
@@ -1771,8 +1878,21 @@ void JaamWeb::handleTextParameter() {
         } else if (name == "battery_pin") {
             settings->saveInt(BATTERY_PIN, value.toInt());
             needUpdateBatteryPin = true;
-            LOG.printf("[WEB] Set battery_pin: %d\n", valuePtr);
+            LOG.printf("[WEB] Set battery_pin: %d\n", value.toInt());
+        } else if (name == "buzzer_pin") {
+            settings->saveInt(BUZZER_PIN, value.toInt());
+            needReconfigureSound = true;
+            LOG.printf("[WEB] Set buzzer_pin: %d\n", value.toInt());
+        } else if (name == "df_rx_pin") {
+            settings->saveInt(DF_RX_PIN, value.toInt());
+            needReconfigureSound = true;
+            LOG.printf("[WEB] Set df_rx_pin: %d\n", value.toInt());
+        } else if (name == "df_tx_pin") {
+            settings->saveInt(DF_TX_PIN, value.toInt());
+            needReconfigureSound = true;
+            LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
         }
+
         server.send(200, "text/plain", "OK");
     } else {
         server.send(400, "text/plain", "Missing parameters");
@@ -1787,7 +1907,7 @@ void JaamWeb::setCrossOrigin() {
 }
 
 void JaamWeb::sendCrossOriginHeader(){
-    LOG.printf("[WEB] sendCORSHeader");
+    LOG.println("[WEB] sendCORSHeader");
     setCrossOrigin();
     server.send(204);
 }
@@ -2026,7 +2146,8 @@ void JaamWeb::handleUiSchema() {
           {"id": "climate", "name": "Клімат", "color": "#34f396"},
           {"id": "animations", "name": "Анімації", "color": "#fd7e14"},
           {"id": "brightness", "name": "Яскравість", "color": "#ffc107"},
-          {"id": "alerts", "name": "Тривоги", "color": "#6c757d"}
+          {"id": "alerts", "name": "Тривоги", "color": "#6c757d"},
+          {"id": "sound", "name": "Звук", "color": "#dc3545"}
         ]
         )JSON";
 
@@ -2086,6 +2207,14 @@ void JaamWeb::handleUiSchema() {
         {
             JsonArray arr = dropdownLists["auto_brightness_modes"].to<JsonArray>();
             appendOptionsList(arr, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["sound_sources"].to<JsonArray>();
+            appendOptionsList(arr, SOUND_SOURCES, SOUND_SOURCES_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["melodies"].to<JsonArray>();
+            appendOptionsList(arr, MELODY_NAMES, MELODIES_COUNT);
         }
     }
 
@@ -2186,7 +2315,7 @@ void JaamWeb::handleUiSchema() {
     addText("network", "ha_broker_address", "Адреса брокера", String(settings->getString(HA_BROKER_ADDRESS)), "");
     addInfoSuccess("network", "З'єднання встановлено. Перевірте налаштування при проблемах зі з'єднанням.");
 
-    // Піни LED стрічок
+    // Піни та апаратні налаштування
     addInfo("hardware", "Конфігурація апаратних пінів та параметрів LED стрічок", "#6f42c1", "M9,7H11V17H9V19H15V17H13V7H15V5H9V7M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
     addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13");
     addDropdown("hardware", "main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT);
@@ -2292,6 +2421,36 @@ void JaamWeb::handleUiSchema() {
     addBool("alerts", "enable_recon_drones", "Розвідувальні БПЛА", ENABLE_RECON_DRONES);
     addBool("alerts", "enable_ballistic", "Загроза балістичних ракет", ENABLE_BALLISTIC);
     addBool("alerts", "enable_explosions", "Вибухи", ENABLE_EXPLOSIONS);
+
+    // Налаштування звуку
+    addInfo("sound", "Налаштування звуку", "#6c757d", "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z");
+    addDropdown("sound", "sound_source", "Джерело звуку", "sound_sources", SOUND_SOURCE);
+    addText("sound", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1");
+    addText("sound", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1");
+    addText("sound", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1");
+    addSlider("sound", "melody_volume_day", "Гучність мелодії вдень", 0, 100, 1, settings->getInt(MELODY_VOLUME_DAY));
+    addSlider("sound", "melody_volume_night", "Гучність мелодії вночі", 0, 100, 1, settings->getInt(MELODY_VOLUME_NIGHT));
+    addBool("sound", "sound_on_alert", "Звукове сповіщення при тривозі у домашньому регіоні", SOUND_ON_ALERT);
+    addBool("sound", "sound_on_alert_end", "Звукове сповіщення при завершенні тривоги у домашньому регіоні", SOUND_ON_ALERT_END);
+    addBool("sound", "sound_on_explosion", "Звукове сповіщення при вибухах", SOUND_ON_EXPLOSION);
+    addBool("sound", "sound_on_drones", "Звукове сповіщення при загрозі ударних БПЛА", SOUND_ON_DRONES);
+    addBool("sound", "sound_on_recon_drones", "Звукове сповіщення при розвідувальних БПЛА", SOUND_ON_RECON_DRONES);
+    addBool("sound", "sound_on_missiles", "Звукове сповіщення при загрозі ракет", SOUND_ON_MISSILES);
+    addBool("sound", "sound_on_kabs", "Звукове сповіщення при загрозі КАБ", SOUND_ON_KABS);
+    addBool("sound", "sound_on_ballistic", "Звукове сповіщення при загрозі балістики", SOUND_ON_BALLISTIC);
+    addBool("sound", "sound_on_every_hour", "Звукове сповіщення щогодини", SOUND_ON_EVERY_HOUR);
+    addBool("sound", "sound_on_button_click", "Сигнали при натисканні кнопки", SOUND_ON_BUTTON_CLICK);
+    addBool("sound", "mute_sound_on_night", "Вимикати всі звуки у нічний час", MUTE_SOUND_ON_NIGHT);
+    addBool("sound", "ignore_mute_on_alert", "Сигнали тривоги навіть у нічний час", IGNORE_MUTE_ON_ALERT);
+    addDropdown("sound", "melody_on_alert", "Мелодія при тривозі у домашньому регіоні (буззер)", "melodies", MELODY_ON_ALERT);
+    addDropdown("sound", "melody_on_alert_end", "Мелодія при скасуванні тривоги у домашньому регіоні (буззер)", "melodies", MELODY_ON_ALERT_END);
+    addDropdown("sound", "melody_on_explosion", "Мелодія при вибухах (буззер)", "melodies", MELODY_ON_EXPLOSION);
+    addDropdown("sound", "melody_on_drones", "Мелодія при загрозі ударних БПЛА (буззер)", "melodies", MELODY_ON_DRONES);
+    addDropdown("sound", "melody_on_recon_drones", "Мелодія при розвідувальних БПЛА (буззер)", "melodies", MELODY_ON_RECON_DRONES);
+    addDropdown("sound", "melody_on_missiles", "Мелодія при загрозі ракет (буззер)", "melodies", MELODY_ON_MISSILES);
+    addDropdown("sound", "melody_on_kabs", "Мелодія при загрозі КАБ (буззер)", "melodies", MELODY_ON_KABS);
+    addDropdown("sound", "melody_on_ballistic", "Мелодія при загрозі балістики (буззер)", "melodies", MELODY_ON_BALLISTIC);
+
 
     String response;
     serializeJson(doc, response);

@@ -13,6 +13,17 @@ namespace DefaultColors {
     static const uint32_t HA = 0xFFFF00;  // Blue
     static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
 }
+// --- ALERT Modes ---
+namespace AlertModes {
+    static const int NO_ALERT = -1;
+    static const int ALERT = 0;
+    static const int DRONES = 5;
+    static const int MISSILES = 6;
+    static const int KABS = 7;
+    static const int BALLISTIC = 8;
+    static const int EXPLOSION = 9;
+    static const int RECON_DRONES = 10;
+}
 
 // --- MAP Modes ---
 namespace MapModes {
@@ -56,6 +67,11 @@ static const uint32_t WIFI_CHECK_INTERVAL = 1000;           // 1 second
 static const uint32_t WEBSOCKET_CHECK_INTERVAL = 3000;      // 3 seconds
 static const uint32_t TIME_CHECK_INTERVAL = 60000;          // 1 minute
 static const uint32_t MAIN_THREAD_CHECK_INTERVAL = 500;     // 0.5 seconds
+static const uint32_t BATTERY_CHECK_INTERVAL = 10000;         // 10 seconds
+static const uint32_t DISPLAY_CHECK_INTERVAL = 1000;       // 1 second
+static const uint32_t CLIMATE_CHECK_INTERVAL = 10000;      // 10 seconds
+static const uint32_t VOLUME_CHECK_INTERVAL = 1000;        // 1 second
+static const uint32_t BEEP_HOUR_CHECK_INTERVAL = 1000;      //
 
 // --- Packet structure ---
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
@@ -85,12 +101,198 @@ struct BgLedColorEntry {
 };
 
 struct SettingListItem {
-  uint16_t id;
+  int id;
   const char* name;
   bool ignore;
   bool sub;
 };
 
+// Структура для зберігання diff
+struct AlertDiff {
+    uint16_t region_id;
+    uint16_t previous_flags;
+    uint16_t current_flags;
+    bool has_changes;
+};
+
+// --- Sound ---
+enum SoundType {
+  MIN_OF_SILINCE,
+  MIN_OF_SILINCE_END,
+  REGULAR,
+  ALERT_ON,
+  ALERT_OFF,
+  EXPLOSIONS,
+  DRONES,
+  MISSILES,
+  KABS,
+  BALLISTIC,
+  RECON_DRONES,
+  CRITICAL_MIG,
+  CRITICAL_STRATEGIC,
+  CRITICAL_MIG_MISSILES,
+  CRITICAL_BALLISTIC_MISSILES,
+  CRITICAL_STRATEGIC_MISSILES,
+  SINGLE_CLICK,
+  LONG_CLICK
+};
+
+static const char UA_ANTHEM[]            PROGMEM = "UkraineAnthem:d=4,o=5,b=200:2d5,4d5,32p,4d5,32p,4d5,32p,4c5,4d5,4d#5,2f5,4f5,4d#5,2d5,2c5,2a#4,2d5,2a4,2d5,1g4,32p,1g4";
+static const char OI_U_LUZI[]            PROGMEM = "OiULuzi:d=32,o=5,b=200:2d,32p,2d,2f.,4d,4e,4f,4e,4d,2c#,2a4,2d.,4e,2f,2e,2d.";
+static const char COSSACKS_MARCH[]       PROGMEM = "CossacksMarch:d=32,o=5,b=200:2d.,8a4,8d,2f.,8d,8f,4d,8a4,8d,4f,8d,8f,4d,8a4,8d,4f,8d,8f,1d.";
+static const char HARRY_POTTER[]         PROGMEM = "HarryPotter:d=8,o=6,b=100:b5,e.,16g,f#,4e,b,4a.,4f#.,e.,16g,f#,4d,f,2b5";
+static const char SIREN[]                PROGMEM = "Siren:d=32,o=6,b=225:16c#,d,d#,4e.,d#,d,8c#,16c#,d,d#,4e.,d#,d,8c#,16c#,d,d#,4e.,d#,d,8c#";
+static const char COMMUNICATION[]        PROGMEM = "Communicator:d=32,o=7,b=180:d#,e,g,d#,g,d#,f#,e,f,2p,d#,e,g,d#,g,d#,f#,e,f,2p,d#,e,g,d#,g,d#,f#,e,f";
+static const char STAR_WARS[]            PROGMEM = "StarWars:d=4,o=5,b=180:8f,8f,8f,2a#.,2f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8d#6,2c6";
+static const char IMPERIAL_MARCH[]       PROGMEM = "ImperialMarch:d=4,o=5,b=112:8d.,16p,8d.,16p,8d.,16p,8a#4,16p,16f,8d.,16p,8a#4,16p,16f,d.,8p,8a.,16p,8a.,16p,8a.,16p,8a#,16p,16f,8c#.,16p,8a#4,16p,16f,d.";
+static const char STAR_TRACK[]           PROGMEM = "StarTrek:d=4,o=5,b=63:32p,8f.,16a#,d#.6,8d6,16a#.,16g.,16c.6,f6";
+static const char INDIANA_JONES[]        PROGMEM = "IndianaJones:d=4,o=5,b=250:e,8p,8f,8g,8p,2c.6,8p.,d,8p,8e,1f,p.,g,8p,8a,8b,8p,2f.6,p,a,8p,8b,2c6,2d6,2e6";
+static const char BACK_TO_THE_FUTURE[]   PROGMEM = "BackToTheFuture:d=4,o=6,b=180:2c,8b5,8a5,b5,a5,g5,1a5,p,d,2c,8b5,8a5,b5,a5,g5,1a5";
+static const char KISS_I_WAS_MADE[]      PROGMEM = "KissIWasMade:d=4,o=5,b=125:c6,d6,8d#6,8p,8f6,8g6,8p,8g6,f6,d#6,d6,c6,d6,8d#6,8p,8f6,8g6,8p,8g6,f.6";
+static const char THE_LITTLE_MERMAID[]   PROGMEM = "TheLittleMermaid:d=32,o=7,b=100:16c5,16f5,16a5,16c6,16p,16c6,16p,16c6,8a#5,8d6,8c6,8a5,16f4,16a4,16c5,16f5,16p,16f5,16p,16f5,8e5,8g5,8f5";
+static const char NOKIA_TUN[]            PROGMEM = "NokiaTun:d=4,o=5,b=225:8e6,8d6,f#,g#,8c#6,8b,d,e,8b,8a,c#,e,2a";
+static const char PACKMAN[]              PROGMEM = "Pacman:d=32,o=5,b=112:32p,b,p,b6,p,f#6,p,d#6,p,b6,f#6,16p,16d#6,16p,c6,p,c7,p,g6,p,e6,p,c7,g6,16p,16e6,16p,b,p,b6,p,f#6,p,d#6,p,b6,f#6,16p,16d#6,16p,d#6,e6,f6,p,f6,f#6,g6,p,g6,g#6,a6,p,b.6";
+static const char SHCHEDRYK[]            PROGMEM = "Shchedryk:d=8,o=5,b=180:4a,g#,a,4f#,4a,g#,a,4f#";
+static const char XMEN[]                 PROGMEM = "XMen:d=4,o=6,b=125:16d#4,16g4,16c5,16d#5,4d5,8c5,8g4,4p,16d#4,16g4,16c5,16d#5,4d5,8c5,8g#4,4p,16d#4,16g4,16c5,16d#5,4d5,8c5,8d#5,2p,8d5,8c5,8g5,16g5,32a5,32b5,4c6";
+static const char AVENGERS[]             PROGMEM = "Avengers:d=16,o=6,b=70:4e4,4p.,16e4,16p,8e4,16p,16b4,4a4,4p,4g4,4f#4,16d4,16e4,8p,16e4,16f#4,8p,16d5,16e5,8p,16e5,16f#5,8p,4e4";
+static const char SIREN2[]               PROGMEM = "Siren2:d=4,o=5,b=200:a.,8g#,a.,8g#,a.,8g#";
+static const char SIREN3[]               PROGMEM = "Siren3:o=6,d=4,b=100:8b5,8d,8b5,8d,8b5,8d";
+static const char SIREN4[]               PROGMEM = "Siren4:o=5,d=4,b=200:16a,16b,16a,16b,16a,16b,16a,16b,16a,16b,16a,16b,16a,16b,16a,16b,16a,16b";
+static const char SQUIDGAME[]            PROGMEM = "SquidGame:d=32,o=4,b=200:8f,32p,8f,32p,8f,32p,4d,32p,8d#.,4f.,4p.,8f,32p,8f,32p,8f,32p,4d,32p,8d#.,4f.,4p.,4g,32p,8g.,32p,4g,32p,8c5.,32p,4a#,32p,8a.,4g,32p,8a.,4a#.,16p.,4a#.,16p.,4a#.";
+static const char BANDERA[]              PROGMEM = "Bandera:d=32,o=4,b=140:8e,32p,8e,8c5,8b,8a,32p,8a,4p,8c5,32p,8c5,8d5,8c5,4b.,32p,8b,32p,8b,8b,8b,8b,8e5,8d5,8c5,8b,4a,32p,8a.,16a,32p,8a,8a";
+static const char HUILO[]                PROGMEM = "Huilo:d=32,o=4,b=150:8e5,8p,4e5,4d5,2c5,2p5,8g,8c5,8d5,8e5,8d5,8c5,8e5,2a,2p,8g,8a,8b,8c5,8b,8a,8e,2f,2p,8e,8f,8e,8f,8e,8f,8f#,2g";
+static const char HELLDIVERS[]           PROGMEM = "Helldivers:d=4,o=5,b=120:8f,8e,8d,1a4,4a4,4p,4c.,1d,2p,8f,8e,8d,1f,8c.,32p,8c.,8d.,4a,8d,2g";
+static const char SIREN5[]               PROGMEM = "Siren5:d=16,o=5,b=200:c6,f6,c7,c6,f6,c7,c6,f6,c7,8p,c,f,c6,c,f,c6,c,f,c6";
+static const char SIREN6[]               PROGMEM = "Siren6:d=16,o=6,b=160:8d,p,2d,p,8d,p,2d,p,8d,p,2d";
+static const char SIREN7[]               PROGMEM = "Siren7:d=4,o=5,b=140:16c,16e,16g,16a,16c,16e,16g,16a,16c,16e,16g,16a";
+static const char SIREN8[]               PROGMEM = "Siren8:=8,o=5,b=300:c,e,g,c,e,g,c,e,g,c6,e6,g6,c6,e6,g6,c6,e6,g6,c7,e7,g7,c7,e7,g7,c7,e7,g7";
+
+static const char CLOCK_BEEP[]           PROGMEM = "ClockBeep:d=8,o=7,b=300:4g,32p,4g";
+static const char MOS_BEEP[]             PROGMEM = "MosBeep:d=4,o=4,b=250:g";
+static const char SINGLE_CLICK_SOUND[]   PROGMEM = "SingleClick:d=8,o=4,b=300:f";
+static const char LONG_CLICK_SOUND[]     PROGMEM = "LongClick:d=8,o=4,b=300:4f";
+
+constexpr int MELODIES_COUNT = 29;
+static const char* MELODIES[MELODIES_COUNT] PROGMEM = {
+  UA_ANTHEM,
+  OI_U_LUZI,
+  COSSACKS_MARCH,
+  HARRY_POTTER,
+  SIREN,
+  COMMUNICATION,
+  STAR_WARS,
+  IMPERIAL_MARCH,
+  STAR_TRACK,
+  INDIANA_JONES,
+  BACK_TO_THE_FUTURE,
+  KISS_I_WAS_MADE,
+  THE_LITTLE_MERMAID,
+  NOKIA_TUN,
+  PACKMAN,
+  SHCHEDRYK,
+  XMEN,
+  AVENGERS,
+  SIREN2,
+  SQUIDGAME,
+  BANDERA,
+  HUILO,
+  HELLDIVERS,
+  SIREN3,
+  SIREN4,
+  SIREN5,
+  SIREN6,
+  SIREN7,
+  SIREN8,
+};
+
+static SettingListItem MELODY_NAMES[MELODIES_COUNT] PROGMEM = {
+  {0, "Гімн України", false},
+  {20, "Батько наш Бандера", false},
+  {15, "Щедрик", false},
+  {1, "Ой у лузі", false},
+  {2, "Козацький марш", false},
+  {4, "Сирена 1", false},
+  {18, "Сирена 2", false},
+  {23, "Сирена 3", false},
+  {24, "Сирена 4", false},
+  {25, "Сирена 5", false},
+  {26, "Сирена 6", false},
+  {27, "Сирена 7", false},
+  {28, "Сирена 8", false},
+  {5, "Комунікатор", false},
+  {3, "Гаррі Поттер", false},
+  {6, "Зоряні війни", false},
+  {7, "Імперський марш", false},
+  {8, "Зоряний шлях", false},
+  {9, "Індіана Джонс", false},
+  {10, "Назад у майбутнє", false},
+  {11, "Kiss - I Was Made", false},
+  {12, "Little Mermaid - Under the Sea", false},
+  {13, "Рінгтон Nokia", false},
+  {14, "Пакмен", false},
+  {16, "Люди Х", false},
+  {17, "Месники", false},
+  {19, "Squid Game", false},
+  {21, "ПТН ХЙЛ", false},
+  {22, "Helldivers 2 - A cup of Liber-Tea", false}
+};
+
+static const String DF_CLOCK_BEEP = "/01.mp3";
+static const String DF_CLOCK_TICK = "/02.mp3";
+static const String DF_UA_ANTHEM = "/03.mp3";
+static const String DF_SIREN_1 = "/04.mp3";
+static const String DF_SIREN_2 = "/05.mp3";
+static const String DF_SIREN_3 = "/06.mp3";
+static const String DF_SIREN_4 = "/07.mp3";
+static const String DF_SIREN_5 = "/08.mp3";
+static const String DF_SIREN_6 = "/09.mp3";
+static const String DF_SIREN_7 = "/10.mp3";
+static const String DF_SIREN_8 = "/11.mp3";
+static const String DF_SIREN_9 = "/12.mp3";
+static const String DF_SIREN_10 = "/13.mp3";
+static const String DF_THE_HOBBIT = "/14.mp3";
+static const String DF_THE_MATRIX = "/15.mp3";
+static const String DF_AVENGERS = "/16.mp3";
+static const String DF_TERMINATOR_SHORT = "/17.mp3";
+static const String DF_PIRATES_OF_THE_CARRIBEAN = "/18.mp3";
+static const String DF_SIREN_11 = "/19.mp3";
+static const String DF_NOTIFICATION_NEWS = "/20.mp3";
+static const String DF_GOOD_MORNING_VIETNAM = "/21.mp3";
+static const String DF_NOTIFICATION_R2D2 = "/22.mp3";
+static const String DF_NOTIFICATION_STARTREK = "/23.mp3";
+static const String DF_AIR_RAID_1 = "/24.mp3";
+static const String DF_CAROL_OF_THE_BELLS = "/25.mp3";
+static const String DF_NOTIFICATION_BACK_TO_THE_FUTURE = "/26.mp3";
+static const String DF_IMPERIAL_MARCH = "/27.mp3";
+static const String DF_GOOD_BAD_UGLY = "/28.mp3";
+static const String DF_HARRY_POTTER = "/29.mp3";
+static const String DF_MARCH = "/30.mp3";
+static const String DF_MANDALORIAN_CALL = "/31.mp3";
+static const String DF_MARIO = "/32.mp3";
+static const String DF_PACMAN = "/33.mp3";
+static const String DF_HELLDIVERS = "/34.mp3";  
+
+constexpr int TRACKS_COUNT = 3;
+static String TRACKS[TRACKS_COUNT] = {
+  DF_CLOCK_TICK,
+  DF_CLOCK_BEEP,
+  DF_UA_ANTHEM
+};
+
+static SettingListItem TRACK_NAMES[TRACKS_COUNT] PROGMEM = {
+  {0, "Годинникова стрілка", false},
+  {1, "Годинник", false},
+  {2, "Гімн України", false}
+};
+
+constexpr int SOUND_SOURCES_COUNT = 3;
+static SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT] PROGMEM = {
+  {-1, "Вимкнено", false},
+  {0, "Buzzer", false},
+  {1, "DF Player Pro", false}
+};
+
+// --- Other Settings ---
 constexpr int LED_COLOR_FORMATS_COUNT = 8;
 static SettingListItem LED_COLOR_FORMATS[] = {
     {NEO_RGB, "NEO_RGB"},
@@ -395,6 +597,21 @@ enum Type {
     ANIMATION_KAB_CYCLE_TIME,
     ANIMATION_BALLISTIC_CYCLE_TIME,
     ANIMATION_EXPLOSION_CYCLE_TIME,
+    SOUND_ON_DRONES,
+    MELODY_ON_DRONES,
+    TRACK_ON_DRONES,
+    SOUND_ON_MISSILES,
+    MELODY_ON_MISSILES,
+    TRACK_ON_MISSILES,
+    SOUND_ON_KABS,
+    MELODY_ON_KABS,
+    TRACK_ON_KABS,
+    SOUND_ON_BALLISTIC,
+    MELODY_ON_BALLISTIC,
+    TRACK_ON_BALLISTIC,
+    SOUND_ON_RECON_DRONES,
+    MELODY_ON_RECON_DRONES,
+    TRACK_ON_RECON_DRONES,
 };
 
 static SettingListItem DISTRICTS[MAX_REGIONS] = {

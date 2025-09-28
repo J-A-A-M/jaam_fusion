@@ -22,6 +22,7 @@
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
+#include <JaamSound.h>
 
 using namespace websockets;
 
@@ -42,6 +43,7 @@ JaamBattery         battery;
 JaamStorage         storage;
 JaamDisplay         display;
 JaamClimateSensor   climate;
+JaamSound           sound;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -79,14 +81,19 @@ volatile bool needReconnectBgStrip = false;
 volatile bool needReconnectServiceStrip = false;
 volatile bool needUpdateBatteryPin = false;
 volatile bool needReconfigureDisplay = false;
+volatile bool needReconfigureSound = false;
 volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
+volatile bool needAdaptVolume = false;
+volatile bool needUpdateHomeAlertBit = false;
+volatile bool needPlayTestMelody = false;
+volatile bool needPlayTestTrack = false;
 
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
 
-uint32_t            lastWifiConnectTime = 0;  // Track when WiFi was last connected
+time_t              lastWifiConnectTime = 0;  // Track when WiFi was last connected
 uint16_t            alertsHash = 0;
 bool                wifiConnected = false;
 
@@ -97,11 +104,14 @@ time_t              websocketLastPingTime = 0;
 bool                isFirstDataFetchCompleted = false;
 bool                apiConnected;
 bool                websocketReconnect = false;
-uint32_t            lastWebsocketConnectTime = 0;
+time_t              lastWebsocketConnectTime = 0;
 
-
-
+// --- OTHER Configuration ---
 uint8_t             legacy = 0;
+int                 alertBit = -1;
+time_t              lastHomeAlertChangeTime = 0;
+int                 testMelodyId = -1;
+int                 testTrackId = -1;
 
 // --- CLOCK ---
 bool needDivider = false;
@@ -188,6 +198,173 @@ void rebootDevice(int time = 2000, bool async = false) {
     ESP.restart();
 }
 
+bool isItNightNow() {
+    int dayStart = settings.getInt(DAY_START);
+    int nightStart = settings.getInt(NIGHT_START);
+    // if day and night start time is equels it means it's always day, return day
+    if (dayStart == nightStart) return false;
+
+    int currentHour = timeClient.hour();
+
+    // handle case, when night start hour is bigger than day start hour, ex. night start at 22 and day start at 9
+    if (nightStart > dayStart) return currentHour >= nightStart || currentHour < dayStart ? true : false;
+
+    // handle case, when day start hour is bigger than night start hour, ex. night start at 1 and day start at 8
+    return currentHour < dayStart && currentHour >= nightStart ? true : false;
+}
+
+// --- SOUND Functions ---
+void playMelody(const char* melodyRtttl) {
+#if BUZZER_ENABLED
+  if (sound.isBuzzerEnabled() && (sound.soundSource == 0 || sound.soundSource == 2)) {
+    sound.playBuzzer(melodyRtttl);
+  } else {
+    LOG.println("Buzzer not enabled or sound source not valid (need 0 or 2): " + String(sound.soundSource));
+  }
+#endif
+}
+
+void playTrack(String track) {
+#if DFPLAYER_PRO_ENABLED
+  if (track != "" && (sound.soundSource == 1 || sound.soundSource == 2)) {
+    sound.playDFPlayer(track);
+  } else {
+    LOG.println("DFPlayer not enabled or sound source not valid (need 1 or 2): " + String(sound.soundSource));
+  }
+#endif
+}
+
+void playMelody(SoundType type) {
+#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+  switch (type) {
+  case MIN_OF_SILINCE:
+    playMelody(MOS_BEEP);
+    playTrack(DF_CLOCK_TICK);
+    break;
+  case MIN_OF_SILINCE_END:
+    playMelody(UA_ANTHEM);
+    playTrack(DF_UA_ANTHEM);
+    break;
+  case ALERT_ON:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT)));
+    break;
+  case ALERT_OFF:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT_END)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT_END)));
+    break;
+  case EXPLOSIONS:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_EXPLOSION)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_EXPLOSION)));
+    break;
+  case DRONES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_DRONES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_DRONES)));
+    break;
+  case MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_MISSILES)));
+    break;
+  case KABS:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_KABS)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_KABS)));
+    break;
+  case BALLISTIC:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_BALLISTIC)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_BALLISTIC)));
+    break;
+  case RECON_DRONES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_RECON_DRONES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_RECON_DRONES)));
+    break;
+  case CRITICAL_MIG:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG)));
+    break; 
+  case CRITICAL_STRATEGIC:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC)));
+    break;
+  case CRITICAL_MIG_MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG_MISSILES)));
+    break;
+  case CRITICAL_BALLISTIC_MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_BALLISTIC_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_BALLISTIC_MISSILES)));
+    break;
+  case CRITICAL_STRATEGIC_MISSILES:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC_MISSILES)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC_MISSILES)));
+    break;
+  case REGULAR:
+    playMelody(CLOCK_BEEP);
+    playTrack(DF_CLOCK_BEEP);
+    break;
+  case SINGLE_CLICK:
+    playMelody(SINGLE_CLICK_SOUND);
+    playTrack(DF_CLOCK_TICK);
+    break;
+  case LONG_CLICK:
+    playMelody(LONG_CLICK_SOUND);
+    playTrack(DF_CLOCK_TICK);
+    break;
+  }
+#endif
+}
+
+bool needToPlaySound(SoundType type) {
+#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+  // do not play any sound before websocket connection
+  if (!isFirstDataFetchCompleted) return false;
+
+  // ignore mute on alert
+  if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
+
+  // disable sounds on night mode by time only
+  if (settings.getBool(MUTE_SOUND_ON_NIGHT) && isItNightNow()) return false;
+
+  switch (type) {
+  case MIN_OF_SILINCE:
+    return settings.getBool(SOUND_ON_MIN_OF_SL);
+  case MIN_OF_SILINCE_END:
+    return settings.getBool(SOUND_ON_MIN_OF_SL);
+  case ALERT_ON:
+    return settings.getBool(SOUND_ON_ALERT);
+  case ALERT_OFF:
+    return settings.getBool(SOUND_ON_ALERT_END);
+  case EXPLOSIONS:
+    return settings.getBool(SOUND_ON_EXPLOSION);
+  case DRONES:
+    return settings.getBool(SOUND_ON_DRONES);
+  case MISSILES:
+    return settings.getBool(SOUND_ON_MISSILES);
+  case KABS:
+    return settings.getBool(SOUND_ON_KABS);
+  case BALLISTIC:
+    return settings.getBool(SOUND_ON_BALLISTIC);
+  case RECON_DRONES:
+    return settings.getBool(SOUND_ON_RECON_DRONES);
+  case CRITICAL_MIG:
+    return settings.getBool(SOUND_ON_CRITICAL_MIG);
+  case CRITICAL_STRATEGIC:
+    return settings.getBool(SOUND_ON_CRITICAL_STRATEGIC);
+  case CRITICAL_MIG_MISSILES:
+    return settings.getBool(SOUND_ON_CRITICAL_MIG_MISSILES);
+  case CRITICAL_BALLISTIC_MISSILES:
+    return settings.getBool(SOUND_ON_CRITICAL_BALLISTIC_MISSILES);
+  case CRITICAL_STRATEGIC_MISSILES:
+    return settings.getBool(SOUND_ON_CRITICAL_STRATEGIC_MISSILES);
+  case REGULAR:
+    return settings.getBool(SOUND_ON_EVERY_HOUR);
+  case SINGLE_CLICK:
+  case LONG_CLICK:
+    return settings.getBool(SOUND_ON_BUTTON_CLICK);
+  }
+#endif
+  return false;
+}
+
 // --- WEBSOCKET Functions ---
 
 void printHex(const String& data) {
@@ -197,14 +374,6 @@ void printHex(const String& data) {
     }
     LOG.println();
 }
-
-// Структура для зберігання diff
-struct AlertDiff {
-    uint16_t region_id;
-    uint16_t previous_flags;
-    uint16_t current_flags;
-    bool has_changes;
-};
 
 void servicePin(ServiceLed type) {
     if (strip_service != nullptr) {
@@ -216,12 +385,6 @@ void servicePin(ServiceLed type) {
     }
 }
 
-void checkServicePins() {
-    servicePin(POWER);
-    servicePin(WIFI);
-    servicePin(DATA);
-}
-
 // Функція для розрахунку diff
 AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16_t current_flags) {
     AlertDiff diff;
@@ -230,6 +393,50 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     diff.current_flags = current_flags;
     diff.has_changes = (previous_flags != current_flags);
     return diff;
+}
+
+void alertAction(int localAlertBit) {
+    if (localAlertBit != alertBit) {
+        LOG.printf("[ALERT] Home district alert status changed from %d to %d\n", alertBit, localAlertBit);
+        if (settings.getBool(SOUND_ON_ALERT) && hasHigherPriority(localAlertBit, alertBit)) {
+            switch (localAlertBit){
+                case AlertModes::ALERT:
+                    if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
+                    display.showServiceMessage("ТРИВОГА", "", 5000);
+                    break;
+                case AlertModes::DRONES:
+                    if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
+                    display.showServiceMessage("БПЛА", "", 5000);
+                    break;
+                case AlertModes::MISSILES:
+                    if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
+                    display.showServiceMessage("РАКЕТИ", "", 5000);
+                    break;
+                case AlertModes::KABS:
+                    if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
+                    display.showServiceMessage("КАБ", "", 5000);
+                    break;
+                case AlertModes::BALLISTIC:
+                    if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
+                    display.showServiceMessage("БАЛЛІСТИКА", "", 5000);
+                    break;
+                case AlertModes::EXPLOSION:
+                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                    display.showServiceMessage("ВИБУХИ", "", 5000);
+                    break;
+                case AlertModes::RECON_DRONES:
+                    if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
+                    display.showServiceMessage("РОЗВІДКА БПЛА", "", 5000);
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (settings.getBool(SOUND_ON_ALERT_END) && localAlertBit == AlertModes::NO_ALERT) {
+            if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
+            display.showServiceMessage("ВІДБІЙ", "", 5000);
+        }
+    }
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
@@ -470,6 +677,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
                 settings.getInt(HOME_DISTRICT), homeRegionBit);
             animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
+            alertAction(homeRegionBit);
         }else {
             LOG.println("[WEBSOCKET] No changes in home region LEDs");
         }
@@ -696,6 +904,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                 LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
                     settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
                 animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
+                alertAction(homeRegionBit);
+                alertBit = homeRegionBit;
             }else {
                 LOG.println("[WEBSOCKET] No changes in home region LEDs");
             }
@@ -1179,21 +1389,14 @@ void syncTime(int8_t attempts) {
     }
 }
 
-bool isItNightNow() {
-    int dayStart = settings.getInt(DAY_START);
-    int nightStart = settings.getInt(NIGHT_START);
-    // if day and night start time is equels it means it's always day, return day
-    if (dayStart == nightStart) return false;
-
-    int currentHour = timeClient.hour();
-
-    // handle case, when night start hour is bigger than day start hour, ex. night start at 22 and day start at 9
-    if (nightStart > dayStart) return currentHour >= nightStart || currentHour < dayStart ? true : false;
-
-    // handle case, when day start hour is bigger than night start hour, ex. night start at 1 and day start at 8
-    return currentHour < dayStart && currentHour >= nightStart ? true : false;
+// --- ALERT Functions ---
+int getAlertBit(uint16_t region_id) {
+    int highestBit = findHighestBitForRegion(region_id);
+    return highestBit;
 }
 
+
+// --- BRIGHTNESS Functions ---
 uint8_t getCurrentBrightnes() {
     // if auto brightness set to day/night mode, check current hour and choose brightness
     if (settings.getInt(BRIGHTNESS_MODE) == 0) {
@@ -1206,7 +1409,6 @@ uint8_t getCurrentBrightnes() {
 }
 
 // --- INIT Functions ---
-
 void initLegacy() {
     LOG.println("[INIT] Init legacy");
     legacy = settings.getInt(LEGACY);
@@ -1277,6 +1479,41 @@ void initSensors() {
 
   //initDisplayModes();
 }
+
+void initSound() {
+#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+  sound.init(
+    settings.getInt(BUZZER_PIN), 
+    settings.getInt(DF_RX_PIN), 
+    settings.getInt(DF_TX_PIN),
+    settings.getInt(MELODY_VOLUME_CURRENT),
+    settings.getInt(MELODY_VOLUME_DAY),
+    settings.getInt(MELODY_VOLUME_NIGHT)
+  );
+#endif
+#if BUZZER_ENABLED
+  if (sound.isBuzzerEnabled()) {  
+    sound.initBuzzer();
+  }
+#endif
+#if DFPLAYER_PRO_ENABLED
+  if (sound.isDFPlayerEnabled()) {
+    sound.initDFPlayer();
+  }
+#endif
+
+  if (sound.isBuzzerEnabled() && sound.isDFPlayerConnected()) {
+    sound.setSoundSource(settings.getInt(SOUND_SOURCE));
+  } else if (sound.isBuzzerEnabled()) {
+    sound.setSoundSource(0);
+  } else if (sound.isDFPlayerConnected()) {
+    sound.setSoundSource(1);
+  } else {
+    sound.setSoundSource(-1);
+  }
+  LOG.printf("Sound source: %d\n", sound.soundSource);
+}
+
 
 void initMapping() {
     LOG.println("[INIT] Init mapping");
@@ -1922,6 +2159,12 @@ void mainThreadProcess() {
         needReconfigureDisplay = false;
     }
 
+    if (needReconfigureSound) {
+        LOG.println("[MAIN] Reconfiguring sound");
+        initSound();
+        needReconfigureSound = false;
+    }
+
     if (needUpdateAnimationsMode) {
         LOG.printf("[MAIN] Animations sync mode %s\n", settings.getInt(ENABLE_SYNC_ANIMATIONS) ? "ENABLED" : "DISABLED");
         animation.setSynchronizedMode(settings.getInt(ENABLE_SYNC_ANIMATIONS));
@@ -1932,6 +2175,28 @@ void mainThreadProcess() {
         LOG.println("[MAIN] Adapting climate settings");
         climateProcess();
         needAdaptClimate = false;
+    }
+
+    if (needAdaptVolume) {
+        LOG.println("[MAIN] Adapting sound settings");
+        sound.setVolumeNight(settings.getInt(MELODY_VOLUME_NIGHT));
+        sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
+
+        needAdaptVolume = false;
+    }
+
+    if (needUpdateHomeAlertBit) {
+        LOG.println("[MAIN] Updating home alert bit");
+        int localAlertBit = getAlertBit(settings.getInt(HOME_DISTRICT));
+        alertAction(localAlertBit);
+        alertBit = localAlertBit;
+        needUpdateHomeAlertBit = false;
+    }
+
+    if (needPlayTestMelody) {
+        LOG.println("[MAIN] Playing test melody");
+        playMelody(MELODIES[testMelodyId]);
+        needPlayTestMelody = false;
     }
 }
 
@@ -1972,6 +2237,33 @@ void displayProcess() {
     showClock();
 }
 
+// --- Sound Process ---
+void volumeProcess() {
+  int volumeLocal = isItNightNow() ? sound.volumeNight : sound.volumeDay;
+  if (volumeLocal != sound.volumeCurrent) {
+    sound.setVolumeCurrent(volumeLocal);
+    settings.saveInt(MELODY_VOLUME_CURRENT, volumeLocal);
+    #if BUZZER_ENABLED
+    if (sound.isBuzzerEnabled()) {
+      sound.setBuzzerVolume(volumeLocal); 
+    }
+    #endif
+    #if DFPLAYER_PRO_ENABLED
+    if (sound.isDFPlayerConnected()) {
+      sound.setDFPlayerVolume(volumeLocal); 
+    }
+    #endif
+    LOG.printf("Set volume to: %d\n", volumeLocal);
+  }
+}
+
+void beepHourProcess() {
+  if (needToPlaySound(REGULAR) && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
+    sound.setBeepHour(timeClient.hour());
+    playMelody(REGULAR);
+  }
+}
+
 // --- SETUP ---
 void setup() {
     LOG.begin(115200);
@@ -2003,6 +2295,9 @@ void setup() {
     initSensors();
     checkFreeHeap("sensors initialization");
 
+    initSound();
+    checkFreeHeap("sound initialization");
+
     // initWifi();
     // checkFreeHeap("WiFi initialization");
 
@@ -2024,10 +2319,12 @@ void setup() {
     animation.setSettings(&settings);
     // Встановлюємо режим роботи анімацій
     animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
+    checkFreeHeap("animation settings");
     led.setSettings(&settings);
+    checkFreeHeap("LED settings");
     battery.setSettings(&settings);
-    checkFreeHeap("animation and LED settings");
-    
+    checkFreeHeap("battery settings");
+
     // Налаштовуємо асинхронні задачі
 #if defined(TEST_ANIMATION)
     async.setInterval(animations, ANIMATION_INTERVAL);
@@ -2041,13 +2338,13 @@ void setup() {
 #endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
     async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
-    
-    async.setInterval(batteryProcess, 10000); // кожні 10 секунд
-    async.setInterval(displayProcess, 1000); // кожну секунду
-    async.setInterval(climateProcess, 10000); // кожні 10 секунд
+    async.setInterval(batteryProcess, BATTERY_CHECK_INTERVAL);
+    async.setInterval(displayProcess, DISPLAY_CHECK_INTERVAL);
+    async.setInterval(climateProcess, CLIMATE_CHECK_INTERVAL);
+    async.setInterval(volumeProcess, VOLUME_CHECK_INTERVAL);
+    async.setInterval(beepHourProcess, BEEP_HOUR_CHECK_INTERVAL);
+
     checkFreeHeap("async tasks configuration");
-    
-    checkFreeHeap("web interface initialization");
     
     LOG.println("[SETUP] Initialization complete");
     checkFreeHeap("full setup");
