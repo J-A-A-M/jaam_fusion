@@ -51,6 +51,16 @@ namespace AnimationConfig {
     static const uint8_t MAX_END_BRIGHTNESS = 255;
 }
 
+namespace AnimationTypes { 
+    static const int FADE = 0;
+    static const int BLINK = 1;
+    static const int BLEND_FADE = 2;
+    static const int PULSE = 3;
+    static const int ONE_WAY_BLEND_FADE = 4;
+    static const int RUNNING_LIGHT = 5;
+    static const int SET_BRIGHTNESS = 6;
+}
+
 // --- WiFi Configuration ---
 namespace WiFiConfig {
     static const bool ENABLED = true;
@@ -323,6 +333,18 @@ static SettingListItem MAP_MODES[] = {
   // {5, "Лампа", false},
 };
 
+constexpr int DISPLAY_MODES_COUNT = 2;
+static SettingListItem DISPLAY_MODES[] = {
+  {0, "Вимкнено", false},
+  {1, "Годинник", false},
+  // {5, "Енергосистема", false},
+  // {2, "Погода", false},
+  // {6, "Радіація", false},
+  // {3, "Технічна інформація", false},
+  // {4, "Мікроклімат", false},
+  // {9, "Перемикання", false},
+};
+
 constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
 static SettingListItem AUTO_BRIGHTNESS_MODES[] = {
   {0, "Вимкнено"},
@@ -393,13 +415,13 @@ static SettingListItem LED_MODE_OPTIONS[] = {
 
 constexpr int ANIMATION_TYPES_COUNT = 7;
 static SettingListItem ANIMATION_TYPES[] = {
-  {0, "FADE"},
-  {1, "BLINK"},
-  {2, "BLEND_FADE"},
-  {3, "PULSE"},
-  {4, "ONE_WAY_BLEND_FADE"},
-  {5, "RUNNING_LIGHT", true},
-  {6, "SET_BRIGHTNESS", true}
+  {AnimationTypes::FADE, "FADE"},
+  {AnimationTypes::BLINK, "BLINK"},
+  {AnimationTypes::BLEND_FADE, "BLEND_FADE"},
+  {AnimationTypes::PULSE, "PULSE"},
+  {AnimationTypes::ONE_WAY_BLEND_FADE, "ONE_WAY_BLEND_FADE"},
+  {AnimationTypes::RUNNING_LIGHT, "RUNNING_LIGHT", true},
+  {AnimationTypes::SET_BRIGHTNESS, "SET_BRIGHTNESS", true}
 };
 
 enum Type {
@@ -553,6 +575,7 @@ enum Type {
     DISPLAY_WIDTH,
     DISPLAY_HEIGHT,
     DISPLAY_ROTATION,
+    DISPLAY_ALERT_MESSAGE_TIME,
     DAY_START,
     NIGHT_START,
     WS_ALERT_TIME,

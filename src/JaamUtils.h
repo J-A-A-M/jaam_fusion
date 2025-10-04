@@ -60,6 +60,7 @@ extern uint8_t                          legacy;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 extern JaamClimateSensor                climate;
+extern int                              prevMapMode;
 
 struct JaamFirmware {
     int major = 0;
@@ -416,7 +417,7 @@ inline void checkFreeHeap(const char* label) {
     lastUsedHeap = usedHeap;
 }
 
-// Функція для пошуку номеру найстаршого біту в 16-бітному числі
+// Функція для пошуку номеру найстаршого дозволеного біту в 16-бітному числі
 inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
     if (value == 0) return -1; // Повертаємо -1 як індикатор відсутності бітів
     
@@ -426,18 +427,40 @@ inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
         return -1; // Якщо біт 0 не встановлений і потрібно перевіряти наявність біта 0, повертаємо -1
     }
 
-    // Пошук найвищого біту за пріоритетом
+    // Пошук найвищого дозволеного біту за пріоритетом
     for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
         int bit = ALERT_PRIORITY_ORDER[i];
         if (value & (1 << bit)) {
-            return bit;
+            // Перевіряємо чи дозволено показувати цей тип тривоги
+            bool is_enabled = false;
+            
+            if (bit == 0) {
+                is_enabled = true; // Alert завжди показуємо
+            } else if (bit == 5) {
+                is_enabled = settings.getBool(ENABLE_DRONES);
+            } else if (bit == 6) {
+                is_enabled = settings.getBool(ENABLE_MISSILES);
+            } else if (bit == 7) {
+                is_enabled = settings.getBool(ENABLE_KABS);
+            } else if (bit == 8) {
+                is_enabled = settings.getBool(ENABLE_BALLISTIC);
+            } else if (bit == 9) {
+                is_enabled = settings.getBool(ENABLE_EXPLOSIONS);
+            } else if (bit == 10) {
+                is_enabled = settings.getBool(ENABLE_RECON_DRONES);
+            }
+            
+            // Якщо тип тривоги дозволено показувати - повертаємо його
+            if (is_enabled) {
+                return bit;
+            }
         }
     }
     
-    return -1; // Жоден з пріоритетних бітів не встановлений
+    return -1; // Жоден з дозволених пріоритетних бітів не встановлений
 }
 
-// Функція для порівняння пріоритетів двох бітів (повертає true, якщо bit1 має вищий пріоритет за bit2 або рівний пріоритет)
+// Функція для порівняння пріоритетів двох бітів (повертає true, якщо bit1 має вищий пріоритет за bit2)
 inline bool hasHigherPriority(int bit1, int bit2) {
     if (bit1 == -1) return false;
     if (bit2 == -1) return true;
@@ -497,6 +520,18 @@ inline int findHighestBitForLed(int position) {
     return -1; // Немає активних бітів в жодному з регіонів
 }
 
+// Повертає найвищий біт для конкретного регіону по прямому входженню до alertsMap
+inline int findHighestBitForRegionDirect(uint16_t region_id) {
+    auto it = alertsMap.find(region_id);
+    if (it != alertsMap.end() && it->second != 0) {
+        int bit = findHighestBit16(it->second);
+        //LOG.printf("[REGION DIRECT] region_id=%d, highestBit=%d\n", region_id, bit);
+        return bit;
+    }
+    //LOG.printf("[REGION DIRECT] No alert data for region %d\n", region_id);
+    return -1;
+}
+
 // Повертає найвищий біт серед усіх регіонів, до яких належать леди region_id
 inline int findHighestBitForRegion(uint16_t region_id) {
     uint8_t ledCount = 0;
@@ -531,7 +566,7 @@ inline int findHighestBitForRegion(uint16_t region_id) {
 
 // Перевіряє, чи входить led_position у леди домашнього регіону
 inline bool isLedInHomeRegion(int led_position) {
-    //LOG.printf("[HOME REGION] check led %d\n", led_position);
+    LOG.printf("[HOME REGION] check led %d\n", led_position);
     // Отримуємо масив LED-ів для домашнього регіону
     uint8_t ledCount = 0;
     const int* leds = getLedsForRegion(settings.getInt(HOME_DISTRICT), ledCount);
@@ -543,20 +578,25 @@ inline bool isLedInHomeRegion(int led_position) {
 
     LOG.printf("[HOME REGION] leds: ");
     for (uint8_t i = 0; i < ledCount; ++i) {
-        LOG.printf("%d", leds[i]);
+        LOG.printf(" %d ", leds[i]);
     }
     LOG.printf("\n");
 
     // Перевіряємо, чи входить led_position у масив
     for (uint8_t i = 0; i < ledCount; ++i) {
         if (leds[i] == led_position) {
-            //LOG.printf("[HOME REGION] led_position=%d\n", led_position);
+            LOG.printf("[HOME REGION] led_position=%d\n", led_position);
             return true;
         } else {
-            //LOG.printf("[HOME REGION] led_position=%d not found in home region\n", led_position);
+            LOG.printf("[HOME REGION] led_position=%d not found in home region\n", led_position);
         }
     }
     return false;
+}
+
+// Перевіряє, чи є region_id домашнім регіоном
+inline bool isHomeRegion(int region_id) {
+    return region_id == settings.getInt(HOME_DISTRICT);
 }
 
 inline int getHighestActualBit(int sourceBit) {
@@ -959,4 +999,83 @@ inline String getAlertsJson() {
     String response;
     serializeJson(doc, response);
     return response;
+}
+
+inline const char* getNameById(SettingListItem list[], int id, int size) {
+  for (int i = 0; i < size; i++) {
+    if (list[i].id == id) {
+      return list[i].name;
+    }
+  }
+  return "";
+}
+
+inline int getIndexById(SettingListItem list[], int id, int size) {
+  for (int i = 0; i < size; i++) {
+    if (list[i].id == id) {
+      return i;
+    }
+  }
+  return 0;
+}
+
+inline bool saveMapMode(int newMapMode) {
+  if (newMapMode == settings.getInt(MAP_MODE)) return false;
+
+  if (newMapMode == 5) {
+    prevMapMode = settings.getInt(MAP_MODE);
+  }
+  settings.saveInt(MAP_MODE, newMapMode);
+  //reportSettingsChange("map_mode", newMapMode);
+  //ha.setLampState(newMapMode == 5);
+  //ha.setMapMode(haMapModeMap.second[newMapMode]);
+  const char* mapModeName = getNameById(MAP_MODES, newMapMode, MAP_MODES_COUNT);
+  //ha.setMapModeCurrent(mapModeName);
+  //showServiceMessage(mapModeName, "Режим мапи:");
+  // update to selected mapMode
+  //mapCycle();
+  return true;
+}
+
+inline void nextMapMode() {
+  int newIndex = getIndexById(MAP_MODES, settings.getInt(MAP_MODE), MAP_MODES_COUNT);
+  do {
+    if (newIndex >= MAP_MODES_COUNT - 1) {
+      newIndex = 0;
+    } else {
+      newIndex++;
+    }
+  } while (MAP_MODES[newIndex].ignore);
+
+  saveMapMode(MAP_MODES[newIndex].id);
+}
+
+inline bool saveDisplayMode(int newDisplayMode) {
+  if (newDisplayMode == settings.getInt(DISPLAY_MODE)) return false;
+  settings.saveInt(DISPLAY_MODE, newDisplayMode);
+  //reportSettingsChange("display_mode", newDisplayMode);
+  //if (display.isDisplayAvailable()) {
+  //  ha.setDisplayMode(haDisplayModeMap.second[newDisplayMode]);
+  //}
+  //showServiceMessage(getNameById(DISPLAY_MODES, newDisplayMode, DISPLAY_MODE_OPTIONS_MAX), "Режим дисплея:", 1000);
+  // update to selected displayMode
+  //displayCycle();
+  return true;
+}
+
+inline bool saveDisplayModeFromHa(int newIndex) {
+  return saveDisplayMode(DISPLAY_MODES[newIndex].id);
+}
+
+inline void nextDisplayMode() {
+  int newIndex = getIndexById(DISPLAY_MODES, settings.getInt(DISPLAY_MODE), DISPLAY_MODES_COUNT);
+  do {
+    if (newIndex >= DISPLAY_MODES_COUNT - 1) {
+      newIndex = 0;
+    } else {
+      newIndex++;
+    }
+  } while (DISPLAY_MODES[newIndex].ignore);
+
+  saveDisplayMode(DISPLAY_MODES[newIndex].id);
 }

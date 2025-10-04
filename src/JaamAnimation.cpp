@@ -919,7 +919,7 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     bool explosion = false;
 
     uint8_t brightness = 0;
-    int highest_bit = findHighestBitForRegion(region_id);
+    int highest_bit = findHighestBitForRegionDirect(region_id);
     
     if (highest_bit != -1) {
         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
@@ -1022,10 +1022,10 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     if (bit != -1) {
                         highest_bit = bit;
                     } else {
-                        highest_bit = findHighestBitForRegion(settings->getInt(HOME_DISTRICT));
+                        highest_bit = findHighestBitForRegionDirect(settings->getInt(HOME_DISTRICT));
                     }
                     
-                    if (highest_bit != -1 && settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
+                    if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
                         // Якщо є тривога й режим HOME_REGION — застосовуємо колір тривоги для домашнього району
                         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                         color = result.first;

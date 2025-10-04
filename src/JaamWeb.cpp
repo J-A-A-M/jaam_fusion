@@ -1550,6 +1550,9 @@ void JaamWeb::handleParameter() {
             settings->saveBool(INVERT_DISPLAY, boolValue);
             LOG.printf("[WEB] Setting invert_display: %d\n", boolValue);
             needReconfigureDisplay = true;
+        } else if (name == "display_alert_message_time") {
+            settings->saveInt(DISPLAY_ALERT_MESSAGE_TIME, intValue);
+            LOG.printf("[WEB] Setting display_alert_message_time: %d\n", intValue);
         } else if (name == "enable_kabs") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_KABS, boolValue);
@@ -2301,6 +2304,7 @@ void JaamWeb::handleUiSchema() {
     addDropdown("display", "display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT);
     addDropdown("display", "display_rotation", "Поворот дисплея", "display_rotation", DISPLAY_ROTATION);
     addBool("display", "invert_display", "Інвертувати дисплей", INVERT_DISPLAY);
+    addSlider("display", "display_alert_message_time", "Час сповіщень на екрані (секунди)", 1, 60, 1, settings->getInt(DISPLAY_ALERT_MESSAGE_TIME));
 
     // Мережеві налаштування
     addInfo("network", "Налаштуйте підключення до серверів та мережевих сервісів", "#17a2b8", "M17,3A2,2 0 0,1 19,5V15A2,2 0 0,1 17,17H13V19H14A1,1 0 0,1 15,20H22V22H15A1,1 0 0,1 14,21H10A1,1 0 0,1 9,22H2V20H9A1,1 0 0,1 10,19H11V17H7C5.89,17 5,16.1 5,15V5A2,2 0 0,1 7,3H17Z");

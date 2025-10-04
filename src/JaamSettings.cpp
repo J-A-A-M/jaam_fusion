@@ -174,6 +174,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {DISPLAY_WIDTH, {"dw", 128}},
     {DISPLAY_HEIGHT, {"dh", 32}},
     {DISPLAY_ROTATION, {"dr", 0}},
+    {DISPLAY_ALERT_MESSAGE_TIME, {"damt", 5}},
     {DAY_START, {"ds", 8}},
     {NIGHT_START, {"ns", 22}},
     {WS_ALERT_TIME, {"wsat", 180000}},

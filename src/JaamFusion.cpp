@@ -23,6 +23,7 @@
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
 #include <JaamSound.h>
+#include "JaamButton.h"
 
 using namespace websockets;
 
@@ -44,6 +45,7 @@ JaamStorage         storage;
 JaamDisplay         display;
 JaamClimateSensor   climate;
 JaamSound           sound;
+JaamButton          button;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -107,6 +109,11 @@ bool                websocketReconnect = false;
 time_t              lastWebsocketConnectTime = 0;
 
 // --- OTHER Configuration ---
+bool                minuteOfSilence = false;
+bool                uaAnthemPlaying = false;
+bool                isMapOff = false;
+bool                isDisplayOff = false;
+int                 prevMapMode = 1;
 uint8_t             legacy = 0;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
@@ -211,6 +218,20 @@ bool isItNightNow() {
 
     // handle case, when day start hour is bigger than night start hour, ex. night start at 1 and day start at 8
     return currentHour < dayStart && currentHour >= nightStart ? true : false;
+}
+
+int getCurrentMapMode() {
+  if (minuteOfSilence || uaAnthemPlaying) return 3; // ua flag
+
+  int homeRegionId = settings.getInt(HOME_DISTRICT);
+  int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
+//   if (alarmMode == 1 && isAlertInNeighboringDistricts()) {
+//     return 1; // alerts mode
+//   }
+//   if (alarmMode >= 1 && id_to_alerts[homeRegionId].first != 0) {
+//     return 1; // alerts mode
+//   }
+  return isMapOff ? 0 : settings.getInt(MAP_MODE);
 }
 
 // --- SOUND Functions ---
@@ -319,10 +340,10 @@ bool needToPlaySound(SoundType type) {
   if (!isFirstDataFetchCompleted) return false;
 
   // ignore mute on alert
-  if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
+  //if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
 
   // disable sounds on night mode by time only
-  if (settings.getBool(MUTE_SOUND_ON_NIGHT) && isItNightNow()) return false;
+  if (settings.getBool(MUTE_SOUND_ON_NIGHT) && isItNightNow() && !settings.getBool(IGNORE_MUTE_ON_ALERT)) return false;
 
   switch (type) {
   case MIN_OF_SILINCE:
@@ -365,6 +386,188 @@ bool needToPlaySound(SoundType type) {
   return false;
 }
 
+// --- Buttons Functions ---
+
+void handleClick(int event, JaamButton::Action action) {
+  SoundType soundType = action == JaamButton::Action::SINGLE_CLICK ? SoundType::SINGLE_CLICK : SoundType::LONG_CLICK;
+  if (event != 0 && needToPlaySound(soundType)) playMelody(soundType);
+  switch (event) {
+    // change map mode
+    case 1:
+      nextMapMode();
+      break;
+    // change display mode
+    case 2:
+      nextDisplayMode();
+      break;
+    // toggle map
+    case 3:
+      isMapOff = !isMapOff;
+      display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
+      //mapCycle();
+      break;
+    // toggle display
+    case 4:
+      isDisplayOff = !isDisplayOff;
+      display.showServiceMessage(!isDisplayOff ? "Увімкнено" : "Вимкнено", "Дисплей:");
+      break;
+    // toggle display and map
+    case 5:
+      if (isDisplayOff != isMapOff) {
+        isDisplayOff = false;
+        isMapOff = false;
+      } else {
+        isMapOff = !isMapOff;
+        isDisplayOff = !isDisplayOff;
+      }
+      display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Дисплей та мапу:");
+      //mapCycle();
+      break;
+    // toggle night mode
+    case 6:
+      //saveNightMode(!nightMode);
+      break;
+    // toggle lamp (singl click) or reboot device (long click)
+    case 7:
+      if (action == JaamButton::Action::SINGLE_CLICK) {
+        int newMapMode = settings.getInt(MAP_MODE) == 5 ? prevMapMode : 5;
+        saveMapMode(newMapMode);
+      } else if (JaamButton::Action::LONG_CLICK) {
+        rebootDevice();
+      }
+      break;
+#if FW_UPDATE_ENABLED
+    case 100:
+      char updateFileName[30];
+      sprintf(updateFileName, "%s.bin", newFwVersion);
+      downloadAndUpdateFw(updateFileName, settings.getInt(FW_UPDATE_CHANNEL) == 1);
+      break;
+#endif
+    default:
+      // do nothing
+      break;
+  }
+}
+
+bool isButtonActivated() {
+  return settings.getInt(BUTTON_1_MODE) != 0 || settings.getInt(BUTTON_1_MODE_LONG) != 0 || settings.getInt(BUTTON_2_MODE) != 0 || settings.getInt(BUTTON_2_MODE_LONG) != 0;
+}
+
+void singleClick(int mode) {
+  handleClick(mode, JaamButton::SINGLE_CLICK);
+}
+
+void longClick(int modeLong) {
+#if FW_UPDATE_ENABLED
+  if (settings.getInt(NEW_FW_NOTIFICATION) == 1 && fwUpdateAvailable && isButtonActivated() && !isDisplayOff) {
+    handleClick(100, JaamButton::LONG_CLICK);
+    return;
+  }
+#endif
+  handleClick(modeLong, JaamButton::LONG_CLICK);
+}
+
+void buttonClick(const char* buttonName, int mode) {
+#if TEST_MODE
+  displayMessage("Single click!", buttonName);
+#else
+  singleClick(mode);
+#endif
+}
+
+void buttonLongClick(const char* buttonName, int modeLong) {
+#if TEST_MODE
+  displayMessage("Long click!", buttonName);
+#else
+  longClick(modeLong);
+#endif
+}
+
+void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Action action) {
+#if FW_UPDATE_ENABLED
+  if (settings.getInt(NEW_FW_NOTIFICATION) == 1 && fwUpdateAvailable && isButtonActivated() && !isDisplayOff) {
+    return;
+  }
+#endif
+  if (action == JaamButton::Action::DURING_LONG_CLICK) {
+    switch (modeLong) {
+    //   case 8:
+    //     // if lamp mode is active, increase lamp brightness
+    //     if (getCurrentMapMode() == 5) {
+    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) + 1;
+    //       if (newBrightness > 100) {
+    //         newBrightness = 100;
+    //       }
+    //       saveLampBrightness(newBrightness, false, true);
+    //       sprintf(lampBrightnessMsg, "%d%%", newBrightness);
+    //       showServiceMessage(lampBrightnessMsg, "Яскравість лампи:");
+    //     } else {
+    //       showServiceMessage("Лише для режиму лампи");
+    //     }
+    //     break;
+    //   case 9:
+    //     // if lamp mode is active, decrease lamp brightness
+    //     if (getCurrentMapMode() == 5) {
+    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) - 1;
+    //       if (newBrightness < 0) {
+    //         newBrightness = 0;
+    //       }
+    //       saveLampBrightness(newBrightness, false, true);
+    //       sprintf(lampBrightnessMsg, "%d%%", newBrightness);
+    //       showServiceMessage(lampBrightnessMsg, "Яскравість лампи:");
+    //     } else {
+    //       showServiceMessage("Лише для режиму лампи");
+    //     }
+    //     break;
+      default:
+        // do nothing
+        break;
+  }
+  } else if (action == JaamButton::Action::LONG_CLICK_END) {
+    switch (modeLong) {
+      case 8:
+      case 9:
+        // if (getCurrentMapMode() == 5) {
+        //   saveCurrentLampBrightness();
+        // }
+        break;
+      default:
+        // do nothing
+        break;
+    }
+  }
+}
+
+void button1Click() {
+  LOG.println("Button 1 click");
+  buttonClick("Button 1", settings.getInt(BUTTON_1_MODE));
+}
+
+void button2Click() {
+  LOG.println("Button 2 click");
+  buttonClick("Button 2", settings.getInt(BUTTON_2_MODE));
+}
+
+void button1LongClick() {
+  LOG.println("Button 1 long click");
+  buttonLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG));
+}
+
+void button2LongClick() {
+  LOG.println("Button 2 long click");
+  buttonLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG));
+}
+
+void button1DuringLongClick(JaamButton::Action action) {
+  LOG.println("Button 1 during long click");
+  buttonDuringLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG), action);
+}
+
+void button2DuringLongClick(JaamButton::Action action) {
+  LOG.println("Button 2 during long click");
+  buttonDuringLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG), action);
+}
+
 // --- WEBSOCKET Functions ---
 
 void printHex(const String& data) {
@@ -395,55 +598,76 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     return diff;
 }
 
-void alertAction(int localAlertBit) {
-    if (localAlertBit != alertBit) {
-        LOG.printf("[ALERT] Home district alert status changed from %d to %d\n", alertBit, localAlertBit);
-        if (settings.getBool(SOUND_ON_ALERT) && hasHigherPriority(localAlertBit, alertBit)) {
-            switch (localAlertBit){
-                case AlertModes::ALERT:
-                    if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
-                    display.showServiceMessage("ТРИВОГА", "", 5000);
-                    break;
-                case AlertModes::DRONES:
-                    if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
-                    display.showServiceMessage("БПЛА", "", 5000);
-                    break;
-                case AlertModes::MISSILES:
-                    if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
-                    display.showServiceMessage("РАКЕТИ", "", 5000);
-                    break;
-                case AlertModes::KABS:
-                    if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
-                    display.showServiceMessage("КАБ", "", 5000);
-                    break;
-                case AlertModes::BALLISTIC:
-                    if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
-                    display.showServiceMessage("БАЛЛІСТИКА", "", 5000);
-                    break;
-                case AlertModes::EXPLOSION:
-                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
-                    display.showServiceMessage("ВИБУХИ", "", 5000);
-                    break;
-                case AlertModes::RECON_DRONES:
-                    if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
-                    display.showServiceMessage("РОЗВІДКА БПЛА", "", 5000);
-                    break;
-                default:
-                    break;
-            }
+void alertAction(int bit, int districtId) {
+    // int actualBit = getHighestActualBit(bit);
+    // if (actualBit != bit) {
+    //     LOG.printf("[ALERT] actualBit %d != %d. Animation aborted\n", actualBit, bit);
+    //     return;
+    // }
+    // if (bit == alertBit ) {
+    //     LOG.printf("[ALERT] No change in alert status (%d) <-> (%d)\n", bit, alertBit);
+    //     return; // No change in alert status
+    // }
+    // if (!hasHigherPriority(bit, alertBit) && bit != -1) {
+    //     LOG.printf("[ALERT] New alert status %d has lower priority than current %d. Ignored\n", bit, alertBit);
+    //     return; // New alert has lower priority, ignore it
+    // }
+    // if (districtId != settings.getInt(HOME_DISTRICT)) {
+    //     LOG.printf("[ALERT] Alert for district %d ignored, home district is %d\n", districtId, settings.getInt(HOME_DISTRICT));
+    //     return; // Alert is not for home district
+    // }
+    const char* districtName = getNameById(DISTRICTS, districtId, MAX_REGIONS);
+    LOG.printf("[ALERT] Home district %s status changed from %d to %d\n", districtName, alertBit, bit);
+    if (settings.getBool(SOUND_ON_ALERT)) {
+        switch (bit){
+            case AlertModes::ALERT:
+                if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
+                display.showServiceMessage("ТРИВОГА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::DRONES:
+                if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
+                display.showServiceMessage("БПЛА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::MISSILES:
+                if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
+                display.showServiceMessage("РАКЕТИ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::KABS:
+                if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
+                display.showServiceMessage("КАБ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::BALLISTIC:
+                if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
+                display.showServiceMessage("БАЛЛІСТИКА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::EXPLOSION:
+                if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                display.showServiceMessage("ВИБУХИ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::RECON_DRONES:
+                if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
+                display.showServiceMessage("РОЗВІДКА БПЛА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            default:
+                break;
         }
-        if (settings.getBool(SOUND_ON_ALERT_END) && localAlertBit == AlertModes::NO_ALERT) {
-            if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
-            display.showServiceMessage("ВІДБІЙ", "", 5000);
-        }
+    }
+    if (settings.getBool(SOUND_ON_ALERT_END) && bit == AlertModes::NO_ALERT) {
+        if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
+        display.showServiceMessage("ВІДБІЙ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
     }
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
-    //LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
+    LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
 
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] LED %d: strip is nullptr\n", led_position);
+        return;
+    }
+
+    if (strip == strip_bg && settings.getInt(BG_LED_MODE) != BgLedModes::HOME_REGION) {
+        LOG.printf("[ANIMATION] SKIPPED %d: bg mode is not HOME_REGION, background animation skipped\n", led_position);
         return;
     }
     
@@ -455,14 +679,15 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     uint8_t endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ANIMATION_END));
     uint8_t ledCount;
 
-    int actualBit = getHighestActualBit(bit);
+    //int actualBit = getHighestActualBit(bit);
 
-    if (increase && actualBit != bit) {
-        LOG.printf("[ANIMATION] actualBit %d != bit. Animation aborted %d\n", actualBit, bit);
-        return;
-    }
+    // if (increase && actualBit != bit) {
+    // //if (actualBit != bit) {
+    //     LOG.printf("[ANIMATION] actualBit %d != %d. Animation aborted\n", actualBit, bit);
+    //     return;
+    // }
 
-    switch (actualBit) {
+    switch (bit) {
         case -1: 
             color = animation.colorFromHex(settings.getString(COLOR_CLEAR));  
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));             
@@ -472,7 +697,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
             break;
         case 0:
             color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
-            animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
             period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
@@ -480,47 +705,47 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         case 5: 
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_DRONES));
-            animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
             break;
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_MISSILES));
-            animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
             break;
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_KABS));
-            animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(KAB_TIME) * 1000)/settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 1;
             break;
         case 8:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_BALLISTIC));
-            animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(BALLISTIC_TIME) * 1000)/settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME)  : 1;
             break;
         case 9:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 1000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
             break;
         case 10:
             color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_RECON_DRONES));
-            animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
             break;
         default:
-            LOG.printf("[ANIMATION] LED %d: unknown bit %d\n", led_position, actualBit);
+            LOG.printf("[ANIMATION] LED %d: unknown bit\n", led_position);
             return;
     }
     int ledsIdx[1];      // для strip_main та strip_service
@@ -555,7 +780,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         startBrightness,
         endBrightness,
         region_id,
-        actualBit
+        bit
     )) {
         LOG.println("[ERROR] Failed to create animation");
         return;
@@ -637,18 +862,18 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
 
             int highestBitRegion = -1;
+            LOG.printf("[WEBSOCKET] highest bit from regions: ");
             for (uint8_t i = 0; i < ledCount; ++i) {
                 int led_position = leds[i];
                 //LOG.printf("[WEBSOCKET] LED %d: ", led_position);
                 // Шукаємо всі регіони для цього LED
                 const std::vector<uint16_t>& regions = getRegionsForLed(led_position);
                 for (uint16_t rid : regions) {
-                    LOG.printf(" %d ", rid);
                     // Шукаємо найвищий біт для регіону в alertsMap
                     auto alerts_it = alertsMap.find(rid);
                     if (alerts_it != alertsMap.end()) {
                         int highestBitSearch = findHighestBit16(alerts_it->second);
-                        LOG.printf("[%d] ", highestBitSearch);
+                        LOG.printf("r%d is [%d]  ", rid, highestBitSearch);
 
                         if (hasHigherPriority(highestBitSearch, highestBitRegion)) {
                             highestBitRegion = highestBitSearch;
@@ -657,13 +882,13 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
             }  
             LOG.println();
-    
-            int actualBitRegion = getHighestActualBit(highestBitRegion);
-            int actualBitDiff = getHighestActualBit(findHighestBit16(flags16, false));
 
-            LOG.printf("[WEBSOCKET] actualBitRegion %d, actualBitDiff %d\n", actualBitRegion, actualBitDiff);
+            // Тепер highestBitRegion містить найвищий пріоритет серед усіх регіонів, пов'язаних з цим LED
+            int actualBitDiff = findHighestBit16(flags16, false);
 
-            if (hasHigherPriority(actualBitDiff,actualBitRegion)) {
+            LOG.printf("[WEBSOCKET] highestBitRegion %d, actualBitDiff %d\n", highestBitRegion, actualBitDiff);
+
+            if (hasHigherPriority(actualBitDiff,highestBitRegion)) {
                 for (int i = 0; i < ledCount; ++i) {
                     animateLed(strip_main, MapModes::ALERT, leds[i], actualBitDiff, region_id, true);
                     if (isLedInHomeRegion(leds[i])) {
@@ -672,14 +897,11 @@ void onMessageCallback(WebsocketsMessage msg) {
                     }
                 }
             }
-        }
-        if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION && strip_bg != nullptr) {
-            LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
-                settings.getInt(HOME_DISTRICT), homeRegionBit);
-            animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
-            alertAction(homeRegionBit);
-        }else {
-            LOG.println("[WEBSOCKET] No changes in home region LEDs");
+            if (region_id == settings.getInt(HOME_DISTRICT)) {
+                LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n", settings.getInt(HOME_DISTRICT), homeRegionBit);
+                animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
+                alertAction(actualBitDiff, settings.getInt(HOME_DISTRICT));
+            }
         }
     }
 
@@ -787,7 +1009,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 
                 for (uint8_t i = 0; i < entry->led_count; ++i) {
                     int led_position = entry->led_positions[i];
-                    LOG.printf("[DIFF]   LED for region %d: %d\n", diff.region_id, led_position);
+                    //LOG.printf("[DIFF]   LED for region %d: %d\n", diff.region_id, led_position);
 
                     led_bits_old[led_position] = {findHighestBitForLed(led_position), diff.region_id};
                     //led_bits_actual[led_position] = {highest_bit_current, diff.region_id};
@@ -796,7 +1018,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     //     led_bits_actual[led_position] = {findHighestBitForLed(led_position), diff.region_id};
                     // }
                     //LOG.printf("[DIFF] LED %d highest bit actual: %d\n", led_position, led_bits_actual[led_position].highest_bit);
-                    LOG.printf("[DIFF] LED %d highest bit alerts: %d\n", led_position, led_bits_old[led_position].highest_bit);
+                    //LOG.printf("[DIFF]   LED %d highest bit alerts: %d\n", led_position, led_bits_old[led_position].highest_bit);
                 }
                 // Шукаємо всі леди для цього регіону
                 // int highest_bit_region = -1;
@@ -867,50 +1089,45 @@ void onMessageCallback(WebsocketsMessage msg) {
                 int diff_bit = findHighestBitForLed(led.first);
                 int alerts_bit = led.second.highest_bit;
 
-                LOG.printf("[DIFF] LED %d: region %d  actual bit %d\n",
-                    led.first, led.second.region_id, diff_bit);
+                // LOG.printf("[WEBSOCKET] LED %d: region %d actual bit %d\n",
+                //     led.first, led.second.region_id, diff_bit);
 
-                LOG.printf("[DIFF] LED %d: region %d old bit %d\n",
-                    led.first, led.second.region_id, alerts_bit);
+                // LOG.printf("[WEBSOCKET] LED %d: region %d old bit %d\n",
+                //     led.first, led.second.region_id, alerts_bit);
 
                 if (diff_bit == alerts_bit) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d no changes in bit %d\n",
-                        led.first, led.second.region_id, diff_bit);
+                    // LOG.printf("[WEBSOCKET] LED %d: region %d no changes in bit %d\n",
+                    //     led.first, led.second.region_id, diff_bit);
                     continue; // Немає змін, пропускаємо
                 }
 
                 if (hasHigherPriority(diff_bit, alerts_bit)) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
-                        led.first, led.second.region_id, alerts_bit, diff_bit);
-                        animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, true);
-                        if (isLedInHomeRegion(led.first)) {
-                            needToAnimateBgHomeRegion = true;
-                            homeRegionBit = diff_bit;
-                            homeRegionIncrease = true;
-                        }
+                    LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n", led.first, led.second.region_id, alerts_bit, diff_bit);
+                    animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, true);
                 } 
                 if (hasHigherPriority(alerts_bit, diff_bit)) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
-                        led.first, led.second.region_id, alerts_bit, diff_bit);
+                    LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n", led.first, led.second.region_id, alerts_bit, diff_bit);
                         animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, false);
-                        if (isLedInHomeRegion(led.first)) {
-                            needToAnimateBgHomeRegion = true;
-                            homeRegionBit = diff_bit;
-                            homeRegionIncrease = false;
-                        }
                 }
             }
-            if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION && strip_bg != nullptr) {
-                LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
-                    settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
-                animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
-                alertAction(homeRegionBit);
-                alertBit = homeRegionBit;
-            }else {
-                LOG.println("[WEBSOCKET] No changes in home region LEDs");
+            int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
+            if (localAlertBit != alertBit){
+                if (hasHigherPriority(localAlertBit, alertBit)) {
+                    LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase\n",settings.getInt(HOME_DISTRICT), localAlertBit);
+                    homeRegionIncrease = true;
+                    alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                }
+                if (hasHigherPriority(alertBit, localAlertBit)) {
+                    LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, decrease\n",settings.getInt(HOME_DISTRICT), localAlertBit);
+                    homeRegionIncrease = false;
+                    if (localAlertBit == -1) {
+                        alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                    }
+                }
+                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
             }
+            alertBit = localAlertBit;
         }
-        //LOG.println();
         alertsHash = actualHash;
     }
     if(type == TYPE_WEATHER_BATCH) {
@@ -963,7 +1180,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
                 strip->show();
             });
-        }    
+        }   
+        alertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT)); 
     }
 
     isFirstDataFetchCompleted = true;
@@ -1390,10 +1608,6 @@ void syncTime(int8_t attempts) {
 }
 
 // --- ALERT Functions ---
-int getAlertBit(uint16_t region_id) {
-    int highestBit = findHighestBitForRegion(region_id);
-    return highestBit;
-}
 
 
 // --- BRIGHTNESS Functions ---
@@ -1729,6 +1943,25 @@ void initStorage() {
         storage.getStorageInfo();
         storage.getFilesInfo();
     }
+}
+
+
+void initButtons() {
+  LOG.println("Init buttons");
+
+  LOG.printf("button1pin: %d\n", settings.getInt(BUTTON_1_PIN));
+  LOG.printf("button1 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_1));
+  button.setButton1Pin(settings.getInt(BUTTON_1_PIN), !settings.getBool(USE_TOUCH_BUTTON_1));
+  button.setButton1ClickListener(button1Click);
+  button.setButton1LongClickListener(button1LongClick);
+  button.setButton1DuringLongClickListener(button1DuringLongClick);
+
+  LOG.printf("button2pin: %d\n", settings.getInt(BUTTON_2_PIN));
+  LOG.printf("button2 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_2));
+  button.setButton2Pin(settings.getInt(BUTTON_2_PIN), !settings.getBool(USE_TOUCH_BUTTON_2));
+  button.setButton2ClickListener(button2Click);
+  button.setButton2LongClickListener(button2LongClick);
+  button.setButton2DuringLongClickListener(button2DuringLongClick);
 }
 
 
@@ -2181,14 +2414,13 @@ void mainThreadProcess() {
         LOG.println("[MAIN] Adapting sound settings");
         sound.setVolumeNight(settings.getInt(MELODY_VOLUME_NIGHT));
         sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
-
         needAdaptVolume = false;
     }
 
     if (needUpdateHomeAlertBit) {
         LOG.println("[MAIN] Updating home alert bit");
-        int localAlertBit = getAlertBit(settings.getInt(HOME_DISTRICT));
-        alertAction(localAlertBit);
+        int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
+        if (localAlertBit != alertBit) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         alertBit = localAlertBit;
         needUpdateHomeAlertBit = false;
     }
@@ -2276,6 +2508,9 @@ void setup() {
     initStrip();
     checkFreeHeap("LED strips initialization");
     brightnessProcess();
+
+    initButtons();
+    checkFreeHeap("buttons initialization");
 
     initDisplay();
     checkFreeHeap("display initialization");
