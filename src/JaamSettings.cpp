@@ -291,7 +291,7 @@ const char* JaamSettings::getKey(Type type) {
     } else if (floatSettings.find(type) != floatSettings.end()) {
         return floatSettings[type].key;
     }
-    LOG.println("[SETTINGS] Unknown setting type");
+    LOG.printf("[SETTINGS] Unknown setting type\n");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -299,7 +299,7 @@ int JaamSettings::getInt(Type type) {
     if (intSettings.find(type) != intSettings.end()) {
         return intSettings[type].value;
     }
-    LOG.println("[SETTINGS] Unknown setting type");
+    LOG.printf("[SETTINGS] Unknown int setting type\n");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -316,7 +316,7 @@ void JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         LOG.printf("[SETTINGS] Saved setting %s: %d (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
         return;
     }
-    LOG.println("[SETTINGS] Unknown setting type");
+    LOG.printf("[SETTINGS] Unknown int setting type\n");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -324,7 +324,7 @@ const char* JaamSettings::getString(Type type) {
     if (stringSettings.find(type) != stringSettings.end()) {
         return stringSettings[type].value.c_str();
     }
-    LOG.println("[SETTINGS] Unknown setting type");
+    LOG.printf("[SETTINGS] Unknown string setting type\n");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -341,7 +341,7 @@ void JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
         LOG.printf("[SETTINGS] Saved setting %s: '%s' (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
         return;
     }
-    LOG.println("[SETTINGS] Unknown setting type");
+    LOG.printf("[SETTINGS] Unknown stringsetting type\n");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -349,7 +349,7 @@ float JaamSettings::getFloat(Type type) {
     if (floatSettings.find(type) != floatSettings.end()) {
         return floatSettings[type].value;
     }
-    LOG.println("[SETTINGS] Unknown setting type");
+    LOG.printf("[SETTINGS] Unknown floatsetting type\n");
     throw std::runtime_error("Unknown setting type");
 }
 
@@ -366,7 +366,7 @@ void JaamSettings::saveFloat(Type type, float value, bool saveToPrefs) {
         LOG.printf("[SETTINGS] Saved setting %s: %.1f (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
         return;
     }
-    LOG.println("[SETTINGS] Unknown setting type");
+    LOG.printf("[SETTINGS] Unknown floatsetting type\n");
     throw std::runtime_error("Unknown setting type");
 }
 

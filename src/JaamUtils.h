@@ -267,7 +267,7 @@ inline void generateBgLedColorsMap() {
     
     int bgLedCount = settings.getInt(BG_LED_COUNT);
     if (bgLedCount <= 0 || bgLedCount > MAX_BG_LEDS) {
-        LOG.println("[INIT] BG LED count not configured or invalid.");
+        LOG.printf("[INIT] BG LED count not configured or invalid.\n");
         return;
     }
     
@@ -566,7 +566,7 @@ inline int findHighestBitForRegion(uint16_t region_id) {
 
 // Перевіряє, чи входить led_position у леди домашнього регіону
 inline bool isLedInHomeRegion(int led_position) {
-    LOG.printf("[HOME REGION] check led %d\n", led_position);
+    LOG.printf("[HOME DISTRICT] check led %d. ", led_position);
     // Отримуємо масив LED-ів для домашнього регіону
     uint8_t ledCount = 0;
     const int* leds = getLedsForRegion(settings.getInt(HOME_DISTRICT), ledCount);
@@ -576,19 +576,19 @@ inline bool isLedInHomeRegion(int led_position) {
         return false;
     }
 
-    LOG.printf("[HOME REGION] leds: ");
+    LOG.printf("Leds:");
     for (uint8_t i = 0; i < ledCount; ++i) {
-        LOG.printf(" %d ", leds[i]);
+        LOG.printf(" %d", leds[i]);
     }
-    LOG.printf("\n");
+    LOG.printf(". ");
 
     // Перевіряємо, чи входить led_position у масив
     for (uint8_t i = 0; i < ledCount; ++i) {
         if (leds[i] == led_position) {
-            LOG.printf("[HOME REGION] led_position=%d\n", led_position);
+            LOG.printf("Led %d is in home district\n", led_position);
             return true;
         } else {
-            LOG.printf("[HOME REGION] led_position=%d not found in home region\n", led_position);
+            LOG.printf("Led %d not found in home district\n", led_position);
         }
     }
     return false;

@@ -220,9 +220,9 @@ bool AnimationManager::createAnimation(uint16_t type,
                     int animIdx = activeAnimations[i].animationIndex;
                     if (animations[animIdx] != nullptr) {
                         int existingBit = animations[animIdx]->bit;
-                        
                         const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
                         const char* stripName = getStripName(strip);
+
                         // Перевіряємо пріоритет: якщо існуюча анімація має вищий або рівний пріоритет або це відбій тривоги
                         if (!hasHigherPriority(bit, existingBit) && bit!= -1) {
                             
@@ -234,8 +234,8 @@ bool AnimationManager::createAnimation(uint16_t type,
                             LOG.printf("[ANIMATION] REPLACING strip=%s, type=%s, region=%d, led=%d: existing animation bit %d replaced with %d\n", 
                                       stripName, typeName, region_id, ledPos, existingBit, bit);
                         }
-                        
-                        // Якщо нова анімація має вищий пріоритет - видаляємо стару
+
+                        // Нова анімація має вищий пріоритет - видаляємо стару
                         removeLedFromAnimation(animations[animIdx], ledPos, animIdx);
                         // Після видалення масив зсувається, тому треба зменшити i
                         i--;
@@ -1155,7 +1155,7 @@ std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip,
     std::set<int> animatedLeds;
 
     if (strip == nullptr) {
-        LOG.println("[LED] ERROR: Strip is nullptr in getFreeLeds");
+        LOG.printf("[LED] ERROR: Strip is nullptr in getFreeLeds\n");
         return freeLedsResult;
     }
     
@@ -1197,7 +1197,7 @@ void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {
     if (strip == nullptr) return;
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         uint32_t defaultColor = stripActualColor(strip);
-        LOG.println("[LED] paint default color: " + String(defaultColor, HEX));
+        LOG.printf("[LED] paint default color: %08X\n", defaultColor);
         for (uint16_t i = 0; i < strip->numPixels(); ++i) {
             strip->setPixelColor(i, defaultColor);
         }

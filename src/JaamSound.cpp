@@ -31,9 +31,9 @@ void JaamSound::setBeepHour(int hour) {
 
 #if BUZZER_ENABLED
 void JaamSound::initBuzzer() {
-    LOG.println("[SOUND] Init Buzzer");
+    LOG.printf("[SOUND] Init Buzzer\n");
     if (!isBuzzerEnabled()) {
-        LOG.println("[SOUND] Buzzer pin is not set, skip init");
+        LOG.printf("[SOUND] Buzzer pin is not set, skip init\n");
         return;
     }
     if (player) delete player;
@@ -45,7 +45,7 @@ void JaamSound::initBuzzer() {
 
 void JaamSound::playBuzzer(const char* melodyRtttl) {
     if (player == nullptr) {
-        LOG.println("[SOUND] Buzzer not initialised, cannot play melody");
+        LOG.printf("[SOUND] Buzzer not initialised, cannot play melody\n");
         return;
     }
     Melody melody = MelodyFactory.loadRtttlString(melodyRtttl);
@@ -54,7 +54,7 @@ void JaamSound::playBuzzer(const char* melodyRtttl) {
 
 void JaamSound::setBuzzerVolume(int volume) {
     if (player == nullptr) {
-        LOG.println("[SOUND] Buzzer not initialised, cannot set volume");
+        LOG.printf("[SOUND] Buzzer not initialised, cannot set volume\n");
         return;
     }
     player->setVolume(expMap(volume, 0, 100, 0, 255));
@@ -74,11 +74,11 @@ bool JaamSound::isBuzzerEnabled() {
 bool JaamSound::isBuzzerPlaying() {
 #if BUZZER_ENABLED
     if (!isBuzzerEnabled()) {
-        LOG.println("[SOUND] Buzzer not enabled, cannot check if playing");
+        LOG.printf("[SOUND] Buzzer not enabled, cannot check if playing\n");
         return false;
     }
     if (player == nullptr) {
-        LOG.println("[SOUND] Buzzer not initialised, cannot check if playing");
+        LOG.printf("[SOUND] Buzzer not initialised, cannot check if playing\n");
         return false;
     }
     return player->isPlaying();
@@ -113,7 +113,7 @@ String JaamSound::getTrackById(int id) {
 #if DFPLAYER_PRO_ENABLED
 bool JaamSound::isDFPlayerFilesLimitReached(int dfTotalFiles) {
     if (!dfConnected) {
-        LOG.println("[SOUND] DFPlayer not connected, cannot check files limit");
+        LOG.printf("[SOUND] DFPlayer not connected, cannot check files limit\n");
         return false;
     }
     if (dfTotalFiles > maxFilesCount) {
@@ -123,9 +123,9 @@ bool JaamSound::isDFPlayerFilesLimitReached(int dfTotalFiles) {
     return false;
 }
 void JaamSound::initDFPlayer() {
-    LOG.println("[SOUND] Init DFPlayer");
+    LOG.printf("[SOUND] Init DFPlayer\n");
     if (!isDFPlayerEnabled()) {
-        LOG.println("[SOUND] DFPlayer pins not set, skip init");
+        LOG.printf("[SOUND] DFPlayer pins not set, skip init\n");
         return;
     }
     int8_t attempts = 5;
@@ -138,40 +138,38 @@ void JaamSound::initDFPlayer() {
     dfSerial.print("AT+PROMPT=OFF\r\n");
     delay(100);
     while (dfSerial.available()) {
-        LOG.println(dfSerial.read());
+        LOG.printf("%c", dfSerial.read());
     }
 
     while (!dfplayer.begin(dfSerial)) {
       LOG.printf("[SOUND] Attempt #%d of %d\n", count, attempts);
-      LOG.println("[SOUND] DFPlayer not found...");
+      LOG.printf("[SOUND] DFPlayer not found...\n");
       delay(1000);
       count++;
       if (count > attempts) {
-        LOG.println("[SOUND] DFPlayer init failed: max attempts reached");
+        LOG.printf("[SOUND] DFPlayer init failed: max attempts reached\n");
         return;
       }
       
     }
-    LOG.println("[SOUND] DFPlayer RX OK!");
+    LOG.printf("[SOUND] DFPlayer RX OK!\n");
     dfplayer.setVol(2);
     delay(500); 
     if (dfplayer.getVol() != 2) {
-      LOG.println("[SOUND] DFPlayer TX Fail!");
+      LOG.printf("[SOUND] DFPlayer TX Fail!\n");
       return;
     }
-    LOG.println("[SOUND] DFPlayer TX OK!");
+    LOG.printf("[SOUND] DFPlayer TX OK!\n");
     dfConnected = true;
-    LOG.println("[SOUND] DFPlayer ready!");
+    LOG.printf("[SOUND] DFPlayer ready!\n");
 
     dfplayer.setVol(0); 
     dfplayer.switchFunction(dfplayer.MUSIC);
     dfplayer.setVol(map(volumeCurrent, 0, 100, 0, dfPlayerMaxVolume));
-    LOG.print("[SOUND] Volume: ");
-    LOG.println(dfplayer.getVol());
+    LOG.printf("[SOUND] Volume: %d\n", dfplayer.getVol());
 
     dfplayer.setPlayMode(dfplayer.SINGLECYCLE);
-    LOG.print("[SOUND] PlayMode: ");
-    LOG.println(dfplayer.getPlayMode());
+    LOG.printf("[SOUND] PlayMode: %d\n", dfplayer.getPlayMode());
     delay(500);
 
     dfplayer.setLED(false);
@@ -211,17 +209,13 @@ void JaamSound::initDFPlayer() {
     }
 
     for (int i = 0; i < dfTotalFiles; i++) {
-      LOG.print(dynamicTrackNames[i].id);
-      LOG.print(": ");
-      LOG.print(dynamicTracks[i]);
-      LOG.print(" - ");
-      LOG.println(dynamicTrackNames[i].name);
+      LOG.printf("%d: %s - %s\n", dynamicTrackNames[i].id, dynamicTracks[i].c_str(), dynamicTrackNames[i].name);
     }
 }
 
 void JaamSound::playDFPlayer(String trackPath) {
     if (!dfConnected) {
-        LOG.println("[SOUND] DFPlayer not connected, cannot play track");
+        LOG.printf("[SOUND] DFPlayer not connected, cannot play track\n");
         return;
     }
     dfplayer.playSpecFile(trackPath);
@@ -231,7 +225,7 @@ void JaamSound::playDFPlayer(String trackPath) {
 
 void JaamSound::setDFPlayerVolume(int volume) {
     if (!dfConnected) {
-        LOG.println("[SOUND] DFPlayer not connected, cannot set volume");
+        LOG.printf("[SOUND] DFPlayer not connected, cannot set volume\n");
         return;
     }
     dfplayer.setVol(map(volume, 0, 100, 0, dfPlayerMaxVolume));
@@ -242,7 +236,7 @@ void JaamSound::setDFPlayerVolume(int volume) {
 
 int JaamSound::getDFPlayerFilesCount() {
     if (!dfConnected) {
-        LOG.println("[SOUND] DFPlayer not connected, cannot get files count");
+        LOG.printf("[SOUND] DFPlayer not connected, cannot get files count\n");
         return 0;
     }
     int filesCount = dfplayer.getTotalFile();
@@ -258,7 +252,7 @@ bool JaamSound::isDFPlayerEnabled() {
 bool JaamSound::isDFPlayerPlaying() {
 #if DFPLAYER_PRO_ENABLED
     if (!dfConnected) {
-        LOG.println("[SOUND] DFPlayer not connected, cannot check if playing");
+        LOG.printf("[SOUND] DFPlayer not connected, cannot check if playing\n");
         return false;
     }
     return dfplayer.isPlaying();

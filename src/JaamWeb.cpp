@@ -1910,7 +1910,7 @@ void JaamWeb::setCrossOrigin() {
 }
 
 void JaamWeb::sendCrossOriginHeader(){
-    LOG.println("[WEB] sendCORSHeader");
+    LOG.printf("[WEB] sendCORSHeader\n");
     setCrossOrigin();
     server.send(204);
 }
@@ -2463,7 +2463,7 @@ void JaamWeb::handleUiSchema() {
 
 void JaamWeb::handleSaveMap() {
     if (storage == nullptr) {
-        LOG.println("[WEB] Storage is not set");
+        LOG.printf("[WEB] Storage is not set\n");
         server.send(500, "text/plain", "Storage not initialized");
         return;
     }
@@ -2511,11 +2511,11 @@ void JaamWeb::handleSaveMap() {
     if (storage->saveCustomMap(customMap)) {
         //generateCustomRegionMap();
         needRecalculateLeds = true;
-        LOG.println("[WEB] Custom map saved successfully.");
+        LOG.printf("[WEB] Custom map saved successfully.\n");
         server.sendHeader("Location", "/map-editor", true);
         server.send(303);
     } else {
-        LOG.println("[WEB] Custom map saving error.");
+        LOG.printf("[WEB] Custom map saving error.\n");
         server.send(500, "text/plain", "Custom map error");
     }
 }
@@ -2701,9 +2701,9 @@ void JaamWeb::handleBgColorsData() {
 }
 
 void JaamWeb::handleSaveBgColors() {
-    LOG.println("[WEB] Handling save BG colors request");
+    LOG.printf("[WEB] Handling save BG colors request\n");
     if (storage == nullptr) {
-        LOG.println("[WEB] Storage is not set");
+        LOG.printf("[WEB] Storage is not set\n");
         server.send(500, "text/plain", "Storage not initialized");
         return;
     }
@@ -2736,13 +2736,13 @@ void JaamWeb::handleSaveBgColors() {
     }
     
     if (storage->saveBgLedColors(colors, bgLedCount)) {
-        LOG.println("[WEB] BG LED colors saved successfully and global structure updated.");
+        LOG.printf("[WEB] BG LED colors saved successfully and global structure updated.\n");
         needToRegenerateBgColorMap = true;
         needAdaptColors = true;
         server.sendHeader("Location", "/bg-color-editor", true);
         server.send(303);
     } else {
-        LOG.println("[WEB] BG LED colors saving error.");
+        LOG.printf("[WEB] BG LED colors saving error.\n");
         server.send(500, "text/plain", "BG LED colors save error");
     }
     
