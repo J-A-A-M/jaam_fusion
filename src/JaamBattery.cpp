@@ -11,7 +11,6 @@ void JaamBattery::begin() {
     adcPin = settings->getInt(BATTERY_PIN);
     enabled = settings->getBool(ENABLE_BATTERY_MONITORING);
     if (settings->getInt(BATTERY_PIN) >= 0) {
-        
         pinMode(adcPin, INPUT);
     }
 }

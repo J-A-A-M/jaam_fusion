@@ -3,6 +3,7 @@
 #include "JaamSettings.h"
 #include "JaamBattery.h"
 #include "JaamStorage.h"
+#include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
 #include <math.h>
 #include <string>
@@ -54,6 +55,7 @@ extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> te
 extern JaamSettings                     settings;
 extern JaamBattery                      battery;
 extern JaamStorage                      storage;
+extern JaamDisplay                      display;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
 extern uint8_t                          legacy;
@@ -61,6 +63,8 @@ extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 extern JaamClimateSensor                climate;
 extern int                              prevMapMode;
+
+extern volatile bool                    needAdaptColors;
 
 struct JaamFirmware {
     int major = 0;
@@ -1026,10 +1030,12 @@ inline bool saveMapMode(int newMapMode) {
     prevMapMode = settings.getInt(MAP_MODE);
   }
   settings.saveInt(MAP_MODE, newMapMode);
+  needAdaptColors = true;
   //reportSettingsChange("map_mode", newMapMode);
   //ha.setLampState(newMapMode == 5);
   //ha.setMapMode(haMapModeMap.second[newMapMode]);
   const char* mapModeName = getNameById(MAP_MODES, newMapMode, MAP_MODES_COUNT);
+  display.showServiceMessage(mapModeName, "Режим мапи:");
   //ha.setMapModeCurrent(mapModeName);
   //showServiceMessage(mapModeName, "Режим мапи:");
   // update to selected mapMode

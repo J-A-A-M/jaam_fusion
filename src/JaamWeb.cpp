@@ -28,6 +28,7 @@ extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needReconfigureSound;
+extern volatile bool needReconfigureButtons;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
@@ -1814,6 +1815,28 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(IGNORE_MUTE_ON_ALERT, boolValue);
             LOG.printf("[WEB] Setting ignore_mute_on_alert: %d\n", boolValue);
+        } else if (name == "button_1_touch") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(USE_TOUCH_BUTTON_1, boolValue);
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_1_touch: %d\n", intValue);
+        } else if (name == "button_2_touch") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(USE_TOUCH_BUTTON_2, boolValue);
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_2_touch: %d\n", intValue);
+        } else if (name == "button_1_mode") {
+            settings->saveInt(BUTTON_1_MODE, intValue);
+            LOG.printf("[WEB] Setting button_1_mode: %d\n", intValue);
+        } else if (name == "button_2_mode") {
+            settings->saveInt(BUTTON_2_MODE, intValue);
+            LOG.printf("[WEB] Setting button_2_mode: %d\n", intValue);
+        } else if (name == "button_1_mode_long") {
+            settings->saveInt(BUTTON_1_MODE_LONG, intValue);
+            LOG.printf("[WEB] Setting button_1_mode_long: %d\n", intValue);
+        } else if (name == "button_2_mode_long") {
+            settings->saveInt(BUTTON_2_MODE_LONG, intValue);
+            LOG.printf("[WEB] Setting button_2_mode_long: %d\n", intValue);
         }
 
         server.send(200, "text/plain", "OK");
@@ -1894,6 +1917,14 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(DF_TX_PIN, value.toInt());
             needReconfigureSound = true;
             LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
+        } else if (name == "button_1_pin") {
+            settings->saveInt(BUTTON_1_PIN, value.toInt());
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_1_pin: %d\n", value.toInt());
+        } else if (name == "button_2_pin") {
+            settings->saveInt(BUTTON_2_PIN, value.toInt());
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_2_pin: %d\n", value.toInt());
         }
 
         server.send(200, "text/plain", "OK");
@@ -2219,6 +2250,14 @@ void JaamWeb::handleUiSchema() {
             JsonArray arr = dropdownLists["melodies"].to<JsonArray>();
             appendOptionsList(arr, MELODY_NAMES, MELODIES_COUNT);
         }
+        {
+            JsonArray arr = dropdownLists["button_modes_single_click"].to<JsonArray>();
+            appendOptionsList(arr, SINGLE_CLICKS, SINGLE_CLICKS_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["button_modes_long_click"].to<JsonArray>();
+            appendOptionsList(arr, LONG_CLICKS, LONG_CLICKS_COUNT);
+        }
     }
 
     JsonArray controls = doc["controls"].to<JsonArray>();
@@ -2332,6 +2371,15 @@ void JaamWeb::handleUiSchema() {
     addDropdown("hardware", "service_led_color_format", "Сервісна стрічка (формат кольору)", "led_color_formats", SERVICE_LED_COLOR_FORMAT);
     addDropdown("hardware", "service_led_frequency", "Сервісна стрічка (частота)", "led_frequencies", SERVICE_LED_FREQUENCY);
     addInfoError("hardware", "Увага: неправильна конфігурація пінів може призвести до пошкодження пристрою!");
+    addLabel("hardware", "Кнопки");
+    addText("hardware", "button_1_pin", "Пін кнопки 1", String(settings->getInt(BUTTON_1_PIN)), "-1");
+    addBool("hardware", "button_1_touch", "Підтримка touch-кнопки TTP223 для кнопки 1", USE_TOUCH_BUTTON_1);
+    addDropdown("hardware", "button_1_mode", "Режим кнопки 1 (Single Click)", "button_modes_single_click", BUTTON_1_MODE);
+    addDropdown("hardware", "button_1_mode_long", "Режим кнопки 1 (Long Click)", "button_modes_long_click", BUTTON_1_MODE_LONG);
+    addText("hardware", "button_2_pin", "Пін кнопки 2", String(settings->getInt(BUTTON_2_PIN)), "-1");
+    addBool("hardware", "button_2_touch", "Підтримка touch-кнопки TTP223 для кнопки 2", USE_TOUCH_BUTTON_2);
+    addDropdown("hardware", "button_2_mode", "Режим кнопки 2 (Single Click)", "button_modes_single_click", BUTTON_2_MODE);
+    addDropdown("hardware", "button_2_mode_long", "Режим кнопки 2 (Long Click)", "button_modes_long_click", BUTTON_2_MODE_LONG);
     addLabel("hardware", "Батарея");
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING);
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");

@@ -45,7 +45,7 @@ JaamStorage         storage;
 JaamDisplay         display;
 JaamClimateSensor   climate;
 JaamSound           sound;
-JaamButton          button;
+JaamButton          buttons;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -84,6 +84,7 @@ volatile bool needReconnectServiceStrip = false;
 volatile bool needUpdateBatteryPin = false;
 volatile bool needReconfigureDisplay = false;
 volatile bool needReconfigureSound = false;
+volatile bool needReconfigureButtons = false;
 volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
 volatile bool needAdaptVolume = false;
@@ -223,8 +224,8 @@ bool isItNightNow() {
 int getCurrentMapMode() {
   if (minuteOfSilence || uaAnthemPlaying) return 3; // ua flag
 
-  int homeRegionId = settings.getInt(HOME_DISTRICT);
-  int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
+//   int homeRegionId = settings.getInt(HOME_DISTRICT);
+//   int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
 //   if (alarmMode == 1 && isAlertInNeighboringDistricts()) {
 //     return 1; // alerts mode
 //   }
@@ -404,7 +405,7 @@ void handleClick(int event, JaamButton::Action action) {
     case 3:
       isMapOff = !isMapOff;
       display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
-      //mapCycle();
+      needAdaptColors = true;
       break;
     // toggle display
     case 4:
@@ -428,13 +429,15 @@ void handleClick(int event, JaamButton::Action action) {
       //saveNightMode(!nightMode);
       break;
     // toggle lamp (singl click) or reboot device (long click)
-    case 7:
-      if (action == JaamButton::Action::SINGLE_CLICK) {
-        int newMapMode = settings.getInt(MAP_MODE) == 5 ? prevMapMode : 5;
-        saveMapMode(newMapMode);
-      } else if (JaamButton::Action::LONG_CLICK) {
-        rebootDevice();
-      }
+    case 10:
+    
+    //   if (action == JaamButton::Action::SINGLE_CLICK) {
+    //     int newMapMode = settings.getInt(MAP_MODE) == 5 ? prevMapMode : 5;
+    //     saveMapMode(newMapMode);
+    //   } else if (JaamButton::Action::LONG_CLICK) {
+    //     rebootDevice();
+    //   }
+      rebootDevice();
       break;
 #if FW_UPDATE_ENABLED
     case 100:
@@ -1941,17 +1944,17 @@ void initButtons() {
 
   LOG.printf("[BUTTON] button1 pin: %d\n", settings.getInt(BUTTON_1_PIN));
   LOG.printf("[BUTTON] button1 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_1));
-  button.setButton1Pin(settings.getInt(BUTTON_1_PIN), !settings.getBool(USE_TOUCH_BUTTON_1));
-  button.setButton1ClickListener(button1Click);
-  button.setButton1LongClickListener(button1LongClick);
-  button.setButton1DuringLongClickListener(button1DuringLongClick);
+  buttons.setButton1Pin(settings.getInt(BUTTON_1_PIN), !settings.getBool(USE_TOUCH_BUTTON_1));
+  buttons.setButton1ClickListener(button1Click);
+  buttons.setButton1LongClickListener(button1LongClick);
+  buttons.setButton1DuringLongClickListener(button1DuringLongClick);
 
   LOG.printf("[BUTTON] button2 pin: %d\n", settings.getInt(BUTTON_2_PIN));
   LOG.printf("[BUTTON] button2 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_2));
-  button.setButton2Pin(settings.getInt(BUTTON_2_PIN), !settings.getBool(USE_TOUCH_BUTTON_2));
-  button.setButton2ClickListener(button2Click);
-  button.setButton2LongClickListener(button2LongClick);
-  button.setButton2DuringLongClickListener(button2DuringLongClick);
+  buttons.setButton2Pin(settings.getInt(BUTTON_2_PIN), !settings.getBool(USE_TOUCH_BUTTON_2));
+  buttons.setButton2ClickListener(button2Click);
+  buttons.setButton2LongClickListener(button2LongClick);
+  buttons.setButton2DuringLongClickListener(button2DuringLongClick);
 }
 
 
@@ -2388,6 +2391,12 @@ void mainThreadProcess() {
         needReconfigureSound = false;
     }
 
+    if (needReconfigureButtons) {
+        LOG.printf("[MAIN] Reconfiguring buttons\n");
+        initButtons();
+        needReconfigureButtons = false;
+    }
+
     if (needUpdateAnimationsMode) {
         LOG.printf("[MAIN] Animations sync mode %s\n", settings.getInt(ENABLE_SYNC_ANIMATIONS) ? "ENABLED" : "DISABLED");
         animation.setSynchronizedMode(settings.getInt(ENABLE_SYNC_ANIMATIONS));
@@ -2583,4 +2592,5 @@ void loop() {
     animation.update();
     async.run();
     web.handleClient();
+    buttons.tick();
 }
