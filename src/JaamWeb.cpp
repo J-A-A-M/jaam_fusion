@@ -1408,6 +1408,7 @@ void JaamWeb::handleParameter() {
             settings->saveInt(LEGACY, intValue);
             LOG.printf("[WEB] Setting legacy: %d\n", intValue);
             needRecalculateLeds = true;
+            needReconnectMainStrip = true;
             needReconfigureDisplay = true;
         } else if (name == "district_mode_kyiv") {
             settings->saveInt(DISTRICT_MODE_KYIV, intValue);

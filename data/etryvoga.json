@@ -537,6 +537,10 @@
 "name": "Синельникове"
 },
 {
+"slug": "CHAPLYNE-CITY",
+"name": "Чаплине"
+},
+{
 "slug": "PERSHOTRAVNENSK-CITY",
 "name": "Шахтарське"
 }
@@ -661,6 +665,10 @@
 {
 "slug": "LIMAN-CITY",
 "name": "Лиман"
+},
+{
+"slug": "NOVODONETSKE-CITY",
+"name": "Новодонецьке"
 },
 {
 "slug": "SVYATOGIRSK-CITY",
@@ -1619,6 +1627,10 @@
 "slug": "CHERVONOGRADSKYI-DSTR",
 "name": "Шептицький район",
 "cities": [
+{
+"slug": "DOBROTVIR-CITY",
+"name": "Добротвір"
+},
 {
 "slug": "CHERVONOHRAD-CITY",
 "name": "Шептицький"
@@ -2820,6 +2832,10 @@
 {
 "slug": "KULYKIVKA-CITY",
 "name": "Куликівка"
+},
+{
+"slug": "LIUBECH-CITY",
+"name": "Любеч"
 },
 {
 "slug": "OSTER-CITY",

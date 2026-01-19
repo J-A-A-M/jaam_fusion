@@ -193,7 +193,9 @@ inline void generateCustomRegionMap() {
     }
 
     if (legacy == 4) {
-        base = REGION_MAP_LED;
+        base = REGION_MAP_JAAM_3_0;
+    } else if (legacy == 6) {
+        base = REGION_MAP_JAAM_3_1;
     } else if (legacy == 0 || legacy == 3) {
         // kharkiv_led_position = 20;              // Позиція для Харківської області
         // zp_led_position = 23;                   // Позиція для Запорізької області
