@@ -589,14 +589,18 @@ inline bool isLedInHomeRegion(int led_position) {
     LOG.printf(". ");
 
     // Перевіряємо, чи входить led_position у масив
+    bool found = false;
     for (uint8_t i = 0; i < ledCount; ++i) {
         if (leds[i] == led_position) {
-            LOG.printf("Led %d is in home district\n", led_position);
-            return true;
-        } else {
-            LOG.printf("Led %d not found in home district\n", led_position);
+            found = true;
+            break;
         }
     }
+    if (found) {
+        LOG.printf("Led %d is in home district\n", led_position);
+        return true;
+    }
+    LOG.printf("Led %d not found in home district\n", led_position);
     return false;
 }
 
