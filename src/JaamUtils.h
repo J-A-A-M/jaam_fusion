@@ -179,11 +179,11 @@ inline void generateCustomRegionMap() {
 
     const RegionLedMapEntry* base = nullptr;
     int legacy = settings.getInt(LEGACY);
-    int kyiv_led_position;
+    //int kyiv_led_position;
     // int kharkiv_led_position;
     // int zp_led_position;
 
-    if (legacy == 5) {
+    if (legacy == LEGACY::CUSTOM_MAPPING) {
         if (!storage.loadCustomMap(customMap)) {
             // Якщо файл не знайдено, завантажити карту за замовчуванням
             base = STATE_MAP_LED_ODESA_WITH_KYIV;
@@ -192,78 +192,25 @@ inline void generateCustomRegionMap() {
         return;
     }
 
-    if (legacy == 4) {
+    if (legacy == LEGACY::JAAM_3_0) {
         base = REGION_MAP_JAAM_3_0;
-    } else if (legacy == 6) {
+    } else if (legacy == LEGACY::JAAM_3_1) {
         base = REGION_MAP_JAAM_3_1;
-    } else if (legacy == 0 || legacy == 3) {
-        // kharkiv_led_position = 20;              // Позиція для Харківської області
-        // zp_led_position = 23;                   // Позиція для Запорізької області
+    } else if (legacy == LEGACY::ODESA_KYIV || legacy == LEGACY::JAAM_1_3 || legacy == LEGACY::JAAM_2_1) {
         base = STATE_MAP_LED_ODESA_WITH_KYIV;
-    } else if (legacy == 2 && settings.getBool(KYIV_LED)) {
-        // kharkiv_led_position = 20;              // Позиція для Харківської області
-        // zp_led_position = 23;                   // Позиція для Запорізької області
-        base = STATE_MAP_LED_ODESA_WITH_KYIV;
-    } else if (legacy == 2) {
-        // kharkiv_led_position = 19;              // Позиція для Харківської області
-        // zp_led_position = 22;                   // Позиція для Запорізької області
-        kyiv_led_position = 16;                 // Позиція для Київської області
+    } else if (legacy == LEGACY::ODESA) {
+        //kyiv_led_position = 16;                 // Позиція для Київської області
         base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
-    } else if (legacy == 1 && settings.getBool(KYIV_LED)) {
-        // kharkiv_led_position = 11;              // Позиція для Харківської області
-        // zp_led_position = 14;                   // Позиція для Запорізької області
+    } else if (legacy == LEGACY::ZAKARPATTIA_KYIV) {
         base = STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
-    } else if (legacy == 1) {
-        // kharkiv_led_position = 10;              // Позиція для Харківської області
-        // zp_led_position = 13;                   // Позиція для Запорізької області
-        kyiv_led_position = 7;                  // Позиція для Київської області
+    } else if (legacy == LEGACY::ZAKARPATTIA) {
+        //kyiv_led_position = 7;                  // Позиція для Київської області
         base = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
     }
 
     if (!base) return;
 
     memcpy(customMap, base, sizeof(customMap));
-
-    // Додатковий кастом для Києва
-    // if ((legacy == 1 || legacy == 2) && !settings.getBool(KYIV_LED) && settings.getInt(DISTRICT_MODE_KYIV) > 0) {
-    //     const std::set<uint16_t> regionSet = {14, 77, 73, 75, 76, 74, 79, 78}; // Київська область та райони
-    //     for (int i = 0; i < MAX_REGIONS; ++i) {
-    //         if (customMap[i].region_id == 31) {
-    //             customMap[i].led_positions[0] = kyiv_led_position;
-    //             customMap[i].led_count = 1;
-    //             break;
-    //         }
-    //         if (regionSet.count(customMap[i].region_id) && settings.getInt(DISTRICT_MODE_KYIV) == 1) {
-    //             customMap[i].led_count = 0;
-    //         }
-    //     }
-    // }
-    // if (settings.getInt(DISTRICT_MODE_KHARKIV) > 0) {
-    //     const std::set<uint16_t> regionSet = {22, 124, 123, 122, 126, 127, 125, 128}; // Харківська область та райони
-    //     for (int i = 0; i < MAX_REGIONS; ++i) {
-    //         if (customMap[i].region_id == 1293) { // Харківська область
-    //             customMap[i].led_positions[0] = kharkiv_led_position;
-    //             customMap[i].led_count = 1;
-    //             break;      
-    //         }
-    //         if (regionSet.count(customMap[i].region_id) && settings.getInt(DISTRICT_MODE_KHARKIV) == 1) {
-    //             customMap[i].led_count = 0;
-    //         }
-    //     }
-    // }
-    // if (settings.getInt(DISTRICT_MODE_ZP) > 0) {
-    //     const std::set<uint16_t> regionSet = {12, 146, 145, 149, 147, 148}; // Запорізька область та райони
-    //     for (int i = 0; i < MAX_REGIONS; ++i) {
-    //         if (customMap[i].region_id == 564) { // Запорізька область
-    //             customMap[i].led_positions[0] = zp_led_position;
-    //             customMap[i].led_count = 1;
-    //             break;      
-    //         }
-    //         if (regionSet.count(customMap[i].region_id) && settings.getInt(DISTRICT_MODE_ZP) == 1) {
-    //             customMap[i].led_count = 0;
-    //         }
-    //     }
-    // }
 }
 
 // Генерація bgLedColors (викликається при ініціалізації)
@@ -315,46 +262,6 @@ inline uint32_t getBgLedColor(int ledIndex) {
 inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
     return customMap; // Повертаємо customMap, який був заповнений раніше
 }
-
-//inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
-//     if (legacy == 4) {
-//         return REGION_MAP_LED;
-//     }
-//     if (legacy == 0 || legacy == 3) {
-//         return STATE_MAP_LED_ODESA_WITH_KYIV;
-//     }
-//     if (legacy == 2 && settings.getBool(KYIV_LED)){
-//         return STATE_MAP_LED_ODESA_WITH_KYIV;
-//     }
-//     if (legacy == 1 && settings.getBool(KYIV_LED)){
-//         return STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
-//     }
-
-//     const RegionLedMapEntry* base = nullptr;
-//     int kyiv_led_position;
-//     if (legacy == 1){
-//         base = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
-//         kyiv_led_position = 7;
-//     } 
-//     if (legacy == 2){
-//         base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
-//         kyiv_led_position = 16;
-//     } 
-    
-//     static RegionLedMapEntry customMap[MAX_REGIONS];
-//     memcpy(customMap, base, sizeof(customMap));
-    
-
-//     for (int i = 0; i < MAX_REGIONS; ++i) {
-//         if (settings.getInt(DISTRICT_MODE_KYIV) == 1) {
-//             if (customMap[i].region_id == 31 && settings.getInt(DISTRICT_MODE_KYIV) == 1) {
-//                 customMap[i].led_positions[0] = kyiv_led_position;
-//                 break;
-//             }
-//         }
-//     }  
-//     return customMap;
-// }
 
 // Отримати регіон по region_id
 inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
@@ -423,6 +330,17 @@ inline void checkFreeHeap(const char* label) {
     lastUsedHeap = usedHeap;
 }
 
+inline bool isAlertBitEnabled(int bit) {
+    if (bit == 0) return true;
+    if (bit == 5) return settings.getBool(ENABLE_DRONES);
+    if (bit == 6) return settings.getBool(ENABLE_MISSILES);
+    if (bit == 7) return settings.getBool(ENABLE_KABS);
+    if (bit == 8) return settings.getBool(ENABLE_BALLISTIC);
+    if (bit == 9) return settings.getBool(ENABLE_EXPLOSIONS);
+    if (bit == 10) return settings.getBool(ENABLE_RECON_DRONES);
+    return false;
+}
+
 // Функція для пошуку номеру найстаршого дозволеного біту в 16-бітному числі
 inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
     if (value == 0) return -1; // Повертаємо -1 як індикатор відсутності бітів
@@ -438,24 +356,8 @@ inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
         int bit = ALERT_PRIORITY_ORDER[i];
         if (value & (1 << bit)) {
             // Перевіряємо чи дозволено показувати цей тип тривоги
-            bool is_enabled = false;
-            
-            if (bit == 0) {
-                is_enabled = true; // Alert завжди показуємо
-            } else if (bit == 5) {
-                is_enabled = settings.getBool(ENABLE_DRONES);
-            } else if (bit == 6) {
-                is_enabled = settings.getBool(ENABLE_MISSILES);
-            } else if (bit == 7) {
-                is_enabled = settings.getBool(ENABLE_KABS);
-            } else if (bit == 8) {
-                is_enabled = settings.getBool(ENABLE_BALLISTIC);
-            } else if (bit == 9) {
-                is_enabled = settings.getBool(ENABLE_EXPLOSIONS);
-            } else if (bit == 10) {
-                is_enabled = settings.getBool(ENABLE_RECON_DRONES);
-            }
-            
+            bool is_enabled = isAlertBitEnabled(bit);
+                     
             // Якщо тип тривоги дозволено показувати - повертаємо його
             if (is_enabled) {
                 return bit;
@@ -491,7 +393,7 @@ inline int findHighestBitForLed(int position) {
         return -1; // LED не належить жодному регіону
     }
 
-    uint8_t globalHighestBit = -1;
+    int globalHighestBit = -1;
     uint16_t highestBitRegion = 0;
     bool foundAnyBit = false;
 
@@ -630,25 +532,8 @@ inline int getHighestActualBit(int sourceBit) {
     for (int i = sourceBitIndex; i < ALERT_PRIORITY_COUNT; ++i) {
         int bit = ALERT_PRIORITY_ORDER[i];
         
-        bool is_enabled = false;
+        bool is_enabled = isAlertBitEnabled(bit);
         
-        // Перевіряємо чи дозволено показувати цей тип тривоги
-        if (bit == 0) {
-            is_enabled = true; // Alert завжди показуємо
-        } else if (bit == 5) {
-            is_enabled = settings.getBool(ENABLE_DRONES);
-        } else if (bit == 6) {
-            is_enabled = settings.getBool(ENABLE_MISSILES);
-        } else if (bit == 7) {
-            is_enabled = settings.getBool(ENABLE_KABS);
-        } else if (bit == 8) {
-            is_enabled = settings.getBool(ENABLE_BALLISTIC);
-        } else if (bit == 9) {
-            is_enabled = settings.getBool(ENABLE_EXPLOSIONS);
-        } else if (bit == 10) {
-            is_enabled = settings.getBool(ENABLE_RECON_DRONES);
-        }
-
         // Якщо тип тривоги дозволено показувати - встановлюємо його і виходимо
         if (is_enabled) {
             actualBit = bit;
@@ -1004,6 +889,7 @@ inline String getAlertsJson() {
         alerts["kab"] = (flags16 & (1 << 7)) ? 1 : 0;
         alerts["ballistic"] = (flags16 & (1 << 8)) ? 1 : 0;
         alerts["explosion"] = (flags16 & (1 << 9)) ? 1 : 0;
+        alerts["recon"] = (flags16 & (1 << 10)) ? 1 : 0;
     }
     
     String response;

@@ -2326,7 +2326,7 @@ void JaamWeb::handleUiSchema() {
     // Додаємо кнопку для редактора мапи
     addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor");
 
-    addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
+    //addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
     addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
     

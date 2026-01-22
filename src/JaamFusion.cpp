@@ -1365,12 +1365,14 @@ void initStripMain() {
 
     legacy = settings.getInt(LEGACY);
 
-    if (legacy == LEGACY::JAAM_3_1) {
-        num_leds_main = 405;
-    } else if (legacy == LEGACY::JAAM_3_0) {
+    if (legacy == LEGACY::JAAM_3_0) {
         num_leds_main = 273;
-    } else {
+    } else if (legacy == LEGACY::JAAM_3_1) {
+        num_leds_main = 405;
+    } else if (legacy == LEGACY::ODESA_KYIV || legacy == LEGACY::ZAKARPATTIA_KYIV || legacy == LEGACY::JAAM_1_3 || legacy == LEGACY::JAAM_2_1) {
         num_leds_main = 26;
+    } else if (legacy == LEGACY::ODESA || legacy == LEGACY::ZAKARPATTIA) {
+        num_leds_main = 25;
     }
     
     if (settings.getInt(MAIN_LED_PIN) > 0) {
