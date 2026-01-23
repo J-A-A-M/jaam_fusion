@@ -8,10 +8,10 @@ JaamStorage::JaamStorage() {}
 
 bool JaamStorage::begin() {
     if (!SPIFFS.begin(true)) {
-        LOG.println("[STORAGE] SPIFFS Mount Failed");
+        LOG.printf("[STORAGE] SPIFFS Mount Failed\n");
         return false;
     }
-    LOG.println("[STORAGE] SPIFFS Mounted");
+    LOG.printf("[STORAGE] SPIFFS Mounted\n");
     return true;
 }
 
@@ -51,7 +51,7 @@ bool JaamStorage::loadCustomMap(RegionLedMapEntry* map) {
     File file = SPIFFS.open(CUSTOM_MAP_PATH, "r");
     
     if (!file) {
-        LOG.println("[STORAGE] Custom map file not found or cannot be opened. Using default map.");
+        LOG.printf("[STORAGE] Custom map file not found or cannot be opened. Using default map.\n");
         return false;
     }
 
@@ -59,10 +59,10 @@ bool JaamStorage::loadCustomMap(RegionLedMapEntry* map) {
 
     String json_content = file.readString();
     file.close();
-    LOG.println("[STORAGE] File content read into string.");
+    LOG.printf("[STORAGE] File content read into string: %s\n", json_content.c_str());
 
     if (json_content.length() == 0) {
-        LOG.println("[STORAGE] File is empty.");
+        LOG.printf("[STORAGE] File is empty.\n");
         return false;
     }
     
@@ -70,11 +70,11 @@ bool JaamStorage::loadCustomMap(RegionLedMapEntry* map) {
 
     JsonDocument* doc = new (std::nothrow) JsonDocument();
     if (!doc) {
-        LOG.println("[STORAGE] Failed to allocate JsonDocument on heap.");
+        LOG.printf("[STORAGE] Failed to allocate JsonDocument on heap.\n");
         return false;
     }
 
-    LOG.println("[STORAGE] Deserializing JSON from string...");
+    LOG.printf("[STORAGE] Deserializing JSON from string...\n");
     DeserializationError error = deserializeJson(*doc, json_content);
     
     if (error) {
@@ -82,7 +82,7 @@ bool JaamStorage::loadCustomMap(RegionLedMapEntry* map) {
         delete doc;
         return false;
     }
-    LOG.println("[STORAGE] JSON deserialized successfully.");
+    LOG.printf("[STORAGE] JSON deserialized successfully.\n");
 
     memset(map, 0, sizeof(RegionLedMapEntry) * MAX_REGIONS);
     JsonArray array = doc->as<JsonArray>();
@@ -111,7 +111,7 @@ bool JaamStorage::loadCustomMap(RegionLedMapEntry* map) {
     }
     
     delete doc;
-    LOG.println("[STORAGE] Finished processing custom map.");
+    LOG.printf("[STORAGE] Finished processing custom map.\n");
     return true;
 }
 
@@ -130,7 +130,7 @@ void JaamStorage::getStorageInfo() {
 void JaamStorage::getFilesInfo() {
     File root = SPIFFS.open("/");
     if(!root){
-        LOG.println(F("[STORAGE] Failed to open root directory"));
+        LOG.printf("[STORAGE] Failed to open root directory\n");
         return;
     }
     File file = root.openNextFile();
@@ -174,7 +174,7 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
     File file = SPIFFS.open(BG_LED_COLORS_PATH, "r");
     
     if (!file) {
-        LOG.println("[STORAGE] BG LED colors file not found or cannot be opened. Using default black colors.");
+        LOG.printf("[STORAGE] BG LED colors file not found or cannot be opened. Using default black colors.\n");
         actualCount = 0;
         return false;
     }
@@ -183,10 +183,10 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
 
     String json_content = file.readString();
     file.close();
-    LOG.println("[STORAGE] File content read into string.");
+    LOG.printf("[STORAGE] File content read into string: %s\n", json_content.c_str());
 
     if (json_content.length() == 0) {
-        LOG.println("[STORAGE] File is empty.");
+        LOG.printf("[STORAGE] File is empty.\n");
         actualCount = 0;
         return false;
     }
@@ -195,12 +195,12 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
 
     JsonDocument* doc = new (std::nothrow) JsonDocument();
     if (!doc) {
-        LOG.println("[STORAGE] Failed to allocate JsonDocument on heap.");
+        LOG.printf("[STORAGE] Failed to allocate JsonDocument on heap.\n");
         actualCount = 0;
         return false;
     }
 
-    LOG.println("[STORAGE] Deserializing JSON from string...");
+    LOG.printf("[STORAGE] Deserializing JSON from string...\n");
     DeserializationError error = deserializeJson(*doc, json_content);
     
     if (error) {
@@ -209,7 +209,7 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
         actualCount = 0;
         return false;
     }
-    LOG.println("[STORAGE] JSON deserialized successfully.");
+    LOG.printf("[STORAGE] JSON deserialized successfully.\n");
 
     // Ініціалізуємо масив кольорів чорним кольором (відсутність підсвітки)
     for (int i = 0; i < maxCount; ++i) {

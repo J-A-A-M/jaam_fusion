@@ -28,6 +28,7 @@ extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needReconfigureSound;
+extern volatile bool needReconfigureButtons;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
@@ -1407,6 +1408,7 @@ void JaamWeb::handleParameter() {
             settings->saveInt(LEGACY, intValue);
             LOG.printf("[WEB] Setting legacy: %d\n", intValue);
             needRecalculateLeds = true;
+            needReconnectMainStrip = true;
             needReconfigureDisplay = true;
         } else if (name == "district_mode_kyiv") {
             settings->saveInt(DISTRICT_MODE_KYIV, intValue);
@@ -1550,6 +1552,9 @@ void JaamWeb::handleParameter() {
             settings->saveBool(INVERT_DISPLAY, boolValue);
             LOG.printf("[WEB] Setting invert_display: %d\n", boolValue);
             needReconfigureDisplay = true;
+        } else if (name == "display_alert_message_time") {
+            settings->saveInt(DISPLAY_ALERT_MESSAGE_TIME, intValue);
+            LOG.printf("[WEB] Setting display_alert_message_time: %d\n", intValue);
         } else if (name == "enable_kabs") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_KABS, boolValue);
@@ -1811,6 +1816,28 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(IGNORE_MUTE_ON_ALERT, boolValue);
             LOG.printf("[WEB] Setting ignore_mute_on_alert: %d\n", boolValue);
+        } else if (name == "button_1_touch") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(USE_TOUCH_BUTTON_1, boolValue);
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_1_touch: %d\n", intValue);
+        } else if (name == "button_2_touch") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(USE_TOUCH_BUTTON_2, boolValue);
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_2_touch: %d\n", intValue);
+        } else if (name == "button_1_mode") {
+            settings->saveInt(BUTTON_1_MODE, intValue);
+            LOG.printf("[WEB] Setting button_1_mode: %d\n", intValue);
+        } else if (name == "button_2_mode") {
+            settings->saveInt(BUTTON_2_MODE, intValue);
+            LOG.printf("[WEB] Setting button_2_mode: %d\n", intValue);
+        } else if (name == "button_1_mode_long") {
+            settings->saveInt(BUTTON_1_MODE_LONG, intValue);
+            LOG.printf("[WEB] Setting button_1_mode_long: %d\n", intValue);
+        } else if (name == "button_2_mode_long") {
+            settings->saveInt(BUTTON_2_MODE_LONG, intValue);
+            LOG.printf("[WEB] Setting button_2_mode_long: %d\n", intValue);
         }
 
         server.send(200, "text/plain", "OK");
@@ -1891,6 +1918,14 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(DF_TX_PIN, value.toInt());
             needReconfigureSound = true;
             LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
+        } else if (name == "button_1_pin") {
+            settings->saveInt(BUTTON_1_PIN, value.toInt());
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_1_pin: %d\n", value.toInt());
+        } else if (name == "button_2_pin") {
+            settings->saveInt(BUTTON_2_PIN, value.toInt());
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_2_pin: %d\n", value.toInt());
         }
 
         server.send(200, "text/plain", "OK");
@@ -1907,7 +1942,7 @@ void JaamWeb::setCrossOrigin() {
 }
 
 void JaamWeb::sendCrossOriginHeader(){
-    LOG.println("[WEB] sendCORSHeader");
+    LOG.printf("[WEB] sendCORSHeader\n");
     setCrossOrigin();
     server.send(204);
 }
@@ -2216,6 +2251,14 @@ void JaamWeb::handleUiSchema() {
             JsonArray arr = dropdownLists["melodies"].to<JsonArray>();
             appendOptionsList(arr, MELODY_NAMES, MELODIES_COUNT);
         }
+        {
+            JsonArray arr = dropdownLists["button_modes_single_click"].to<JsonArray>();
+            appendOptionsList(arr, SINGLE_CLICKS, SINGLE_CLICKS_COUNT);
+        }
+        {
+            JsonArray arr = dropdownLists["button_modes_long_click"].to<JsonArray>();
+            appendOptionsList(arr, LONG_CLICKS, LONG_CLICKS_COUNT);
+        }
     }
 
     JsonArray controls = doc["controls"].to<JsonArray>();
@@ -2283,7 +2326,7 @@ void JaamWeb::handleUiSchema() {
     // Додаємо кнопку для редактора мапи
     addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor");
 
-    addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
+    //addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
     addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
     
@@ -2301,6 +2344,7 @@ void JaamWeb::handleUiSchema() {
     addDropdown("display", "display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT);
     addDropdown("display", "display_rotation", "Поворот дисплея", "display_rotation", DISPLAY_ROTATION);
     addBool("display", "invert_display", "Інвертувати дисплей", INVERT_DISPLAY);
+    addSlider("display", "display_alert_message_time", "Час сповіщень на екрані (секунди)", 1, 60, 1, settings->getInt(DISPLAY_ALERT_MESSAGE_TIME));
 
     // Мережеві налаштування
     addInfo("network", "Налаштуйте підключення до серверів та мережевих сервісів", "#17a2b8", "M17,3A2,2 0 0,1 19,5V15A2,2 0 0,1 17,17H13V19H14A1,1 0 0,1 15,20H22V22H15A1,1 0 0,1 14,21H10A1,1 0 0,1 9,22H2V20H9A1,1 0 0,1 10,19H11V17H7C5.89,17 5,16.1 5,15V5A2,2 0 0,1 7,3H17Z");
@@ -2328,6 +2372,15 @@ void JaamWeb::handleUiSchema() {
     addDropdown("hardware", "service_led_color_format", "Сервісна стрічка (формат кольору)", "led_color_formats", SERVICE_LED_COLOR_FORMAT);
     addDropdown("hardware", "service_led_frequency", "Сервісна стрічка (частота)", "led_frequencies", SERVICE_LED_FREQUENCY);
     addInfoError("hardware", "Увага: неправильна конфігурація пінів може призвести до пошкодження пристрою!");
+    addLabel("hardware", "Кнопки");
+    addText("hardware", "button_1_pin", "Пін кнопки 1", String(settings->getInt(BUTTON_1_PIN)), "-1");
+    addBool("hardware", "button_1_touch", "Підтримка touch-кнопки TTP223 для кнопки 1", USE_TOUCH_BUTTON_1);
+    addDropdown("hardware", "button_1_mode", "Режим кнопки 1 (Single Click)", "button_modes_single_click", BUTTON_1_MODE);
+    addDropdown("hardware", "button_1_mode_long", "Режим кнопки 1 (Long Click)", "button_modes_long_click", BUTTON_1_MODE_LONG);
+    addText("hardware", "button_2_pin", "Пін кнопки 2", String(settings->getInt(BUTTON_2_PIN)), "-1");
+    addBool("hardware", "button_2_touch", "Підтримка touch-кнопки TTP223 для кнопки 2", USE_TOUCH_BUTTON_2);
+    addDropdown("hardware", "button_2_mode", "Режим кнопки 2 (Single Click)", "button_modes_single_click", BUTTON_2_MODE);
+    addDropdown("hardware", "button_2_mode_long", "Режим кнопки 2 (Long Click)", "button_modes_long_click", BUTTON_2_MODE_LONG);
     addLabel("hardware", "Батарея");
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING);
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");
@@ -2459,7 +2512,7 @@ void JaamWeb::handleUiSchema() {
 
 void JaamWeb::handleSaveMap() {
     if (storage == nullptr) {
-        LOG.println("[WEB] Storage is not set");
+        LOG.printf("[WEB] Storage is not set\n");
         server.send(500, "text/plain", "Storage not initialized");
         return;
     }
@@ -2507,11 +2560,11 @@ void JaamWeb::handleSaveMap() {
     if (storage->saveCustomMap(customMap)) {
         //generateCustomRegionMap();
         needRecalculateLeds = true;
-        LOG.println("[WEB] Custom map saved successfully.");
+        LOG.printf("[WEB] Custom map saved successfully.\n");
         server.sendHeader("Location", "/map-editor", true);
         server.send(303);
     } else {
-        LOG.println("[WEB] Custom map saving error.");
+        LOG.printf("[WEB] Custom map saving error.\n");
         server.send(500, "text/plain", "Custom map error");
     }
 }
@@ -2697,9 +2750,9 @@ void JaamWeb::handleBgColorsData() {
 }
 
 void JaamWeb::handleSaveBgColors() {
-    LOG.println("[WEB] Handling save BG colors request");
+    LOG.printf("[WEB] Handling save BG colors request\n");
     if (storage == nullptr) {
-        LOG.println("[WEB] Storage is not set");
+        LOG.printf("[WEB] Storage is not set\n");
         server.send(500, "text/plain", "Storage not initialized");
         return;
     }
@@ -2732,13 +2785,13 @@ void JaamWeb::handleSaveBgColors() {
     }
     
     if (storage->saveBgLedColors(colors, bgLedCount)) {
-        LOG.println("[WEB] BG LED colors saved successfully and global structure updated.");
+        LOG.printf("[WEB] BG LED colors saved successfully and global structure updated.\n");
         needToRegenerateBgColorMap = true;
         needAdaptColors = true;
         server.sendHeader("Location", "/bg-color-editor", true);
         server.send(303);
     } else {
-        LOG.println("[WEB] BG LED colors saving error.");
+        LOG.printf("[WEB] BG LED colors saving error.\n");
         server.send(500, "text/plain", "BG LED colors save error");
     }
     

@@ -23,6 +23,7 @@
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
 #include <JaamSound.h>
+#include "JaamButton.h"
 
 using namespace websockets;
 
@@ -44,6 +45,7 @@ JaamStorage         storage;
 JaamDisplay         display;
 JaamClimateSensor   climate;
 JaamSound           sound;
+JaamButton          buttons;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -82,6 +84,7 @@ volatile bool needReconnectServiceStrip = false;
 volatile bool needUpdateBatteryPin = false;
 volatile bool needReconfigureDisplay = false;
 volatile bool needReconfigureSound = false;
+volatile bool needReconfigureButtons = false;
 volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
 volatile bool needAdaptVolume = false;
@@ -107,6 +110,11 @@ bool                websocketReconnect = false;
 time_t              lastWebsocketConnectTime = 0;
 
 // --- OTHER Configuration ---
+bool                minuteOfSilence = false;
+bool                uaAnthemPlaying = false;
+bool                isMapOff = false;
+bool                isDisplayOff = false;
+int                 prevMapMode = 1;
 uint8_t             legacy = 0;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
@@ -213,13 +221,27 @@ bool isItNightNow() {
     return currentHour < dayStart && currentHour >= nightStart ? true : false;
 }
 
+int getCurrentMapMode() {
+  if (minuteOfSilence || uaAnthemPlaying) return 3; // ua flag
+
+//   int homeRegionId = settings.getInt(HOME_DISTRICT);
+//   int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
+//   if (alarmMode == 1 && isAlertInNeighboringDistricts()) {
+//     return 1; // alerts mode
+//   }
+//   if (alarmMode >= 1 && id_to_alerts[homeRegionId].first != 0) {
+//     return 1; // alerts mode
+//   }
+  return isMapOff ? 0 : settings.getInt(MAP_MODE);
+}
+
 // --- SOUND Functions ---
 void playMelody(const char* melodyRtttl) {
 #if BUZZER_ENABLED
   if (sound.isBuzzerEnabled() && (sound.soundSource == 0 || sound.soundSource == 2)) {
     sound.playBuzzer(melodyRtttl);
   } else {
-    LOG.println("Buzzer not enabled or sound source not valid (need 0 or 2): " + String(sound.soundSource));
+    LOG.printf("Buzzer not enabled or sound source not valid (need 0 or 2): %d\n", sound.soundSource);
   }
 #endif
 }
@@ -229,7 +251,7 @@ void playTrack(String track) {
   if (track != "" && (sound.soundSource == 1 || sound.soundSource == 2)) {
     sound.playDFPlayer(track);
   } else {
-    LOG.println("DFPlayer not enabled or sound source not valid (need 1 or 2): " + String(sound.soundSource));
+    LOG.printf("DFPlayer not enabled or sound source not valid (need 1 or 2): %d\n", sound.soundSource);
   }
 #endif
 }
@@ -319,10 +341,10 @@ bool needToPlaySound(SoundType type) {
   if (!isFirstDataFetchCompleted) return false;
 
   // ignore mute on alert
-  if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
+  //if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
 
   // disable sounds on night mode by time only
-  if (settings.getBool(MUTE_SOUND_ON_NIGHT) && isItNightNow()) return false;
+  if (settings.getBool(MUTE_SOUND_ON_NIGHT) && isItNightNow() && !settings.getBool(IGNORE_MUTE_ON_ALERT)) return false;
 
   switch (type) {
   case MIN_OF_SILINCE:
@@ -365,14 +387,188 @@ bool needToPlaySound(SoundType type) {
   return false;
 }
 
-// --- WEBSOCKET Functions ---
+// --- Buttons Functions ---
 
-void printHex(const String& data) {
-    LOG.print("[WEBSOCKET] HEX: ");
-    for (size_t i = 0; i < data.length(); ++i) {
-        LOG.printf("%02X ", static_cast<uint8_t>(data[i]));
+void handleClick(int event, JaamButton::Action action) {
+  SoundType soundType = action == JaamButton::Action::SINGLE_CLICK ? SoundType::SINGLE_CLICK : SoundType::LONG_CLICK;
+  if (event != 0 && needToPlaySound(soundType)) playMelody(soundType);
+  switch (event) {
+    // change map mode
+    case 1:
+      nextMapMode();
+      break;
+    // change display mode
+    case 2:
+      nextDisplayMode();
+      break;
+    // toggle map
+    case 3:
+      isMapOff = !isMapOff;
+      display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
+      needAdaptColors = true;
+      break;
+    // toggle display
+    case 4:
+      isDisplayOff = !isDisplayOff;
+      display.showServiceMessage(!isDisplayOff ? "Увімкнено" : "Вимкнено", "Дисплей:");
+      break;
+    // toggle display and map
+    case 5:
+      if (isDisplayOff != isMapOff) {
+        isDisplayOff = false;
+        isMapOff = false;
+      } else {
+        isMapOff = !isMapOff;
+        isDisplayOff = !isDisplayOff;
+      }
+      display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Дисплей та мапу:");
+      //mapCycle();
+      break;
+    // toggle night mode
+    case 6:
+      //saveNightMode(!nightMode);
+      break;
+    // toggle lamp (singl click) or reboot device (long click)
+    case 10:
+    
+    //   if (action == JaamButton::Action::SINGLE_CLICK) {
+    //     int newMapMode = settings.getInt(MAP_MODE) == 5 ? prevMapMode : 5;
+    //     saveMapMode(newMapMode);
+    //   } else if (JaamButton::Action::LONG_CLICK) {
+    //     rebootDevice();
+    //   }
+      rebootDevice();
+      break;
+#if FW_UPDATE_ENABLED
+    case 100:
+      char updateFileName[30];
+      sprintf(updateFileName, "%s.bin", newFwVersion);
+      downloadAndUpdateFw(updateFileName, settings.getInt(FW_UPDATE_CHANNEL) == 1);
+      break;
+#endif
+    default:
+      // do nothing
+      break;
+  }
+}
+
+bool isButtonActivated() {
+  return settings.getInt(BUTTON_1_MODE) != 0 || settings.getInt(BUTTON_1_MODE_LONG) != 0 || settings.getInt(BUTTON_2_MODE) != 0 || settings.getInt(BUTTON_2_MODE_LONG) != 0;
+}
+
+void singleClick(int mode) {
+  handleClick(mode, JaamButton::SINGLE_CLICK);
+}
+
+void longClick(int modeLong) {
+#if FW_UPDATE_ENABLED
+  if (settings.getInt(NEW_FW_NOTIFICATION) == 1 && fwUpdateAvailable && isButtonActivated() && !isDisplayOff) {
+    handleClick(100, JaamButton::LONG_CLICK);
+    return;
+  }
+#endif
+  handleClick(modeLong, JaamButton::LONG_CLICK);
+}
+
+void buttonClick(const char* buttonName, int mode) {
+#if TEST_MODE
+  displayMessage("Single click!", buttonName);
+#else
+  singleClick(mode);
+#endif
+}
+
+void buttonLongClick(const char* buttonName, int modeLong) {
+#if TEST_MODE
+  displayMessage("Long click!", buttonName);
+#else
+  longClick(modeLong);
+#endif
+}
+
+void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Action action) {
+#if FW_UPDATE_ENABLED
+  if (settings.getInt(NEW_FW_NOTIFICATION) == 1 && fwUpdateAvailable && isButtonActivated() && !isDisplayOff) {
+    return;
+  }
+#endif
+  if (action == JaamButton::Action::DURING_LONG_CLICK) {
+    switch (modeLong) {
+    //   case 8:
+    //     // if lamp mode is active, increase lamp brightness
+    //     if (getCurrentMapMode() == 5) {
+    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) + 1;
+    //       if (newBrightness > 100) {
+    //         newBrightness = 100;
+    //       }
+    //       saveLampBrightness(newBrightness, false, true);
+    //       sprintf(lampBrightnessMsg, "%d%%", newBrightness);
+    //       showServiceMessage(lampBrightnessMsg, "Яскравість лампи:");
+    //     } else {
+    //       showServiceMessage("Лише для режиму лампи");
+    //     }
+    //     break;
+    //   case 9:
+    //     // if lamp mode is active, decrease lamp brightness
+    //     if (getCurrentMapMode() == 5) {
+    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) - 1;
+    //       if (newBrightness < 0) {
+    //         newBrightness = 0;
+    //       }
+    //       saveLampBrightness(newBrightness, false, true);
+    //       sprintf(lampBrightnessMsg, "%d%%", newBrightness);
+    //       showServiceMessage(lampBrightnessMsg, "Яскравість лампи:");
+    //     } else {
+    //       showServiceMessage("Лише для режиму лампи");
+    //     }
+    //     break;
+      default:
+        // do nothing
+        break;
+  }
+  } else if (action == JaamButton::Action::LONG_CLICK_END) {
+    switch (modeLong) {
+      case 8:
+      case 9:
+        // if (getCurrentMapMode() == 5) {
+        //   saveCurrentLampBrightness();
+        // }
+        break;
+      default:
+        // do nothing
+        break;
     }
-    LOG.println();
+  }
+}
+
+void button1Click() {
+  LOG.printf("Button 1 click\n");
+  buttonClick("Button 1", settings.getInt(BUTTON_1_MODE));
+}
+
+void button2Click() {
+  LOG.printf("Button 2 click\n");
+  buttonClick("Button 2", settings.getInt(BUTTON_2_MODE));
+}
+
+void button1LongClick() {
+  LOG.printf("Button 1 long click\n");
+  buttonLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG));
+}
+
+void button2LongClick() {
+  LOG.printf("Button 2 long click\n");
+  buttonLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG));
+}
+
+void button1DuringLongClick(JaamButton::Action action) {
+  LOG.printf("Button 1 during long click\n");
+  buttonDuringLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG), action);
+}
+
+void button2DuringLongClick(JaamButton::Action action) {
+  LOG.printf("Button 2 during long click\n");
+  buttonDuringLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG), action);
 }
 
 void servicePin(ServiceLed type) {
@@ -395,74 +591,96 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     return diff;
 }
 
-void alertAction(int localAlertBit) {
-    if (localAlertBit != alertBit) {
-        LOG.printf("[ALERT] Home district alert status changed from %d to %d\n", alertBit, localAlertBit);
-        if (settings.getBool(SOUND_ON_ALERT) && hasHigherPriority(localAlertBit, alertBit)) {
-            switch (localAlertBit){
-                case AlertModes::ALERT:
-                    if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
-                    display.showServiceMessage("ТРИВОГА", "", 5000);
-                    break;
-                case AlertModes::DRONES:
-                    if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
-                    display.showServiceMessage("БПЛА", "", 5000);
-                    break;
-                case AlertModes::MISSILES:
-                    if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
-                    display.showServiceMessage("РАКЕТИ", "", 5000);
-                    break;
-                case AlertModes::KABS:
-                    if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
-                    display.showServiceMessage("КАБ", "", 5000);
-                    break;
-                case AlertModes::BALLISTIC:
-                    if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
-                    display.showServiceMessage("БАЛЛІСТИКА", "", 5000);
-                    break;
-                case AlertModes::EXPLOSION:
-                    if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
-                    display.showServiceMessage("ВИБУХИ", "", 5000);
-                    break;
-                case AlertModes::RECON_DRONES:
-                    if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
-                    display.showServiceMessage("РОЗВІДКА БПЛА", "", 5000);
-                    break;
-                default:
-                    break;
-            }
+void alertAction(int bit, int districtId) {
+    // int actualBit = getHighestActualBit(bit);
+    // if (actualBit != bit) {
+    //     LOG.printf("[ALERT] actualBit %d != %d. Animation aborted\n", actualBit, bit);
+    //     return;
+    // }
+    // if (bit == alertBit ) {
+    //     LOG.printf("[ALERT] No change in alert status (%d) <-> (%d)\n", bit, alertBit);
+    //     return; // No change in alert status
+    // }
+    // if (!hasHigherPriority(bit, alertBit) && bit != -1) {
+    //     LOG.printf("[ALERT] New alert status %d has lower priority than current %d. Ignored\n", bit, alertBit);
+    //     return; // New alert has lower priority, ignore it
+    // }
+    // if (districtId != settings.getInt(HOME_DISTRICT)) {
+    //     LOG.printf("[ALERT] Alert for district %d ignored, home district is %d\n", districtId, settings.getInt(HOME_DISTRICT));
+    //     return; // Alert is not for home district
+    // }
+    const char* districtName = getNameById(DISTRICTS, districtId, MAX_REGIONS);
+    LOG.printf("[ALERT] Home district %s status changed from %d to %d\n", districtName, alertBit, bit);
+    if (settings.getBool(SOUND_ON_ALERT)) {
+        switch (bit){
+            case AlertModes::ALERT:
+                if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
+                display.showServiceMessage("ТРИВОГА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::DRONES:
+                if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
+                display.showServiceMessage("БПЛА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::MISSILES:
+                if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
+                display.showServiceMessage("РАКЕТИ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::KABS:
+                if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
+                display.showServiceMessage("КАБ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::BALLISTIC:
+                if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
+                display.showServiceMessage("БАЛЛІСТИКА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::EXPLOSION:
+                if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+                display.showServiceMessage("ВИБУХИ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            case AlertModes::RECON_DRONES:
+                if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
+                display.showServiceMessage("РОЗВІДКА БПЛА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+                break;
+            default:
+                break;
         }
-        if (settings.getBool(SOUND_ON_ALERT_END) && localAlertBit == AlertModes::NO_ALERT) {
-            if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
-            display.showServiceMessage("ВІДБІЙ", "", 5000);
-        }
+    }
+    if (settings.getBool(SOUND_ON_ALERT_END) && bit == AlertModes::NO_ALERT) {
+        if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
+        display.showServiceMessage("ВІДБІЙ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
     }
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
-    //LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
+    LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
 
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] LED %d: strip is nullptr\n", led_position);
         return;
     }
+
+    if (strip == strip_bg && settings.getInt(BG_LED_MODE) != BgLedModes::HOME_REGION) {
+        LOG.printf("[ANIMATION] SKIPPED %d: bg mode is not HOME_REGION, background animation skipped\n", led_position);
+        return;
+    }
     
     uint32_t color;
-    uint32_t initialColor = 0x000000; // Початковий колір для анімації
+    uint32_t initialColor = animation.ledActualColor(strip, led_position);
     uint32_t period;
     uint32_t cycles;
     uint8_t startBrightness;
     uint8_t endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ANIMATION_END));
     uint8_t ledCount;
 
-    int actualBit = getHighestActualBit(bit);
+    //int actualBit = getHighestActualBit(bit);
 
-    if (increase && actualBit != bit) {
-        LOG.printf("[ANIMATION] actualBit %d != bit. Animation aborted %d\n", actualBit, bit);
-        return;
-    }
+    // if (increase && actualBit != bit) {
+    // //if (actualBit != bit) {
+    //     LOG.printf("[ANIMATION] actualBit %d != %d. Animation aborted\n", actualBit, bit);
+    //     return;
+    // }
 
-    switch (actualBit) {
+    switch (bit) {
         case -1: 
             color = animation.colorFromHex(settings.getString(COLOR_CLEAR));  
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));             
@@ -472,7 +690,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
             break;
         case 0:
             color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
-            animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
             period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
@@ -480,47 +698,47 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         case 5: 
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_DRONES));
-            animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
             break;
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_MISSILES));
-            animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
             break;
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_KABS));
-            animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(KAB_TIME) * 1000)/settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 1;
             break;
         case 8:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_BALLISTIC));
-            animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(BALLISTIC_TIME) * 1000)/settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME)  : 1;
             break;
         case 9:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
-            animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 1000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
             break;
         case 10:
             color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
             startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_RECON_DRONES));
-            animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : 4;
+            animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
             break;
         default:
-            LOG.printf("[ANIMATION] LED %d: unknown bit %d\n", led_position, actualBit);
+            LOG.printf("[ANIMATION] LED %d: unknown bit\n", led_position);
             return;
     }
     int ledsIdx[1];      // для strip_main та strip_service
@@ -538,7 +756,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         ledsPtr = ledsIdx;
         ledCount = 1;
     } else {
-        LOG.println("[ERROR] Invalid strip for animation");
+        LOG.printf("[ERROR] Invalid strip for animation\n");
         return;
     }
     
@@ -555,9 +773,9 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         startBrightness,
         endBrightness,
         region_id,
-        actualBit
+        bit
     )) {
-        LOG.println("[ERROR] Failed to create animation");
+        LOG.printf("[ERROR] Failed to create animation\n");
         return;
     }
 }
@@ -571,7 +789,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // Ігноруємо текстові повідомлення
     if (!msg.isBinary()) {
-        LOG.println("[WEBSOCKET] Message in not binary");
+        LOG.printf("[WEBSOCKET] Message in not binary\n");
         return;
     } else {
         //LOG.printf("[WEBSOCKET] bytes payload len: %d\n", msg.length());
@@ -630,25 +848,25 @@ void onMessageCallback(WebsocketsMessage msg) {
             const int* leds = getLedsForRegion(region_id, ledCount);
             if (leds == nullptr) {
                 // Якщо такого регіону немає — пропускаємо цей запис
-                LOG.printf("[WEBSOCKET] notification region %d: %d skipped - no leds associated\n", region_id, flags16);
+                LOG.printf("[WEBSOCKET] notification region %d:\t\t%d skipped - no leds associated\n", region_id, flags16);
                 continue;
             } else {
-                LOG.printf("[WEBSOCKET] notification region %d: %d\n", region_id, flags16);
+                LOG.printf("[WEBSOCKET] notification region %d:\t\t%d\n", region_id, flags16);
             }
 
             int highestBitRegion = -1;
+            LOG.printf("[WEBSOCKET]   highest bit from regions: ");
             for (uint8_t i = 0; i < ledCount; ++i) {
                 int led_position = leds[i];
                 //LOG.printf("[WEBSOCKET] LED %d: ", led_position);
                 // Шукаємо всі регіони для цього LED
                 const std::vector<uint16_t>& regions = getRegionsForLed(led_position);
                 for (uint16_t rid : regions) {
-                    LOG.printf(" %d ", rid);
                     // Шукаємо найвищий біт для регіону в alertsMap
                     auto alerts_it = alertsMap.find(rid);
                     if (alerts_it != alertsMap.end()) {
                         int highestBitSearch = findHighestBit16(alerts_it->second);
-                        LOG.printf("[%d] ", highestBitSearch);
+                        LOG.printf("%d:%d ", rid, highestBitSearch);
 
                         if (hasHigherPriority(highestBitSearch, highestBitRegion)) {
                             highestBitRegion = highestBitSearch;
@@ -656,14 +874,14 @@ void onMessageCallback(WebsocketsMessage msg) {
                     }
                 }
             }  
-            LOG.println();
-    
-            int actualBitRegion = getHighestActualBit(highestBitRegion);
-            int actualBitDiff = getHighestActualBit(findHighestBit16(flags16, false));
+            LOG.printf("\n");
 
-            LOG.printf("[WEBSOCKET] actualBitRegion %d, actualBitDiff %d\n", actualBitRegion, actualBitDiff);
+            // Тепер highestBitRegion містить найвищий пріоритет серед усіх регіонів, пов'язаних з цим LED
+            int actualBitDiff = findHighestBit16(flags16, false);
 
-            if (hasHigherPriority(actualBitDiff,actualBitRegion)) {
+            LOG.printf("[WEBSOCKET]   highestBitRegion %d, actualBitDiff %d\n", highestBitRegion, actualBitDiff);
+
+            if (hasHigherPriority(actualBitDiff,highestBitRegion)) {
                 for (int i = 0; i < ledCount; ++i) {
                     animateLed(strip_main, MapModes::ALERT, leds[i], actualBitDiff, region_id, true);
                     if (isLedInHomeRegion(leds[i])) {
@@ -672,14 +890,11 @@ void onMessageCallback(WebsocketsMessage msg) {
                     }
                 }
             }
-        }
-        if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION && strip_bg != nullptr) {
-            LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d\n",
-                settings.getInt(HOME_DISTRICT), homeRegionBit);
-            animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
-            alertAction(homeRegionBit);
-        }else {
-            LOG.println("[WEBSOCKET] No changes in home region LEDs");
+            if (region_id == settings.getInt(HOME_DISTRICT)) {
+                LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", settings.getInt(HOME_DISTRICT), homeRegionBit);
+                animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
+                alertAction(actualBitDiff, settings.getInt(HOME_DISTRICT));
+            }
         }
     }
 
@@ -728,10 +943,10 @@ void onMessageCallback(WebsocketsMessage msg) {
             const int* leds = getLedsForRegion(region_id, ledCount);
             if (leds == nullptr) {
                 // Якщо такого регіону немає — пропускаємо цей запис
-                LOG.printf("[WEBSOCKET] alert region %d: %d skipped - no leds associated\n", region_id, flags16);
+                LOG.printf("[WEBSOCKET] alert region %d:\t\t%d skipped - no leds associated\n", region_id, flags16);
                 continue;
             } else {
-                LOG.printf("[WEBSOCKET] alert region %d: %d\n", region_id, flags16);
+                LOG.printf("[WEBSOCKET] alert region %d:\t\t%d\n", region_id, flags16);
             }
 
             // Отримуємо попередній стан
@@ -787,7 +1002,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 
                 for (uint8_t i = 0; i < entry->led_count; ++i) {
                     int led_position = entry->led_positions[i];
-                    LOG.printf("[DIFF]   LED for region %d: %d\n", diff.region_id, led_position);
+                    //LOG.printf("[DIFF]   LED for region %d: %d\n", diff.region_id, led_position);
 
                     led_bits_old[led_position] = {findHighestBitForLed(led_position), diff.region_id};
                     //led_bits_actual[led_position] = {highest_bit_current, diff.region_id};
@@ -796,7 +1011,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     //     led_bits_actual[led_position] = {findHighestBitForLed(led_position), diff.region_id};
                     // }
                     //LOG.printf("[DIFF] LED %d highest bit actual: %d\n", led_position, led_bits_actual[led_position].highest_bit);
-                    LOG.printf("[DIFF] LED %d highest bit alerts: %d\n", led_position, led_bits_old[led_position].highest_bit);
+                    //LOG.printf("[DIFF]   LED %d highest bit alerts: %d\n", led_position, led_bits_old[led_position].highest_bit);
                 }
                 // Шукаємо всі леди для цього регіону
                 // int highest_bit_region = -1;
@@ -828,7 +1043,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 //         // }
                 //         LOG.printf(", ");
                 //     }
-                //     LOG.println();
+                //     LOG.printf("\n");
                 //     // LOG.printf("[DIFF] LED %d highest bit actual: %d\n", led_position, led_bits_actual[led_position].highest_bit);
                 //     // LOG.printf("[DIFF] LED %d highest bit alerts: %d\n", led_position, led_bits_old[led_position].highest_bit);
                 // }  
@@ -867,50 +1082,45 @@ void onMessageCallback(WebsocketsMessage msg) {
                 int diff_bit = findHighestBitForLed(led.first);
                 int alerts_bit = led.second.highest_bit;
 
-                LOG.printf("[DIFF] LED %d: region %d  actual bit %d\n",
-                    led.first, led.second.region_id, diff_bit);
+                // LOG.printf("[WEBSOCKET] LED %d: region %d actual bit %d\n",
+                //     led.first, led.second.region_id, diff_bit);
 
-                LOG.printf("[DIFF] LED %d: region %d old bit %d\n",
-                    led.first, led.second.region_id, alerts_bit);
+                // LOG.printf("[WEBSOCKET] LED %d: region %d old bit %d\n",
+                //     led.first, led.second.region_id, alerts_bit);
 
                 if (diff_bit == alerts_bit) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d no changes in bit %d\n",
-                        led.first, led.second.region_id, diff_bit);
+                    // LOG.printf("[WEBSOCKET] LED %d: region %d no changes in bit %d\n",
+                    //     led.first, led.second.region_id, diff_bit);
                     continue; // Немає змін, пропускаємо
                 }
 
                 if (hasHigherPriority(diff_bit, alerts_bit)) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n",
-                        led.first, led.second.region_id, alerts_bit, diff_bit);
-                        animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, true);
-                        if (isLedInHomeRegion(led.first)) {
-                            needToAnimateBgHomeRegion = true;
-                            homeRegionBit = diff_bit;
-                            homeRegionIncrease = true;
-                        }
+                    LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n", led.first, led.second.region_id, alerts_bit, diff_bit);
+                    animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, true);
                 } 
                 if (hasHigherPriority(alerts_bit, diff_bit)) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n",
-                        led.first, led.second.region_id, alerts_bit, diff_bit);
+                    LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n", led.first, led.second.region_id, alerts_bit, diff_bit);
                         animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, false);
-                        if (isLedInHomeRegion(led.first)) {
-                            needToAnimateBgHomeRegion = true;
-                            homeRegionBit = diff_bit;
-                            homeRegionIncrease = false;
-                        }
                 }
             }
-            if (needToAnimateBgHomeRegion && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION && strip_bg != nullptr) {
-                LOG.printf("[WEBSOCKET] Animating home region LEDs: region %d, bit %d, increase %d\n",
-                    settings.getInt(HOME_DISTRICT), homeRegionBit, homeRegionIncrease);
-                animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
-                alertAction(homeRegionBit);
-                alertBit = homeRegionBit;
-            }else {
-                LOG.println("[WEBSOCKET] No changes in home region LEDs");
+            int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
+            if (localAlertBit != alertBit){
+                if (hasHigherPriority(localAlertBit, alertBit)) {
+                    LOG.printf("[WEBSOCKET] Animating home district LEDs: region %d, bit %d, increase\n",settings.getInt(HOME_DISTRICT), localAlertBit);
+                    homeRegionIncrease = true;
+                    alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                }
+                if (hasHigherPriority(alertBit, localAlertBit)) {
+                    LOG.printf("[WEBSOCKET] Animating home district LEDs: region %d, bit %d, decrease\n",settings.getInt(HOME_DISTRICT), localAlertBit);
+                    homeRegionIncrease = false;
+                    if (localAlertBit == -1) {
+                        alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                    }
+                }
+                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
             }
+            alertBit = localAlertBit;
         }
-        //LOG.println();
         alertsHash = actualHash;
     }
     if(type == TYPE_WEATHER_BATCH) {
@@ -939,7 +1149,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint8_t flags8 = ptr[2]; // flags8 займає 1 байт
             temperatureMap[region_id] = static_cast<int8_t>(flags8);; // Зберігаємо температуру для регіону
-            LOG.printf("[WEBSOCKET] weather region %u: flags8=%u\n", region_id, flags8);
+            LOG.printf("[WEBSOCKET] weather region %u:\tflags8=%u\n", region_id, flags8);
             ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
         }
         needAdaptColors = true;
@@ -963,7 +1173,8 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
                 strip->show();
             });
-        }    
+        }   
+        alertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT)); 
     }
 
     isFirstDataFetchCompleted = true;
@@ -973,37 +1184,37 @@ void onMessageCallback(WebsocketsMessage msg) {
 void logWebsocketCloseReason(websockets::CloseReason reason) {
     switch (reason) {
         case websockets::CloseReason_None:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: None (-1)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: None (-1)\n");
             break;
         case websockets::CloseReason_NormalClosure:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Normal Closure (1000)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Normal Closure (1000)\n");
             break;
         case websockets::CloseReason_GoingAway:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Going Away (1001)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Going Away (1001)\n");
             break;
         case websockets::CloseReason_ProtocolError:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Protocol Error (1002)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Protocol Error (1002)\n");
             break;
         case websockets::CloseReason_UnsupportedData:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Unsupported Data (1003)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Unsupported Data (1003)\n");
             break;
         case websockets::CloseReason_NoStatusRcvd:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: No Status Received (1005)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: No Status Received (1005)\n");
             break;
         case websockets::CloseReason_AbnormalClosure:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Abnormal Closure (1006)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Abnormal Closure (1006)\n");
             break;
         case websockets::CloseReason_InvalidPayloadData:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Invalid Payload Data (1007)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Invalid Payload Data (1007)\n");
             break;
         case websockets::CloseReason_PolicyViolation:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Policy Violation (1008)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Policy Violation (1008)\n");
             break;
         case websockets::CloseReason_MessageTooBig:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Message Too Big (1009)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Message Too Big (1009)\n");
             break;
         case websockets::CloseReason_InternalServerError:
-            LOG.println("[WEBSOCKET] WebSocket CloseReason: Internal Server Error (1011)");
+            LOG.printf("[WEBSOCKET] WebSocket CloseReason: Internal Server Error (1011)\n");
             break;
         default:
             LOG.printf("[WEBSOCKET] WebSocket CloseReason: Unknown (%d)\n", static_cast<int>(reason));
@@ -1015,14 +1226,14 @@ void onEventsCallback(WebsocketsEvent event, String data) {
     if (event == WebsocketsEvent::ConnectionOpened) {
         apiConnected = true;
         servicePin(DATA);
-        LOG.println("[WEBSOCKET] connnection opened");
+        LOG.printf("[WEBSOCKET] connection opened\n");
         
         websocketLastPingTime = millis();
         //ha.setMapApiConnect(apiConnected);
     } else if (event == WebsocketsEvent::ConnectionClosed) {
         apiConnected = false;
         servicePin(DATA);
-        LOG.println("[WEBSOCKET] connnection closed");
+        LOG.printf("[WEBSOCKET] connection closed\n");
         isFirstDataFetchCompleted = false;
         LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
         //websocket.close();
@@ -1033,16 +1244,14 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         //ha.setMapApiConnect(apiConnected);
     } else if (event == WebsocketsEvent::GotPing) {
         LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
-        //printHex(data);
         websocketLastPingTime = millis();
     } else if (event == WebsocketsEvent::GotPong) {
         LOG.printf("[WEBSOCKET] pong, payload: [%s], len: %d\n", data.c_str(), data.length());
-        //printHex(data);
     }
 }
 
 void socketConnect() {
-    LOG.println("[WEBSOCKET] connection start...");
+    LOG.printf("[WEBSOCKET] connection start...\n");
     servicePin(DATA);
     display.showServiceMessage("підключення...", "Сервер даних");
     alertsHash = 0;
@@ -1080,7 +1289,10 @@ void socketConnect() {
         LOG.printf("[WEBSOCKET] %s\n", userInfo);
         websocket.send(userInfo);
         websocket.ping("A");
-        websocketReconnect = false;
+        if (websocketReconnect) {
+            animation.clearAllAnimations();
+            websocketReconnect = false;
+        }
         lastWebsocketConnectTime  = millis();
 
         display.showServiceMessage("підключено!", "Сервер даних", 3000);
@@ -1153,10 +1365,14 @@ void initStripMain() {
 
     legacy = settings.getInt(LEGACY);
 
-    if (legacy == LEGACY::MAKET) {
+    if (legacy == LEGACY::JAAM_3_0) {
         num_leds_main = 273;
-    } else {
+    } else if (legacy == LEGACY::JAAM_3_1) {
+        num_leds_main = 405;
+    } else if (legacy == LEGACY::ODESA_KYIV || legacy == LEGACY::ZAKARPATTIA_KYIV || legacy == LEGACY::JAAM_1_3 || legacy == LEGACY::JAAM_2_1) {
         num_leds_main = 26;
+    } else if (legacy == LEGACY::ODESA || legacy == LEGACY::ZAKARPATTIA) {
+        num_leds_main = 25;
     }
     
     if (settings.getInt(MAIN_LED_PIN) > 0) {
@@ -1168,11 +1384,11 @@ void initStripMain() {
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
-            LOG.println("[LED] SUCCESS: strip_main");
+            LOG.printf("[LED] SUCCESS: strip_main\n");
         }
     }
     else {
-        LOG.println("[LED] SKIP: strip_main (pin <= 0)");
+        LOG.printf("[LED] SKIP: strip_main (pin <= 0)\n");
     }
     // if (strip_main != nullptr) {
     //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
@@ -1202,10 +1418,10 @@ void initStripBg() {
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
-            LOG.println("[LED] SUCCESS: strip_bg");
+            LOG.printf("[LED] SUCCESS: strip_bg\n");
         }
     } else {
-        LOG.println("[LED] SKIP: strip_bg (pin <= 0 or count <= 0)");
+        LOG.printf("[LED] SKIP: strip_bg (pin <= 0 or count <= 0)\n");
     }
     // if (strip_bg != nullptr) {
     //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
@@ -1235,10 +1451,10 @@ void initStripService() {
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {
-            LOG.println("[LED] SUCCESS: strip_service");
+            LOG.printf("[LED] SUCCESS: strip_service\n");
         }
     } else {
-        LOG.println("[LED] SKIP: strip_service (pin <= 0)");
+        LOG.printf("[LED] SKIP: strip_service (pin <= 0)\n");
     }
     // if (strip_service != nullptr) {
     //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
@@ -1256,7 +1472,7 @@ void initStripService() {
 }
 
 void reconnectStripMain() {
-    LOG.println("[LED] Reconnecting strip_main with new pin configuration...");
+    LOG.printf("[LED] Reconnecting strip_main with new pin configuration...\n");
     //analyzeMemoryFragmentation("before strip_main reconnection");
     animation.clearAllAnimations();
     logMemoryUsage("after clearing animations");
@@ -1266,12 +1482,12 @@ void reconnectStripMain() {
     led.verifyStripCleanup(strip_main);
     //analyzeMemoryFragmentation("before strip_main recreation");
     initStripMain();
-    LOG.println("[LED] strip_main reconnection completed.");
+    LOG.printf("[LED] strip_main reconnection completed.\n");
     logMemoryUsage("after strip_main reconnection complete");
 }
 
 void reconnectStripBg() {
-    LOG.println("[LED] Reconnecting strip_bg with new pin configuration...");
+    LOG.printf("[LED] Reconnecting strip_bg with new pin configuration...\n");
     //analyzeMemoryFragmentation("before strip_bg reconnection");
     animation.clearAllAnimations();
     logMemoryUsage("after clearing animations");
@@ -1281,12 +1497,12 @@ void reconnectStripBg() {
     led.verifyStripCleanup(strip_bg);
     //analyzeMemoryFragmentation("before strip_bg recreation");
     initStripBg();
-    LOG.println("[LED] strip_bg reconnection completed.");
+    LOG.printf("[LED] strip_bg reconnection completed.\n");
     logMemoryUsage("after strip_bg reconnection complete");
 }
 
 void reconnectStripService() {
-    LOG.println("[LED] Reconnecting strip_service with new pin configuration...");
+    LOG.printf("[LED] Reconnecting strip_service with new pin configuration...\n");
     //analyzeMemoryFragmentation("before strip_service reconnection");
     animation.clearAllAnimations();
     logMemoryUsage("after clearing animations");
@@ -1296,12 +1512,12 @@ void reconnectStripService() {
     led.verifyStripCleanup(strip_service);
     //analyzeMemoryFragmentation("before strip_service recreation");
     initStripService();
-    LOG.println("[LED] strip_service reconnection completed.");
+    LOG.printf("[LED] strip_service reconnection completed.\n");
     logMemoryUsage("after strip_service reconnection complete");
 }
 
 void reconnectStrips() {
-    LOG.println("[LED] Reconnecting strip");
+    LOG.printf("[LED] Reconnecting strips...\n");
     
     if (needReconnectMainStrip) {
         reconnectStripMain();
@@ -1326,46 +1542,45 @@ void reconnectStrips() {
     // Оновлюємо посилання в веб-інтерфейсі
     web.begin(strip_main, strip_bg, strip_service);
     
-    LOG.println("[LED] Strip reconnection completed.");
+    LOG.printf("[LED] Strip reconnection completed.\n");
     logMemoryUsage("after strip reconnection complete");
 }
 
 // --- TIME Functions ---
 
 static void printNtpStatus(NTPtime* timeClient) {
-  LOG.print("[TIME] NTP status: ");
     switch (timeClient->NTPstatus()) {
         case 0:
-            LOG.println("[TIME] OK");
-            LOG.print("[TIME] Current date and time: ");
-            LOG.println(timeClient->unixToString("DD.MM.YYYY hh:mm:ss"));
+            LOG.printf("[TIME] OK\n");
+            LOG.printf("[TIME] Current date and time: %s\n", 
+                timeClient->unixToString("DD.MM.YYYY hh:mm:ss").c_str());
             break;
         case 1:
-            LOG.println("[TIME] NOT_STARTED");
+            LOG.printf("[TIME] NOT_STARTED\n");
             break;
         case 2:
-            LOG.println("[TIME] NOT_CONNECTED_WIFI");
+            LOG.printf("[TIME] NOT_CONNECTED_WIFI\n");
             break;
         case 3:
-            LOG.println("[TIME] NOT_CONNECTED_TO_SERVER");
+            LOG.printf("[TIME] NOT_CONNECTED_TO_SERVER\n");
             break;
         case 4:
-            LOG.println("[TIME] NOT_SENT_PACKET");
+            LOG.printf("[TIME] NOT_SENT_PACKET\n");
             break;
         case 5:
-            LOG.println("[TIME] WAITING_REPLY");
+            LOG.printf("[TIME] WAITING_REPLY\n");
             break;
         case 6:
-            LOG.println("[TIME] TIMEOUT");
+            LOG.printf("[TIME] TIMEOUT\n");
             break;
         case 7:
-            LOG.println("[TIME] REPLY_ERROR");
+            LOG.printf("[TIME] REPLY_ERROR\n");
             break;
         case 8:
-            LOG.println("[TIME] NOT_CONNECTED_ETHERNET");
+            LOG.printf("[TIME] NOT_CONNECTED_ETHERNET\n");
             break;
         default:
-            LOG.println("[TIME] UNKNOWN_STATUS");
+            LOG.printf("[TIME] UNKNOWN_STATUS\n");
             break;
     }
 }
@@ -1373,13 +1588,13 @@ static void printNtpStatus(NTPtime* timeClient) {
 void syncTime(int8_t attempts) {
     timeClient.tick();
     if (timeClient.status() == UNIX_OK) return;
-    LOG.println("[TIME] Time not synced yet!");
+    LOG.printf("[TIME] Time not synced yet!\n");
     printNtpStatus(&timeClient);
     int8_t count = 1;
     while (timeClient.NTPstatus() != NTP_OK && count <= attempts) {
         LOG.printf("[TIME] Attempt #%d of %d\n", count, attempts);
         if (timeClient.NTPstatus() != NTP_WAITING_REPLY) {
-        LOG.println("[TIME] Force update!");
+        LOG.printf("[TIME] Force update!\n");
         timeClient.updateNow();
         }
         timeClient.tick();
@@ -1390,10 +1605,6 @@ void syncTime(int8_t attempts) {
 }
 
 // --- ALERT Functions ---
-int getAlertBit(uint16_t region_id) {
-    int highestBit = findHighestBitForRegion(region_id);
-    return highestBit;
-}
 
 
 // --- BRIGHTNESS Functions ---
@@ -1410,12 +1621,17 @@ uint8_t getCurrentBrightnes() {
 
 // --- INIT Functions ---
 void initLegacy() {
-    LOG.println("[INIT] Init legacy");
+    LOG.printf("[INIT] Init legacy\n");
     legacy = settings.getInt(LEGACY);
     num_leds_main = 26; // Default value
 
-    if (legacy == LEGACY::MAKET) {
+    if (legacy == LEGACY::JAAM_3_0) {
         num_leds_main = 273;
+        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
+        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
+        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
+    } else if (legacy == LEGACY::JAAM_3_1) {
+        num_leds_main = 405;
         settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
         settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
         settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
@@ -1432,7 +1648,7 @@ void initLegacy() {
 }
 
 void initSettings() {
-    LOG.println("[INIT] Init settings");
+    LOG.printf("[INIT] Init settings\n");
     settings.init();
     firmware = parseFirmwareVersion(VERSION);
     LOG.printf("[INIT] major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
@@ -1456,7 +1672,7 @@ void initSettings() {
 
 
 void initDisplay() {
-    LOG.println("[INIT] Init display");
+    LOG.printf("[INIT] Init display\n");
     display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
     display.invertDisplay(settings.getBool(INVERT_DISPLAY));
     display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
@@ -1511,12 +1727,12 @@ void initSound() {
   } else {
     sound.setSoundSource(-1);
   }
-  LOG.printf("Sound source: %d\n", sound.soundSource);
+  LOG.printf("[SOUND] source: %d\n", sound.soundSource);
 }
 
 
 void initMapping() {
-    LOG.println("[INIT] Init mapping");
+    LOG.printf("[INIT] Init mapping\n");
     // Ініціалізуємо мапінг регіонів
     generateCustomRegionMap();
     // Ініціалізуємо кольори задніх LED
@@ -1533,10 +1749,10 @@ void initChipID() {
 void initTime() {
     static bool timeInitialized = false;
     if (timeInitialized) {
-        LOG.println("[TIME] Time already initialized, skipping...");
+        LOG.printf("[TIME] Time already initialized, skipping...\n");
         return;
     }
-    LOG.println("[TIME] Init time");
+    LOG.printf("[TIME] Init time\n");
     LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
     timeClient.setHost(settings.getString(NTP_HOST));
     timeClient.setTimeZone(settings.getInt(TIME_ZONE));
@@ -1550,7 +1766,7 @@ void initTime() {
 void initWeb() {
     static bool webInitialized = false;
     if (webInitialized) {
-        LOG.println("[WEB] Web already initialized, skipping...");
+        LOG.printf("[WEB] Web already initialized, skipping...\n");
         return;
     }
     web.begin(strip_main, strip_bg, strip_service);
@@ -1587,11 +1803,11 @@ void saveConfigCallback() {
 
 void initWifi() {
     if (!WiFiConfig::ENABLED) {
-        LOG.println("[WIFI] WiFi disabled in configuration");
+        LOG.printf("[WIFI] WiFi disabled in configuration\n");
         return;
     }
 
-    LOG.println("[WIFI] Initializing WiFi...");
+    LOG.printf("[WIFI] Initializing WiFi...\n");
     display.showServiceMessage("підключенння...", "WiFi");
     wifiConnected = false;
     servicePin(WIFI);
@@ -1618,12 +1834,12 @@ void initWifi() {
     char apssid[32];
     snprintf(apssid, sizeof(apssid), "JAAM_FUSION_%s", chipID);
     if (!wm.autoConnect(apssid)) {
-        LOG.println("[WIFI] Reboot");
+        LOG.printf("[WIFI] Reboot\n");
         rebootDevice(5000);
         return;
     }
     // Connected to WiFi
-    LOG.println("[WIFI] connected...yeey :)");
+    LOG.printf("[WIFI] connected...yeey :)\n");
     lastWifiConnectTime = millis();
     wifiConnected = true;
     servicePin(WIFI);
@@ -1641,7 +1857,7 @@ void initWifi() {
     // while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     //     delay(500);
     //     attempts++;
-    //     LOG.print(".");
+    //     LOG.printf(".");
     // }
     
     // if (WiFi.status() == WL_CONNECTED) {
@@ -1650,13 +1866,13 @@ void initWifi() {
     //     servicePin(WIFI);
     //     initTime();
     //     initWeb();
-    //     LOG.println("\n[WIFI] Connected to saved WiFi");
+    //     LOG.printf("[WIFI] Connected to saved WiFi\n");
     //     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
     //     return;
     // }
-    
-    // LOG.println("\n[WIFI] Failed to connect to saved network");
-    // LOG.println("[WIFI] Starting WiFiManager...");
+
+    // LOG.printf("[WIFI] Failed to connect to saved network\n");
+    // LOG.printf("[WIFI] Starting WiFiManager...\n");
     
     // // Create local WiFiManager to avoid global memory usage
     // {
@@ -1680,18 +1896,18 @@ void initWifi() {
         
     //     // Спроба підключення
     //     if (!wm_temp.autoConnect(apName)) {
-    //         LOG.println("[WIFI] Failed to connect. Rebooting...");
+    //         LOG.printf("[WIFI] Failed to connect. Rebooting...\n");
     //         rebootDevice(3000);
     //         return;
     //     }
         
     //     lastWifiConnectTime = millis();
-    //     LOG.println("[WIFI] Connected to WiFi via WiFiManager");
+    //     LOG.printf("[WIFI] Connected to WiFi via WiFiManager\n");
     //     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
         
     // } // wm_temp destructor called here, freeing memory
     
-    LOG.println("[WIFI] initialization completed");
+    LOG.printf("[WIFI] initialization completed\n");
     LOG.printf("[MEMORY] Free heap after WiFi init: %u bytes\n", ESP.getFreeHeap());
 }
 
@@ -1705,7 +1921,7 @@ void initStrip() {
     // Створюємо м'ютекс для захисту доступу до стрічок
     stripMutex = xSemaphoreCreateMutex();
     if (stripMutex == NULL) {
-        LOG.println("[ERROR] Failed to create stripMutex semaphore");
+        LOG.printf("[ERROR] Failed to create stripMutex semaphore\n");
         return;
     }
 
@@ -1717,18 +1933,37 @@ void initStrip() {
 }
 
 void initBattery() {
-    LOG.println("[BATTERY] Initializing battery monitoring...");
+    LOG.printf("[BATTERY] Initializing battery monitoring...\n");
     // Ініціалізація моніторингу батареї
     battery.begin();
 }
 
 void initStorage() {
-    LOG.println("[STORAGE] Initializing storage...");
+    LOG.printf("[STORAGE] Initializing storage...\n");
     // Ініціалізація файлової системи
     if (storage.begin()) {
         storage.getStorageInfo();
         storage.getFilesInfo();
     }
+}
+
+
+void initButtons() {
+  LOG.printf("[BUTTON] Init buttons\n");
+
+  LOG.printf("[BUTTON] button1 pin: %d\n", settings.getInt(BUTTON_1_PIN));
+  LOG.printf("[BUTTON] button1 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_1));
+  buttons.setButton1Pin(settings.getInt(BUTTON_1_PIN), !settings.getBool(USE_TOUCH_BUTTON_1));
+  buttons.setButton1ClickListener(button1Click);
+  buttons.setButton1LongClickListener(button1LongClick);
+  buttons.setButton1DuringLongClickListener(button1DuringLongClick);
+
+  LOG.printf("[BUTTON] button2 pin: %d\n", settings.getInt(BUTTON_2_PIN));
+  LOG.printf("[BUTTON] button2 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_2));
+  buttons.setButton2Pin(settings.getInt(BUTTON_2_PIN), !settings.getBool(USE_TOUCH_BUTTON_2));
+  buttons.setButton2ClickListener(button2Click);
+  buttons.setButton2LongClickListener(button2LongClick);
+  buttons.setButton2DuringLongClickListener(button2DuringLongClick);
 }
 
 
@@ -1784,7 +2019,7 @@ void animations() {
     strip = strip_main;
 
     if (!strip) {
-        LOG.println("[ERROR] No available initialized strips");
+        LOG.printf("[ERROR] No available initialized strips\n");
         return;
     }
     // r = 255;
@@ -1834,7 +2069,7 @@ void animations() {
         startBrightness,
         endBrightness
     )) {
-        LOG.println("ERROR: Failed to create animation");
+        LOG.printf("ERROR: Failed to create animation\n");
         return;
     }
 
@@ -1846,7 +2081,7 @@ void animations() {
 
 void showClock() {
     if (timeClient.status() != UNIX_OK) {
-        LOG.println("[TIME] Clock not synced yet!");
+        LOG.printf("[TIME] Clock not synced yet!\n");
         return;
     }
     needDivider = !needDivider; // toggle divider for clock display
@@ -1862,12 +2097,12 @@ void showClock() {
 
 void websocketProcess() {
     if (!wifiConnected) {
-        LOG.println("[WEBSOCKET] Reconnecting... wifiConnected == false");
+        LOG.printf("[WEBSOCKET] Reconnecting... wifiConnected == false\n");
         return;
     }
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
-        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)");
+        LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)\n");
         websocketReconnect = true;
         isFirstDataFetchCompleted = false;
         clearAllAlertsMaps();
@@ -1875,7 +2110,7 @@ void websocketProcess() {
         animation.clearAllAnimations();
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
-            5, // RUNNING_LIGHT
+            AnimationTypes::RUNNING_LIGHT,
             strip_main,  
             MapModes::ALERT,       
             {}, // not used in RUNNING_LIGHT        
@@ -1890,17 +2125,17 @@ void websocketProcess() {
     }
     //if (millis() - websocketLastPingTime > 40000 && websocketReconnect) {
     if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
-        LOG.println("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot");
+        LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot\n");
         rebootDevice(3000, true);
     }
     if (!websocket.available()) {
-        LOG.println("[WEBSOCKET] Reconnecting... websocket.available() == false");
+        LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
         isFirstDataFetchCompleted = false;
         apiConnected = false;
         socketConnect();
     }
     if (websocketReconnect) {
-        LOG.println("[WEBSOCKET] Reconnecting... websocketReconnect == true");
+        LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
         isFirstDataFetchCompleted = false;
         apiConnected = false;
         socketConnect();
@@ -1918,12 +2153,12 @@ void memoryProcess() {
     //bool wifiConnected = WiFi.status() == WL_CONNECTED;
     uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0; 
     uint32_t websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0; // in seconds
-    String wifiStatus = wifiConnected ? "Connected" : "Disconnected";
-    String websocketStatus = websocket.available() ? "Connected" : "Disconnected";
+    String wifiStatus = wifiConnected ? "+" : "-";
+    String websocketStatus = websocket.available() ? "+" : "-";
     String wifiIP = wifiConnected ? WiFi.localIP().toString() : "N/A";
 
     LOG.printf(
-        "[DEBUG] Loop %u: used heap %u B, free heap %u B, uptime %u min. WiFi: %s, %u min. WebSocket: %s, %u min\n",
+        "[DEBUG] Loop %u: used heap %u B, free heap %u B, uptime %u min. WiFi: %s%u min. WebSocket: %s%u min\n",
         loopCount,
         usedHeap,
         freeHeap,
@@ -1944,12 +2179,12 @@ void wifiProcess() {
     
     if (WiFi.status() != WL_CONNECTED) {
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            LOG.println("[WIFI] Reconnect");
+            LOG.printf("[WIFI] Reconnect\n");
             wifiConnected = false;
             initWifi();
             reconnectAttempts++;
         } else {
-            LOG.println("[WIFI] Max reconnect attempts reached, rebooting...");
+            LOG.printf("[WIFI] Max reconnect attempts reached, rebooting...\n");
             rebootDevice(3000);
             reconnectAttempts = 0;
         }
@@ -1972,16 +2207,16 @@ void animationsLog() {
 // Виводимо інформацію про леди без анімацій
 void freeMinLedsLog() {
     if (strip_main == nullptr) {
-        LOG.println("[LED] strip_main not initialized");
+        LOG.printf("[LED] strip_main not initialized\n");
         return;
     }
     auto freeLeds = animation.getFreeLeds(strip_main, num_leds_main);
     LOG.printf("[LED] Free LEDs on strip_main: %d\n", (int)freeLeds.size());
-    LOG.print("[LED] List: ");
+    LOG.printf("[LED] List: ");
     for (const auto& led : freeLeds) {
         LOG.printf("%d ", led.ledIdx);
     }
-    LOG.println();
+    LOG.printf("\n");
 }
 
 // --- Climate Process ---
@@ -1998,18 +2233,18 @@ void mainThreadProcess() {
     // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
 
     if (needToRegenerateBgColorMap) {
-        LOG.println("[MAIN] Regenerating BG LED color map");
+        LOG.printf("[MAIN] Regenerating BG LED color map\n");
         generateBgLedColorsMap();
         needToRegenerateBgColorMap = false;
     }
 
     if (needReconnectMainStrip || needReconnectBgStrip || needReconnectServiceStrip) {
-        LOG.println("[MAIN] Reconnecting LED strip");
+        LOG.printf("[MAIN] Reconnecting LED strip\n");
         reconnectStrips();
     }
 
     if (needReconnectWebsocket && !needReconnectMainStrip) {
-        LOG.println("[MAIN] Reconnecting WebSocket");
+        LOG.printf("[MAIN] Reconnecting WebSocket\n");
         isFirstDataFetchCompleted = false;
         needReconnectWebsocket = false;
         apiConnected = false;
@@ -2018,7 +2253,7 @@ void mainThreadProcess() {
 
     if (needRecalculateLeds) {
         generateCustomRegionMap();
-        LOG.println("[MAIN] Recalculating LEDs");
+        LOG.printf("[MAIN] Recalculating LEDs\n");
         needRecalculateLeds = false;
         needReconnectWebsocket = true;
     }
@@ -2136,22 +2371,22 @@ void mainThreadProcess() {
         //     strip_main->getBrightness(),
         //     settings.getInt(BRIGHTNESS)
         // )) {
-        //     LOG.println("[ERROR] Failed to create animation");
+        //     LOG.printf("[ERROR] Failed to create animation\n");
         //     return;
         // }
     }
     if (needUpdateBatteryPin) {
-        LOG.println("[MAIN] Updating battery pin state");
+        LOG.printf("[MAIN] Updating battery pin state\n");
         if (settings.getInt(BATTERY_PIN) > 0) {
             battery.setPin(settings.getInt(BATTERY_PIN));
         } else {
-            LOG.println("[MAIN] Battery pin not configured, skipping update");
+            LOG.printf("[MAIN] Battery pin not configured, skipping update\n");
         }
         needUpdateBatteryPin = false;
     }
 
     if (needReconfigureDisplay) {
-        LOG.println("[MAIN] Reconfiguring display");
+        LOG.printf("[MAIN] Reconfiguring display\n");
         initLegacy(); // reinitialize legacy settings
         display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
         display.invertDisplay(settings.getBool(INVERT_DISPLAY));
@@ -2160,9 +2395,15 @@ void mainThreadProcess() {
     }
 
     if (needReconfigureSound) {
-        LOG.println("[MAIN] Reconfiguring sound");
+        LOG.printf("[MAIN] Reconfiguring sound\n");
         initSound();
         needReconfigureSound = false;
+    }
+
+    if (needReconfigureButtons) {
+        LOG.printf("[MAIN] Reconfiguring buttons\n");
+        initButtons();
+        needReconfigureButtons = false;
     }
 
     if (needUpdateAnimationsMode) {
@@ -2172,29 +2413,28 @@ void mainThreadProcess() {
     }
 
     if (needAdaptClimate) {
-        LOG.println("[MAIN] Adapting climate settings");
+        LOG.printf("[MAIN] Adapting climate settings\n");
         climateProcess();
         needAdaptClimate = false;
     }
 
     if (needAdaptVolume) {
-        LOG.println("[MAIN] Adapting sound settings");
+        LOG.printf("[MAIN] Adapting sound settings\n");
         sound.setVolumeNight(settings.getInt(MELODY_VOLUME_NIGHT));
         sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
-
         needAdaptVolume = false;
     }
 
     if (needUpdateHomeAlertBit) {
-        LOG.println("[MAIN] Updating home alert bit");
-        int localAlertBit = getAlertBit(settings.getInt(HOME_DISTRICT));
-        alertAction(localAlertBit);
+        LOG.printf("[MAIN] Updating home alert bit\n");
+        int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
+        if (localAlertBit != alertBit) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         alertBit = localAlertBit;
         needUpdateHomeAlertBit = false;
     }
 
     if (needPlayTestMelody) {
-        LOG.println("[MAIN] Playing test melody");
+        LOG.printf("[MAIN] Playing test melody\n");
         playMelody(MELODIES[testMelodyId]);
         needPlayTestMelody = false;
     }
@@ -2277,6 +2517,9 @@ void setup() {
     checkFreeHeap("LED strips initialization");
     brightnessProcess();
 
+    initButtons();
+    checkFreeHeap("buttons initialization");
+
     initDisplay();
     checkFreeHeap("display initialization");
 
@@ -2346,7 +2589,7 @@ void setup() {
 
     checkFreeHeap("async tasks configuration");
     
-    LOG.println("[SETUP] Initialization complete");
+    LOG.printf("[SETUP] Initialization complete\n");
     checkFreeHeap("full setup");
 }
 
@@ -2358,4 +2601,5 @@ void loop() {
     animation.update();
     async.run();
     web.handleClient();
+    buttons.tick();
 }

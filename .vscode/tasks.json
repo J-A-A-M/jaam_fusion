@@ -1,0 +1,35 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build with PlatformIO",
+			"type": "shell",
+			"command": "platformio run",
+			"isBackground": false,
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build with PlatformIO",
+			"type": "shell",
+			"command": "platformio run",
+			"isBackground": false,
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build with PlatformIO",
+			"type": "shell",
+			"command": "platformio run",
+			"isBackground": false,
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build"
+		}
+	]
+}

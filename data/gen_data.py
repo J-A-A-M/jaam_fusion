@@ -90,6 +90,8 @@ legacy_map = {
     "Чернівецька область": 25,
     "м. Київ": 26,
     "Київ": 26,
+    "Харків": 27,
+    "Запоріжжя": 28,
 }
 
 def normalize_apostrophe(s):
@@ -177,6 +179,7 @@ slug_map = {}
 for region in etryvoga:
     print("\n" + "-"*60)
     region_name = region["name"]
+    region_source_name = region["name"]  # Зберігаємо оригінальне ім'я з etryvoga.json
     # Застосовую мапінг для областей
     mapped_region_name = district_name_map.get(region_name, region_name)
     region_cyr = translit_to_cyrillic(mapped_region_name)
@@ -215,13 +218,15 @@ for region in etryvoga:
         "legacyId": int(legacy_id) if legacy_id is not None else -1,
         "stateId": state_id_final
     }
-    slug_map[region["slug"]] = {"name": result_key, "regionId": result[result_key]["regionId"]}
+    slug_map[region["slug"]] = {"name": result_key, "regionId": result[result_key]["regionId"], "source_name": region_source_name}
 
     total_districts = len(region.get("districts", []))
     found_districts = 0
     not_found_districts[region_name] = []
     for district in region.get("districts", []):
         district_name = district["name"]
+        # Додаємо назву області в дужках до назви району
+        district_source_name = f"{district['name']} ({region_source_name})"
         mapped_district_name = district_name_map.get(district_name, district_name)
         district_cyr = translit_to_cyrillic(mapped_district_name)
         district_id = name_to_id.get(district_cyr)
@@ -240,7 +245,7 @@ for region in etryvoga:
         if legacy_id is None:
             legacy_id = legacy_map.get(district_key)
         result[district_key] = {"regionId": district_id_final, "legacyId": int(legacy_id) if legacy_id is not None else -1, "stateId": state_id_final}
-        slug_map[district["slug"]] = {"name": district_key, "regionId": result[district_key]["regionId"]}
+        slug_map[district["slug"]] = {"name": district_key, "regionId": result[district_key]["regionId"], "source_name": district_source_name}
         if district_id:
             found_districts += 1
         else:
@@ -256,6 +261,8 @@ for region in etryvoga:
         print(f"  Район: {log_district} — міста: {', '.join(city_names)}")
         for city in district.get("cities", []):
             city_name = city["name"]
+            # Додаємо назву області в дужках до назви міста
+            city_source_name = f"{city['name']} ({region_source_name})"
             # Для міст — застосовую мапінг
             mapped_city_name = district_name_map.get(city_name, city_name)
             city_cyr = translit_to_cyrillic(mapped_city_name)
@@ -279,7 +286,7 @@ for region in etryvoga:
                 "legacyId": int(legacy_id) if legacy_id is not None else -1,
                 "stateId": int(state_id_final)
             }
-            slug_map[city["slug"]] = {"name": city_key, "regionId": result[city_key]["regionId"]}
+            slug_map[city["slug"]] = {"name": city_key, "regionId": result[city_key]["regionId"], "source_name": city_source_name}
             if city_id or district_id:
                 found_cities += 1
             else:
@@ -328,6 +335,7 @@ with open(base / "gen_data.json", "w", encoding="utf-8") as f:
     # Визначаємо максимальну довжину slug і назви
     max_slug_len = max(len(str(k)) for k in slug_map.keys()) if slug_map else 0
     max_name_len = max(len(str(v["name"])) for v in slug_map.values()) if slug_map else 0
+    max_source_name_len = max(len(str(v.get("source_name", ""))) for v in slug_map.values()) if slug_map else 0
     max_regionid_len = max(len(str(result[v["name"]]["regionId"])) for v in slug_map.values() if v["name"] in result) if slug_map else 0
     max_legacyid_len = max(len(str(result[v["name"]]["legacyId"])) for v in slug_map.values() if v["name"] in result) if slug_map else 0
     max_stateid_len = max(len(str(result[v["name"]]["stateId"])) for v in slug_map.values() if v["name"] in result) if slug_map else 0
@@ -336,6 +344,8 @@ with open(base / "gen_data.json", "w", encoding="utf-8") as f:
     for i, (slug, v) in enumerate(items):
         slug_pad = ' ' * (max_slug_len - len(str(slug)))
         name_pad = ' ' * (max_name_len - len(str(v["name"])))
+        source_name = v.get("source_name", "")
+        source_name_pad = ' ' * (max_source_name_len - len(str(source_name)))
         # Додаю legacyId та stateId з result
         regionId = result[v["name"]]["regionId"] if v["name"] in result else -1
         legacyId = result[v["name"]]["legacyId"] if v["name"] in result else -1
@@ -344,7 +354,7 @@ with open(base / "gen_data.json", "w", encoding="utf-8") as f:
         legacyid_pad = str(legacyId).rjust(max_legacyid_len)
         stateid_pad  = str(stateId).rjust(max_stateid_len)
         line = (
-            f'  "{slug}"{slug_pad}: {{ "name": "{v["name"]}"{name_pad}, "regionId": {regionid_pad}, "legacyId": {legacyid_pad}, "stateId": {stateid_pad} }}'
+            f'  "{slug}"{slug_pad}: {{ "name": "{v["name"]}"{name_pad}, "source_name": "{source_name}"{source_name_pad}, "regionId": {regionid_pad}, "legacyId": {legacyid_pad}, "stateId": {stateid_pad} }}'
         )
         if i < len(items) - 1:
             line += ','
