@@ -12,6 +12,9 @@ namespace DefaultColors {
     static const uint32_t DATA = 0x00FF00;  // Green
     static const uint32_t HA = 0xFFFF00;  // Blue
     static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
+    // Ukrainian flag colors
+    static const uint32_t FLAG_BLUE = 0x0057B7;  // Blue
+    static const uint32_t FLAG_YELLOW = 0xFFD700;  // Yellow
 }
 // --- ALERT Modes ---
 namespace AlertModes {
@@ -30,6 +33,7 @@ namespace MapModes {
     static const int OFF = 0;
     static const int ALERT = 1;
     static const int WEATHER = 2;
+    static const int FLAG = 3;
 }
 
 // --- BG Led Modes ---
@@ -347,14 +351,14 @@ static SettingListItem LONG_CLICKS[] = {
   {10, "Перезавантаження пристрою"},
 };
 
-constexpr int MAP_MODES_COUNT = 3;
+constexpr int MAP_MODES_COUNT = 4;
 static SettingListItem MAP_MODES[] = {
   {0, "Вимкнено"},
   {1, "Тривога"},
   // {6, "Енергосистема", false},
   {2, "Погода"},
   // {7, "Радіація", false},
-  // {3, "Прапор", false},
+  {3, "Прапор"},
   // {4, "Випадкові кольори", false},
   // {5, "Лампа", false},
 };

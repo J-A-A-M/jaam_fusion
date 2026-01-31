@@ -22,7 +22,7 @@
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
-#include <JaamSound.h>
+#include "JaamSound.h"
 #include "JaamButton.h"
 
 using namespace websockets;

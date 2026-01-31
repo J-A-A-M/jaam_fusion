@@ -300,6 +300,91 @@ inline std::vector<uint16_t> getRegionsForLed(int led_position) {
     return regions;
 }
 
+// Визначення кольору прапора України для регіону
+// Для деяких областей - конкретні райони СИНІ, решта жовті
+// Для інших областей - повністю СИНІ як раніше
+inline uint32_t getFlagColorForRegion(uint16_t region_id) {
+    // ===== ОБЛАСТІ З СЕЛЕКТИВНИМ МАППІНГОМ =====
+    
+    // Львівська: тільки СИНІ райони: Яворівський(93), Червоноградський(92), Золочівський(94), Львівський(90), Львів(845)
+    // Решта районів Львівської - жовті
+    if (region_id == 93 || region_id == 92 || region_id == 94 || region_id == 90 || region_id == 845) 
+        return DefaultColors::FLAG_BLUE;
+    if ((region_id >= 88 && region_id <= 94) || region_id == 845)  // Це все райони Львівської
+        return DefaultColors::FLAG_YELLOW;
+    
+    // Тернопільська: тільки Кременецький(120) - синій, решта жовті
+    if (region_id == 120) 
+        return DefaultColors::FLAG_BLUE;
+    if (region_id >= 119 && region_id <= 121)  // Райони Тернопільської
+        return DefaultColors::FLAG_YELLOW;
+    
+    // Хмельницька: тільки Шепетівський(136) - синій, решта жовті
+    if (region_id == 136) 
+        return DefaultColors::FLAG_BLUE;
+    if (region_id >= 133 && region_id <= 139)  // Райони Хмельницької
+        return DefaultColors::FLAG_YELLOW;
+    
+    // Вінницька: тільки Хмільницький(34) - синій, решта жовті
+    if (region_id == 34) 
+        return DefaultColors::FLAG_BLUE;
+    if (region_id >= 33 && region_id <= 36)  // Райони Вінницької
+        return DefaultColors::FLAG_YELLOW;
+    
+    // Черкаська: тільки Золотоніський(153), Черкаський(152), Черкаси(1473) - сині, решта жовті
+    if (region_id == 153 || region_id == 152 || region_id == 1473) 
+        return DefaultColors::FLAG_BLUE;
+    if ((region_id >= 150 && region_id <= 153) || region_id == 1473)  // Райони Черкаської
+        return DefaultColors::FLAG_YELLOW;
+    
+    // Донецька: тільки Краматорський(50), Бахмутський(54) - сині, решта жовті
+    if (region_id == 50 || region_id == 54) 
+        return DefaultColors::FLAG_BLUE;
+    if (region_id >= 49 && region_id <= 56)  // Райони Донецької
+        return DefaultColors::FLAG_YELLOW;
+    
+    // Луганська: тільки Сватівський(85), Старобільський(86), Щастинський(87) - сині, решта жовті
+    if (region_id == 85 || region_id == 86 || region_id == 87) 
+        return DefaultColors::FLAG_BLUE;
+    if (region_id >= 84 && region_id <= 87)  // Райони Луганської
+        return DefaultColors::FLAG_YELLOW;
+    
+    // ===== ОБЛАСТІ БЕЗ ЗМІН (Повністю СИНІ як раніше) =====
+    // Волинська, Рівненська, Житомирська, Київська, Чернігівська, Сумська, Полтавська, Харківська
+    
+    // Самі області + їх райони (як було):
+    if (region_id == 8 || region_id == 5 || region_id == 10 ||
+        region_id == 14 || region_id == 25 || region_id == 20 ||
+        region_id == 19 || region_id == 22) return DefaultColors::FLAG_BLUE;
+    
+    // Волинська область - райони: 38-41, м. Луцьк: 225
+    if ((region_id >= 38 && region_id <= 41) || region_id == 225) return DefaultColors::FLAG_BLUE;
+    
+    // Рівненська область - райони: 110-113, м. Рівне: 1133
+    if ((region_id >= 110 && region_id <= 113) || region_id == 1133) return DefaultColors::FLAG_BLUE;
+    
+    // Житомирська область - райони: 57-60, м. Житомир: 442
+    if ((region_id >= 57 && region_id <= 60) || region_id == 442) return DefaultColors::FLAG_BLUE;
+    
+    // Київська область - райони: 73-79 + м. Київ: 31
+    if ((region_id >= 73 && region_id <= 79) || region_id == 31) return DefaultColors::FLAG_BLUE;
+    
+    // Чернігівська область - райони: 140-144, м. Чернігів: 1591
+    if ((region_id >= 140 && region_id <= 144) || region_id == 1591) return DefaultColors::FLAG_BLUE;
+    
+    // Сумська область - райони: 114-118, м. Суми: 1187
+    if ((region_id >= 114 && region_id <= 118) || region_id == 1187) return DefaultColors::FLAG_BLUE;
+    
+    // Полтавська область - райони: 106-109, м. Полтава: 1060
+    if ((region_id >= 106 && region_id <= 109) || region_id == 1060) return DefaultColors::FLAG_BLUE;
+    
+    // Харківська область - райони: 122-128, м. Харків: 1293
+    if ((region_id >= 122 && region_id <= 128) || region_id == 1293) return DefaultColors::FLAG_BLUE;
+    
+    // Всі інші регіони - жовтий (південні області без змін)
+    return DefaultColors::FLAG_YELLOW;
+}
+
 // Перевірка чи є тривога на леді:
 inline bool isAlertForLed(int led_position) {
     std::vector<uint16_t> regions = getRegionsForLed(led_position);
