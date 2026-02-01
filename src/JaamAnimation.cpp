@@ -899,6 +899,12 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
+                    case MapModes::FLAG: {
+                        // Ukrainian flag for background: use blue as it represents the whole country
+                        color = DefaultColors::FLAG_BLUE;
+                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
                 }
             }
             LOG.printf("[COLOR] bg strip color HOME_DISTRICT\n");
@@ -1024,17 +1030,14 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     if (regions.empty()) {
                         // No region mapping - use blue as default
                         color = 0x0057B7;
-                        LOG.printf("[FLAG] LED %d: no regions, using blue\n", position);
                     } else {
                         // Count votes for each color based on regions
                         int blueVotes = 0;
                         int yellowVotes = 0;
                         
-                        LOG.printf("[FLAG] LED %d regions: ", position);
                         for (uint16_t region_id : regions) {
                             uint32_t flagColor = getFlagColorForRegion(region_id);
-                            LOG.printf("%d(%s) ", region_id, flagColor == 0x0057B7 ? "blue" : "yellow");
-                            if (flagColor == 0x0057B7) {
+                            if (flagColor == DefaultColors::FLAG_BLUE) {
                                 blueVotes++;
                             } else {
                                 yellowVotes++;
@@ -1042,13 +1045,10 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         }
                         
                         // Use the color with more votes, prefer blue on tie
-                        color = (yellowVotes > blueVotes) ? 0xFFD700 : 0x0057B7;
-                        LOG.printf("-> votes: blue=%d yellow=%d, result=%s\n", 
-                                  blueVotes, yellowVotes, 
-                                  color == 0x0057B7 ? "blue" : "yellow");
+                        color = (yellowVotes > blueVotes) ? DefaultColors::FLAG_YELLOW : DefaultColors::FLAG_BLUE;
                     }
                     
-                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS));
+                    brightness = 255;
                     break;
                 }
             }
@@ -1105,7 +1105,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     }
                     case MapModes::FLAG: {
                         // Ukrainian flag for background: use blue as it represents the whole country
-                        color = 0x0057B7; // Blue color of Ukrainian flag
+                        color = DefaultColors::FLAG_BLUE; // Blue color of Ukrainian flag
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }

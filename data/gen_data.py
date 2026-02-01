@@ -23,7 +23,7 @@ district_name_map = {
     "Володимирський район": "Володимир-Волинський район",
     "Самарівський район": "Новомосковський район",
     "Шептицький район": "Червоноградський район",
-    "Крим": "Автономна Республіка Крим"
+    "Крим": "Автономна Республіка Крим",
 }
 
 # Кастомні regionId
@@ -49,7 +49,7 @@ custom_region_ids = {
     "Львів": 845,
     "Тернопіль": 1241,
     "Івано-Франківськ": 632,
-    "Ужгород": 500
+    "Ужгород": 500,
 }
 
 custom_state_ids = {
@@ -94,21 +94,23 @@ legacy_map = {
     "Запоріжжя": 28,
 }
 
+
 def normalize_apostrophe(s):
     # Замінюємо всі типи апострофів на стандартний '
     return s.replace("’", "'").replace("`", "'").replace("ʼ", "'")
+
 
 def translit_to_cyrillic(name):
     name = normalize_apostrophe(name)
 
     # Спробуємо просту заміну (тільки для латиниці)
-    res = ''
+    res = ""
     i = 0
     while i < len(name):
         # Пробуємо знайти довгі комбінації
         for l in [4, 3, 2, 1]:
-            if i + l <= len(name) and name[i:i+l] in TRANSLIT_MAP:
-                res += TRANSLIT_MAP[name[i:i+l]]
+            if i + l <= len(name) and name[i : i + l] in TRANSLIT_MAP:
+                res += TRANSLIT_MAP[name[i : i + l]]
                 i += l
                 break
         else:
@@ -116,18 +118,19 @@ def translit_to_cyrillic(name):
             i += 1
     return res
 
+
 def find_slug_in_uaapi(name, uaapi, level):
     # name — вже транслітерована і нормалізована назва
-    if level == 'state':
+    if level == "state":
         for state in uaapi["states"]:
             if translit_to_cyrillic(state["regionName"]) == name:
                 return state.get("slug")
-    elif level == 'district':
+    elif level == "district":
         for state in uaapi["states"]:
             for district in state.get("regionChildIds", []):
                 if translit_to_cyrillic(district["regionName"]) == name:
                     return district.get("slug")
-    elif level == 'city':
+    elif level == "city":
         for state in uaapi["states"]:
             for district in state.get("regionChildIds", []):
                 for city in district.get("regionChildIds", []):
@@ -136,6 +139,7 @@ def find_slug_in_uaapi(name, uaapi, level):
                         if translit_to_cyrillic(city_name) == name:
                             return city.get("slug")
     return None
+
 
 def build_name_to_id_map(uaapi):
     name_to_id = {}
@@ -159,7 +163,6 @@ def build_name_to_id_map(uaapi):
     return name_to_id, district_to_state, city_to_district, city_to_state
 
 
-
 base = Path(__file__).parent
 etryvoga_path = base / "etryvoga.json"
 uaapi_path = base / "uaapi.json"
@@ -175,9 +178,10 @@ result = {}
 not_found_districts = {}
 not_found_cities = {}
 slug_map = {}
+next_missing_id = 7001  # Лічильник для унікальних ID відсутніх регіонів (починаючи з 7001)
 
 for region in etryvoga:
-    print("\n" + "-"*60)
+    print("\n" + "-" * 60)
     region_name = region["name"]
     region_source_name = region["name"]  # Зберігаємо оригінальне ім'я з etryvoga.json
     # Застосовую мапінг для областей
@@ -208,7 +212,9 @@ for region in etryvoga:
     else:
         result_key = mapped_region_name
     # Перевіряю кастомний regionId для областей
-    region_id_final = custom_region_ids.get(result_key, int(region_id) if region_id is not None else -1)
+    region_id_final = custom_region_ids.get(result_key, int(region_id) if region_id is not None else next_missing_id)
+    if region_id_final == next_missing_id:
+        next_missing_id += 1  # Генеруємо наступний унікальний ID
     state_id_final = custom_state_ids.get(result_key, int(region_id) if region_id is not None else -1)
     # Якщо legacy_id не знайдено — пробую взяти по result_key
     if legacy_id is None:
@@ -216,9 +222,13 @@ for region in etryvoga:
     result[result_key] = {
         "regionId": region_id_final,
         "legacyId": int(legacy_id) if legacy_id is not None else -1,
-        "stateId": state_id_final
+        "stateId": state_id_final,
     }
-    slug_map[region["slug"]] = {"name": result_key, "regionId": result[result_key]["regionId"], "source_name": region_source_name}
+    slug_map[region["slug"]] = {
+        "name": result_key,
+        "regionId": result[result_key]["regionId"],
+        "source_name": region_source_name,
+    }
 
     total_districts = len(region.get("districts", []))
     found_districts = 0
@@ -239,13 +249,25 @@ for region in etryvoga:
         else:
             district_key = mapped_district_name
         # Для районів — аналогічно
-        district_id_final = custom_region_ids.get(district_key, int(district_id) if district_id is not None else -1)
+        district_id_final = custom_region_ids.get(
+            district_key, int(district_id) if district_id is not None else next_missing_id
+        )
+        if district_id_final == next_missing_id:
+            next_missing_id += 1  # Генеруємо наступний унікальний ID
         state_id_final = custom_state_ids.get(district_key, int(state_id) if state_id is not None else -1)
         # Якщо legacy_id не знайдено — пробую взяти по district_key
         if legacy_id is None:
             legacy_id = legacy_map.get(district_key)
-        result[district_key] = {"regionId": district_id_final, "legacyId": int(legacy_id) if legacy_id is not None else -1, "stateId": state_id_final}
-        slug_map[district["slug"]] = {"name": district_key, "regionId": result[district_key]["regionId"], "source_name": district_source_name}
+        result[district_key] = {
+            "regionId": district_id_final,
+            "legacyId": int(legacy_id) if legacy_id is not None else -1,
+            "stateId": state_id_final,
+        }
+        slug_map[district["slug"]] = {
+            "name": district_key,
+            "regionId": result[district_key]["regionId"],
+            "source_name": district_source_name,
+        }
         if district_id:
             found_districts += 1
         else:
@@ -271,12 +293,19 @@ for region in etryvoga:
             if city.get("slug") in slug_exceptions:
                 city_key = slug_exceptions[city["slug"]]
             else:
-                city_key = mapped_city_name.replace("м. ", "", 1) if mapped_city_name.startswith("м. ") else mapped_city_name
+                city_key = (
+                    mapped_city_name.replace("м. ", "", 1) if mapped_city_name.startswith("м. ") else mapped_city_name
+                )
             state_cyr = city_to_state.get(city_cyr) or district_to_state.get(district_cyr)
             legacy_id = legacy_map.get(state_cyr)
             state_id = name_to_id.get(state_cyr)
             # Для міст — як і було
-            region_id_final = custom_region_ids.get(city_key, city_id if city_id is not None else district_id if district_id is not None else -1)
+            region_id_final = custom_region_ids.get(
+                city_key,
+                city_id if city_id is not None else (district_id if district_id is not None else next_missing_id),
+            )
+            if region_id_final == next_missing_id:
+                next_missing_id += 1  # Генеруємо наступний унікальний ID
             state_id_final = custom_state_ids.get(city_key, state_id if state_id is not None else -1)
             # Якщо legacy_id не знайдено — пробую взяти по city_key
             if legacy_id is None:
@@ -284,9 +313,13 @@ for region in etryvoga:
             result[city_key] = {
                 "regionId": int(region_id_final),
                 "legacyId": int(legacy_id) if legacy_id is not None else -1,
-                "stateId": int(state_id_final)
+                "stateId": int(state_id_final),
             }
-            slug_map[city["slug"]] = {"name": city_key, "regionId": result[city_key]["regionId"], "source_name": city_source_name}
+            slug_map[city["slug"]] = {
+                "name": city_key,
+                "regionId": result[city_key]["regionId"],
+                "source_name": city_source_name,
+            }
             if city_id or district_id:
                 found_cities += 1
             else:
@@ -336,27 +369,35 @@ with open(base / "gen_data.json", "w", encoding="utf-8") as f:
     max_slug_len = max(len(str(k)) for k in slug_map.keys()) if slug_map else 0
     max_name_len = max(len(str(v["name"])) for v in slug_map.values()) if slug_map else 0
     max_source_name_len = max(len(str(v.get("source_name", ""))) for v in slug_map.values()) if slug_map else 0
-    max_regionid_len = max(len(str(result[v["name"]]["regionId"])) for v in slug_map.values() if v["name"] in result) if slug_map else 0
-    max_legacyid_len = max(len(str(result[v["name"]]["legacyId"])) for v in slug_map.values() if v["name"] in result) if slug_map else 0
-    max_stateid_len = max(len(str(result[v["name"]]["stateId"])) for v in slug_map.values() if v["name"] in result) if slug_map else 0
-    f.write('{\n')
+    max_regionid_len = (
+        max(len(str(result[v["name"]]["regionId"])) for v in slug_map.values() if v["name"] in result)
+        if slug_map
+        else 0
+    )
+    max_legacyid_len = (
+        max(len(str(result[v["name"]]["legacyId"])) for v in slug_map.values() if v["name"] in result)
+        if slug_map
+        else 0
+    )
+    max_stateid_len = (
+        max(len(str(result[v["name"]]["stateId"])) for v in slug_map.values() if v["name"] in result) if slug_map else 0
+    )
+    f.write("{\n")
     items = list(slug_map.items())
     for i, (slug, v) in enumerate(items):
-        slug_pad = ' ' * (max_slug_len - len(str(slug)))
-        name_pad = ' ' * (max_name_len - len(str(v["name"])))
+        slug_pad = " " * (max_slug_len - len(str(slug)))
+        name_pad = " " * (max_name_len - len(str(v["name"])))
         source_name = v.get("source_name", "")
-        source_name_pad = ' ' * (max_source_name_len - len(str(source_name)))
+        source_name_pad = " " * (max_source_name_len - len(str(source_name)))
         # Додаю legacyId та stateId з result
         regionId = result[v["name"]]["regionId"] if v["name"] in result else -1
         legacyId = result[v["name"]]["legacyId"] if v["name"] in result else -1
-        stateId  = result[v["name"]]["stateId"]  if v["name"] in result else -1
+        stateId = result[v["name"]]["stateId"] if v["name"] in result else -1
         regionid_pad = str(regionId).rjust(max_regionid_len)
         legacyid_pad = str(legacyId).rjust(max_legacyid_len)
-        stateid_pad  = str(stateId).rjust(max_stateid_len)
-        line = (
-            f'  "{slug}"{slug_pad}: {{ "name": "{v["name"]}"{name_pad}, "source_name": "{source_name}"{source_name_pad}, "regionId": {regionid_pad}, "legacyId": {legacyid_pad}, "stateId": {stateid_pad} }}'
-        )
+        stateid_pad = str(stateId).rjust(max_stateid_len)
+        line = f'  "{slug}"{slug_pad}: {{ "name": "{v["name"]}"{name_pad}, "source_name": "{source_name}"{source_name_pad}, "regionId": {regionid_pad}, "legacyId": {legacyid_pad}, "stateId": {stateid_pad} }}'
         if i < len(items) - 1:
-            line += ','
-        f.write(line + '\n')
-    f.write('}\n')
+            line += ","
+        f.write(line + "\n")
+    f.write("}\n")
