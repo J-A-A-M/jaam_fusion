@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import hashlib
 
 # Примітивний мапінг латиниці в кирилицю для назв (можна розширити)
 TRANSLIT_MAP = {
@@ -94,6 +95,17 @@ legacy_map = {
     "Запоріжжя": 28,
 }
 
+def get_deterministic_missing_id(slug):
+    """
+    Генерує детермінований ID для регіону з діапазону 7000-7999 на основі slug.
+    Забезпечує стабільність ID при змінах порядку або додаванні нових записів.
+    """
+    # Використовуємо SHA256 для хеша slug
+    hash_obj = hashlib.sha256(slug.encode('utf-8'))
+    hash_int = int(hash_obj.hexdigest(), 16)
+    # Обмежуємо діапазон 7000-7999
+    region_id = 7000 + (hash_int % 1000)
+    return region_id
 
 def normalize_apostrophe(s):
     # Замінюємо всі типи апострофів на стандартний '
@@ -178,7 +190,6 @@ result = {}
 not_found_districts = {}
 not_found_cities = {}
 slug_map = {}
-next_missing_id = 7001  # Лічильник для унікальних ID відсутніх регіонів (починаючи з 7001)
 
 for region in etryvoga:
     print("\n" + "-" * 60)
@@ -212,9 +223,11 @@ for region in etryvoga:
     else:
         result_key = mapped_region_name
     # Перевіряю кастомний regionId для областей
-    region_id_final = custom_region_ids.get(result_key, int(region_id) if region_id is not None else next_missing_id)
-    if region_id_final == next_missing_id:
-        next_missing_id += 1  # Генеруємо наступний унікальний ID
+    if region_id is not None:
+        region_id_final = custom_region_ids.get(result_key, int(region_id))
+    else:
+        # Якщо region_id не знайдено, генеруємо детермінований ID на основі slug
+        region_id_final = custom_region_ids.get(result_key, get_deterministic_missing_id(region.get("slug", result_key)))
     state_id_final = custom_state_ids.get(result_key, int(region_id) if region_id is not None else -1)
     # Якщо legacy_id не знайдено — пробую взяти по result_key
     if legacy_id is None:
@@ -249,11 +262,10 @@ for region in etryvoga:
         else:
             district_key = mapped_district_name
         # Для районів — аналогічно
-        district_id_final = custom_region_ids.get(
-            district_key, int(district_id) if district_id is not None else next_missing_id
-        )
-        if district_id_final == next_missing_id:
-            next_missing_id += 1  # Генеруємо наступний унікальний ID
+        if district_id is not None:
+            district_id_final = custom_region_ids.get(district_key, int(district_id))
+        else:
+            district_id_final = custom_region_ids.get(district_key, get_deterministic_missing_id(district.get("slug", district_key)))
         state_id_final = custom_state_ids.get(district_key, int(state_id) if state_id is not None else -1)
         # Якщо legacy_id не знайдено — пробую взяти по district_key
         if legacy_id is None:
@@ -299,13 +311,13 @@ for region in etryvoga:
             state_cyr = city_to_state.get(city_cyr) or district_to_state.get(district_cyr)
             legacy_id = legacy_map.get(state_cyr)
             state_id = name_to_id.get(state_cyr)
-            # Для міст — як і було
-            region_id_final = custom_region_ids.get(
-                city_key,
-                city_id if city_id is not None else (district_id if district_id is not None else next_missing_id),
-            )
-            if region_id_final == next_missing_id:
-                next_missing_id += 1  # Генеруємо наступний унікальний ID
+            # Для міст — якщо немає city_id, генеруємо на основі slug
+            if city_id is not None:
+                region_id_final = custom_region_ids.get(city_key, int(city_id))
+            elif district_id is not None:
+                region_id_final = custom_region_ids.get(city_key, int(district_id))
+            else:
+                region_id_final = custom_region_ids.get(city_key, get_deterministic_missing_id(city.get("slug", city_key)))
             state_id_final = custom_state_ids.get(city_key, state_id if state_id is not None else -1)
             # Якщо legacy_id не знайдено — пробую взяти по city_key
             if legacy_id is None:
