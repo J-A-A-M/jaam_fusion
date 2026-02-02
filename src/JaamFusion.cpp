@@ -236,7 +236,7 @@ int getCurrentMapMode() {
   return isMapOff ? 0 : settings.getInt(MAP_MODE);
 }
 
-void showMinOfSilanceScreen(int screen) {
+void showMinOfSilenceScreen(int screen) {
   switch (screen) {
   case 0:
     display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Шана Полеглим Героям!");
@@ -255,7 +255,7 @@ void showMinOfSilanceScreen(int screen) {
 void displayMinuteOfSilence() {
   // every 3 sec.
   int periodIndex = getCurrentPeriodIndex(3, 3, timeClient.second());
-  showMinOfSilanceScreen(periodIndex);
+  showMinOfSilenceScreen(periodIndex);
 }
 
 // --- SOUND Functions ---
@@ -2127,7 +2127,7 @@ void checkMinuteOfSilence()
     bool localMinOfSilence;
 
 #if TEST_MIN_OF_SILENCE
-    // Test mode: activate every 5 minutes (at 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 0 seconds mark)
+    // Test mode: activate every 5 minutes (at 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 0 minute mark)
     localMinOfSilence = (settings.getBool(MIN_OF_SILENCE) == 1 && timeClient.minute() % 5 == 0);
     LOG.printf("[TEST MODE] localMinOfSilence: %d (minute: %d)\n", localMinOfSilence, timeClient.minute());
 #else
@@ -2557,7 +2557,7 @@ void displayProcess()
     }
     // Show Glory To Ukraine if athema playing. (Priority - 1)
     if (uaAnthemPlaying) {
-        showMinOfSilanceScreen(1);
+        showMinOfSilenceScreen(1);
         return;
     }
     showClock();
