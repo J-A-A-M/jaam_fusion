@@ -2150,6 +2150,7 @@ void checkMinuteOfSilence()
             // turn off mos beep
             if (clockBeepInterval >= 0) {
                 async.clearInterval(clockBeepInterval);
+                clockBeepInterval = -1;
             }
             if (needToPlaySound(MIN_OF_SILINCE_END)) {
                 playMelody(MIN_OF_SILINCE_END);
