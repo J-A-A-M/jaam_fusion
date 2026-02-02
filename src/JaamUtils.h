@@ -1064,5 +1064,8 @@ inline void nextDisplayMode() {
 }
 
 inline int getCurrentPeriodIndex(int periodLength, int periodCount, long currentSeconds) {
+  if (periodLength <= 0 || periodCount <= 0) {
+    return 0;
+  }
   return (currentSeconds / periodLength) % periodCount;
 }

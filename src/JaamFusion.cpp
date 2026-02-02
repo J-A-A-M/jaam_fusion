@@ -2585,7 +2585,7 @@ void volumeProcess() {
 
 void beepHourProcess() {
     checkMinuteOfSilence();
-    if (needToPlaySound(REGULAR) && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
+    if (needToPlaySound(REGULAR) && !minuteOfSilence && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
         sound.setBeepHour(timeClient.hour());
         playMelody(REGULAR);
     }
