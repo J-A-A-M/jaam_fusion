@@ -3,6 +3,7 @@
 #include "JaamUtils.h"
 
 extern volatile bool isMapOff;
+extern int getCurrentMapMode();
 
 // Helper: HSV -> RGB (returns 0xRRGGBB)
 static inline uint32_t hsvToRgb(float h, float s, float v) {
@@ -442,7 +443,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
     if (isMapOff) {
         return;
     }
-    if (anim->mapMode != settings->getInt(MAP_MODE)) {
+    if (anim->mapMode != getCurrentMapMode()) {
         return;
     }
 
@@ -875,7 +876,8 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                 color = DefaultColors::OFF;
                 brightness = 0;
             } else {
-                switch (settings->getInt(MAP_MODE)) {
+                int currentMapMode = getCurrentMapMode();
+                switch (currentMapMode) {
                     case MapModes::OFF: 
                         color = DefaultColors::OFF;
                         brightness = 0;
@@ -964,7 +966,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             color = DefaultColors::OFF;
             brightness = 0;
         } else {
-            switch (settings->getInt(MAP_MODE)) {
+            switch (getCurrentMapMode()) {
                 case MapModes::OFF: 
                     color = DefaultColors::OFF;
                     brightness = 0;
@@ -1064,7 +1066,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 color = getBgLedColor(position);
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
             } else {
-                switch (settings->getInt(MAP_MODE)) {
+                switch (getCurrentMapMode()) {
                     case MapModes::OFF: 
                         color = DefaultColors::OFF;
                         brightness = 0;

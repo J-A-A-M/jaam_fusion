@@ -1062,3 +1062,7 @@ inline void nextDisplayMode() {
 
   saveDisplayMode(DISPLAY_MODES[newIndex].id);
 }
+
+inline int getCurrentPeriodIndex(int periodLength, int periodCount, long currentSeconds) {
+  return (currentSeconds / periodLength) % periodCount;
+}

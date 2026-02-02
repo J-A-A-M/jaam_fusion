@@ -112,6 +112,7 @@ time_t              lastWebsocketConnectTime = 0;
 // --- OTHER Configuration ---
 bool                minuteOfSilence = false;
 bool                uaAnthemPlaying = false;
+short               clockBeepInterval = -1;
 bool                isMapOff = false;
 bool                isDisplayOff = false;
 int                 prevMapMode = 1;
@@ -222,7 +223,7 @@ bool isItNightNow() {
 }
 
 int getCurrentMapMode() {
-  if (minuteOfSilence || uaAnthemPlaying) return 3; // ua flag
+  if (minuteOfSilence || uaAnthemPlaying) return MapModes::FLAG; // ua flag
 
 //   int homeRegionId = settings.getInt(HOME_DISTRICT);
 //   int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
@@ -233,6 +234,28 @@ int getCurrentMapMode() {
 //     return 1; // alerts mode
 //   }
   return isMapOff ? 0 : settings.getInt(MAP_MODE);
+}
+
+void showMinOfSilanceScreen(int screen) {
+  switch (screen) {
+  case 0:
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Шана Полеглим Героям!");
+    break;
+  case 1:
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Слава Україні!");
+    break;
+  case 2:
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Смерть ворогам!");
+    break;
+  default:
+    break;
+  }
+}
+
+void displayMinuteOfSilence() {
+  // every 3 sec.
+  int periodIndex = getCurrentPeriodIndex(3, 3, timeClient.second());
+  showMinOfSilanceScreen(periodIndex);
 }
 
 // --- SOUND Functions ---
@@ -2095,6 +2118,51 @@ void showClock() {
     display.printClock(time, date);
 }
 
+void playMinOfSilenceSound() {
+  playMelody(MIN_OF_SILINCE);
+}
+
+void checkMinuteOfSilence()
+{
+    bool localMinOfSilence;
+
+#if TEST_MIN_OF_SILENCE
+    // Test mode: activate every 5 minutes (at 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 0 seconds mark)
+    localMinOfSilence = (settings.getBool(MIN_OF_SILENCE) == 1 && timeClient.minute() % 5 == 0);
+    LOG.printf("[TEST MODE] localMinOfSilence: %d (minute: %d)\n", localMinOfSilence, timeClient.minute());
+#else
+    // Normal mode: activate at 9:00
+    localMinOfSilence = (settings.getBool(MIN_OF_SILENCE) == 1 && timeClient.hour() == 9 && timeClient.minute() == 0);
+#endif
+
+    if (localMinOfSilence != minuteOfSilence) {
+        minuteOfSilence = localMinOfSilence;
+
+        if (minuteOfSilence) {
+            // play mos beep every 2 sec during min of silence
+            if (needToPlaySound(MIN_OF_SILINCE)) {
+                clockBeepInterval = async.setInterval(playMinOfSilenceSound, 2000); // every 2 sec
+            }
+            // set flags to adapt colors on min of silence start
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else {
+            // turn off mos beep
+            if (clockBeepInterval >= 0) {
+                async.clearInterval(clockBeepInterval);
+            }
+            if (needToPlaySound(MIN_OF_SILINCE_END)) {
+                playMelody(MIN_OF_SILINCE_END);
+                uaAnthemPlaying = true;
+            } else {
+                // set flags to adapt colors on min of silence end
+                needAdaptColors = true;
+                needAdaptAnimationColors = true;
+            }
+        }
+    }
+}
+
 void websocketProcess() {
     if (!wifiConnected) {
         LOG.printf("[WEBSOCKET] Reconnecting... wifiConnected == false\n");
@@ -2473,7 +2541,25 @@ void batteryProcess() {
 }
 
 // --- Display Process ---
-void displayProcess() {
+void displayProcess()
+{
+    // Remove UA Anthem playing flag if anthem stopped
+    if (uaAnthemPlaying && (!sound.isBuzzerPlaying() && !sound.isDFPlayerPlaying())) {
+        uaAnthemPlaying = false;
+        // set flags to adapt colors on min of silence end
+        needAdaptColors = true;
+        needAdaptAnimationColors = true;
+    }
+    // Show Minute of silence mode if activated. (Priority - 0)
+    if (minuteOfSilence) {
+        displayMinuteOfSilence();
+        return;
+    }
+    // Show Glory To Ukraine if athema playing. (Priority - 1)
+    if (uaAnthemPlaying) {
+        showMinOfSilanceScreen(1);
+        return;
+    }
     showClock();
 }
 
@@ -2498,10 +2584,11 @@ void volumeProcess() {
 }
 
 void beepHourProcess() {
-  if (needToPlaySound(REGULAR) && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
-    sound.setBeepHour(timeClient.hour());
-    playMelody(REGULAR);
-  }
+    checkMinuteOfSilence();
+    if (needToPlaySound(REGULAR) && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
+        sound.setBeepHour(timeClient.hour());
+        playMelody(REGULAR);
+    }
 }
 
 // --- SETUP ---

@@ -1816,6 +1816,10 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(IGNORE_MUTE_ON_ALERT, boolValue);
             LOG.printf("[WEB] Setting ignore_mute_on_alert: %d\n", boolValue);
+        } else if (name == "sound_on_min_of_sl") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_MIN_OF_SL, boolValue);
+            LOG.printf("[WEB] Setting sound_on_min_of_sl: %d\n", boolValue);
         } else if (name == "button_1_touch") {
             bool boolValue = intValue != 0;
             settings->saveBool(USE_TOUCH_BUTTON_1, boolValue);
@@ -1838,6 +1842,10 @@ void JaamWeb::handleParameter() {
         } else if (name == "button_2_mode_long") {
             settings->saveInt(BUTTON_2_MODE_LONG, intValue);
             LOG.printf("[WEB] Setting button_2_mode_long: %d\n", intValue);
+        } else if (name == "min_of_silence") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(MIN_OF_SILENCE, boolValue);
+            LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
         }
 
         server.send(200, "text/plain", "OK");
@@ -2334,6 +2342,7 @@ void JaamWeb::handleUiSchema() {
     addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor");
     
     addDropdown("general", "map_mode", "Режим мапи", "map_mode", MAP_MODE);
+    addBool("general", "min_of_silence", "Увімкнути режим \"Хвилина мовчання\" о 9:00", MIN_OF_SILENCE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
     addText("general", "device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
     addText("general", "broadcast_name", "Ім'я в мережі", String(settings->getString(BROADCAST_NAME)), "jaam");
@@ -2493,6 +2502,7 @@ void JaamWeb::handleUiSchema() {
     addBool("sound", "sound_on_ballistic", "Звукове сповіщення при загрозі балістики", SOUND_ON_BALLISTIC);
     addBool("sound", "sound_on_every_hour", "Звукове сповіщення щогодини", SOUND_ON_EVERY_HOUR);
     addBool("sound", "sound_on_button_click", "Сигнали при натисканні кнопки", SOUND_ON_BUTTON_CLICK);
+    addBool("sound", "sound_on_min_of_sl", "Відтворювати звуки під час \"Хвилини мовчання\"", SOUND_ON_MIN_OF_SL);
     addBool("sound", "mute_sound_on_night", "Вимикати всі звуки у нічний час", MUTE_SOUND_ON_NIGHT);
     addBool("sound", "ignore_mute_on_alert", "Сигнали тривоги навіть у нічний час", IGNORE_MUTE_ON_ALERT);
     addDropdown("sound", "melody_on_alert", "Мелодія при тривозі у домашньому регіоні (буззер)", "melodies", MELODY_ON_ALERT);
