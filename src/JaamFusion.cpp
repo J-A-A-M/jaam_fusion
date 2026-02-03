@@ -24,6 +24,7 @@
 #include "JaamClimateSensor.h"
 #include "JaamSound.h"
 #include "JaamButton.h"
+#include "JaamHardware.h"
 
 using namespace websockets;
 
@@ -46,6 +47,7 @@ JaamDisplay         display;
 JaamClimateSensor   climate;
 JaamSound           sound;
 JaamButton          buttons;
+JaamHardware        hardwareConfig;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -116,7 +118,7 @@ short               clockBeepInterval = -1;
 bool                isMapOff = false;
 bool                isDisplayOff = false;
 int                 prevMapMode = 1;
-uint8_t             legacy = 0;
+uint8_t             hardware = 0;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
 int                 testMelodyId = -1;
@@ -574,6 +576,11 @@ void button2Click() {
   buttonClick("Button 2", settings.getInt(BUTTON_2_MODE));
 }
 
+void button3Click() {
+  LOG.printf("Button 3 click\n");
+  buttonClick("Button 3", settings.getInt(BUTTON_3_MODE));
+}
+
 void button1LongClick() {
   LOG.printf("Button 1 long click\n");
   buttonLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG));
@@ -584,6 +591,11 @@ void button2LongClick() {
   buttonLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG));
 }
 
+void button3LongClick() {
+  LOG.printf("Button 3 long click\n");
+  buttonLongClick("Button 3", settings.getInt(BUTTON_3_MODE_LONG));
+}
+
 void button1DuringLongClick(JaamButton::Action action) {
   LOG.printf("Button 1 during long click\n");
   buttonDuringLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG), action);
@@ -592,6 +604,11 @@ void button1DuringLongClick(JaamButton::Action action) {
 void button2DuringLongClick(JaamButton::Action action) {
   LOG.printf("Button 2 during long click\n");
   buttonDuringLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG), action);
+}
+
+void button3DuringLongClick(JaamButton::Action action) {
+  LOG.printf("Button 3 during long click\n");
+  buttonDuringLongClick("Button 3", settings.getInt(BUTTON_3_MODE_LONG), action);
 }
 
 void servicePin(ServiceLed type) {
@@ -1307,7 +1324,7 @@ void socketConnect() {
         websocket.send(firmwareInfo);
         char userInfo[250];
         JsonDocument userInfoJson;
-        userInfoJson["legacy"] = legacy;
+        userInfoJson["legacy"] = hardware;
         sprintf(userInfo, "user_info:%s", userInfoJson.as<String>().c_str());
         LOG.printf("[WEBSOCKET] %s\n", userInfo);
         websocket.send(userInfo);
@@ -1386,24 +1403,15 @@ void cleanupSingleStrip(Adafruit_NeoPixel*& strip, uint32_t defaultColor) {
 void initStripMain() {
     StripStatus status;
 
-    legacy = settings.getInt(LEGACY);
-
-    if (legacy == LEGACY::JAAM_3_0) {
-        num_leds_main = 273;
-    } else if (legacy == LEGACY::JAAM_3_1) {
-        num_leds_main = 405;
-    } else if (legacy == LEGACY::ODESA_KYIV || legacy == LEGACY::ZAKARPATTIA_KYIV || legacy == LEGACY::JAAM_1_3 || legacy == LEGACY::JAAM_2_1) {
-        num_leds_main = 26;
-    } else if (legacy == LEGACY::ODESA || legacy == LEGACY::ZAKARPATTIA) {
-        num_leds_main = 25;
-    }
+    num_leds_main = hardwareConfig.getMainLedsCount();
+    int mainLedPin = hardwareConfig.getMainLedPin();
     
-    if (settings.getInt(MAIN_LED_PIN) > 0) {
+    if (mainLedPin > 0) {
         uint8_t ledType = settings.getInt(MAIN_LED_COLOR_FORMAT) + settings.getInt(MAIN_LED_FREQUENCY);
         LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
-                   settings.getInt(MAIN_LED_PIN), num_leds_main, ledType, 
+                   mainLedPin, num_leds_main, ledType, 
                    settings.getInt(MAIN_LED_COLOR_FORMAT), settings.getInt(MAIN_LED_FREQUENCY));
-        status = led.createStrip(strip_main, settings.getInt(MAIN_LED_PIN), num_leds_main, 10, DefaultColors::MAIN_STRIP, ledType);
+        status = led.createStrip(strip_main, mainLedPin, num_leds_main, 10, DefaultColors::MAIN_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
@@ -1430,14 +1438,15 @@ void initStripMain() {
 void initStripBg() {
     StripStatus status;
 
-    legacy = settings.getInt(LEGACY);
-    
-    if (settings.getInt(BG_LED_PIN) > 0 && settings.getInt(BG_LED_COUNT) > 0) {
+    int bgLedPin = hardwareConfig.getBgLedPin();
+    int bgLedCount = hardwareConfig.getBgLedsCount();
+
+    if (bgLedPin > 0 && bgLedCount > 0) {
         uint8_t ledType = settings.getInt(BG_LED_COLOR_FORMAT) + settings.getInt(BG_LED_FREQUENCY);
         LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
-                   settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), ledType,
+                   bgLedPin, bgLedCount, ledType,
                    settings.getInt(BG_LED_COLOR_FORMAT), settings.getInt(BG_LED_FREQUENCY));
-        status = led.createStrip(strip_bg, settings.getInt(BG_LED_PIN), settings.getInt(BG_LED_COUNT), 10, DefaultColors::BG_STRIP, ledType);
+        status = led.createStrip(strip_bg, bgLedPin, bgLedCount, 10, DefaultColors::BG_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
@@ -1463,14 +1472,15 @@ void initStripBg() {
 void initStripService() {
     StripStatus status;
 
-    legacy = settings.getInt(LEGACY);
+    int serviceLedPin = hardwareConfig.getServiceLedPin();
+
     
-    if (settings.getInt(SERVICE_LED_PIN) > 0) {
+    if (serviceLedPin > 0) {
         uint8_t ledType = settings.getInt(SERVICE_LED_COLOR_FORMAT) + settings.getInt(SERVICE_LED_FREQUENCY);
         LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
-                   settings.getInt(SERVICE_LED_PIN), num_leds_service, ledType,
+                   serviceLedPin, num_leds_service, ledType,
                    settings.getInt(SERVICE_LED_COLOR_FORMAT), settings.getInt(SERVICE_LED_FREQUENCY));
-        status = led.createStrip(strip_service, settings.getInt(SERVICE_LED_PIN), num_leds_service, 10, DefaultColors::SERVICE_STRIP, ledType);
+        status = led.createStrip(strip_service, serviceLedPin, num_leds_service, 10, DefaultColors::SERVICE_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {
@@ -1642,34 +1652,6 @@ uint8_t getCurrentBrightnes() {
     return settings.getInt(BRIGHTNESS);
 }
 
-// --- INIT Functions ---
-void initLegacy() {
-    LOG.printf("[INIT] Init legacy\n");
-    legacy = settings.getInt(LEGACY);
-    num_leds_main = 26; // Default value
-
-    if (legacy == LEGACY::JAAM_3_0) {
-        num_leds_main = 273;
-        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
-        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
-        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
-    } else if (legacy == LEGACY::JAAM_3_1) {
-        num_leds_main = 405;
-        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
-        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
-        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
-    } else if (legacy == LEGACY::JAAM_2_1) {
-        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SH1106G));
-        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
-        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
-    } else if (legacy == LEGACY::JAAM_1_3) {
-        settings.saveInt(DISPLAY_MODEL, static_cast<int>(JaamDisplayType::SSD1306));
-        settings.saveInt(DISPLAY_HEIGHT, static_cast<int>(JaamDisplayHeight::HEIGHT_64));
-        settings.saveInt(DISPLAY_ROTATION, static_cast<int>(JaamDisplayRotation::ROTATION_0));
-    }
-    LOG.printf("[INIT] Legacy set to %d\n", legacy);
-}
-
 void initSettings() {
     LOG.printf("[INIT] Init settings\n");
     settings.init();
@@ -1678,8 +1660,6 @@ void initSettings() {
             firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
     fillFwVersion(currentFwVersion, firmware);
     LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
-
-    initLegacy();
 
     // Заповнюємо allLedsMain згідно з num_leds_main
     allLedsMain.clear();
@@ -1696,14 +1676,15 @@ void initSettings() {
 
 void initDisplay() {
     LOG.printf("[INIT] Init display\n");
-    display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
+    int displayModel = hardwareConfig.getDisplayModel();
+    int displayHeight = hardwareConfig.getDisplayHeight();
+    display.begin(static_cast<JaamDisplayType>(displayModel), static_cast<JaamDisplayHeight>(displayHeight));
     display.invertDisplay(settings.getBool(INVERT_DISPLAY));
     display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
-    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Jaam Fusion v" + String(VERSION) + " Слава Україні!");
 }
 
 void initSensors() {
-//  lightSensor.begin(legacy);
+//  lightSensor.begin(hardware);
 //   if (lightSensor.isLightSensorAvailable()) {
 //     lightSensorCycle();
 //   }
@@ -1722,9 +1703,9 @@ void initSensors() {
 void initSound() {
 #if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
   sound.init(
-    settings.getInt(BUZZER_PIN), 
-    settings.getInt(DF_RX_PIN), 
-    settings.getInt(DF_TX_PIN),
+    hardwareConfig.getBuzzerPin(), 
+    hardwareConfig.getDfRxPin(), 
+    hardwareConfig.getDfTxPin(),
     settings.getInt(MELODY_VOLUME_CURRENT),
     settings.getInt(MELODY_VOLUME_DAY),
     settings.getInt(MELODY_VOLUME_NIGHT)
@@ -1974,19 +1955,30 @@ void initStorage() {
 void initButtons() {
   LOG.printf("[BUTTON] Init buttons\n");
 
-  LOG.printf("[BUTTON] button1 pin: %d\n", settings.getInt(BUTTON_1_PIN));
+  int button1Pin = hardwareConfig.getButton1Pin();
+  int button2Pin = hardwareConfig.getButton2Pin();
+  int button3Pin = hardwareConfig.getButton3Pin();
+
+  LOG.printf("[BUTTON] button1 pin: %d\n", button1Pin);
   LOG.printf("[BUTTON] button1 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_1));
-  buttons.setButton1Pin(settings.getInt(BUTTON_1_PIN), !settings.getBool(USE_TOUCH_BUTTON_1));
+  buttons.setButton1Pin(button1Pin, !settings.getBool(USE_TOUCH_BUTTON_1));
   buttons.setButton1ClickListener(button1Click);
   buttons.setButton1LongClickListener(button1LongClick);
   buttons.setButton1DuringLongClickListener(button1DuringLongClick);
 
-  LOG.printf("[BUTTON] button2 pin: %d\n", settings.getInt(BUTTON_2_PIN));
+  LOG.printf("[BUTTON] button2 pin: %d\n", button2Pin);
   LOG.printf("[BUTTON] button2 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_2));
-  buttons.setButton2Pin(settings.getInt(BUTTON_2_PIN), !settings.getBool(USE_TOUCH_BUTTON_2));
+  buttons.setButton2Pin(button2Pin, !settings.getBool(USE_TOUCH_BUTTON_2));
   buttons.setButton2ClickListener(button2Click);
   buttons.setButton2LongClickListener(button2LongClick);
   buttons.setButton2DuringLongClickListener(button2DuringLongClick);
+
+  LOG.printf("[BUTTON] button3 pin: %d\n", button3Pin);
+  LOG.printf("[BUTTON] button3 touch: %d\n", settings.getBool(USE_TOUCH_BUTTON_3));
+  buttons.setButton3Pin(button3Pin, !settings.getBool(USE_TOUCH_BUTTON_3));
+  buttons.setButton3ClickListener(button3Click);
+  buttons.setButton3LongClickListener(button3LongClick);
+  buttons.setButton3DuringLongClickListener(button3DuringLongClick);
 }
 
 
@@ -2456,10 +2448,7 @@ void mainThreadProcess() {
 
     if (needReconfigureDisplay) {
         LOG.printf("[MAIN] Reconfiguring display\n");
-        initLegacy(); // reinitialize legacy settings
-        display.begin(static_cast<JaamDisplayType>(settings.getInt(DISPLAY_MODEL)), static_cast<JaamDisplayHeight>(settings.getInt(DISPLAY_HEIGHT)));
-        display.invertDisplay(settings.getBool(INVERT_DISPLAY));
-        display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
+        initDisplay();
         needReconfigureDisplay = false;
     }
 
@@ -2609,6 +2598,7 @@ void setup() {
     checkFreeHeap("buttons initialization");
 
     initDisplay();
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Jaam Fusion v" + String(VERSION) + " Слава Україні!");
     checkFreeHeap("display initialization");
 
     initStorage();

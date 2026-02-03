@@ -1,7 +1,7 @@
 #include "JaamLed.h"
 #include "JaamUtils.h"
 
-extern uint8_t legacy;
+extern uint8_t hardware;
 
 JaamLed::JaamLed() : settings(nullptr) {}
 
@@ -24,7 +24,7 @@ uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
 }
 
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
-    if (legacy == LEGACY::JAAM_3_0 || legacy == LEGACY::JAAM_3_1) {
+    if (hardware == HARDWARE::JAAM_3_0 || hardware == HARDWARE::JAAM_3_1) {
         return map(percent, 0, 100, 0, 35);
     } else {
         return map(percent, 0, 100, 0, 50);

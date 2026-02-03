@@ -5,6 +5,7 @@
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
+#include "JaamHardware.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -58,7 +59,7 @@ extern JaamStorage                      storage;
 extern JaamDisplay                      display;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
-extern uint8_t                          legacy;
+extern uint8_t                          hardware;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 extern JaamClimateSensor                climate;
@@ -178,12 +179,12 @@ inline void generateCustomRegionMap() {
     memset(customMap, 0, sizeof(customMap));
 
     const RegionLedMapEntry* base = nullptr;
-    int legacy = settings.getInt(LEGACY);
+    int hardware = settings.getInt(HARDWARE);
     //int kyiv_led_position;
     // int kharkiv_led_position;
     // int zp_led_position;
 
-    if (legacy == LEGACY::CUSTOM_MAPPING) {
+    if (hardware == HARDWARE::CUSTOM_MAPPING) {
         if (!storage.loadCustomMap(customMap)) {
             // Якщо файл не знайдено, завантажити карту за замовчуванням
             base = STATE_MAP_LED_ODESA_WITH_KYIV;
@@ -192,18 +193,18 @@ inline void generateCustomRegionMap() {
         return;
     }
 
-    if (legacy == LEGACY::JAAM_3_0) {
+    if (hardware == HARDWARE::JAAM_3_0) {
         base = REGION_MAP_JAAM_3_0;
-    } else if (legacy == LEGACY::JAAM_3_1) {
+    } else if (hardware == HARDWARE::JAAM_3_1) {
         base = REGION_MAP_JAAM_3_1;
-    } else if (legacy == LEGACY::ODESA_KYIV || legacy == LEGACY::JAAM_1_3 || legacy == LEGACY::JAAM_2_1) {
+    } else if (hardware == HARDWARE::ODESA_KYIV || hardware == HARDWARE::JAAM_1_3 || hardware == HARDWARE::JAAM_2_1) {
         base = STATE_MAP_LED_ODESA_WITH_KYIV;
-    } else if (legacy == LEGACY::ODESA) {
+    } else if (hardware == HARDWARE::ODESA) {
         //kyiv_led_position = 16;                 // Позиція для Київської області
         base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
-    } else if (legacy == LEGACY::ZAKARPATTIA_KYIV) {
+    } else if (hardware == HARDWARE::ZAKARPATTIA_KYIV) {
         base = STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
-    } else if (legacy == LEGACY::ZAKARPATTIA) {
+    } else if (hardware == HARDWARE::ZAKARPATTIA) {
         //kyiv_led_position = 7;                  // Позиція для Київської області
         base = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
     }
@@ -259,13 +260,13 @@ inline uint32_t getBgLedColor(int ledIndex) {
 }
 
 // Повертає потрібний mapping (customMap або стандартний)
-inline const RegionLedMapEntry* getRegionEntryLegacy(uint8_t legacy) {
+inline const RegionLedMapEntry* getRegionEntryByHardware(uint8_t hardware) {
     return customMap; // Повертаємо customMap, який був заповнений раніше
 }
 
 // Отримати регіон по region_id
 inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
-    const RegionLedMapEntry* leds = getRegionEntryLegacy(settings.getInt(LEGACY));
+    const RegionLedMapEntry* leds = getRegionEntryByHardware(settings.getInt(HARDWARE));
     for (int i = 0; i < MAX_REGIONS; ++i) {
         if (leds[i].region_id == region_id) {
             return &leds[i];
@@ -288,7 +289,7 @@ inline const int* getLedsForRegion(uint16_t region_id, uint8_t& count) {
 // Пошук усіх region_id по led_position
 inline std::vector<uint16_t> getRegionsForLed(int led_position) {
     std::vector<uint16_t> regions;
-    const RegionLedMapEntry* leds = getRegionEntryLegacy(settings.getInt(LEGACY));
+    const RegionLedMapEntry* leds = getRegionEntryByHardware(settings.getInt(HARDWARE));
     for (int i = 0; i < MAX_REGIONS; ++i) {
         const RegionLedMapEntry& entry = leds[i];
         for (int j = 0; j < entry.led_count; ++j) {

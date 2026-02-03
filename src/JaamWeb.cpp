@@ -1404,9 +1404,9 @@ void JaamWeb::handleParameter() {
         int intValue = value.toInt();
         float floatValue = value.toFloat();
 
-        if (name == "legacy") {
-            settings->saveInt(LEGACY, intValue);
-            LOG.printf("[WEB] Setting legacy: %d\n", intValue);
+        if (name == "hardware") {
+            settings->saveInt(HARDWARE, intValue);
+            LOG.printf("[WEB] Setting hardware: %d\n", intValue);
             needRecalculateLeds = true;
             needReconnectMainStrip = true;
             needReconfigureDisplay = true;
@@ -1830,18 +1830,29 @@ void JaamWeb::handleParameter() {
             settings->saveBool(USE_TOUCH_BUTTON_2, boolValue);
             needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_2_touch: %d\n", intValue);
+        } else if (name == "button_3_touch") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(USE_TOUCH_BUTTON_3, boolValue);
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_3_touch: %d\n", intValue);
         } else if (name == "button_1_mode") {
             settings->saveInt(BUTTON_1_MODE, intValue);
             LOG.printf("[WEB] Setting button_1_mode: %d\n", intValue);
         } else if (name == "button_2_mode") {
             settings->saveInt(BUTTON_2_MODE, intValue);
             LOG.printf("[WEB] Setting button_2_mode: %d\n", intValue);
+        } else if (name == "button_3_mode") {
+            settings->saveInt(BUTTON_3_MODE, intValue);
+            LOG.printf("[WEB] Setting button_3_mode: %d\n", intValue);
         } else if (name == "button_1_mode_long") {
             settings->saveInt(BUTTON_1_MODE_LONG, intValue);
             LOG.printf("[WEB] Setting button_1_mode_long: %d\n", intValue);
         } else if (name == "button_2_mode_long") {
             settings->saveInt(BUTTON_2_MODE_LONG, intValue);
             LOG.printf("[WEB] Setting button_2_mode_long: %d\n", intValue);
+        } else if (name == "button_3_mode_long") {
+            settings->saveInt(BUTTON_3_MODE_LONG, intValue);
+            LOG.printf("[WEB] Setting button_3_mode_long: %d\n", intValue);
         } else if (name == "min_of_silence") {
             bool boolValue = intValue != 0;
             settings->saveBool(MIN_OF_SILENCE, boolValue);
@@ -1934,6 +1945,10 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(BUTTON_2_PIN, value.toInt());
             needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_2_pin: %d\n", value.toInt());
+        } else if (name == "button_3_pin") {
+            settings->saveInt(BUTTON_3_PIN, value.toInt());
+            needReconfigureButtons = true;
+            LOG.printf("[WEB] Set button_3_pin: %d\n", value.toInt());
         }
 
         server.send(200, "text/plain", "OK");
@@ -2208,8 +2223,8 @@ void JaamWeb::handleUiSchema() {
     {
         JsonObject dropdownLists = doc["dropdown_lists"].to<JsonObject>();
         {
-            JsonArray arr = dropdownLists["legacy"].to<JsonArray>();
-            appendOptionsList(arr, LEGACY_OPTIONS, LEGACY_OPTIONS_COUNT);
+            JsonArray arr = dropdownLists["hardware"].to<JsonArray>();
+            appendOptionsList(arr, HARDWARE_OPTIONS, HARDWARE_OPTIONS_COUNT);
         }
         {
             JsonArray arr = dropdownLists["display_model"].to<JsonArray>();
@@ -2329,7 +2344,7 @@ void JaamWeb::handleUiSchema() {
 
     // Загальні налаштування
     addInfo("general", "Оберіть режим прошивки відповідно до вашої версії пристрою", "#007bff", "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");  
-    addDropdown("general", "legacy", "Режим прошивки", "legacy", LEGACY);
+    addDropdown("general", "hardware", "Режим прошивки", "hardware", HARDWARE);
 
     // Додаємо кнопку для редактора мапи
     addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor");
@@ -2390,6 +2405,10 @@ void JaamWeb::handleUiSchema() {
     addBool("hardware", "button_2_touch", "Підтримка touch-кнопки TTP223 для кнопки 2", USE_TOUCH_BUTTON_2);
     addDropdown("hardware", "button_2_mode", "Режим кнопки 2 (Single Click)", "button_modes_single_click", BUTTON_2_MODE);
     addDropdown("hardware", "button_2_mode_long", "Режим кнопки 2 (Long Click)", "button_modes_long_click", BUTTON_2_MODE_LONG);
+    addText("hardware", "button_3_pin", "Пін кнопки 3", String(settings->getInt(BUTTON_3_PIN)), "-1");
+    addBool("hardware", "button_3_touch", "Підтримка touch-кнопки TTP223 для кнопки 3", USE_TOUCH_BUTTON_3);
+    addDropdown("hardware", "button_3_mode", "Режим кнопки 3 (Single Click)", "button_modes_single_click", BUTTON_3_MODE);
+    addDropdown("hardware", "button_3_mode_long", "Режим кнопки 3 (Long Click)", "button_modes_long_click", BUTTON_3_MODE_LONG);
     addLabel("hardware", "Батарея");
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING);
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");
