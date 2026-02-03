@@ -576,6 +576,24 @@ h1 {
 .form-button:active {
     transform: translateY(0);
 }
+
+/* Visibility and animations for dynamic hiding/showing */
+[data-visibility] {
+    transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease;
+    overflow: hidden;
+}
+
+[data-visibility].hidden {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+[data-visibility]:not(.hidden) {
+    opacity: 1;
+    max-height: 1000px;
+}
 </style>
 )HTML";
 }
@@ -952,7 +970,7 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'dropdown') {
-        const [_, name, label, list, current] = ctrl;
+        const [_, name, label, list, current, section, visibility] = ctrl;
         const div = groupDiv();
         
         const lab = document.createElement('label');
@@ -974,11 +992,17 @@ function renderControl(ctrl, lists) {
         
         div.appendChild(lab);
         div.appendChild(sel);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+        
         return div;
     }
     
     if (type === 'bool') {
-        const [_, name, label, current] = ctrl;
+        const [_, name, label, current, section, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'switch-container';
         
@@ -995,11 +1019,17 @@ function renderControl(ctrl, lists) {
         
         div.appendChild(input);
         div.appendChild(lab);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+        
         return div;
     }
     
     if (type === 'text') {
-        const [_, name, label, current, placeholder] = ctrl;
+        const [_, name, label, current, placeholder, section, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'text-input-container';
         
@@ -1017,6 +1047,12 @@ function renderControl(ctrl, lists) {
         
         div.appendChild(lab);
         div.appendChild(inp);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+        
         return div;
     }
     
@@ -1045,7 +1081,7 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'slider') {
-        const [_, name, label, min, max, step, current] = ctrl;
+        const [_, name, label, min, max, step, current, section, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'slider-container';
         
@@ -1072,6 +1108,12 @@ function renderControl(ctrl, lists) {
         div.appendChild(val);
         div.appendChild(lab);
         div.appendChild(rng);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+        
         return div;
     }
     
@@ -1093,6 +1135,72 @@ function renderControl(ctrl, lists) {
     }
     
     return document.createTextNode('');
+}
+
+// Visibility management for conditional showing/hiding of elements
+function updateElementVisibility(element) {
+    const visibility = element.getAttribute('data-visibility');
+    if (!visibility) return;
+    
+    const conditions = visibility.split(',').map(c => c.trim());
+    let shouldShow = true;
+    
+    for (const condition of conditions) {
+        if (!evaluateCondition(condition)) {
+            shouldShow = false;
+            break;
+        }
+    }
+    
+    if (shouldShow) {
+        element.classList.remove('hidden');
+    } else {
+        element.classList.add('hidden');
+    }
+}
+
+function evaluateCondition(condition) {
+    // Format: "hardware!=0" means hardware != 0
+    const match = condition.match(/(\w+)(!=|==)(\d+)/);
+    if (!match) return true;
+    
+    const [_, field, operator, value] = match;
+    const hwSelect = document.getElementById(field);
+    if (!hwSelect) return true;
+    
+    const currentValue = hwSelect.value;
+    
+    if (operator === '!=') {
+        return String(currentValue) !== String(value);
+    } else if (operator === '==') {
+        return String(currentValue) === String(value);
+    }
+    
+    return true;
+}
+
+function setupVisibilityListeners() {
+    // Get all elements that have data-visibility or are select/input elements that affect visibility
+    const triggerElements = document.querySelectorAll('select, input[type="checkbox"]');
+    
+    triggerElements.forEach(el => {
+        el.addEventListener('change', () => {
+            updateAllVisibilities();
+        });
+    });
+    
+    // Also listen to input events for text fields
+    const textInputs = document.querySelectorAll('input[type="text"]');
+    textInputs.forEach(el => {
+        el.addEventListener('input', () => {
+            updateAllVisibilities();
+        });
+    });
+}
+
+function updateAllVisibilities() {
+    const elements = document.querySelectorAll('[data-visibility]');
+    elements.forEach(el => updateElementVisibility(el));
 }
 
 async function renderUI() {
@@ -1121,8 +1229,9 @@ async function renderUI() {
             let section = 'general'; // Default section
             
             // Extract section based on control type and position
+            // Note: visibility is always last, section is before visibility (or last if no visibility)
             if (type === 'dropdown' || type === 'bool' || type === 'text' || type === 'color' || type === 'slider' || type === 'button') {
-                section = ctrl[ctrl.length - 1] || 'general';
+                section = ctrl[ctrl.length - 2] || 'general'; // Section is second-to-last (before visibility)
             } else if (type === 'label') {
                 section = ctrl[2] || 'general';
             } else if (type === 'info') {
@@ -1144,6 +1253,10 @@ async function renderUI() {
                 }
             }
         }
+        
+        // Setup visibility listeners and update initial state
+        setupVisibilityListeners();
+        updateAllVisibilities();
         
         // Load and apply saved section
         const savedSection = loadSavedSection(sections);
@@ -2286,10 +2399,44 @@ void JaamWeb::handleUiSchema() {
 
     JsonArray controls = doc["controls"].to<JsonArray>();
 
+    // Universal helper to build visibility condition
+    // fieldName: the field to check (e.g., "hardware", "display_model", etc.)
+    // operand: the comparison operator (e.g., "!=", "==", etc.)
+    // values: array of numeric values to build the condition
+    // count: number of values in the array
+    // Example: buildVisibilityCondition("hardware", "!=", {0, 3, 4, 6}, 4) → "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+    auto buildVisibilityCondition = [](const char* fieldName, const char* operand, const uint8_t* values, size_t count) -> String {
+        String result = "";
+        for (size_t i = 0; i < count; i++) {
+            if (i > 0) result += ",";
+            result += fieldName;
+            result += operand;
+            result += values[i];
+        }
+        return result;
+    };
+
+    // Predefined visibility conditions for common scenarios
+    // For JAAM hardware: hide LED pins, button pins, buzzer, DF player from JAAM variants
+    uint8_t hideForJaamHardware[] = {JAAM_1_3, JAAM_2_1, JAAM_3_0, JAAM_3_1};
+    String jaamHardwareVisibility = buildVisibilityCondition("hardware", "!=", hideForJaamHardware, 4);
+    
+    // For display settings: hide from JAAM variants except JAAM_3_1
+    uint8_t hideDisplaySettingsForJaam[] = {JAAM_1_3, JAAM_2_1, JAAM_3_0};
+    String displaySettingsVisibility = buildVisibilityCondition("hardware", "!=", hideDisplaySettingsForJaam, 3);
+    
+    // For button 2 extra settings (touch, click modes): hide from JAAM_1_3
+    uint8_t hideButton2Settings[] = {JAAM_1_3};
+    String button2SettingsVisibility = buildVisibilityCondition("hardware", "!=", hideButton2Settings, 1);
+    
+    // For button 3 extra settings (touch, click modes): hide from JAAM_1_3 and JAAM_2_1
+    uint8_t hideButton3Settings[] = {JAAM_1_3, JAAM_2_1};
+    String button3SettingsVisibility = buildVisibilityCondition("hardware", "!=", hideButton3Settings, 2);
+
     // Helper to add a dropdown control referencing a named list and reading current from settings key
-    auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key){
+    auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
-        c.add("dropdown"); c.add(name); c.add(label); c.add(listId); c.add(settings->getInt(key)); c.add(section);
+        c.add("dropdown"); c.add(name); c.add(label); c.add(listId); c.add(settings->getInt(key)); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
     // Helper to add a label/section header
@@ -2299,19 +2446,19 @@ void JaamWeb::handleUiSchema() {
     };
 
     // Helper to add a boolean control
-    auto addBool = [&](const char* section, const char* name, const char* label, Type key){
+    auto addBool = [&](const char* section, const char* name, const char* label, Type key, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
-        c.add("bool"); c.add(name); c.add(label); c.add(settings->getBool(key)); c.add(section);
+        c.add("bool"); c.add(name); c.add(label); c.add(settings->getBool(key)); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
-    auto addText = [&](const char* section, const char* name, const char* label, const String& value, const char* placeholder){
+    auto addText = [&](const char* section, const char* name, const char* label, const String& value, const char* placeholder, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
-        c.add("text"); c.add(name); c.add(label); c.add(value); c.add(placeholder); c.add(section);
+        c.add("text"); c.add(name); c.add(label); c.add(value); c.add(placeholder); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
-    auto addSlider = [&](const char* section, const char* name, const char* label, float minv, float maxv, float step, float current){
+    auto addSlider = [&](const char* section, const char* name, const char* label, float minv, float maxv, float step, float current, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
-        c.add("slider"); c.add(name); c.add(label); c.add(minv); c.add(maxv); c.add(step); c.add(current); c.add(section);
+        c.add("slider"); c.add(name); c.add(label); c.add(minv); c.add(maxv); c.add(step); c.add(current); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
     auto addColor = [&](const char* section, const char* name, const char* label, Type key){
@@ -2364,8 +2511,8 @@ void JaamWeb::handleUiSchema() {
 
     // Display settings
     addInfo("display", "Налаштуйте параметри дисплея та візуального відображення мапи", "#28a745", "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z");
-    addDropdown("display", "display_model", "Тип дисплея", "display_model", DISPLAY_MODEL);
-    addDropdown("display", "display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT);
+    addDropdown("display", "display_model", "Тип дисплея", "display_model", DISPLAY_MODEL, displaySettingsVisibility.c_str());
+    addDropdown("display", "display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT, displaySettingsVisibility.c_str());
     addDropdown("display", "display_rotation", "Поворот дисплея", "display_rotation", DISPLAY_ROTATION);
     addBool("display", "invert_display", "Інвертувати дисплей", INVERT_DISPLAY);
     addSlider("display", "display_alert_message_time", "Час сповіщень на екрані (секунди)", 1, 60, 1, settings->getInt(DISPLAY_ALERT_MESSAGE_TIME));
@@ -2385,30 +2532,30 @@ void JaamWeb::handleUiSchema() {
 
     // Піни та апаратні налаштування
     addInfo("hardware", "Конфігурація апаратних пінів та параметрів LED стрічок", "#6f42c1", "M9,7H11V17H9V19H15V17H13V7H15V5H9V7M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
-    addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13");
+    addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13", jaamHardwareVisibility.c_str());
     addDropdown("hardware", "main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT);
     addDropdown("hardware", "main_led_frequency", "Основна стрічка (частота)", "led_frequencies", MAIN_LED_FREQUENCY);
-    addText("hardware", "bg_led_pin", "Фонова стрічка (пін)", String(settings->getInt(BG_LED_PIN)), "-1");
-    addText("hardware", "bg_led_count", "Фонова стрічка (кількість)", String(settings->getInt(BG_LED_COUNT)), "0");
+    addText("hardware", "bg_led_pin", "Фонова стрічка (пін)", String(settings->getInt(BG_LED_PIN)), "-1", jaamHardwareVisibility.c_str());
+    addText("hardware", "bg_led_count", "Фонова стрічка (кількість)", String(settings->getInt(BG_LED_COUNT)), "0", jaamHardwareVisibility.c_str());
     addDropdown("hardware", "bg_led_color_format", "Фонова стрічка (формат кольору)", "led_color_formats", BG_LED_COLOR_FORMAT);
     addDropdown("hardware", "bg_led_frequency", "Фонова стрічка (частота)", "led_frequencies", BG_LED_FREQUENCY);
-    addText("hardware", "service_led_pin", "Сервісна стрічка (пін)", String(settings->getInt(SERVICE_LED_PIN)), "-1");
+    addText("hardware", "service_led_pin", "Сервісна стрічка (пін)", String(settings->getInt(SERVICE_LED_PIN)), "-1", jaamHardwareVisibility.c_str());
     addDropdown("hardware", "service_led_color_format", "Сервісна стрічка (формат кольору)", "led_color_formats", SERVICE_LED_COLOR_FORMAT);
     addDropdown("hardware", "service_led_frequency", "Сервісна стрічка (частота)", "led_frequencies", SERVICE_LED_FREQUENCY);
     addInfoError("hardware", "Увага: неправильна конфігурація пінів може призвести до пошкодження пристрою!");
     addLabel("hardware", "Кнопки");
-    addText("hardware", "button_1_pin", "Пін кнопки 1", String(settings->getInt(BUTTON_1_PIN)), "-1");
+    addText("hardware", "button_1_pin", "Пін кнопки 1", String(settings->getInt(BUTTON_1_PIN)), "-1", jaamHardwareVisibility.c_str());
     addBool("hardware", "button_1_touch", "Підтримка touch-кнопки TTP223 для кнопки 1", USE_TOUCH_BUTTON_1);
     addDropdown("hardware", "button_1_mode", "Режим кнопки 1 (Single Click)", "button_modes_single_click", BUTTON_1_MODE);
     addDropdown("hardware", "button_1_mode_long", "Режим кнопки 1 (Long Click)", "button_modes_long_click", BUTTON_1_MODE_LONG);
-    addText("hardware", "button_2_pin", "Пін кнопки 2", String(settings->getInt(BUTTON_2_PIN)), "-1");
-    addBool("hardware", "button_2_touch", "Підтримка touch-кнопки TTP223 для кнопки 2", USE_TOUCH_BUTTON_2);
-    addDropdown("hardware", "button_2_mode", "Режим кнопки 2 (Single Click)", "button_modes_single_click", BUTTON_2_MODE);
-    addDropdown("hardware", "button_2_mode_long", "Режим кнопки 2 (Long Click)", "button_modes_long_click", BUTTON_2_MODE_LONG);
-    addText("hardware", "button_3_pin", "Пін кнопки 3", String(settings->getInt(BUTTON_3_PIN)), "-1");
-    addBool("hardware", "button_3_touch", "Підтримка touch-кнопки TTP223 для кнопки 3", USE_TOUCH_BUTTON_3);
-    addDropdown("hardware", "button_3_mode", "Режим кнопки 3 (Single Click)", "button_modes_single_click", BUTTON_3_MODE);
-    addDropdown("hardware", "button_3_mode_long", "Режим кнопки 3 (Long Click)", "button_modes_long_click", BUTTON_3_MODE_LONG);
+    addText("hardware", "button_2_pin", "Пін кнопки 2", String(settings->getInt(BUTTON_2_PIN)), "-1", jaamHardwareVisibility.c_str());
+    addBool("hardware", "button_2_touch", "Підтримка touch-кнопки TTP223 для кнопки 2", USE_TOUCH_BUTTON_2, button2SettingsVisibility.c_str());
+    addDropdown("hardware", "button_2_mode", "Режим кнопки 2 (Single Click)", "button_modes_single_click", BUTTON_2_MODE, button2SettingsVisibility.c_str());
+    addDropdown("hardware", "button_2_mode_long", "Режим кнопки 2 (Long Click)", "button_modes_long_click", BUTTON_2_MODE_LONG, button2SettingsVisibility.c_str());
+    addText("hardware", "button_3_pin", "Пін кнопки 3", String(settings->getInt(BUTTON_3_PIN)), "-1", jaamHardwareVisibility.c_str());
+    addBool("hardware", "button_3_touch", "Підтримка touch-кнопки TTP223 для кнопки 3", USE_TOUCH_BUTTON_3, button3SettingsVisibility.c_str());
+    addDropdown("hardware", "button_3_mode", "Режим кнопки 3 (Single Click)", "button_modes_single_click", BUTTON_3_MODE, button3SettingsVisibility.c_str());
+    addDropdown("hardware", "button_3_mode_long", "Режим кнопки 3 (Long Click)", "button_modes_long_click", BUTTON_3_MODE_LONG, button3SettingsVisibility.c_str());
     addLabel("hardware", "Батарея");
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING);
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");
@@ -2506,9 +2653,9 @@ void JaamWeb::handleUiSchema() {
     // Налаштування звуку
     addInfo("sound", "Налаштування звуку", "#6c757d", "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z");
     addDropdown("sound", "sound_source", "Джерело звуку", "sound_sources", SOUND_SOURCE);
-    addText("sound", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1");
-    addText("sound", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1");
-    addText("sound", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1");
+    addText("sound", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1", jaamHardwareVisibility.c_str());
+    addText("sound", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1", jaamHardwareVisibility.c_str());
+    addText("sound", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1", jaamHardwareVisibility.c_str());
     addSlider("sound", "melody_volume_day", "Гучність мелодії вдень", 0, 100, 1, settings->getInt(MELODY_VOLUME_DAY));
     addSlider("sound", "melody_volume_night", "Гучність мелодії вночі", 0, 100, 1, settings->getInt(MELODY_VOLUME_NIGHT));
     addBool("sound", "sound_on_alert", "Звукове сповіщення при тривозі у домашньому регіоні", SOUND_ON_ALERT);
