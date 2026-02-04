@@ -2418,10 +2418,10 @@ void JaamWeb::handleUiSchema() {
 
     // Predefined visibility conditions for common scenarios
     // For JAAM hardware: hide LED pins, button pins, buzzer, DF player from JAAM variants
-    uint8_t hideForJaamHardware[] = {JAAM_1_3, JAAM_2_1, JAAM_3_0, JAAM_3_1};
+    uint8_t hideForJaamHardware[] = {JAAM_1_3, JAAM_2_1, JAAM_3_0, JAAM_3_2};
     String jaamHardwareVisibility = buildVisibilityCondition("hardware", "!=", hideForJaamHardware, 4);
     
-    // For display settings: hide from JAAM variants except JAAM_3_1
+    // For display settings: hide from JAAM variants except JAAM_3_2
     uint8_t hideDisplaySettingsForJaam[] = {JAAM_1_3, JAAM_2_1, JAAM_3_0};
     String displaySettingsVisibility = buildVisibilityCondition("hardware", "!=", hideDisplaySettingsForJaam, 3);
     

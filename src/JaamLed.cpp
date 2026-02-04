@@ -24,7 +24,7 @@ uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
 }
 
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
-    if (hardware == HARDWARE::JAAM_3_0 || hardware == HARDWARE::JAAM_3_1) {
+    if (hardware == HARDWARE::JAAM_3_0 || hardware == HARDWARE::JAAM_3_2) {
         return map(percent, 0, 100, 0, 35);
     } else {
         return map(percent, 0, 100, 0, 50);

@@ -11,7 +11,7 @@ uint8_t JaamHardware::getCurrentHardwareType() {
 int JaamHardware::getMainLedPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
@@ -29,7 +29,7 @@ int JaamHardware::getMainLedPin() {
 int JaamHardware::getMainLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
             return 405;
         case HARDWARE::JAAM_3_0:
             return 273;
@@ -49,7 +49,7 @@ int JaamHardware::getMainLedsCount() {
 int JaamHardware::getBgLedPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return 12;
@@ -68,7 +68,7 @@ int JaamHardware::getBgLedPin() {
 int JaamHardware::getBgLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
             return 39;
         case HARDWARE::JAAM_2_1:
@@ -88,7 +88,7 @@ int JaamHardware::getBgLedsCount() {
 int JaamHardware::getServiceLedPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return 25;
@@ -112,7 +112,7 @@ int JaamHardware::getServiceLedsCount() {
     }
 
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return 5;
@@ -131,7 +131,7 @@ int JaamHardware::getServiceLedsCount() {
 int JaamHardware::getButton1Pin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
             return 5;
         case HARDWARE::JAAM_2_1:
@@ -151,7 +151,7 @@ int JaamHardware::getButton1Pin() {
 int JaamHardware::getButton2Pin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return 2;
@@ -170,7 +170,7 @@ int JaamHardware::getButton2Pin() {
 int JaamHardware::getButton3Pin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
             return 4;
         case HARDWARE::JAAM_2_1:
@@ -190,7 +190,7 @@ int JaamHardware::getBuzzerPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_0:
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_2_1:
             return 33;
         case HARDWARE::JAAM_1_3:
@@ -208,7 +208,7 @@ int JaamHardware::getDfRxPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_0:
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
             return 17;
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
@@ -225,7 +225,7 @@ int JaamHardware::getDfRxPin() {
 int JaamHardware::getDfTxPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
             return 16;
         case HARDWARE::JAAM_2_1:
@@ -243,7 +243,7 @@ int JaamHardware::getDfTxPin() {
 int JaamHardware::getDisplayModel() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
             return settings.getInt(DISPLAY_MODEL);
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
@@ -263,7 +263,7 @@ int JaamHardware::getDisplayModel() {
 int JaamHardware::getDisplayHeight() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_1:
+        case HARDWARE::JAAM_3_2:
             return settings.getInt(DISPLAY_HEIGHT);
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:

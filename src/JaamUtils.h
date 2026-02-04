@@ -195,8 +195,8 @@ inline void generateCustomRegionMap() {
 
     if (hardware == HARDWARE::JAAM_3_0) {
         base = REGION_MAP_JAAM_3_0;
-    } else if (hardware == HARDWARE::JAAM_3_1) {
-        base = REGION_MAP_JAAM_3_1;
+    } else if (hardware == HARDWARE::JAAM_3_2) {
+        base = REGION_MAP_JAAM_3_2;
     } else if (hardware == HARDWARE::ODESA_KYIV || hardware == HARDWARE::JAAM_1_3 || hardware == HARDWARE::JAAM_2_1) {
         base = STATE_MAP_LED_ODESA_WITH_KYIV;
     } else if (hardware == HARDWARE::ODESA) {

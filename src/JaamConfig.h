@@ -418,7 +418,7 @@ enum HARDWARE {
     JAAM_2_1 = 3,
     JAAM_3_0 = 4,
     CUSTOM_MAPPING = 5,
-    JAAM_3_1 = 6,
+    JAAM_3_2 = 6,
     ZAKARPATTIA_KYIV = 7,
     ODESA_KYIV = 8
 };
@@ -433,7 +433,7 @@ static SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
   {HARDWARE::JAAM_1_3, "Плата JAAM 1.3"},
   {HARDWARE::JAAM_2_1, "Плата JAAM 2.1"},
   {HARDWARE::JAAM_3_0, "Плата JAAM 3.0"},
-  {HARDWARE::JAAM_3_1, "Плата JAAM 3.1"},
+  {HARDWARE::JAAM_3_2, "Плата JAAM 3.2"},
 #endif
   {HARDWARE::ZAKARPATTIA, "Початок на Закарпатті"},
   {HARDWARE::ZAKARPATTIA_KYIV, "Початок на Закарпатті + Київ"},
@@ -1115,7 +1115,7 @@ const RegionLedMapEntry REGION_MAP_JAAM_3_0[MAX_REGIONS] = {
 };
 
 // Фіксований масив відповідностей (заповнюється вручну)
-const RegionLedMapEntry REGION_MAP_JAAM_3_1[MAX_REGIONS] = {
+const RegionLedMapEntry REGION_MAP_JAAM_3_2[MAX_REGIONS] = {
     // АР Крим
     { 9999, { 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404}, 13 }, // Автономна Республіка Крим
 
