@@ -33,6 +33,8 @@ int JaamHardware::getMainLedsCount() {
         case HARDWARE::ODESA_KYIV:
         case HARDWARE::ZAKARPATTIA_KYIV:
             return JaamHardwareLedCounts::MAIN_LED_COUNT_KYIV;
+        case HARDWARE::CUSTOM_MAPPING:
+            return settings.getInt(MAIN_LED_COUNT);
         default:
             return JaamHardwareLedCounts::MAIN_LED_COUNT_DEFAULT;
     }
@@ -57,7 +59,7 @@ int JaamHardware::getBgLedPin() {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
-            return JaamHardwarePins::BG_LED_PIN_JAAM_3;
+            return JaamHardwarePins::BG_LED_PIN_JAAM;
         case HARDWARE::JAAM_1_3:
             return JaamHardwarePins::BG_LED_PIN_DISABLED;
         default:
@@ -201,7 +203,7 @@ int JaamHardware::getDfRxPin() {
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
-            return JaamHardwarePins::DF_RX_PIN_JAAM_3;
+            return JaamHardwarePins::DF_RX_PIN_JAAM;
         default:
             return settings.getInt(DF_RX_PIN);
     }
@@ -212,7 +214,7 @@ int JaamHardware::getDfTxPin() {
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
-            return JaamHardwarePins::DF_TX_PIN_JAAM_3;
+            return JaamHardwarePins::DF_TX_PIN_JAAM;
         default:
             return settings.getInt(DF_TX_PIN);
     }

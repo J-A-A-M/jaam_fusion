@@ -467,6 +467,7 @@ enum Type {
     NTP_HOST,
     HARDWARE,
     MAIN_LED_PIN,
+    MAIN_LED_COUNT,
     BG_LED_PIN,
     BG_LED_COUNT,
     BG_LED_MODE,

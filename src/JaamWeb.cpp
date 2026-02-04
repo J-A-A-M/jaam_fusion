@@ -2041,6 +2041,11 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(MAIN_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting main_led_pin: %s\n", valuePtr);
             needReconnectMainStrip = true;
+        } else if (name == "main_led_count") {
+            settings->saveInt(MAIN_LED_COUNT, value.toInt());
+            LOG.printf("[WEB] Setting main_led_count: %s\n", valuePtr);
+            needReconnectMainStrip = true;
+            needToRegenerateBgColorMap = true;
         } else if (name == "bg_led_pin") {
             settings->saveInt(BG_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting bg_led_pin: %s\n", valuePtr);
@@ -2467,11 +2472,11 @@ void JaamWeb::handleUiSchema() {
     
     // For map editor: show only when hardware = custom (5)
     uint8_t showMapEditorForCustom[] = {CUSTOM_MAPPING};
-    String mapEditorVisibility = buildVisibilityCondition("hardware", "==", showMapEditorForCustom, 1);
+    String customOnly = buildVisibilityCondition("hardware", "==", showMapEditorForCustom, 1);
     
     // For color editor: show only when bg_led_mode = individual (2)
     uint8_t showColorEditorForIndividual[] = {2};
-    String colorEditorVisibility = buildVisibilityCondition("bg_led_mode", "==", showColorEditorForIndividual, 1);
+    String individualOnly = buildVisibilityCondition("bg_led_mode", "==", showColorEditorForIndividual, 1);
 
     // Helper to add a dropdown control referencing a named list and reading current from settings key
     auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key, const char* visibility = nullptr){
@@ -2534,14 +2539,14 @@ void JaamWeb::handleUiSchema() {
     addDropdown("general", "hardware", "Режим прошивки", "hardware", HARDWARE);
 
     // Додаємо кнопку для редактора мапи (лише для CUSTOM_MAPPING)
-    addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor", mapEditorVisibility.c_str());
+    addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor", customOnly.c_str());
 
     //addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
     addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
     
     // Додаємо кнопку для редактора кольорів індивідуальних ледів (лише для bg_led_mode = individual)
-    addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor", colorEditorVisibility.c_str());
+    addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor", individualOnly.c_str());
     
     addDropdown("general", "map_mode", "Режим мапи", "map_mode", MAP_MODE);
     addBool("general", "min_of_silence", "Увімкнути режим \"Хвилина мовчання\" о 9:00", MIN_OF_SILENCE);
@@ -2573,6 +2578,7 @@ void JaamWeb::handleUiSchema() {
     // Піни та апаратні налаштування
     addInfo("hardware", "Конфігурація апаратних пінів та параметрів LED стрічок", "#6f42c1", "M9,7H11V17H9V19H15V17H13V7H15V5H9V7M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
     addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13", exceptJaamHardware.c_str());
+    addText("hardware", "main_led_count", "Основна стрічка (кількість)", String(settings->getInt(MAIN_LED_COUNT)), "26", customOnly.c_str());
     addDropdown("hardware", "main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT, exceptJaamHardware.c_str());
     addDropdown("hardware", "main_led_frequency", "Основна стрічка (частота)", "led_frequencies", MAIN_LED_FREQUENCY);
     addText("hardware", "bg_led_pin", "Фонова стрічка (пін)", String(settings->getInt(BG_LED_PIN)), "-1", exceptJaamHardware.c_str());

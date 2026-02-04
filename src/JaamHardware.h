@@ -8,8 +8,7 @@ namespace JaamHardwarePins {
     constexpr int MAIN_LED_PIN_JAAM = 13;
     
     // Background LED strip pins
-    constexpr int BG_LED_PIN_JAAM_3 = 12;
-    constexpr int BG_LED_PIN_JAAM_2 = 12;
+    constexpr int BG_LED_PIN_JAAM = 12;
     constexpr int BG_LED_PIN_DISABLED = -1;
     
     // Service LED strip pins
@@ -31,8 +30,8 @@ namespace JaamHardwarePins {
     constexpr int BUZZER_PIN_JAAM = 33;
     
     // DFPlayer pins
-    constexpr int DF_RX_PIN_JAAM_3 = 17;
-    constexpr int DF_TX_PIN_JAAM_3 = 16;
+    constexpr int DF_RX_PIN_JAAM = 17;
+    constexpr int DF_TX_PIN_JAAM = 16;
 }
 
 // Hardware LED count constants
@@ -44,6 +43,9 @@ namespace JaamHardwareLedCounts {
     constexpr int MAIN_LED_COUNT_JAAM_1_3 = 26;
     constexpr int MAIN_LED_COUNT_KYIV = 26;
     constexpr int MAIN_LED_COUNT_DEFAULT = 25;
+    constexpr int MAIN_LED_COUNT_DISABLED = -1;
+    constexpr int MAIN_LED_FORMAT_DISABLED = -1;
+    
     
     // Background LED strip counts
     constexpr int BG_LED_COUNT_JAAM_3 = 39;
