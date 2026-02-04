@@ -937,7 +937,13 @@ function renderControl(ctrl, lists) {
     const type = ctrl[0];
     
     if (type === 'label') {
-        return labelEl(ctrl[1]);
+        const [_, text, section, visibility] = ctrl;
+        const el = labelEl(text);
+        if (visibility && visibility.trim() !== '') {
+            el.setAttribute('data-visibility', visibility);
+            updateElementVisibility(el);
+        }
+        return el;
     }
     
     if (type === 'info') {
@@ -1118,7 +1124,7 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'button') {
-        const [_, name, label, color, url] = ctrl;
+        const [_, name, label, color, url, section, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'button-container';
         
@@ -1131,6 +1137,12 @@ function renderControl(ctrl, lists) {
         btn.onclick = () => window.open(url, '_blank');
         
         div.appendChild(btn);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+        
         return div;
     }
     
@@ -2290,7 +2302,7 @@ void JaamWeb::handleUiSchema() {
           "color":    ["name", "label", "current", "section"],
           "slider":   ["name", "label", "min", "max", "step", "current", "section"],
           "button":   ["name", "label", "color", "url", "section"],
-          "label":    ["label", "section"],
+          "label":    ["label", "section", "visibility"],
           "info":     ["text", "color", "icon", "section"],
           "option":   ["id", "name", "sub"]
         }
@@ -2419,19 +2431,39 @@ void JaamWeb::handleUiSchema() {
     // Predefined visibility conditions for common scenarios
     // For JAAM hardware: hide LED pins, button pins, buzzer, DF player from JAAM variants
     uint8_t hideForJaamHardware[] = {JAAM_1_3, JAAM_2_1, JAAM_3_0, JAAM_3_2};
-    String jaamHardwareVisibility = buildVisibilityCondition("hardware", "!=", hideForJaamHardware, 4);
+    String exceptJaamHardware = buildVisibilityCondition("hardware", "!=", hideForJaamHardware, 4);
     
     // For display settings: hide from JAAM variants except JAAM_3_2
     uint8_t hideDisplaySettingsForJaam[] = {JAAM_1_3, JAAM_2_1, JAAM_3_0};
-    String displaySettingsVisibility = buildVisibilityCondition("hardware", "!=", hideDisplaySettingsForJaam, 3);
+    String exceptJaam1And2And30 = buildVisibilityCondition("hardware", "!=", hideDisplaySettingsForJaam, 3);
+
+    // For ADC settings: hide from JAAM_1_3, JAAM_2_1 and JAAM_3_2
+    uint8_t hideADCSettingsForJaam[] = {JAAM_1_3, JAAM_2_1, JAAM_3_2};
+    String exceptJaam1And2And32 = buildVisibilityCondition("hardware", "!=", hideADCSettingsForJaam, 3);
+
+    // For buzzer settings: hide from JAAM_2_1, JAAM_3_0 and JAAM_3_2 (JAAM_1_3 has not buzzer)
+    uint8_t hideBuzzerSettings[] = {JAAM_2_1, JAAM_3_0, JAAM_3_2};
+    String exceptJaam2And30And32 = buildVisibilityCondition("hardware", "!=", hideBuzzerSettings, 3);
+
+    // For DF player settings: hide from JAAM_3_0 and JAAM_3_2
+    uint8_t hideDfPlayerSettings[] = {JAAM_3_0, JAAM_3_2};
+    String exceptJaam30And32 = buildVisibilityCondition("hardware", "!=", hideDfPlayerSettings, 2);
     
     // For button 2 extra settings (touch, click modes): hide from JAAM_1_3
     uint8_t hideButton2Settings[] = {JAAM_1_3};
-    String button2SettingsVisibility = buildVisibilityCondition("hardware", "!=", hideButton2Settings, 1);
+    String exceptJaam1 = buildVisibilityCondition("hardware", "!=", hideButton2Settings, 1);
     
     // For button 3 extra settings (touch, click modes): hide from JAAM_1_3 and JAAM_2_1
     uint8_t hideButton3Settings[] = {JAAM_1_3, JAAM_2_1};
-    String button3SettingsVisibility = buildVisibilityCondition("hardware", "!=", hideButton3Settings, 2);
+    String exceptJaam1And2 = buildVisibilityCondition("hardware", "!=", hideButton3Settings, 2);
+    
+    // For map editor: show only when hardware = custom (5)
+    uint8_t showMapEditorForCustom[] = {CUSTOM_MAPPING};
+    String mapEditorVisibility = buildVisibilityCondition("hardware", "==", showMapEditorForCustom, 1);
+    
+    // For color editor: show only when bg_led_mode = individual (2)
+    uint8_t showColorEditorForIndividual[] = {2};
+    String colorEditorVisibility = buildVisibilityCondition("bg_led_mode", "==", showColorEditorForIndividual, 1);
 
     // Helper to add a dropdown control referencing a named list and reading current from settings key
     auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key, const char* visibility = nullptr){
@@ -2440,9 +2472,9 @@ void JaamWeb::handleUiSchema() {
     };
 
     // Helper to add a label/section header
-    auto addLabel = [&](const char* section, const char* text){
+    auto addLabel = [&](const char* section, const char* text, const char* visibility = nullptr){
         JsonArray group = controls.add<JsonArray>();
-        group.add("label"); group.add(text); group.add(section);
+        group.add("label"); group.add(text); group.add(section); group.add(visibility == nullptr ? "" : visibility);
     };
 
     // Helper to add a boolean control
@@ -2473,9 +2505,9 @@ void JaamWeb::handleUiSchema() {
     };
 
     // Helper to add button
-    auto addButton = [&](const char* section, const char* name, const char* text, const char* bg_color, const char* uri){
+    auto addButton = [&](const char* section, const char* name, const char* text, const char* bg_color, const char* uri, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
-        c.add("button"); c.add(name); c.add(text); c.add(bg_color); c.add(uri); c.add(section);
+        c.add("button"); c.add(name); c.add(text); c.add(bg_color); c.add(uri); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
     // Helper to add different types of info panels
@@ -2493,15 +2525,15 @@ void JaamWeb::handleUiSchema() {
     addInfo("general", "Оберіть режим прошивки відповідно до вашої версії пристрою", "#007bff", "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");  
     addDropdown("general", "hardware", "Режим прошивки", "hardware", HARDWARE);
 
-    // Додаємо кнопку для редактора мапи
-    addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor");
+    // Додаємо кнопку для редактора мапи (лише для CUSTOM_MAPPING)
+    addButton("general", "map_editor", "Редактор мапи", "#007bff", "/map-editor", mapEditorVisibility.c_str());
 
     //addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
     addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
     
-    // Додаємо кнопку для редактора кольорів індивідуальних ледів
-    addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor");
+    // Додаємо кнопку для редактора кольорів індивідуальних ледів (лише для bg_led_mode = individual)
+    addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor", colorEditorVisibility.c_str());
     
     addDropdown("general", "map_mode", "Режим мапи", "map_mode", MAP_MODE);
     addBool("general", "min_of_silence", "Увімкнути режим \"Хвилина мовчання\" о 9:00", MIN_OF_SILENCE);
@@ -2511,9 +2543,9 @@ void JaamWeb::handleUiSchema() {
 
     // Display settings
     addInfo("display", "Налаштуйте параметри дисплея та візуального відображення мапи", "#28a745", "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z");
-    addDropdown("display", "display_model", "Тип дисплея", "display_model", DISPLAY_MODEL, displaySettingsVisibility.c_str());
-    addDropdown("display", "display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT, displaySettingsVisibility.c_str());
-    addDropdown("display", "display_rotation", "Поворот дисплея", "display_rotation", DISPLAY_ROTATION);
+    addDropdown("display", "display_model", "Тип дисплея", "display_model", DISPLAY_MODEL, exceptJaam1And2And30.c_str());
+    addDropdown("display", "display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT, exceptJaam1And2And30.c_str());
+    addDropdown("display", "display_rotation", "Поворот дисплея", "display_rotation", DISPLAY_ROTATION, exceptJaam1And2And30.c_str());
     addBool("display", "invert_display", "Інвертувати дисплей", INVERT_DISPLAY);
     addSlider("display", "display_alert_message_time", "Час сповіщень на екрані (секунди)", 1, 60, 1, settings->getInt(DISPLAY_ALERT_MESSAGE_TIME));
 
@@ -2532,33 +2564,36 @@ void JaamWeb::handleUiSchema() {
 
     // Піни та апаратні налаштування
     addInfo("hardware", "Конфігурація апаратних пінів та параметрів LED стрічок", "#6f42c1", "M9,7H11V17H9V19H15V17H13V7H15V5H9V7M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
-    addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13", jaamHardwareVisibility.c_str());
-    addDropdown("hardware", "main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT);
+    addText("hardware", "main_led_pin", "Основна стрічка (пін)", String(settings->getInt(MAIN_LED_PIN)), "13", exceptJaamHardware.c_str());
+    addDropdown("hardware", "main_led_color_format", "Основна стрічка (формат кольору)", "led_color_formats", MAIN_LED_COLOR_FORMAT, exceptJaamHardware.c_str());
     addDropdown("hardware", "main_led_frequency", "Основна стрічка (частота)", "led_frequencies", MAIN_LED_FREQUENCY);
-    addText("hardware", "bg_led_pin", "Фонова стрічка (пін)", String(settings->getInt(BG_LED_PIN)), "-1", jaamHardwareVisibility.c_str());
-    addText("hardware", "bg_led_count", "Фонова стрічка (кількість)", String(settings->getInt(BG_LED_COUNT)), "0", jaamHardwareVisibility.c_str());
-    addDropdown("hardware", "bg_led_color_format", "Фонова стрічка (формат кольору)", "led_color_formats", BG_LED_COLOR_FORMAT);
-    addDropdown("hardware", "bg_led_frequency", "Фонова стрічка (частота)", "led_frequencies", BG_LED_FREQUENCY);
-    addText("hardware", "service_led_pin", "Сервісна стрічка (пін)", String(settings->getInt(SERVICE_LED_PIN)), "-1", jaamHardwareVisibility.c_str());
-    addDropdown("hardware", "service_led_color_format", "Сервісна стрічка (формат кольору)", "led_color_formats", SERVICE_LED_COLOR_FORMAT);
-    addDropdown("hardware", "service_led_frequency", "Сервісна стрічка (частота)", "led_frequencies", SERVICE_LED_FREQUENCY);
+    addText("hardware", "bg_led_pin", "Фонова стрічка (пін)", String(settings->getInt(BG_LED_PIN)), "-1", exceptJaamHardware.c_str());
+    addText("hardware", "bg_led_count", "Фонова стрічка (кількість)", String(settings->getInt(BG_LED_COUNT)), "0", exceptJaamHardware.c_str());
+    addDropdown("hardware", "bg_led_color_format", "Фонова стрічка (формат кольору)", "led_color_formats", BG_LED_COLOR_FORMAT, exceptJaamHardware.c_str());
+    addDropdown("hardware", "bg_led_frequency", "Фонова стрічка (частота)", "led_frequencies", BG_LED_FREQUENCY, exceptJaam1.c_str());
+    addText("hardware", "service_led_pin", "Сервісна стрічка (пін)", String(settings->getInt(SERVICE_LED_PIN)), "-1", exceptJaamHardware.c_str());
+    addDropdown("hardware", "service_led_color_format", "Сервісна стрічка (формат кольору)", "led_color_formats", SERVICE_LED_COLOR_FORMAT, exceptJaamHardware.c_str());
+    addDropdown("hardware", "service_led_frequency", "Сервісна стрічка (частота)", "led_frequencies", SERVICE_LED_FREQUENCY, exceptJaam1.c_str());
     addInfoError("hardware", "Увага: неправильна конфігурація пінів може призвести до пошкодження пристрою!");
     addLabel("hardware", "Кнопки");
-    addText("hardware", "button_1_pin", "Пін кнопки 1", String(settings->getInt(BUTTON_1_PIN)), "-1", jaamHardwareVisibility.c_str());
+    addText("hardware", "button_1_pin", "Пін кнопки 1", String(settings->getInt(BUTTON_1_PIN)), "-1", exceptJaamHardware.c_str());
     addBool("hardware", "button_1_touch", "Підтримка touch-кнопки TTP223 для кнопки 1", USE_TOUCH_BUTTON_1);
     addDropdown("hardware", "button_1_mode", "Режим кнопки 1 (Single Click)", "button_modes_single_click", BUTTON_1_MODE);
     addDropdown("hardware", "button_1_mode_long", "Режим кнопки 1 (Long Click)", "button_modes_long_click", BUTTON_1_MODE_LONG);
-    addText("hardware", "button_2_pin", "Пін кнопки 2", String(settings->getInt(BUTTON_2_PIN)), "-1", jaamHardwareVisibility.c_str());
-    addBool("hardware", "button_2_touch", "Підтримка touch-кнопки TTP223 для кнопки 2", USE_TOUCH_BUTTON_2, button2SettingsVisibility.c_str());
-    addDropdown("hardware", "button_2_mode", "Режим кнопки 2 (Single Click)", "button_modes_single_click", BUTTON_2_MODE, button2SettingsVisibility.c_str());
-    addDropdown("hardware", "button_2_mode_long", "Режим кнопки 2 (Long Click)", "button_modes_long_click", BUTTON_2_MODE_LONG, button2SettingsVisibility.c_str());
-    addText("hardware", "button_3_pin", "Пін кнопки 3", String(settings->getInt(BUTTON_3_PIN)), "-1", jaamHardwareVisibility.c_str());
-    addBool("hardware", "button_3_touch", "Підтримка touch-кнопки TTP223 для кнопки 3", USE_TOUCH_BUTTON_3, button3SettingsVisibility.c_str());
-    addDropdown("hardware", "button_3_mode", "Режим кнопки 3 (Single Click)", "button_modes_single_click", BUTTON_3_MODE, button3SettingsVisibility.c_str());
-    addDropdown("hardware", "button_3_mode_long", "Режим кнопки 3 (Long Click)", "button_modes_long_click", BUTTON_3_MODE_LONG, button3SettingsVisibility.c_str());
-    addLabel("hardware", "Батарея");
-    addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING);
-    addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1");
+    addText("hardware", "button_2_pin", "Пін кнопки 2", String(settings->getInt(BUTTON_2_PIN)), "-1", exceptJaamHardware.c_str());
+    addBool("hardware", "button_2_touch", "Підтримка touch-кнопки TTP223 для кнопки 2", USE_TOUCH_BUTTON_2, exceptJaam1.c_str());
+    addDropdown("hardware", "button_2_mode", "Режим кнопки 2 (Single Click)", "button_modes_single_click", BUTTON_2_MODE, exceptJaam1.c_str());
+    addDropdown("hardware", "button_2_mode_long", "Режим кнопки 2 (Long Click)", "button_modes_long_click", BUTTON_2_MODE_LONG, exceptJaam1.c_str());
+    addText("hardware", "button_3_pin", "Пін кнопки 3", String(settings->getInt(BUTTON_3_PIN)), "-1", exceptJaamHardware.c_str());
+    addBool("hardware", "button_3_touch", "Підтримка touch-кнопки TTP223 для кнопки 3", USE_TOUCH_BUTTON_3, exceptJaam1And2.c_str());
+    addDropdown("hardware", "button_3_mode", "Режим кнопки 3 (Single Click)", "button_modes_single_click", BUTTON_3_MODE, exceptJaam1And2.c_str());
+    addDropdown("hardware", "button_3_mode_long", "Режим кнопки 3 (Long Click)", "button_modes_long_click", BUTTON_3_MODE_LONG, exceptJaam1And2.c_str());
+    addText("hardware", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1", exceptJaam2And30And32.c_str());
+    addText("hardware", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1", exceptJaam30And32.c_str());
+    addText("hardware", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1", exceptJaam30And32.c_str());
+    addLabel("hardware", "Батарея", exceptJaam1And2And32.c_str());
+    addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING, exceptJaam1And2And32.c_str());
+    addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1", exceptJaam1And2And32.c_str());
 
     // Налаштування погоди / температури — sliders
     addInfo("climate", "Налаштування погодних переметрів та кліматичних сенсорів", "#34f396", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");
@@ -2651,11 +2686,8 @@ void JaamWeb::handleUiSchema() {
     addBool("alerts", "enable_explosions", "Вибухи", ENABLE_EXPLOSIONS);
 
     // Налаштування звуку
-    addInfo("sound", "Налаштування звуку", "#6c757d", "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z");
+    addInfo("sound", "Налаштування звуку", "#dc3545", "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z");
     addDropdown("sound", "sound_source", "Джерело звуку", "sound_sources", SOUND_SOURCE);
-    addText("sound", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1", jaamHardwareVisibility.c_str());
-    addText("sound", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1", jaamHardwareVisibility.c_str());
-    addText("sound", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1", jaamHardwareVisibility.c_str());
     addSlider("sound", "melody_volume_day", "Гучність мелодії вдень", 0, 100, 1, settings->getInt(MELODY_VOLUME_DAY));
     addSlider("sound", "melody_volume_night", "Гучність мелодії вночі", 0, 100, 1, settings->getInt(MELODY_VOLUME_NIGHT));
     addBool("sound", "sound_on_alert", "Звукове сповіщення при тривозі у домашньому регіоні", SOUND_ON_ALERT);

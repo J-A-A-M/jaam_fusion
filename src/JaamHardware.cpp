@@ -15,12 +15,7 @@ int JaamHardware::getMainLedPin() {
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
-            return 13;
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(MAIN_LED_PIN);
+            return JaamHardwarePins::MAIN_LED_PIN_JAAM;
         default:
             return settings.getInt(MAIN_LED_PIN);
     }
@@ -30,19 +25,29 @@ int JaamHardware::getMainLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
-            return 405;
+            return JaamHardwareLedCounts::MAIN_LED_COUNT_JAAM_3_2;
         case HARDWARE::JAAM_3_0:
-            return 273;
+            return JaamHardwareLedCounts::MAIN_LED_COUNT_JAAM_3_0;
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
         case HARDWARE::ODESA_KYIV:
         case HARDWARE::ZAKARPATTIA_KYIV:
-            return 26;
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return 25;
+            return JaamHardwareLedCounts::MAIN_LED_COUNT_KYIV;
         default:
-            return 25;
+            return JaamHardwareLedCounts::MAIN_LED_COUNT_DEFAULT;
+    }
+}
+
+int JaamHardware::getMainLedColorFormat() {
+    uint8_t hwType = getCurrentHardwareType();
+    switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_0:
+        case HARDWARE::JAAM_2_1:
+        case HARDWARE::JAAM_1_3:
+            return NEO_GRB;
+        default:
+            return settings.getInt(MAIN_LED_COLOR_FORMAT);
     }
 }
 
@@ -52,14 +57,9 @@ int JaamHardware::getBgLedPin() {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
-            return 12;
+            return JaamHardwarePins::BG_LED_PIN_JAAM_3;
         case HARDWARE::JAAM_1_3:
-            return -1; // No BG LEDs
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(BG_LED_PIN);
+            return JaamHardwarePins::BG_LED_PIN_DISABLED;
         default:
             return settings.getInt(BG_LED_PIN);
     }
@@ -70,18 +70,27 @@ int JaamHardware::getBgLedsCount() {
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
-            return 39;
+            return JaamHardwareLedCounts::BG_LED_COUNT_JAAM_3;
         case HARDWARE::JAAM_2_1:
-            return 44;
+            return JaamHardwareLedCounts::BG_LED_COUNT_JAAM_2;
         case HARDWARE::JAAM_1_3:
-            return -1; // No BG LEDs
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(BG_LED_COUNT);
+            return JaamHardwareLedCounts::BG_LED_COUNT_DISABLED;
         default:
             return settings.getInt(BG_LED_COUNT);
+    }
+}
+
+int JaamHardware::getBgLedColorFormat() {
+    uint8_t hwType = getCurrentHardwareType();
+    switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_0:
+        case HARDWARE::JAAM_2_1:
+            return NEO_GRB;
+        case HARDWARE::JAAM_1_3:
+            return JaamHardwareLedCounts::BG_LED_FORMAT_DISABLED;
+        default:
+            return settings.getInt(BG_LED_COLOR_FORMAT);
     }
 }
 
@@ -91,14 +100,9 @@ int JaamHardware::getServiceLedPin() {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
-            return 25;
+            return JaamHardwarePins::SERVICE_LED_PIN_JAAM;
         case HARDWARE::JAAM_1_3:
-            return -1; // No Service LEDs
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(SERVICE_LED_PIN);
+            return JaamHardwarePins::SERVICE_LED_PIN_DISABLED;
         default:
             return settings.getInt(SERVICE_LED_PIN);
     }
@@ -108,23 +112,32 @@ int JaamHardware::getServiceLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     int serviceLedCount = 0;
     if (settings.getInt(SERVICE_LED_PIN) > 0) {
-        serviceLedCount = 5;
+        serviceLedCount = JaamHardwareLedCounts::SERVICE_LED_COUNT_DEFAULT;
     }
 
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
-            return 5;
+            return JaamHardwareLedCounts::SERVICE_LED_COUNT_DEFAULT;
         case HARDWARE::JAAM_1_3:
-            return -1; // No Service LEDs
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return serviceLedCount;
+            return JaamHardwareLedCounts::SERVICE_LED_COUNT_DISABLED;
         default:
             return serviceLedCount;
+    }
+}
+
+int JaamHardware::getServiceLedColorFormat() {
+    uint8_t hwType = getCurrentHardwareType();
+    switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_0:
+        case HARDWARE::JAAM_2_1:
+            return NEO_GRB;
+        case HARDWARE::JAAM_1_3:
+            return JaamHardwareLedCounts::SERVICE_LED_FORMAT_DISABLED;
+        default:
+            return settings.getInt(SERVICE_LED_COLOR_FORMAT);
     }
 }
 
@@ -133,16 +146,11 @@ int JaamHardware::getButton1Pin() {
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
-            return 5;
+            return JaamHardwarePins::BUTTON_1_PIN_JAAM_3;
         case HARDWARE::JAAM_2_1:
-            return 4; 
+            return JaamHardwarePins::BUTTON_1_PIN_JAAM_2; 
         case HARDWARE::JAAM_1_3:
-            return 35;
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(BUTTON_1_PIN);
+            return JaamHardwarePins::BUTTON_1_PIN_JAAM_1;
         default:
             return settings.getInt(BUTTON_1_PIN);
     }
@@ -154,14 +162,9 @@ int JaamHardware::getButton2Pin() {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
-            return 2;
+            return JaamHardwarePins::BUTTON_2_PIN_JAAM;
         case HARDWARE::JAAM_1_3:
-            return -1; // No Button 2
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(BUTTON_2_PIN);
+            return JaamHardwarePins::BUTTON_2_PIN_DISABLED;
         default:
             return settings.getInt(BUTTON_2_PIN);
     }
@@ -172,15 +175,10 @@ int JaamHardware::getButton3Pin() {
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
-            return 4;
+            return JaamHardwarePins::BUTTON_3_PIN_JAAM_3;
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
-            return -1; // No Button 3
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(BUTTON_3_PIN);
+            return JaamHardwarePins::BUTTON_3_PIN_DISABLED;
         default:
             return settings.getInt(BUTTON_3_PIN);
     }
@@ -189,16 +187,10 @@ int JaamHardware::getButton3Pin() {
 int JaamHardware::getBuzzerPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
-            return 33;
-        case HARDWARE::JAAM_1_3:
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(BUZZER_PIN);
+            return JaamHardwarePins::BUZZER_PIN_JAAM;
         default:
             return settings.getInt(BUZZER_PIN);
     }
@@ -207,16 +199,9 @@ int JaamHardware::getBuzzerPin() {
 int JaamHardware::getDfRxPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_3_2:
-            return 17;
-        case HARDWARE::JAAM_2_1:
-        case HARDWARE::JAAM_1_3:
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(DF_RX_PIN);
+        case HARDWARE::JAAM_3_0:
+            return JaamHardwarePins::DF_RX_PIN_JAAM_3;
         default:
             return settings.getInt(DF_RX_PIN);
     }
@@ -227,14 +212,7 @@ int JaamHardware::getDfTxPin() {
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
-            return 16;
-        case HARDWARE::JAAM_2_1:
-        case HARDWARE::JAAM_1_3:
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(DF_TX_PIN);
+            return JaamHardwarePins::DF_TX_PIN_JAAM_3;
         default:
             return settings.getInt(DF_TX_PIN);
     }
@@ -243,18 +221,11 @@ int JaamHardware::getDfTxPin() {
 int JaamHardware::getDisplayModel() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_2:
-            return settings.getInt(DISPLAY_MODEL);
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return static_cast<int>(JaamDisplayType::SH1106G);
         case HARDWARE::JAAM_1_3:
             return static_cast<int>(JaamDisplayType::SSD1306);
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(DISPLAY_MODEL);
         default:
             return settings.getInt(DISPLAY_MODEL);
     }
@@ -263,19 +234,45 @@ int JaamHardware::getDisplayModel() {
 int JaamHardware::getDisplayHeight() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
-        case HARDWARE::JAAM_3_2:
-            return settings.getInt(DISPLAY_HEIGHT);
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
             return static_cast<int>(JaamDisplayHeight::HEIGHT_64);
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::ZAKARPATTIA_KYIV:
-        case HARDWARE::ODESA:
-        case HARDWARE::ZAKARPATTIA:
-            return settings.getInt(DISPLAY_HEIGHT);
         default:
             return settings.getInt(DISPLAY_HEIGHT);
     }
 }
 
+int JaamHardware::getDisplayRotation() {
+    uint8_t hwType = getCurrentHardwareType();
+    switch (hwType) {
+        case HARDWARE::JAAM_3_0:
+        case HARDWARE::JAAM_2_1:
+        case HARDWARE::JAAM_1_3:
+            return static_cast<int>(JaamDisplayRotation::ROTATION_0);
+        default:
+            return settings.getInt(DISPLAY_ROTATION);
+    }
+}
+
+const RegionLedMapEntry* JaamHardware::getRegionMap() {
+    uint8_t hwType = getCurrentHardwareType();
+    switch (hwType) {
+        case HARDWARE::JAAM_3_0:
+            return REGION_MAP_JAAM_3_0;
+        case HARDWARE::JAAM_3_2:
+            return REGION_MAP_JAAM_3_2;
+        case HARDWARE::ODESA_KYIV:
+        case HARDWARE::JAAM_1_3:
+        case HARDWARE::JAAM_2_1:
+            return STATE_MAP_LED_ODESA_WITH_KYIV;
+        case HARDWARE::ODESA:
+            return STATE_MAP_LED_ODESA_WITHOUT_KYIV;
+        case HARDWARE::ZAKARPATTIA_KYIV:
+            return STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
+        case HARDWARE::ZAKARPATTIA:
+            return STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
+        default:
+            return STATE_MAP_LED_ODESA_WITH_KYIV;
+    }
+}

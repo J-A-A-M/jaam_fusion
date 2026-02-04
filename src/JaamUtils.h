@@ -15,6 +15,8 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <SPIFFS.h>
+
+
 static const char* CUSTOM_MAP_PATH = "/custom_map.json";
 
 // Масив з описом типів тривог
@@ -174,7 +176,7 @@ static float roundToDecimal(float value, int decimals) {
 }
 
 // Генерація customMap (викликається окремо при зміні налаштувань)
-inline void generateCustomRegionMap() {
+inline void generateCustomRegionMap(JaamHardware& hardwareConfig) {
     // Очистити customMap перед копіюванням нового mapping
     memset(customMap, 0, sizeof(customMap));
 
@@ -193,21 +195,7 @@ inline void generateCustomRegionMap() {
         return;
     }
 
-    if (hardware == HARDWARE::JAAM_3_0) {
-        base = REGION_MAP_JAAM_3_0;
-    } else if (hardware == HARDWARE::JAAM_3_2) {
-        base = REGION_MAP_JAAM_3_2;
-    } else if (hardware == HARDWARE::ODESA_KYIV || hardware == HARDWARE::JAAM_1_3 || hardware == HARDWARE::JAAM_2_1) {
-        base = STATE_MAP_LED_ODESA_WITH_KYIV;
-    } else if (hardware == HARDWARE::ODESA) {
-        //kyiv_led_position = 16;                 // Позиція для Київської області
-        base = STATE_MAP_LED_ODESA_WITHOUT_KYIV;
-    } else if (hardware == HARDWARE::ZAKARPATTIA_KYIV) {
-        base = STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
-    } else if (hardware == HARDWARE::ZAKARPATTIA) {
-        //kyiv_led_position = 7;                  // Позиція для Київської області
-        base = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
-    }
+    base = hardwareConfig.getRegionMap();
 
     if (!base) return;
 

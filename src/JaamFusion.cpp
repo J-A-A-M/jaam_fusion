@@ -1407,18 +1407,18 @@ void initStripMain() {
     int mainLedPin = hardwareConfig.getMainLedPin();
     
     if (mainLedPin > 0) {
-        uint8_t ledType = settings.getInt(MAIN_LED_COLOR_FORMAT) + settings.getInt(MAIN_LED_FREQUENCY);
+        int mainLedColorFormat = hardwareConfig.getMainLedColorFormat();
+        uint8_t ledType = mainLedColorFormat + settings.getInt(MAIN_LED_FREQUENCY);
         LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    mainLedPin, num_leds_main, ledType, 
-                   settings.getInt(MAIN_LED_COLOR_FORMAT), settings.getInt(MAIN_LED_FREQUENCY));
+                   mainLedColorFormat, settings.getInt(MAIN_LED_FREQUENCY));
         status = led.createStrip(strip_main, mainLedPin, num_leds_main, 10, DefaultColors::MAIN_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
             LOG.printf("[LED] SUCCESS: strip_main\n");
         }
-    }
-    else {
+    } else {
         LOG.printf("[LED] SKIP: strip_main (pin <= 0)\n");
     }
     // if (strip_main != nullptr) {
@@ -1442,10 +1442,11 @@ void initStripBg() {
     int bgLedCount = hardwareConfig.getBgLedsCount();
 
     if (bgLedPin > 0 && bgLedCount > 0) {
-        uint8_t ledType = settings.getInt(BG_LED_COLOR_FORMAT) + settings.getInt(BG_LED_FREQUENCY);
+        int bgLedColorFormat = hardwareConfig.getBgLedColorFormat();
+        uint8_t ledType = bgLedColorFormat + settings.getInt(BG_LED_FREQUENCY);
         LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    bgLedPin, bgLedCount, ledType,
-                   settings.getInt(BG_LED_COLOR_FORMAT), settings.getInt(BG_LED_FREQUENCY));
+                   bgLedColorFormat, settings.getInt(BG_LED_FREQUENCY));
         status = led.createStrip(strip_bg, bgLedPin, bgLedCount, 10, DefaultColors::BG_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
@@ -1476,10 +1477,11 @@ void initStripService() {
 
     
     if (serviceLedPin > 0) {
-        uint8_t ledType = settings.getInt(SERVICE_LED_COLOR_FORMAT) + settings.getInt(SERVICE_LED_FREQUENCY);
+        int serviceLedColorFormat = hardwareConfig.getServiceLedColorFormat();
+        uint8_t ledType = serviceLedColorFormat + settings.getInt(SERVICE_LED_FREQUENCY);
         LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    serviceLedPin, num_leds_service, ledType,
-                   settings.getInt(SERVICE_LED_COLOR_FORMAT), settings.getInt(SERVICE_LED_FREQUENCY));
+                   serviceLedColorFormat, settings.getInt(SERVICE_LED_FREQUENCY));
         status = led.createStrip(strip_service, serviceLedPin, num_leds_service, 10, DefaultColors::SERVICE_STRIP, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
@@ -1723,9 +1725,10 @@ void initDisplay() {
     LOG.printf("[INIT] Init display\n");
     int displayModel = hardwareConfig.getDisplayModel();
     int displayHeight = hardwareConfig.getDisplayHeight();
+    int displayRotation = hardwareConfig.getDisplayRotation();
     display.begin(static_cast<JaamDisplayType>(displayModel), static_cast<JaamDisplayHeight>(displayHeight));
     display.invertDisplay(settings.getBool(INVERT_DISPLAY));
-    display.rotateDisplay(static_cast<JaamDisplayRotation>(settings.getInt(DISPLAY_ROTATION)));
+    display.rotateDisplay(static_cast<JaamDisplayRotation>(displayRotation));
 }
 
 void initSensors() {
@@ -1783,7 +1786,7 @@ void initSound() {
 void initMapping() {
     LOG.printf("[INIT] Init mapping\n");
     // Ініціалізуємо мапінг регіонів
-    generateCustomRegionMap();
+    generateCustomRegionMap(hardwareConfig);
     // Ініціалізуємо кольори задніх LED
     generateBgLedColorsMap();
 }
@@ -2358,7 +2361,7 @@ void mainThreadProcess() {
     }
 
     if (needRecalculateLeds) {
-        generateCustomRegionMap();
+        generateCustomRegionMap(hardwareConfig);
         LOG.printf("[MAIN] Recalculating LEDs\n");
         needRecalculateLeds = false;
         needReconnectWebsocket = true;
