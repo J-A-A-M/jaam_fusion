@@ -343,11 +343,9 @@ inline uint32_t getFlagColorForRegion(uint16_t region_id) {
     if (region_id >= 49 && region_id <= 56)  // Райони Донецької
         return DefaultColors::FLAG_YELLOW;
     
-    // Луганська: тільки Сватівський(85), Старобільський(86), Щастинський(87), Сівськодонецький(7621, окупований) - сині, решта жовті
-    if (region_id == 85 || region_id == 86 || region_id == 87 || region_id == 7621) 
+    // Луганська: тільки Сватівський(85), Старобільський(86), Щастинський(87), Сєвєродонецький(84) - сині, решта жовті
+    if (region_id == 84 || region_id == 85 || region_id == 86 || region_id == 87) 
         return DefaultColors::FLAG_BLUE;
-    if (region_id >= 84 && region_id <= 87)  // Райони Луганської
-        return DefaultColors::FLAG_YELLOW;
     
     // ===== ОБЛАСТІ БЕЗ ЗМІН (Повністю СИНІ як раніше) =====
     // Волинська, Рівненська, Житомирська, Київська, Чернігівська, Сумська, Полтавська, Харківська

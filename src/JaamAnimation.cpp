@@ -1037,7 +1037,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     
                     if (regions.empty()) {
                         // No region mapping - use blue as default
-                        color = 0x0057B7;
+                        color = DefaultColors::FLAG_BLUE;
                     } else {
                         // Count votes for each color based on regions
                         int blueVotes = 0;
