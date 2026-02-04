@@ -22,7 +22,7 @@
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
-#include <JaamSound.h>
+#include "JaamSound.h"
 #include "JaamButton.h"
 
 using namespace websockets;
@@ -112,6 +112,7 @@ time_t              lastWebsocketConnectTime = 0;
 // --- OTHER Configuration ---
 bool                minuteOfSilence = false;
 bool                uaAnthemPlaying = false;
+short               clockBeepInterval = -1;
 bool                isMapOff = false;
 bool                isDisplayOff = false;
 int                 prevMapMode = 1;
@@ -222,7 +223,7 @@ bool isItNightNow() {
 }
 
 int getCurrentMapMode() {
-  if (minuteOfSilence || uaAnthemPlaying) return 3; // ua flag
+  if (minuteOfSilence || uaAnthemPlaying || !isFirstDataFetchCompleted) return MapModes::FLAG; // ua flag
 
 //   int homeRegionId = settings.getInt(HOME_DISTRICT);
 //   int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
@@ -233,6 +234,28 @@ int getCurrentMapMode() {
 //     return 1; // alerts mode
 //   }
   return isMapOff ? 0 : settings.getInt(MAP_MODE);
+}
+
+void showMinOfSilenceScreen(int screen) {
+  switch (screen) {
+  case 0:
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Шана Полеглим Героям!");
+    break;
+  case 1:
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Слава Україні!");
+    break;
+  case 2:
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Смерть ворогам!");
+    break;
+  default:
+    break;
+  }
+}
+
+void displayMinuteOfSilence() {
+  // every 3 sec.
+  int periodIndex = getCurrentPeriodIndex(3, 3, timeClient.second());
+  showMinOfSilenceScreen(periodIndex);
 }
 
 // --- SOUND Functions ---
@@ -497,7 +520,7 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
     //   case 8:
     //     // if lamp mode is active, increase lamp brightness
     //     if (getCurrentMapMode() == 5) {
-    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) + 1;
+    //       int newBrightness = settings.getInt(BRIGHTNESS_LAMP) + 1;
     //       if (newBrightness > 100) {
     //         newBrightness = 100;
     //       }
@@ -511,7 +534,7 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
     //   case 9:
     //     // if lamp mode is active, decrease lamp brightness
     //     if (getCurrentMapMode() == 5) {
-    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) - 1;
+    //       int newBrightness = settings.getInt(BRIGHTNESS_LAMP) - 1;
     //       if (newBrightness < 0) {
     //         newBrightness = 0;
     //       }
@@ -1234,7 +1257,6 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         apiConnected = false;
         servicePin(DATA);
         LOG.printf("[WEBSOCKET] connection closed\n");
-        isFirstDataFetchCompleted = false;
         LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
         //websocket.close();
         auto reason = websocket.getCloseReason();
@@ -1602,6 +1624,51 @@ void syncTime(int8_t attempts) {
         count++;
         printNtpStatus(&timeClient);
     }
+}
+
+void adaptColors() {
+    if (strip_main != nullptr) {
+            LOG.printf("[WEB] Adjusting main colors\n");               
+            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+                for (uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
+                strip->show();
+            });
+        }
+        if (strip_bg != nullptr) {
+            LOG.printf("[WEB] Adjusting bg colors\n");
+            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+                switch (settings.getInt(BG_LED_MODE)) {
+                    case BgLedModes::COLOR_MAP: {
+                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                            uint32_t color = animation.ledActualColor(strip, i);
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
+                    default: {
+                        uint32_t color = animation.stripActualColor(strip);
+                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
+                }
+                strip->show();
+            });               
+        }
+        if (strip_service != nullptr) {
+            LOG.printf("[WEB] Adjusting service colors\n");
+            animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
+                strip->show();
+            });               
+        }
 }
 
 // --- ALERT Functions ---
@@ -2095,6 +2162,52 @@ void showClock() {
     display.printClock(time, date);
 }
 
+void playMinOfSilenceSound() {
+  playMelody(MIN_OF_SILINCE);
+}
+
+void checkMinuteOfSilence()
+{
+    bool localMinOfSilence;
+
+#if TEST_MIN_OF_SILENCE
+    // Test mode: activate every 5 minutes (at 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 0 minute mark)
+    localMinOfSilence = (settings.getBool(MIN_OF_SILENCE) == 1 && timeClient.minute() % 5 == 0);
+    LOG.printf("[TEST MODE] localMinOfSilence: %d (minute: %d)\n", localMinOfSilence, timeClient.minute());
+#else
+    // Normal mode: activate at 9:00
+    localMinOfSilence = (settings.getBool(MIN_OF_SILENCE) == 1 && timeClient.hour() == 9 && timeClient.minute() == 0);
+#endif
+
+    if (localMinOfSilence != minuteOfSilence) {
+        minuteOfSilence = localMinOfSilence;
+
+        if (minuteOfSilence) {
+            // play mos beep every 2 sec during min of silence
+            if (needToPlaySound(MIN_OF_SILINCE)) {
+                clockBeepInterval = async.setInterval(playMinOfSilenceSound, 2000); // every 2 sec
+            }
+            // set flags to adapt colors on min of silence start
+            needAdaptColors = true;
+            needAdaptAnimationColors = true;
+        } else {
+            // turn off mos beep
+            if (clockBeepInterval >= 0) {
+                async.clearInterval(clockBeepInterval);
+                clockBeepInterval = -1;
+            }
+            if (needToPlaySound(MIN_OF_SILINCE_END)) {
+                playMelody(MIN_OF_SILINCE_END);
+                uaAnthemPlaying = true;
+            } else {
+                // set flags to adapt colors on min of silence end
+                needAdaptColors = true;
+                needAdaptAnimationColors = true;
+            }
+        }
+    }
+}
+
 void websocketProcess() {
     if (!wifiConnected) {
         LOG.printf("[WEBSOCKET] Reconnecting... wifiConnected == false\n");
@@ -2104,7 +2217,6 @@ void websocketProcess() {
     if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)\n");
         websocketReconnect = true;
-        isFirstDataFetchCompleted = false;
         clearAllAlertsMaps();
         clearAllWeatherMaps();
         animation.clearAllAnimations();
@@ -2130,13 +2242,11 @@ void websocketProcess() {
     }
     if (!websocket.available()) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
-        isFirstDataFetchCompleted = false;
         apiConnected = false;
         socketConnect();
     }
     if (websocketReconnect) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
-        isFirstDataFetchCompleted = false;
         apiConnected = false;
         socketConnect();
     }
@@ -2245,7 +2355,6 @@ void mainThreadProcess() {
 
     if (needReconnectWebsocket && !needReconnectMainStrip) {
         LOG.printf("[MAIN] Reconnecting WebSocket\n");
-        isFirstDataFetchCompleted = false;
         needReconnectWebsocket = false;
         apiConnected = false;
         socketConnect();
@@ -2259,48 +2368,7 @@ void mainThreadProcess() {
     }
 
     if (needAdaptColors) {
-        if (strip_main != nullptr) {
-            LOG.printf("[WEB] Adjusting main colors\n");               
-            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-        }
-        if (strip_bg != nullptr) {
-            LOG.printf("[WEB] Adjusting bg colors\n");
-            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                switch (settings.getInt(BG_LED_MODE)) {
-                    case BgLedModes::COLOR_MAP: {
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            uint32_t color = animation.ledActualColor(strip, i);
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
-                    default: {
-                        uint32_t color = animation.stripActualColor(strip);
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
-                }
-                strip->show();
-            });               
-        }
-        if (strip_service != nullptr) {
-            LOG.printf("[WEB] Adjusting service colors\n");
-            animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });               
-        }
+        adaptColors();
         needAdaptColors = false;
     }
 
@@ -2473,7 +2541,25 @@ void batteryProcess() {
 }
 
 // --- Display Process ---
-void displayProcess() {
+void displayProcess()
+{
+    // Remove UA Anthem playing flag if anthem stopped
+    if (uaAnthemPlaying && (!sound.isBuzzerPlaying() && !sound.isDFPlayerPlaying())) {
+        uaAnthemPlaying = false;
+        // set flags to adapt colors on min of silence end
+        needAdaptColors = true;
+        needAdaptAnimationColors = true;
+    }
+    // Show Minute of silence mode if activated. (Priority - 0)
+    if (minuteOfSilence) {
+        displayMinuteOfSilence();
+        return;
+    }
+    // Show Glory To Ukraine if athema playing. (Priority - 1)
+    if (uaAnthemPlaying) {
+        showMinOfSilenceScreen(1);
+        return;
+    }
     showClock();
 }
 
@@ -2498,10 +2584,11 @@ void volumeProcess() {
 }
 
 void beepHourProcess() {
-  if (needToPlaySound(REGULAR) && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
-    sound.setBeepHour(timeClient.hour());
-    playMelody(REGULAR);
-  }
+    checkMinuteOfSilence();
+    if (needToPlaySound(REGULAR) && !minuteOfSilence && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
+        sound.setBeepHour(timeClient.hour());
+        playMelody(REGULAR);
+    }
 }
 
 // --- SETUP ---
@@ -2512,10 +2599,20 @@ void setup() {
 
     initSettings();
     checkFreeHeap("settings initialization");
+
+    // Передаємо settings в AnimationManager
+    animation.setSettings(&settings);
     
     initStrip();
     checkFreeHeap("LED strips initialization");
     brightnessProcess();
+
+    initMapping();
+    checkFreeHeap("LED mapping initialization");
+
+    // Адаптація led для відображення парпору України
+    adaptColors();
+    checkFreeHeap("colors adaptation");
 
     initButtons();
     checkFreeHeap("buttons initialization");
@@ -2528,9 +2625,6 @@ void setup() {
 
     initChipID();
     checkFreeHeap("chipID initialization");
-
-    initMapping();
-    checkFreeHeap("LED mapping initialization");
 
     initBattery();
     checkFreeHeap("battery initialization");
@@ -2558,8 +2652,6 @@ void setup() {
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
     
-    // Передаємо settings в AnimationManager
-    animation.setSettings(&settings);
     // Встановлюємо режим роботи анімацій
     animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
     checkFreeHeap("animation settings");

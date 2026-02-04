@@ -3,6 +3,7 @@
 #include "JaamUtils.h"
 
 extern volatile bool isMapOff;
+extern int getCurrentMapMode();
 
 // Helper: HSV -> RGB (returns 0xRRGGBB)
 static inline uint32_t hsvToRgb(float h, float s, float v) {
@@ -442,7 +443,7 @@ void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
     if (isMapOff) {
         return;
     }
-    if (anim->mapMode != settings->getInt(MAP_MODE)) {
+    if (anim->mapMode != getCurrentMapMode()) {
         return;
     }
 
@@ -875,7 +876,8 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                 color = DefaultColors::OFF;
                 brightness = 0;
             } else {
-                switch (settings->getInt(MAP_MODE)) {
+                int currentMapMode = getCurrentMapMode();
+                switch (currentMapMode) {
                     case MapModes::OFF: 
                         color = DefaultColors::OFF;
                         brightness = 0;
@@ -897,6 +899,18 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::FLAG: {
+                        // Ukrainian flag for background: use blue as it represents the whole country
+                        color = DefaultColors::FLAG_BLUE;
+                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::LAMP: {
+                        // Lamp mode: light up with configured color and brightness
+                        color = colorFromHex(settings->getString(COLOR_LAMP));
+                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
                         break;
                     }
                 }
@@ -958,7 +972,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             color = DefaultColors::OFF;
             brightness = 0;
         } else {
-            switch (settings->getInt(MAP_MODE)) {
+            switch (getCurrentMapMode()) {
                 case MapModes::OFF: 
                     color = DefaultColors::OFF;
                     brightness = 0;
@@ -1016,6 +1030,41 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     brightness = 255;
                     break;
                 }
+                case MapModes::FLAG: {
+                    // Ukrainian flag: blue (#0057B7) for northern regions, yellow (#FFD700) for southern
+                    // Get all regions mapped to this LED and determine predominant color
+                    auto regions = getRegionsForLed(position);
+                    
+                    if (regions.empty()) {
+                        // No region mapping - use blue as default
+                        color = DefaultColors::FLAG_BLUE;
+                    } else {
+                        // Count votes for each color based on regions
+                        int blueVotes = 0;
+                        int yellowVotes = 0;
+                        
+                        for (uint16_t region_id : regions) {
+                            uint32_t flagColor = getFlagColorForRegion(region_id);
+                            if (flagColor == DefaultColors::FLAG_BLUE) {
+                                blueVotes++;
+                            } else {
+                                yellowVotes++;
+                            }
+                        }
+                        
+                        // Use the color with more votes, prefer blue on tie
+                        color = (yellowVotes > blueVotes) ? DefaultColors::FLAG_YELLOW : DefaultColors::FLAG_BLUE;
+                    }
+                    
+                    brightness = 255;
+                    break;
+                }
+                case MapModes::LAMP: {
+                    // Lamp mode: light up with configured color and brightness
+                    color = colorFromHex(settings->getString(COLOR_LAMP));
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
+                    break;
+                }
             }
         }
     } 
@@ -1029,7 +1078,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 color = getBgLedColor(position);
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
             } else {
-                switch (settings->getInt(MAP_MODE)) {
+                switch (getCurrentMapMode()) {
                     case MapModes::OFF: 
                         color = DefaultColors::OFF;
                         brightness = 0;
@@ -1066,6 +1115,18 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::FLAG: {
+                        // Ukrainian flag for background: use blue as it represents the whole country
+                        color = DefaultColors::FLAG_BLUE; // Blue color of Ukrainian flag
+                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::LAMP: {
+                        // Lamp mode: light up with configured color and brightness
+                        color = colorFromHex(settings->getString(COLOR_LAMP));
+                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
                         break;
                     }
                 }

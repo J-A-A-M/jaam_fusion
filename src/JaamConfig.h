@@ -12,6 +12,9 @@ namespace DefaultColors {
     static const uint32_t DATA = 0x00FF00;  // Green
     static const uint32_t HA = 0xFFFF00;  // Blue
     static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
+    // Ukrainian flag colors
+    static const uint32_t FLAG_BLUE = 0x0057B7;  // Blue
+    static const uint32_t FLAG_YELLOW = 0xFFD700;  // Yellow
 }
 // --- ALERT Modes ---
 namespace AlertModes {
@@ -30,6 +33,8 @@ namespace MapModes {
     static const int OFF = 0;
     static const int ALERT = 1;
     static const int WEATHER = 2;
+    static const int FLAG = 3;
+    static const int LAMP = 4;
 }
 
 // --- BG Led Modes ---
@@ -347,16 +352,15 @@ static SettingListItem LONG_CLICKS[] = {
   {10, "Перезавантаження пристрою"},
 };
 
-constexpr int MAP_MODES_COUNT = 3;
+constexpr int MAP_MODES_COUNT = 5;
 static SettingListItem MAP_MODES[] = {
   {0, "Вимкнено"},
   {1, "Тривога"},
   // {6, "Енергосистема", false},
   {2, "Погода"},
   // {7, "Радіація", false},
-  // {3, "Прапор", false},
-  // {4, "Випадкові кольори", false},
-  // {5, "Лампа", false},
+  {3, "Прапор"},
+  {4, "Лампа"},
 };
 
 constexpr int DISPLAY_MODES_COUNT = 2;
@@ -539,10 +543,6 @@ enum Type {
     MIGRATION_LED_MAPPING,
     SERVICE_DIODES_MODE,
     NEW_FW_NOTIFICATION,
-    HA_LIGHT_BRIGHTNESS,
-    HA_LIGHT_R,
-    HA_LIGHT_G,
-    HA_LIGHT_B,
     SOUND_SOURCE,
     SOUND_ON_MIN_OF_SL,
     SOUND_ON_ALERT,
@@ -660,6 +660,8 @@ enum Type {
     SOUND_ON_RECON_DRONES,
     MELODY_ON_RECON_DRONES,
     TRACK_ON_RECON_DRONES,
+    COLOR_LAMP,
+    BRIGHTNESS_LAMP,
 };
 
 static SettingListItem DISTRICTS[MAX_REGIONS] = {
@@ -1211,7 +1213,7 @@ const RegionLedMapEntry REGION_MAP_JAAM_3_1[MAX_REGIONS] = {
     {   16, { 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253 }, 15},      // Луганська область
     {   86, { 242, 243, 244 }, 3 },                                               // Старобільський район
     {   85, { 239, 240, 241 }, 3 },                                                    // Сватівський район
-    {   84, { 245 }, 1 },                                                         // Сєвєродонецький район
+    {   84, { 245, 246 }, 2 },                                                         // Сєвєродонецький район
     {   87, { 248, 249 }, 2 },                                                         // Щастинський район
 
     // Львівська область та її райони

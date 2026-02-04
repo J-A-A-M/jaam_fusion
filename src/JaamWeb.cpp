@@ -1384,6 +1384,10 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_BG, valuePtr);
             LOG.printf("[WEB] Setting color_bg: raw=%s\n", valuePtr);
         }
+        if (name == "color_lamp") {
+            settings->saveString(COLOR_LAMP, valuePtr);
+            LOG.printf("[WEB] Setting color_lamp: raw=%s\n", valuePtr);
+        }
         needAdaptColors = true;
         needAdaptAnimationColors = true;
 
@@ -1501,8 +1505,12 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, intValue);
             LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);
-            needAdaptColors = true; 
+            needAdaptColors = true;
             needAdaptAnimationBrightness = true;
+        } else if (name == "brightness_lamp") {
+            settings->saveInt(BRIGHTNESS_LAMP, intValue);
+            LOG.printf("[WEB] Setting brightness_lamp: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
@@ -1816,6 +1824,10 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(IGNORE_MUTE_ON_ALERT, boolValue);
             LOG.printf("[WEB] Setting ignore_mute_on_alert: %d\n", boolValue);
+        } else if (name == "sound_on_min_of_sl") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(SOUND_ON_MIN_OF_SL, boolValue);
+            LOG.printf("[WEB] Setting sound_on_min_of_sl: %d\n", boolValue);
         } else if (name == "button_1_touch") {
             bool boolValue = intValue != 0;
             settings->saveBool(USE_TOUCH_BUTTON_1, boolValue);
@@ -1838,6 +1850,10 @@ void JaamWeb::handleParameter() {
         } else if (name == "button_2_mode_long") {
             settings->saveInt(BUTTON_2_MODE_LONG, intValue);
             LOG.printf("[WEB] Setting button_2_mode_long: %d\n", intValue);
+        } else if (name == "min_of_silence") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(MIN_OF_SILENCE, boolValue);
+            LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
         }
 
         server.send(200, "text/plain", "OK");
@@ -2334,6 +2350,7 @@ void JaamWeb::handleUiSchema() {
     addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor");
     
     addDropdown("general", "map_mode", "Режим мапи", "map_mode", MAP_MODE);
+    addBool("general", "min_of_silence", "Увімкнути режим \"Хвилина мовчання\" о 9:00", MIN_OF_SILENCE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
     addText("general", "device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
     addText("general", "broadcast_name", "Ім'я в мережі", String(settings->getString(BROADCAST_NAME)), "jaam");
@@ -2444,6 +2461,7 @@ void JaamWeb::handleUiSchema() {
     addColor("animations", "color_ballistic", "Балістичні ракети", COLOR_BALLISTIC);
     addColor("animations", "color_home", "Домашній регіон", COLOR_HOME_DISTRICT);
     addColor("animations", "color_bg", "Задня підсвітка", COLOR_BG);
+    addColor("animations", "color_lamp", "Режим лампи", COLOR_LAMP);
 
     // Яскравість
     addInfo("brightness", "Контроль яскравості LED стрічок для різних режимів та часу доби", "#ffc107", "M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8M12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z");
@@ -2463,6 +2481,7 @@ void JaamWeb::handleUiSchema() {
     addSlider("brightness", "brightness_ballistic", "Балістичні ракети", 0, 100, 1, settings->getInt(BRIGHTNESS_BALLISTIC));
     addSlider("brightness", "brightness_home_district", "Домашній регіон", 0, 100, 1, settings->getInt(BRIGHTNESS_HOME_DISTRICT));
     addSlider("brightness", "brightness_bg", "Фонова стрічка", 0, 100, 1, settings->getInt(BRIGHTNESS_BG));
+    addSlider("brightness", "brightness_lamp", "Режим лампи", 0, 100, 1, settings->getInt(BRIGHTNESS_LAMP));
     addSlider("brightness", "brightness_service", "Сервісні діоди", 0, 100, 1, settings->getInt(BRIGHTNESS_SERVICE));
     addSlider("brightness", "brightness_animation_end", "Кінцева яскравість анімацій", 0, 100, 1, settings->getInt(BRIGHTNESS_ANIMATION_END));
 
@@ -2493,6 +2512,7 @@ void JaamWeb::handleUiSchema() {
     addBool("sound", "sound_on_ballistic", "Звукове сповіщення при загрозі балістики", SOUND_ON_BALLISTIC);
     addBool("sound", "sound_on_every_hour", "Звукове сповіщення щогодини", SOUND_ON_EVERY_HOUR);
     addBool("sound", "sound_on_button_click", "Сигнали при натисканні кнопки", SOUND_ON_BUTTON_CLICK);
+    addBool("sound", "sound_on_min_of_sl", "Відтворювати звуки під час \"Хвилини мовчання\"", SOUND_ON_MIN_OF_SL);
     addBool("sound", "mute_sound_on_night", "Вимикати всі звуки у нічний час", MUTE_SOUND_ON_NIGHT);
     addBool("sound", "ignore_mute_on_alert", "Сигнали тривоги навіть у нічний час", IGNORE_MUTE_ON_ALERT);
     addDropdown("sound", "melody_on_alert", "Мелодія при тривозі у домашньому регіоні (буззер)", "melodies", MELODY_ON_ALERT);
