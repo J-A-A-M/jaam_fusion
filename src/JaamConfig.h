@@ -34,6 +34,7 @@ namespace MapModes {
     static const int ALERT = 1;
     static const int WEATHER = 2;
     static const int FLAG = 3;
+    static const int LAMP = 4;
 }
 
 // --- BG Led Modes ---
@@ -351,7 +352,7 @@ static SettingListItem LONG_CLICKS[] = {
   {10, "Перезавантаження пристрою"},
 };
 
-constexpr int MAP_MODES_COUNT = 4;
+constexpr int MAP_MODES_COUNT = 5;
 static SettingListItem MAP_MODES[] = {
   {0, "Вимкнено"},
   {1, "Тривога"},
@@ -359,8 +360,7 @@ static SettingListItem MAP_MODES[] = {
   {2, "Погода"},
   // {7, "Радіація", false},
   {3, "Прапор"},
-  // {4, "Випадкові кольори", false},
-  // {5, "Лампа", false},
+  {4, "Лампа"},
 };
 
 constexpr int DISPLAY_MODES_COUNT = 2;
@@ -543,10 +543,6 @@ enum Type {
     MIGRATION_LED_MAPPING,
     SERVICE_DIODES_MODE,
     NEW_FW_NOTIFICATION,
-    HA_LIGHT_BRIGHTNESS,
-    HA_LIGHT_R,
-    HA_LIGHT_G,
-    HA_LIGHT_B,
     SOUND_SOURCE,
     SOUND_ON_MIN_OF_SL,
     SOUND_ON_ALERT,
@@ -664,6 +660,8 @@ enum Type {
     SOUND_ON_RECON_DRONES,
     MELODY_ON_RECON_DRONES,
     TRACK_ON_RECON_DRONES,
+    COLOR_LAMP,
+    BRIGHTNESS_LAMP,
 };
 
 static SettingListItem DISTRICTS[MAX_REGIONS] = {

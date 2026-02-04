@@ -520,7 +520,7 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
     //   case 8:
     //     // if lamp mode is active, increase lamp brightness
     //     if (getCurrentMapMode() == 5) {
-    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) + 1;
+    //       int newBrightness = settings.getInt(BRIGHTNESS_LAMP) + 1;
     //       if (newBrightness > 100) {
     //         newBrightness = 100;
     //       }
@@ -534,7 +534,7 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
     //   case 9:
     //     // if lamp mode is active, decrease lamp brightness
     //     if (getCurrentMapMode() == 5) {
-    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) - 1;
+    //       int newBrightness = settings.getInt(BRIGHTNESS_LAMP) - 1;
     //       if (newBrightness < 0) {
     //         newBrightness = 0;
     //       }
