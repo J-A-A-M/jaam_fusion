@@ -225,7 +225,7 @@ bool isItNightNow() {
 }
 
 int getCurrentMapMode() {
-  if (minuteOfSilence || uaAnthemPlaying) return MapModes::FLAG; // ua flag
+  if (minuteOfSilence || uaAnthemPlaying || !isFirstDataFetchCompleted) return MapModes::FLAG; // ua flag
 
 //   int homeRegionId = settings.getInt(HOME_DISTRICT);
 //   int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
@@ -1637,6 +1637,51 @@ void syncTime(int8_t attempts) {
     }
 }
 
+void adaptColors() {
+    if (strip_main != nullptr) {
+            LOG.printf("[WEB] Adjusting main colors\n");               
+            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+                for (uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
+                strip->show();
+            });
+        }
+        if (strip_bg != nullptr) {
+            LOG.printf("[WEB] Adjusting bg colors\n");
+            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+                switch (settings.getInt(BG_LED_MODE)) {
+                    case BgLedModes::COLOR_MAP: {
+                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                            uint32_t color = animation.ledActualColor(strip, i);
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
+                    default: {
+                        uint32_t color = animation.stripActualColor(strip);
+                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                            strip->setPixelColor(i, color);
+                        }
+                        break;
+                    }
+                }
+                strip->show();
+            });               
+        }
+        if (strip_service != nullptr) {
+            LOG.printf("[WEB] Adjusting service colors\n");
+            animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+                for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
+                strip->show();
+            });               
+        }
+}
+
 // --- ALERT Functions ---
 
 
@@ -2320,48 +2365,7 @@ void mainThreadProcess() {
     }
 
     if (needAdaptColors) {
-        if (strip_main != nullptr) {
-            LOG.printf("[WEB] Adjusting main colors\n");               
-            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-        }
-        if (strip_bg != nullptr) {
-            LOG.printf("[WEB] Adjusting bg colors\n");
-            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                switch (settings.getInt(BG_LED_MODE)) {
-                    case BgLedModes::COLOR_MAP: {
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            uint32_t color = animation.ledActualColor(strip, i);
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
-                    default: {
-                        uint32_t color = animation.stripActualColor(strip);
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
-                    }
-                }
-                strip->show();
-            });               
-        }
-        if (strip_service != nullptr) {
-            LOG.printf("[WEB] Adjusting service colors\n");
-            animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });               
-        }
+        adaptColors();
         needAdaptColors = false;
     }
 
@@ -2594,6 +2598,13 @@ void setup() {
     checkFreeHeap("LED strips initialization");
     brightnessProcess();
 
+    initMapping();
+    checkFreeHeap("LED mapping initialization");
+
+    // Адаптація led для відображення парпору України
+    adaptColors();
+    checkFreeHeap("colors adaptation");
+
     initButtons();
     checkFreeHeap("buttons initialization");
 
@@ -2606,9 +2617,6 @@ void setup() {
 
     initChipID();
     checkFreeHeap("chipID initialization");
-
-    initMapping();
-    checkFreeHeap("LED mapping initialization");
 
     initBattery();
     checkFreeHeap("battery initialization");
