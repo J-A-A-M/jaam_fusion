@@ -907,6 +907,12 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
+                    case MapModes::LAMP: {
+                        // Lamp mode: light up with configured color and brightness
+                        color = colorFromHex(settings->getString(COLOR_LAMP));
+                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
+                        break;
+                    }
                 }
             }
             LOG.printf("[COLOR] bg strip color HOME_DISTRICT\n");
@@ -1053,6 +1059,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     brightness = 255;
                     break;
                 }
+                case MapModes::LAMP: {
+                    // Lamp mode: light up with configured color and brightness
+                    color = colorFromHex(settings->getString(COLOR_LAMP));
+                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
+                    break;
+                }
             }
         }
     } 
@@ -1109,6 +1121,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         // Ukrainian flag for background: use blue as it represents the whole country
                         color = DefaultColors::FLAG_BLUE; // Blue color of Ukrainian flag
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::LAMP: {
+                        // Lamp mode: light up with configured color and brightness
+                        color = colorFromHex(settings->getString(COLOR_LAMP));
+                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
                         break;
                     }
                 }

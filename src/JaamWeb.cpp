@@ -1509,6 +1509,10 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_BG, valuePtr);
             LOG.printf("[WEB] Setting color_bg: raw=%s\n", valuePtr);
         }
+        if (name == "color_lamp") {
+            settings->saveString(COLOR_LAMP, valuePtr);
+            LOG.printf("[WEB] Setting color_lamp: raw=%s\n", valuePtr);
+        }
         needAdaptColors = true;
         needAdaptAnimationColors = true;
 
@@ -1626,8 +1630,12 @@ void JaamWeb::handleParameter() {
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, intValue);
             LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);
-            needAdaptColors = true; 
+            needAdaptColors = true;
             needAdaptAnimationBrightness = true;
+        } else if (name == "brightness_lamp") {
+            settings->saveInt(BRIGHTNESS_LAMP, intValue);
+            LOG.printf("[WEB] Setting brightness_lamp: %d\n", intValue);
+            needAdaptColors = true;
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
@@ -2654,6 +2662,7 @@ void JaamWeb::handleUiSchema() {
     addColor("animations", "color_ballistic", "Балістичні ракети", COLOR_BALLISTIC);
     addColor("animations", "color_home", "Домашній регіон", COLOR_HOME_DISTRICT);
     addColor("animations", "color_bg", "Задня підсвітка", COLOR_BG);
+    addColor("animations", "color_lamp", "Режим лампи", COLOR_LAMP);
 
     // Яскравість
     addInfo("brightness", "Контроль яскравості LED стрічок для різних режимів та часу доби", "#ffc107", "M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8M12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z");
@@ -2673,6 +2682,7 @@ void JaamWeb::handleUiSchema() {
     addSlider("brightness", "brightness_ballistic", "Балістичні ракети", 0, 100, 1, settings->getInt(BRIGHTNESS_BALLISTIC));
     addSlider("brightness", "brightness_home_district", "Домашній регіон", 0, 100, 1, settings->getInt(BRIGHTNESS_HOME_DISTRICT));
     addSlider("brightness", "brightness_bg", "Фонова стрічка", 0, 100, 1, settings->getInt(BRIGHTNESS_BG));
+    addSlider("brightness", "brightness_lamp", "Режим лампи", 0, 100, 1, settings->getInt(BRIGHTNESS_LAMP));
     addSlider("brightness", "brightness_service", "Сервісні діоди", 0, 100, 1, settings->getInt(BRIGHTNESS_SERVICE));
     addSlider("brightness", "brightness_animation_end", "Кінцева яскравість анімацій", 0, 100, 1, settings->getInt(BRIGHTNESS_ANIMATION_END));
 

@@ -99,10 +99,6 @@ std::map<Type, SettingItemInt> intSettings = {
     {KYIV_LED, {"kvld", 0}},
     {SERVICE_DIODES_MODE, {"sdm", 0}},
     {NEW_FW_NOTIFICATION, {"nfwn", 1}},
-    {HA_LIGHT_BRIGHTNESS, {"ha_lbri", 50}},
-    {HA_LIGHT_R, {"ha_lr", 215}},
-    {HA_LIGHT_G, {"ha_lg", 7}},
-    {HA_LIGHT_B, {"ha_lb", 255}},
     {SOUND_SOURCE, {"ss", 0}},
     {SOUND_ON_MIN_OF_SL, {"somos", 0}},
     {SOUND_ON_ALERT, {"soa", 0}},
@@ -220,6 +216,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_KAB_CYCLE_TIME, {"akt", 500}},
     {ANIMATION_BALLISTIC_CYCLE_TIME, {"abct", 500}},
     {ANIMATION_EXPLOSION_CYCLE_TIME, {"aect", 500}},
+    {BRIGHTNESS_LAMP, {"blamp", 50}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {
@@ -244,6 +241,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_BALLISTIC, {"rgbcbal", "#FFFFFF"}},
     {COLOR_HOME_DISTRICT, {"rgbchd", "#5CFF5C"}},
     {COLOR_BG, {"rgbcbg", "#00FF00"}},
+    {COLOR_LAMP, {"rgbclamp", "#D707FF"}},
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {

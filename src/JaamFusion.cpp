@@ -522,7 +522,7 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
     //   case 8:
     //     // if lamp mode is active, increase lamp brightness
     //     if (getCurrentMapMode() == 5) {
-    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) + 1;
+    //       int newBrightness = settings.getInt(BRIGHTNESS_LAMP) + 1;
     //       if (newBrightness > 100) {
     //         newBrightness = 100;
     //       }
@@ -536,7 +536,7 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
     //   case 9:
     //     // if lamp mode is active, decrease lamp brightness
     //     if (getCurrentMapMode() == 5) {
-    //       int newBrightness = settings.getInt(HA_LIGHT_BRIGHTNESS) - 1;
+    //       int newBrightness = settings.getInt(BRIGHTNESS_LAMP) - 1;
     //       if (newBrightness < 0) {
     //         newBrightness = 0;
     //       }
@@ -1274,7 +1274,6 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         apiConnected = false;
         servicePin(DATA);
         LOG.printf("[WEBSOCKET] connection closed\n");
-        isFirstDataFetchCompleted = false;
         LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
         //websocket.close();
         auto reason = websocket.getCloseReason();
@@ -2213,7 +2212,6 @@ void websocketProcess() {
     if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)\n");
         websocketReconnect = true;
-        isFirstDataFetchCompleted = false;
         clearAllAlertsMaps();
         clearAllWeatherMaps();
         animation.clearAllAnimations();
@@ -2239,13 +2237,11 @@ void websocketProcess() {
     }
     if (!websocket.available()) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
-        isFirstDataFetchCompleted = false;
         apiConnected = false;
         socketConnect();
     }
     if (websocketReconnect) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
-        isFirstDataFetchCompleted = false;
         apiConnected = false;
         socketConnect();
     }
@@ -2354,7 +2350,6 @@ void mainThreadProcess() {
 
     if (needReconnectWebsocket && !needReconnectMainStrip) {
         LOG.printf("[MAIN] Reconnecting WebSocket\n");
-        isFirstDataFetchCompleted = false;
         needReconnectWebsocket = false;
         apiConnected = false;
         socketConnect();
@@ -2596,6 +2591,9 @@ void setup() {
 
     initSettings();
     checkFreeHeap("settings initialization");
+
+    // Передаємо settings в AnimationManager
+    animation.setSettings(&settings);
     
     initStrip();
     checkFreeHeap("LED strips initialization");
@@ -2647,8 +2645,6 @@ void setup() {
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
     
-    // Передаємо settings в AnimationManager
-    animation.setSettings(&settings);
     // Встановлюємо режим роботи анімацій
     animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
     checkFreeHeap("animation settings");
