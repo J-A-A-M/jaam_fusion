@@ -947,7 +947,7 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'info') {
-        const [_, text, color, icon, section] = ctrl;
+        const [_, text, color, icon, section, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'info-panel';
         div.style.backgroundColor = color + '20'; // Add transparency
@@ -971,6 +971,11 @@ function renderControl(ctrl, lists) {
         metric.appendChild(iconNode);
         metric.appendChild(textSpan);
         div.appendChild(metric);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
         
         return div;
     }
@@ -1063,7 +1068,7 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'color') {
-        const [_, name, label, current] = ctrl;
+        const [_, name, label, current, section, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'color-picker-container';
         
@@ -1083,6 +1088,12 @@ function renderControl(ctrl, lists) {
         
         div.appendChild(span);
         div.appendChild(lab);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+        
         return div;
     }
     
@@ -1533,6 +1544,7 @@ void JaamWeb::handleParameter() {
             needRecalculateLeds = true;
             needReconnectMainStrip = true;
             needReconnectBgStrip = true;
+            needReconnectServiceStrip = true;
             needReconfigureDisplay = true;
             needAdaptStripBrightness = true;
             needReconfigureButtons = true;
@@ -2043,7 +2055,7 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(MAIN_LED_COUNT, value.toInt());
             LOG.printf("[WEB] Setting main_led_count: %s\n", valuePtr);
             needReconnectMainStrip = true;
-            needToRegenerateBgColorMap = true;
+            needRecalculateLeds = true;
         } else if (name == "bg_led_pin") {
             settings->saveInt(BG_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting bg_led_pin: %s\n", valuePtr);
