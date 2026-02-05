@@ -478,7 +478,7 @@ void handleClick(int event, JaamButton::Action action) {
 }
 
 bool isButtonActivated() {
-  return settings.getInt(BUTTON_1_MODE) != 0 || settings.getInt(BUTTON_1_MODE_LONG) != 0 || settings.getInt(BUTTON_2_MODE) != 0 || settings.getInt(BUTTON_2_MODE_LONG) != 0;
+  return settings.getInt(BUTTON_1_MODE) != 0 || settings.getInt(BUTTON_1_MODE_LONG) != 0 || settings.getInt(BUTTON_2_MODE) != 0 || settings.getInt(BUTTON_2_MODE_LONG) != 0 || settings.getInt(BUTTON_3_MODE) != 0 || settings.getInt(BUTTON_3_MODE_LONG) != 0;
 }
 
 void singleClick(int mode) {
@@ -1560,7 +1560,7 @@ void reconnectStrips() {
     if (needReconnectBgStrip) {
         // Перезбираємо список індексів для BG
         allLedsBg.clear();
-        for (uint32_t i = 0; i < (uint32_t)settings.getInt(BG_LED_COUNT); ++i) {
+        for (uint32_t i = 0; i < (uint32_t)hardwareConfig.getBgLedsCount(); ++i) {
             allLedsBg.push_back(i);
         }
         reconnectStripBg();
@@ -1713,7 +1713,7 @@ void initSettings() {
         allLedsMain.push_back(i);
     }
     allLedsBg.clear();
-    for (uint32_t i = 0; i < settings.getInt(BG_LED_COUNT); ++i) {
+    for (uint32_t i = 0; i < (uint32_t)hardwareConfig.getBgLedsCount(); ++i) {
         allLedsBg.push_back(i);
     }
 }
