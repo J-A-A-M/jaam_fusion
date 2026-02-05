@@ -468,8 +468,8 @@ static TimezoneInfo TIMEZONE_OFFSETS[] = {
   {19, -7, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
   // ID 20: America/Chicago
   {20, -6, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 21: America/Mexico_City
-  {21, -6, 0, true, {3, 1, 7, 2}, {10, 1, 7, 2}},
+  // ID 21: America/Mexico_City - немає DST
+  {21, -6, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
   // ID 22: America/Toronto
   {22, -5, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
   // ID 23: America/New_York - 2-а неділя березня, 1-а неділя листопада
@@ -508,8 +508,8 @@ static TimezoneInfo TIMEZONE_OFFSETS[] = {
   {39, 10, 0, true, {10, 1, 7, 2}, {4, 1, 7, 3}},
   // ID 40: Australia/Sydney - 1-а неділя жовтня, 1-а неділя квітня
   {40, 10, 0, true, {10, 1, 7, 2}, {4, 1, 7, 3}},
-  // ID 41: Pacific/Auckland - 4-я неділя вересня, 1-а неділя квітня
-  {41, 12, 0, true, {9, 4, 7, 2}, {4, 1, 7, 3}},
+  // ID 41: Pacific/Auckland - остання неділя вересня, 1-а неділя квітня
+  {41, 12, 0, true, {9, 0, 7, 2}, {4, 1, 7, 3}},
   // ID 42: Pacific/Fiji - немає DST
   {42, 12, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
 };
