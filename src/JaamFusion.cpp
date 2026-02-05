@@ -34,7 +34,7 @@ char                currentFwVersion[25];
 Async               async = Async(20);
 
 NTPtime             timeClient(2);
-DSTime              dst(3, 0, 7, 3, 10, 0, 7, 4); //https://en.wikipedia.org/wiki/Eastern_European_Summer_Time
+DSTime*             currentDST = nullptr;  // Буде налаштовуватися для кожного поясу
 
 JaamSettings        settings;
 JaamFirmware        firmware;
@@ -89,6 +89,7 @@ volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
 volatile bool needAdaptVolume = false;
 volatile bool needUpdateHomeAlertBit = false;
+volatile bool needUpdateTimezone = false;
 volatile bool needPlayTestMelody = false;
 volatile bool needPlayTestTrack = false;
 
@@ -1570,6 +1571,42 @@ void reconnectStrips() {
 
 // --- TIME Functions ---
 
+static TimezoneInfo* getTimezoneInfo(int timezoneId) {
+    // Шукаємо timezone по ID в масиві TIMEZONE_OFFSETS
+    for (int i = 0; i < TIMEZONES_COUNT; i++) {
+        if (TIMEZONE_OFFSETS[i].id == timezoneId) {
+            return &TIMEZONE_OFFSETS[i];
+        }
+    }
+    // За замовчуванням повертаємо UTC+2 (Kyiv) - ID=0
+    return &TIMEZONE_OFFSETS[0];
+}
+
+static void applyTimezoneSettings(int timezoneId, bool verbose = true) {
+    TimezoneInfo* tzInfo = getTimezoneInfo(timezoneId);
+    if (verbose) {
+        LOG.printf("[TIME] Applying timezone ID %d (offset: %d hours %d minutes)\n", 
+                   timezoneId, tzInfo->offset, tzInfo->minutes);
+    }
+    timeClient.setTimeZone(tzInfo->offset, tzInfo->minutes);
+    
+    // Налаштування DST
+    if (tzInfo->hasDST) {
+        if (currentDST != nullptr) {
+            delete currentDST;
+        }
+        currentDST = new DSTime(
+            tzInfo->dstStart[0], tzInfo->dstStart[1], tzInfo->dstStart[2], tzInfo->dstStart[3],
+            tzInfo->dstEnd[0], tzInfo->dstEnd[1], tzInfo->dstEnd[2], tzInfo->dstEnd[3]
+        );
+        timeClient.setDSTauto(currentDST);
+        if (verbose) LOG.printf("[TIME] DST enabled for this timezone\n");
+    } else {
+        timeClient.setDSTauto(nullptr);
+        if (verbose) LOG.printf("[TIME] DST not used for this timezone\n");
+    }
+}
+
 static void printNtpStatus(NTPtime* timeClient) {
     switch (timeClient->NTPstatus()) {
         case 0:
@@ -1822,8 +1859,7 @@ void initTime() {
     LOG.printf("[TIME] Init time\n");
     LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
     timeClient.setHost(settings.getString(NTP_HOST));
-    timeClient.setTimeZone(settings.getInt(TIME_ZONE));
-    timeClient.setDSTauto(&dst); // auto update on summer/winter time.
+    applyTimezoneSettings(settings.getInt(TIME_ZONE), true);
     timeClient.setTimeout(5000); // 5 seconds waiting for reply
     timeClient.begin();
     syncTime(7);
@@ -2499,6 +2535,12 @@ void mainThreadProcess() {
         if (localAlertBit != alertBit) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         alertBit = localAlertBit;
         needUpdateHomeAlertBit = false;
+    }
+
+    if (needUpdateTimezone) {
+        LOG.printf("[MAIN] Updating timezone\n");
+        applyTimezoneSettings(settings.getInt(TIME_ZONE), true);
+        needUpdateTimezone = false;
     }
 
     if (needPlayTestMelody) {

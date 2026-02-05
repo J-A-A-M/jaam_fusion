@@ -34,6 +34,7 @@ extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
 extern volatile bool needAdaptVolume;
 extern volatile bool needUpdateHomeAlertBit;
+extern volatile bool needUpdateTimezone;
 extern volatile bool needPlayTestMelody;
 extern volatile bool needPlayTestTrack;
 extern volatile int testMelodyId;
@@ -1511,6 +1512,10 @@ void JaamWeb::handleParameter() {
             settings->saveInt(BRIGHTNESS_LAMP, intValue);
             LOG.printf("[WEB] Setting brightness_lamp: %d\n", intValue);
             needAdaptColors = true;
+        } else if (name == "time_zone") {
+            settings->saveInt(TIME_ZONE, intValue);
+            LOG.printf("[WEB] Setting time_zone: %d\n", intValue);
+            needUpdateTimezone = true;
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
@@ -2275,6 +2280,10 @@ void JaamWeb::handleUiSchema() {
             JsonArray arr = dropdownLists["button_modes_long_click"].to<JsonArray>();
             appendOptionsList(arr, LONG_CLICKS, LONG_CLICKS_COUNT);
         }
+        {
+            JsonArray arr = dropdownLists["timezones"].to<JsonArray>();
+            appendOptionsList(arr, TIMEZONES, TIMEZONES_COUNT);
+        }
     }
 
     JsonArray controls = doc["controls"].to<JsonArray>();
@@ -2351,6 +2360,7 @@ void JaamWeb::handleUiSchema() {
     
     addDropdown("general", "map_mode", "Режим мапи", "map_mode", MAP_MODE);
     addBool("general", "min_of_silence", "Увімкнути режим \"Хвилина мовчання\" о 9:00", MIN_OF_SILENCE);
+    addDropdown("general", "time_zone", "Часовий пояс", "timezones", TIME_ZONE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
     addText("general", "device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
     addText("general", "broadcast_name", "Ім'я в мережі", String(settings->getString(BROADCAST_NAME)), "jaam");

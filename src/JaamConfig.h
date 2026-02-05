@@ -363,6 +363,107 @@ static SettingListItem MAP_MODES[] = {
   {4, "Лампа"},
 };
 
+constexpr int TIMEZONES_COUNT = 27;
+static SettingListItem TIMEZONES[] = {
+  {0, "Europe/Kyiv (UTC+2)"},
+  // Європейські часові пояси
+  {1, "Europe/London (UTC+0)"},
+  {2, "Europe/Paris (UTC+1)"},
+  {3, "Europe/Berlin (UTC+1)"},
+  {4, "Europe/Rome (UTC+1)"},
+  {5, "Europe/Madrid (UTC+1)"},
+  {6, "Europe/Amsterdam (UTC+1)"},
+  {7, "Europe/Warsaw (UTC+1)"},
+  {8, "Europe/Prague (UTC+1)"},
+  {9, "Europe/Athens (UTC+2)"},
+  {10, "Europe/Helsinki (UTC+2)"},
+  {11, "Europe/Bucharest (UTC+2)"},
+  {12, "Europe/Istanbul (UTC+3)"},
+  // Американські часові пояси
+  {13, "America/New_York (UTC-5)"},
+  {14, "America/Chicago (UTC-6)"},
+  {15, "America/Denver (UTC-7)"},
+  {16, "America/Los_Angeles (UTC-8)"},
+  {17, "America/Anchorage (UTC-9)"},
+  {18, "Pacific/Honolulu (UTC-10)"},
+  // Азіатські та інші поширені
+  {19, "Asia/Dubai (UTC+4)"},
+  {20, "Asia/Kolkata (UTC+5:30)"},
+  {21, "Asia/Singapore (UTC+8)"},
+  {22, "Asia/Hong_Kong (UTC+8)"},
+  {23, "Asia/Tokyo (UTC+9)"},
+  {24, "Asia/Seoul (UTC+9)"},
+  {25, "Australia/Sydney (UTC+10)"},
+  {26, "America/Sao_Paulo (UTC-3)"},
+};
+
+struct TimezoneInfo {
+    int id;          // ID з TIMEZONES
+    int offset;      // Години
+    int minutes;     // Хвилини
+    bool hasDST;     // Чи використовується DST
+    // DST параметри: month, week, dayOfWeek, hour
+    int dstStart[4]; // Початок літнього часу
+    int dstEnd[4];   // Кінець літнього часу
+};
+
+static TimezoneInfo TIMEZONE_OFFSETS[] = {
+  // ID 0: Europe/Kyiv - Європейський східний час (EEST)
+  {0, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
+  // ID 1: Europe/London - британський літній час (BST)
+  {1, 0, 0, true, {3, 0, 7, 1}, {10, 0, 7, 2}},
+  // ID 2: Europe/Paris - Європейський центральний літній час (CEST)
+  {2, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 3: Europe/Berlin
+  {3, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 4: Europe/Rome
+  {4, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 5: Europe/Madrid
+  {5, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 6: Europe/Amsterdam
+  {6, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 7: Europe/Warsaw
+  {7, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 8: Europe/Prague
+  {8, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 9: Europe/Athens - Європейський східній літній час (EEST)
+  {9, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
+  // ID 10: Europe/Helsinki
+  {10, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
+  // ID 11: Europe/Bucharest
+  {11, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
+  // ID 12: Europe/Istanbul - немає DST з 2016
+  {12, 3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 13: America/New_York - 2-а неділя березня, 1-а неділя листопада
+  {13, -5, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 14: America/Chicago
+  {14, -6, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 15: America/Denver
+  {15, -7, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 16: America/Los_Angeles
+  {16, -8, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 17: America/Anchorage
+  {17, -9, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 18: Pacific/Honolulu - немає DST
+  {18, -10, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 19: Asia/Dubai - немає DST
+  {19, 4, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 20: Asia/Kolkata
+  {20, 5, 30, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 21: Asia/Singapore
+  {21, 8, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 22: Asia/Hong_Kong
+  {22, 8, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 23: Asia/Tokyo
+  {23, 9, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 24: Asia/Seoul
+  {24, 9, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 25: Australia/Sydney - 1-а неділя жовтня, 1-а неділя квітня
+  {25, 10, 0, true, {10, 1, 7, 2}, {4, 1, 7, 3}},
+  // ID 26: America/Sao_Paulo - 3-я неділя жовтня, 3-я неділя лютого
+  {26, -3, 0, true, {10, 3, 7, 0}, {2, 3, 7, 0}},
+};
+
 constexpr int DISPLAY_MODES_COUNT = 2;
 static SettingListItem DISPLAY_MODES[] = {
   {0, "Вимкнено", false},
