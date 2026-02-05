@@ -35,7 +35,7 @@ namespace JaamHardwarePins {
 }
 
 // Hardware LED count constants
-namespace JaamHardwareLedCounts {
+namespace JaamHardwareLed {
     // Main LED strip counts
     constexpr int MAIN_LED_COUNT_JAAM_3_2 = 405;
     constexpr int MAIN_LED_COUNT_JAAM_3_0 = 273;
@@ -45,7 +45,6 @@ namespace JaamHardwareLedCounts {
     constexpr int MAIN_LED_COUNT_DEFAULT = 25;
     constexpr int MAIN_LED_COUNT_DISABLED = -1;
     constexpr int MAIN_LED_FORMAT_DISABLED = -1;
-    
     
     // Background LED strip counts
     constexpr int BG_LED_COUNT_JAAM_3 = 39;
@@ -57,6 +56,13 @@ namespace JaamHardwareLedCounts {
     constexpr int SERVICE_LED_COUNT_DEFAULT = 5;
     constexpr int SERVICE_LED_COUNT_DISABLED = -1;
     constexpr int SERVICE_LED_FORMAT_DISABLED = -1;
+    
+    // Brightness factors for different hardware types
+    constexpr uint8_t BRIGHTNESS_JAAM_3_0_MAX = 35;
+    constexpr uint8_t BRIGHTNESS_JAAM_3_2_MAX = 35;
+    constexpr uint8_t BRIGHTNESS_JAAM_1_3_MAX = 50;
+    constexpr uint8_t BRIGHTNESS_JAAM_2_1_MAX = 50;
+    constexpr uint8_t BRIGHTNESS_DEFAULT_MAX = 50;
 }
 
 class JaamHardware {
@@ -80,6 +86,7 @@ public:
     static int getMainLedColorFormat();
     static int getBgLedColorFormat();
     static int getServiceLedColorFormat();
+    static uint8_t getMaxBrightness();
     
 private:
     static uint8_t getCurrentHardwareType();

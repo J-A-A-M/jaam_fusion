@@ -118,7 +118,6 @@ short               clockBeepInterval = -1;
 bool                isMapOff = false;
 bool                isDisplayOff = false;
 int                 prevMapMode = 1;
-uint8_t             hardware = 0;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
 int                 testMelodyId = -1;
@@ -1323,7 +1322,7 @@ void socketConnect() {
         websocket.send(firmwareInfo);
         char userInfo[250];
         JsonDocument userInfoJson;
-        userInfoJson["legacy"] = hardware;
+        userInfoJson["legacy"] = settings.getInt(HARDWARE);
         sprintf(userInfo, "user_info:%s", userInfoJson.as<String>().c_str());
         LOG.printf("[WEBSOCKET] %s\n", userInfo);
         websocket.send(userInfo);
@@ -1560,8 +1559,11 @@ void reconnectStrips() {
     if (needReconnectBgStrip) {
         // Перезбираємо список індексів для BG
         allLedsBg.clear();
-        for (uint32_t i = 0; i < (uint32_t)hardwareConfig.getBgLedsCount(); ++i) {
-            allLedsBg.push_back(i);
+        int bgCount = hardwareConfig.getBgLedsCount();
+        if (bgCount > 0) {
+            for (uint32_t i = 0; i < (uint32_t)bgCount; ++i) {
+                allLedsBg.push_back(i);
+            }
         }
         reconnectStripBg();
         needReconnectBgStrip = false;
@@ -1707,15 +1709,6 @@ void initSettings() {
     fillFwVersion(currentFwVersion, firmware);
     LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
 
-    // Заповнюємо allLedsMain згідно з num_leds_main
-    allLedsMain.clear();
-    for (uint32_t i = 0; i < num_leds_main; ++i) {
-        allLedsMain.push_back(i);
-    }
-    allLedsBg.clear();
-    for (uint32_t i = 0; i < (uint32_t)hardwareConfig.getBgLedsCount(); ++i) {
-        allLedsBg.push_back(i);
-    }
 }
 
 
@@ -1981,6 +1974,20 @@ void initStrip() {
     initStripBg();
     initStripService();   
     needAdaptStripBrightness = true;
+
+    // Тепер заповнюємо allLedsMain і allLedsBg після ініціалізації стрічок
+    allLedsMain.clear();
+    for (uint32_t i = 0; i < num_leds_main; ++i) {
+        allLedsMain.push_back(i);
+    }
+    
+    allLedsBg.clear();
+    int bgCount = hardwareConfig.getBgLedsCount();
+    if (bgCount > 0) {
+        for (uint32_t i = 0; i < (uint32_t)bgCount; ++i) {
+            allLedsBg.push_back(i);
+        }
+    }
 }
 
 void initBattery() {

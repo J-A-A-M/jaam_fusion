@@ -25,18 +25,18 @@ int JaamHardware::getMainLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
-            return JaamHardwareLedCounts::MAIN_LED_COUNT_JAAM_3_2;
+            return JaamHardwareLed::MAIN_LED_COUNT_JAAM_3_2;
         case HARDWARE::JAAM_3_0:
-            return JaamHardwareLedCounts::MAIN_LED_COUNT_JAAM_3_0;
+            return JaamHardwareLed::MAIN_LED_COUNT_JAAM_3_0;
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
         case HARDWARE::ODESA_KYIV:
         case HARDWARE::ZAKARPATTIA_KYIV:
-            return JaamHardwareLedCounts::MAIN_LED_COUNT_KYIV;
+            return JaamHardwareLed::MAIN_LED_COUNT_KYIV;
         case HARDWARE::CUSTOM_MAPPING:
             return settings.getInt(MAIN_LED_COUNT);
         default:
-            return JaamHardwareLedCounts::MAIN_LED_COUNT_DEFAULT;
+            return JaamHardwareLed::MAIN_LED_COUNT_DEFAULT;
     }
 }
 
@@ -72,11 +72,11 @@ int JaamHardware::getBgLedsCount() {
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
-            return JaamHardwareLedCounts::BG_LED_COUNT_JAAM_3;
+            return JaamHardwareLed::BG_LED_COUNT_JAAM_3;
         case HARDWARE::JAAM_2_1:
-            return JaamHardwareLedCounts::BG_LED_COUNT_JAAM_2;
+            return JaamHardwareLed::BG_LED_COUNT_JAAM_2;
         case HARDWARE::JAAM_1_3:
-            return JaamHardwareLedCounts::BG_LED_COUNT_DISABLED;
+            return JaamHardwareLed::BG_LED_COUNT_DISABLED;
         default:
             return settings.getInt(BG_LED_COUNT);
     }
@@ -90,7 +90,7 @@ int JaamHardware::getBgLedColorFormat() {
         case HARDWARE::JAAM_2_1:
             return NEO_GRB;
         case HARDWARE::JAAM_1_3:
-            return JaamHardwareLedCounts::BG_LED_FORMAT_DISABLED;
+            return JaamHardwareLed::BG_LED_FORMAT_DISABLED;
         default:
             return settings.getInt(BG_LED_COLOR_FORMAT);
     }
@@ -114,16 +114,16 @@ int JaamHardware::getServiceLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     int serviceLedCount = 0;
     if (settings.getInt(SERVICE_LED_PIN) > 0) {
-        serviceLedCount = JaamHardwareLedCounts::SERVICE_LED_COUNT_DEFAULT;
+        serviceLedCount = JaamHardwareLed::SERVICE_LED_COUNT_DEFAULT;
     }
 
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
-            return JaamHardwareLedCounts::SERVICE_LED_COUNT_DEFAULT;
+            return JaamHardwareLed::SERVICE_LED_COUNT_DEFAULT;
         case HARDWARE::JAAM_1_3:
-            return JaamHardwareLedCounts::SERVICE_LED_COUNT_DISABLED;
+            return JaamHardwareLed::SERVICE_LED_COUNT_DISABLED;
         default:
             return serviceLedCount;
     }
@@ -137,7 +137,7 @@ int JaamHardware::getServiceLedColorFormat() {
         case HARDWARE::JAAM_2_1:
             return NEO_GRB;
         case HARDWARE::JAAM_1_3:
-            return JaamHardwareLedCounts::SERVICE_LED_FORMAT_DISABLED;
+            return JaamHardwareLed::SERVICE_LED_FORMAT_DISABLED;
         default:
             return settings.getInt(SERVICE_LED_COLOR_FORMAT);
     }
@@ -276,5 +276,21 @@ const RegionLedMapEntry* JaamHardware::getRegionMap() {
             return STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
         default:
             return STATE_MAP_LED_ODESA_WITH_KYIV;
+    }
+}
+
+uint8_t JaamHardware::getMaxBrightness() {
+    uint8_t hwType = getCurrentHardwareType();
+    switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_3_2_MAX;
+        case HARDWARE::JAAM_3_0:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_3_0_MAX;
+        case HARDWARE::JAAM_2_1:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_2_1_MAX;
+        case HARDWARE::JAAM_1_3:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_1_3_MAX;
+        default:
+            return JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX;
     }
 }

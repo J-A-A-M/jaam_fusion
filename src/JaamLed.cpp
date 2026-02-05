@@ -1,7 +1,8 @@
 #include "JaamLed.h"
 #include "JaamUtils.h"
+#include "JaamHardware.h"
 
-extern uint8_t hardware;
+extern JaamHardware hardwareConfig;
 
 JaamLed::JaamLed() : settings(nullptr) {}
 
@@ -24,11 +25,9 @@ uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
 }
 
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
-    if (hardware == HARDWARE::JAAM_3_0 || hardware == HARDWARE::JAAM_3_2) {
-        return map(percent, 0, 100, 0, 35);
-    } else {
-        return map(percent, 0, 100, 0, 50);
-    }
+    if (percent > 100) percent = 100;
+    uint8_t maxBrightness = hardwareConfig.getMaxBrightness();
+    return map(percent, 0, 100, 0, maxBrightness);
 }
 
 // Перевірка ініціалізації стрічки
