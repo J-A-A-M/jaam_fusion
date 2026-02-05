@@ -406,7 +406,7 @@ static SettingListItem TIMEZONES[] = {
   {34, "Asia/Shanghai (UTC+8)"},
   {35, "Asia/Tokyo (UTC+9)"},
   {36, "Asia/Seoul (UTC+9)"},
-  // Австралія та océанія (географічно: захід → схід)
+  // Австралія та Океанія (географічно: захід → схід)
   {37, "Australia/Perth (UTC+8)"},
   {38, "Australia/Brisbane (UTC+10)"},
   {39, "Australia/Melbourne (UTC+10)"},
