@@ -11,13 +11,18 @@ public:
     void tick();
     void setButton1Pin(int pin, bool activeLow);
     void setButton2Pin(int pin, bool activeLow);
+    void setButton3Pin(int pin, bool activeLow);
     void setButton1ClickListener(void (*listener)(void));
     void setButton2ClickListener(void (*listener)(void));
+    void setButton3ClickListener(void (*listener)(void));
     void setButton1LongClickListener(void (*listener)(void));
     void setButton2LongClickListener(void (*listener)(void));
+    void setButton3LongClickListener(void (*listener)(void));
     void setButton1DuringLongClickListener(void (*listener)(Action action));
     void setButton2DuringLongClickListener(void (*listener)(Action action));
+    void setButton3DuringLongClickListener(void (*listener)(Action action));
     bool isButton1Enabled();
     bool isButton2Enabled();
+    bool isButton3Enabled();
     bool isAnyButtonEnabled();
 };

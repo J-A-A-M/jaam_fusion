@@ -128,7 +128,7 @@ void JaamSound::initDFPlayer() {
         LOG.printf("[SOUND] DFPlayer pins not set, skip init\n");
         return;
     }
-    int8_t attempts = 5;
+    int8_t attempts = 3;
     int8_t count = 1;
     dfSerial.begin(115200, SERIAL_8N1, dfRxPin, dfTxPin); // RX, TX
 

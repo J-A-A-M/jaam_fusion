@@ -512,35 +512,35 @@ static SettingListItem DISPLAY_ROTATIONS[] = {
   {270, "270°"},
 };
 
-enum LEGACY {
+enum HARDWARE {
     JAAM_1_3 = 0,
     ZAKARPATTIA = 1,
     ODESA = 2,
     JAAM_2_1 = 3,
     JAAM_3_0 = 4,
     CUSTOM_MAPPING = 5,
-    JAAM_3_1 = 6,
+    JAAM_3_2 = 6,
     ZAKARPATTIA_KYIV = 7,
     ODESA_KYIV = 8
 };
 
 #if ARDUINO_ESP32_DEV
-#define LEGACY_OPTIONS_COUNT 9
+#define HARDWARE_OPTIONS_COUNT 9
 #else
-#define LEGACY_OPTIONS_COUNT 5
+#define HARDWARE_OPTIONS_COUNT 5
 #endif
-static SettingListItem LEGACY_OPTIONS[LEGACY_OPTIONS_COUNT] = {
+static SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
 #if ARDUINO_ESP32_DEV
-  {LEGACY::JAAM_1_3, "Плата JAAM 1.3"},
-  {LEGACY::JAAM_2_1, "Плата JAAM 2.1"},
-  {LEGACY::JAAM_3_0, "Плата JAAM 3.0"},
-  {LEGACY::JAAM_3_1, "Плата JAAM 3.1"},
+  {HARDWARE::JAAM_1_3, "Плата JAAM 1.3"},
+  {HARDWARE::JAAM_2_1, "Плата JAAM 2.1"},
+  {HARDWARE::JAAM_3_0, "Плата JAAM 3.0"},
+  {HARDWARE::JAAM_3_2, "Плата JAAM 3.2"},
 #endif
-  {LEGACY::ZAKARPATTIA, "Початок на Закарпатті"},
-  {LEGACY::ZAKARPATTIA_KYIV, "Початок на Закарпатті + Київ"},
-  {LEGACY::ODESA, "Початок на Одещині"},
-  {LEGACY::ODESA_KYIV, "Початок на Одещині + Київ"},
-  {LEGACY::CUSTOM_MAPPING, "Власна карта LED"},
+  {HARDWARE::ZAKARPATTIA, "Початок на Закарпатті"},
+  {HARDWARE::ZAKARPATTIA_KYIV, "Початок на Закарпатті + Київ"},
+  {HARDWARE::ODESA, "Початок на Одещині"},
+  {HARDWARE::ODESA_KYIV, "Початок на Одещині + Київ"},
+  {HARDWARE::CUSTOM_MAPPING, "Власна карта LED"},
 };
 
 constexpr int ANIMATION_TYPES_COUNT = 7;
@@ -566,14 +566,16 @@ enum Type {
     WS_SERVER_PORT,
     UPDATE_SERVER_PORT,
     NTP_HOST,
-    LEGACY,
+    HARDWARE,
     MAIN_LED_PIN,
+    MAIN_LED_COUNT,
     BG_LED_PIN,
     BG_LED_COUNT,
     BG_LED_MODE,
     SERVICE_LED_PIN,
     BUTTON_1_PIN,
     BUTTON_2_PIN,
+    BUTTON_3_PIN,
     ALERT_PIN,
     CLEAR_PIN,
     BUZZER_PIN,
@@ -692,10 +694,13 @@ enum Type {
     TOGGLE_MODE_PRESS,
     BUTTON_1_MODE,
     BUTTON_2_MODE,
+    BUTTON_3_MODE,
     BUTTON_1_MODE_LONG,
     BUTTON_2_MODE_LONG,
+    BUTTON_3_MODE_LONG,
     USE_TOUCH_BUTTON_1,
     USE_TOUCH_BUTTON_2,
+    USE_TOUCH_BUTTON_3,
     ALARMS_NOTIFY_MODE,
     DISPLAY_MODEL,
     DISPLAY_WIDTH,
@@ -1210,7 +1215,7 @@ const RegionLedMapEntry REGION_MAP_JAAM_3_0[MAX_REGIONS] = {
 };
 
 // Фіксований масив відповідностей (заповнюється вручну)
-const RegionLedMapEntry REGION_MAP_JAAM_3_1[MAX_REGIONS] = {
+const RegionLedMapEntry REGION_MAP_JAAM_3_2[MAX_REGIONS] = {
     // АР Крим
     { 9999, { 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404}, 13 }, // Автономна Республіка Крим
 
