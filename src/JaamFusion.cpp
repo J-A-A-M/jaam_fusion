@@ -1553,6 +1553,11 @@ void reconnectStrips() {
     LOG.printf("[LED] Reconnecting strips...\n");
     
     if (needReconnectMainStrip) {
+        // Перезбираємо список індексів для Main
+        allLedsMain.clear();
+        for (uint32_t i = 0; i < num_leds_main; ++i) {
+            allLedsMain.push_back(i);
+        }
         reconnectStripMain();
         needReconnectMainStrip = false;
     }

@@ -2434,7 +2434,7 @@ void JaamWeb::handleUiSchema() {
             if (i > 0) result += ",";
             result += fieldName;
             result += operand;
-            result += values[i];
+            result += static_cast<int>(values[i]);
         }
         return result;
     };
