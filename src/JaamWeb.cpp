@@ -1241,14 +1241,8 @@ async function renderUI() {
             let section = 'general'; // Default section
             
             // Extract section based on control type and position
-            // Note: visibility is always last, section is before visibility (or last if no visibility)
-            if (type === 'dropdown' || type === 'bool' || type === 'text' || type === 'color' || type === 'slider' || type === 'button') {
-                section = ctrl[ctrl.length - 2] || 'general'; // Section is second-to-last (before visibility)
-            } else if (type === 'label') {
-                section = ctrl[2] || 'general';
-            } else if (type === 'info') {
-                section = ctrl[4] || 'general';
-            }
+            // All controls have visibility as last parameter, section is always second-to-last
+            section = ctrl[ctrl.length - 2] || 'general';
             
             if (!controlsBySection[section]) {
                 controlsBySection[section] = [];
@@ -2313,14 +2307,14 @@ void JaamWeb::handleUiSchema() {
     {
         static const char modelsJson[] PROGMEM = R"JSON(
         {
-          "dropdown": ["name", "label", "list", "current", "section"],
-          "bool":     ["name", "label", "current", "section"],
-          "text":     ["name", "label", "current", "placeholder", "section"],
-          "color":    ["name", "label", "current", "section"],
-          "slider":   ["name", "label", "min", "max", "step", "current", "section"],
-          "button":   ["name", "label", "color", "url", "section"],
+          "dropdown": ["name", "label", "list", "current", "section", "visibility"],
+          "bool":     ["name", "label", "current", "section", "visibility"],
+          "text":     ["name", "label", "current", "placeholder", "section", "visibility"],
+          "color":    ["name", "label", "current", "section", "visibility"],
+          "slider":   ["name", "label", "min", "max", "step", "current", "section", "visibility"],
+          "button":   ["name", "label", "color", "url", "section", "visibility"],
           "label":    ["label", "section", "visibility"],
-          "info":     ["text", "color", "icon", "section"],
+          "info":     ["text", "color", "icon", "section", "visibility"],
           "option":   ["id", "name", "sub"]
         }
         )JSON";
@@ -2510,15 +2504,15 @@ void JaamWeb::handleUiSchema() {
         c.add("slider"); c.add(name); c.add(label); c.add(minv); c.add(maxv); c.add(step); c.add(current); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
-    auto addColor = [&](const char* section, const char* name, const char* label, Type key){
+    auto addColor = [&](const char* section, const char* name, const char* label, Type key, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
-        c.add("color"); c.add(name); c.add(label); c.add(String(settings->getString(key))); c.add(section);
+        c.add("color"); c.add(name); c.add(label); c.add(String(settings->getString(key))); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
     // Helper to add an info panel
-    auto addInfo = [&](const char* section, const char* text, const char* color, const char* icon){
+    auto addInfo = [&](const char* section, const char* text, const char* color, const char* icon, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
-        c.add("info"); c.add(text); c.add(color); c.add(icon); c.add(section);
+        c.add("info"); c.add(text); c.add(color); c.add(icon); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
     // Helper to add button
@@ -2528,14 +2522,14 @@ void JaamWeb::handleUiSchema() {
     };
 
     // Helper to add different types of info panels
-    auto addInfoSuccess = [&](const char* section, const char* text){
-        addInfo(section, text, "#28a745", "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z");
+    auto addInfoSuccess = [&](const char* section, const char* text, const char* visibility = nullptr){
+        addInfo(section, text, "#28a745", "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z", visibility);
     };
-    auto addInfoWarning = [&](const char* section, const char* text){
-        addInfo(section, text, "#ffc107", "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z");
+    auto addInfoWarning = [&](const char* section, const char* text, const char* visibility = nullptr){
+        addInfo(section, text, "#ffc107", "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z", visibility);
     };
-    auto addInfoError = [&](const char* section, const char* text){
-        addInfo(section, text, "#dc3545", "M13,14H11V10H13M13,18H11V16H13M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
+    auto addInfoError = [&](const char* section, const char* text, const char* visibility = nullptr){
+        addInfo(section, text, "#dc3545", "M13,14H11V10H13M13,18H11V16H13M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z", visibility);
     };
 
     // Загальні налаштування
@@ -2547,7 +2541,7 @@ void JaamWeb::handleUiSchema() {
 
     //addBool("general", "kyiv_led", "Київ як окремий LED", KYIV_LED);
     addDropdown("general", "home_district", "Домашній регіон", "districts", HOME_DISTRICT);
-    addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE);
+    addDropdown("general", "bg_led_mode", "Режим фонової підствітки", "bg_led_mode", BG_LED_MODE, exceptJaam1.c_str());
     
     // Додаємо кнопку для редактора кольорів індивідуальних ледів (лише для bg_led_mode = individual)
     addButton("general", "color_editor", "Редактор кольорів", "#28a745", "/bg-color-editor", individualOnly.c_str());
