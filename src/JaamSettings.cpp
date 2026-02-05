@@ -182,7 +182,6 @@ std::map<Type, SettingItemInt> intSettings = {
     {WS_REBOOT_TIME, {"wsrt", 300000}},
     {MIN_OF_SILENCE, {"mos", 1}},
     {FW_UPDATE_CHANNEL, {"fwuc", 0}},
-    {TIME_ZONE, {"tz", 2}},
     {ALERT_ON_TIME, {"aonte", 300}},
     {ALERT_OFF_TIME, {"aofte", 5}},
     {DRONE_TIME, {"drte", 300}},
@@ -218,6 +217,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_BALLISTIC_CYCLE_TIME, {"abct", 500}},
     {ANIMATION_EXPLOSION_CYCLE_TIME, {"aect", 500}},
     {BRIGHTNESS_LAMP, {"blamp", 50}},
+    {TIME_ZONE, {"tzn", 0}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {
@@ -243,6 +243,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_HOME_DISTRICT, {"rgbchd", "#5CFF5C"}},
     {COLOR_BG, {"rgbcbg", "#00FF00"}},
     {COLOR_LAMP, {"rgbclamp", "#D707FF"}},
+
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {
