@@ -2409,7 +2409,7 @@ void mainThreadProcess() {
         generateCustomRegionMap(hardwareConfig);
         LOG.printf("[MAIN] Recalculating LEDs\n");
         needRecalculateLeds = false;
-        needReconnectWebsocket = true;
+        //needReconnectWebsocket = true;
     }
 
     if (needAdaptColors) {
