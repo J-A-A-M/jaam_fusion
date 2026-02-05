@@ -1601,12 +1601,10 @@ static TimezoneInfo* getTimezoneInfo(int timezoneId) {
     return &TIMEZONE_OFFSETS[0];
 }
 
-static void applyTimezoneSettings(int timezoneId, bool verbose = true) {
+static void applyTimezoneSettings(int timezoneId) {
     TimezoneInfo* tzInfo = getTimezoneInfo(timezoneId);
-    if (verbose) {
-        LOG.printf("[TIME] Applying timezone ID %d (offset: %d hours %d minutes)\n", 
-                   timezoneId, tzInfo->offset, tzInfo->minutes);
-    }
+    LOG.printf("[TIME] Applying timezone ID %d (offset: %d hours %d minutes)\n", 
+               timezoneId, tzInfo->offset, tzInfo->minutes);
     timeClient.setTimeZone(tzInfo->offset, tzInfo->minutes);
     
     // Налаштування DST
@@ -1619,10 +1617,14 @@ static void applyTimezoneSettings(int timezoneId, bool verbose = true) {
             tzInfo->dstEnd[0], tzInfo->dstEnd[1], tzInfo->dstEnd[2], tzInfo->dstEnd[3]
         );
         timeClient.setDSTauto(currentDST);
-        if (verbose) LOG.printf("[TIME] DST enabled for this timezone\n");
+        LOG.printf("[TIME] DST enabled for this timezone\n");
     } else {
+        if (currentDST != nullptr) {
+            delete currentDST;
+            currentDST = nullptr;
+        }
         timeClient.setDSTauto(nullptr);
-        if (verbose) LOG.printf("[TIME] DST not used for this timezone\n");
+        LOG.printf("[TIME] DST not used for this timezone\n");
     }
 }
 
@@ -1841,7 +1843,7 @@ void initTime() {
     LOG.printf("[TIME] Init time\n");
     LOG.printf("[TIME] NTP host: %s\n", settings.getString(NTP_HOST));
     timeClient.setHost(settings.getString(NTP_HOST));
-    applyTimezoneSettings(settings.getInt(TIME_ZONE), true);
+    applyTimezoneSettings(settings.getInt(TIME_ZONE));
     timeClient.setTimeout(5000); // 5 seconds waiting for reply
     timeClient.begin();
     syncTime(7);
@@ -2543,7 +2545,7 @@ void mainThreadProcess() {
 
     if (needUpdateTimezone) {
         LOG.printf("[MAIN] Updating timezone\n");
-        applyTimezoneSettings(settings.getInt(TIME_ZONE), true);
+        applyTimezoneSettings(settings.getInt(TIME_ZONE));
         needUpdateTimezone = false;
     }
 

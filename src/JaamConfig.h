@@ -476,8 +476,8 @@ static TimezoneInfo TIMEZONE_OFFSETS[] = {
   {23, -5, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
   // ID 24: America/Lima - немає DST
   {24, -5, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 25: America/Sao_Paulo - 3-я неділя жовтня, 3-я неділя лютого
-  {25, -3, 0, true, {10, 3, 7, 0}, {2, 3, 7, 0}},
+  // ID 25: America/Sao_Paulo - немає DST
+  {25, -3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
   // ID 26: America/Argentina/Buenos_Aires - немає DST
   {26, -3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
   // ID 27: Asia/Dubai - немає DST
