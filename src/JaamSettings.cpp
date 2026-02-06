@@ -4,7 +4,7 @@
 #include <JaamUtils.h>
 #include <Adafruit_NeoPixel.h>
 
-JaamSettings::JaamSettings() {
+JaamSettings::JaamSettings() : changeCallback(nullptr) {
 }
 
 const char* PF_STRING = "S";
@@ -218,6 +218,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_EXPLOSION_CYCLE_TIME, {"aect", 500}},
     {BRIGHTNESS_LAMP, {"blamp", 50}},
     {TIME_ZONE, {"tzn", 0}},
+    {API_ENABLED, {"apie", 1}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {
@@ -318,6 +319,12 @@ void JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         setting.value = value;
         intSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: %d (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
+        
+        // Викликаємо callback якщо зареєстрований
+        if (changeCallback) {
+            changeCallback(type, value, nullptr);
+        }
+        
         return;
     }
     LOG.printf("[SETTINGS] Unknown int setting type\n");
@@ -343,6 +350,12 @@ void JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
         setting.value = value;
         stringSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: '%s' (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
+        
+        // Викликаємо callback якщо зареєстрований
+        if (changeCallback) {
+            changeCallback(type, 0, value);
+        }
+        
         return;
     }
     LOG.printf("[SETTINGS] Unknown stringsetting type\n");
@@ -461,4 +474,8 @@ bool JaamSettings::restoreSettingsBackup(const char* settings) {
     preferences.end();
 
     return restored;
+}
+
+void JaamSettings::setChangeCallback(SettingsChangeCallback callback) {
+    changeCallback = callback;
 }

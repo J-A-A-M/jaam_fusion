@@ -1856,9 +1856,10 @@ void initWeb() {
         LOG.printf("[WEB] Web already initialized, skipping...\n");
         return;
     }
-    web.begin(strip_main, strip_bg, strip_service);
     web.setSettings(&settings);
     web.setStorage(&storage);
+    web.getApi()->setDeviceInfo(chipID, currentFwVersion);
+    web.begin(strip_main, strip_bg, strip_service);
     webInitialized = true;
 }
 

@@ -1738,6 +1738,18 @@ void JaamWeb::handleParameter() {
             settings->saveBool(ENABLE_SYNC_ANIMATIONS, boolValue);
             LOG.printf("[WEB] Setting enable_sync_animations: %d\n", boolValue);
             needUpdateAnimationsMode = true;
+        } else if (name == "api_enabled") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(API_ENABLED, boolValue);
+            LOG.printf("[WEB] Setting api_enabled: %d\n", boolValue);
+            // Запускаємо або зупиняємо API
+            if (boolValue) {
+                api.start();
+                LOG.printf("[WEB] API started\n");
+            } else {
+                api.stop();
+                LOG.printf("[WEB] API stopped\n");
+            }
         } else if (name == "brightness_mode") {
             settings->saveInt(BRIGHTNESS_MODE, intValue);
             LOG.printf("[WEB] Setting brightness_mode: %d\n", intValue);
@@ -2133,6 +2145,16 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     this->strip_bg = strip_bg;
     this->strip_service = strip_service;
 
+    // Ініціалізація API для Home Assistant
+    api.setSettings(settings);
+    
+    // Запускаємо API якщо він увімкнений в налаштуваннях
+    if (settings->getBool(API_ENABLED)) {
+        api.start();
+        LOG.printf("[WEB] API enabled and started\n");
+    } else {
+        LOG.printf("[WEB] API disabled in settings\n");
+    }
 
     // Налаштування веб-сервера
     //server.enableCORS();
@@ -2167,6 +2189,12 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.onNotFound([this]() { this->handleNotFound(); });
 
     server.begin();
+    
+    // Реєструємо callback для автоматичного broadcast змін налаштувань
+    // ВАЖЛИВО: робимо це ПІСЛЯ повної ініціалізації сервера
+    settings->setChangeCallback([this](Type type, int intValue, const char* strValue) {
+        api.onSettingsChange(type, intValue, strValue);
+    });
 }
 
 void JaamWeb::handleClient() {
@@ -2174,6 +2202,9 @@ void JaamWeb::handleClient() {
         return;
     }
     server.handleClient();
+    
+    // Обробляємо WebSocket клієнтів
+    api.handleWebSocketClients();
 }
 
 void JaamWeb::handleSystemInfo() {
@@ -2588,7 +2619,8 @@ void JaamWeb::handleUiSchema() {
     addText("network", "ntp_host", "NTP сервер", String(settings->getString(NTP_HOST)), "time.google.com");
 
     // Home Assistant
-    // addLabel("network", "Home Assistant");
+    addLabel("network", "Home Assistant");
+    addBool("network", "api_enabled", "Увімкнути API (WebSocket)", API_ENABLED);
     // addText("network", "ha_mqtt_user", "MQTT користувач", String(settings->getString(HA_MQTT_USER)), "");
     // addText("network", "ha_mqtt_password", "MQTT пароль", String(settings->getString(HA_MQTT_PASSWORD)), "");
     // addText("network", "ha_broker_address", "Адреса брокера", String(settings->getString(HA_BROKER_ADDRESS)), "");
