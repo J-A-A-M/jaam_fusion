@@ -4,22 +4,22 @@
 #include <WiFiManager.h>
 #include "JaamSettings.h"
 #include "JaamStorage.h"
-#include "JaamApi.h"
 
 class JaamWeb {
 public:
-    JaamWeb() : server(80), api(), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr), storage(nullptr) {}
+    JaamWeb() : server(80), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr), storage(nullptr), chipId(nullptr), fwVersion(nullptr) {}
     void setSettings(JaamSettings* settings);
     void setStorage(JaamStorage* storage);
+    void setDeviceInfo(const char* chipId, const char* fwVersion);
     void begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service);
     void handleClient();
-    JaamApi* getApi() { return &api; }
 
 private:
     WebServer server;
-    JaamApi api;
     JaamSettings* settings;
     JaamStorage* storage;
+    const char* chipId;
+    const char* fwVersion;
     Adafruit_NeoPixel* strip_main;
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;
@@ -42,4 +42,5 @@ private:
     String getMeta();
     String getStyles();
     String getScripts();
+    void configureMDNS();
 };

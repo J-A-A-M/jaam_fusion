@@ -21,6 +21,7 @@ public:
     void saveFloat(Type type, float value, bool saveToPrefs = true);
     bool getBool(Type type);
     void saveBool(Type type, bool value, bool saveToPrefs = true);
+    bool hasKey(Type type);
     void getSettingsBackup(Print* stream, const char* fwVersion, const char* chipID, const char* time);
     bool restoreSettingsBackup(const char* settings);
     

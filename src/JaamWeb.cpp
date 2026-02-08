@@ -4,6 +4,8 @@
 #include "JaamUtils.h"
 #include <esp_system.h>
 #include <ArduinoJson.h>
+#include <ESPmDNS.h>
+#include <mdns.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +31,7 @@ extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needReconfigureSound;
 extern volatile bool needReconfigureButtons;
+extern volatile bool needReconfigureApi;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
@@ -50,6 +53,66 @@ void JaamWeb::setSettings(JaamSettings* settings) {
 
 void JaamWeb::setStorage(JaamStorage* storage) {
     this->storage = storage;
+}
+
+void JaamWeb::setDeviceInfo(const char* chipId, const char* fwVersion) {
+    this->chipId = chipId;
+    this->fwVersion = fwVersion;
+}
+
+void JaamWeb::configureMDNS() {
+    // Налаштування MDNS сервісу
+    const char* hostname = settings->getString(BROADCAST_NAME);
+    if (!hostname || strlen(hostname) == 0) {
+        LOG.printf("[WEB] MDNS not configured: BROADCAST_NAME is empty\n");
+        return;
+    }
+    
+    // Ініціалізуємо MDNS (якщо вже запущений - повинно повернути success)
+    if (!MDNS.begin(hostname)) {
+        LOG.printf("[WEB] MDNS failed to start\n");
+        return;
+    }
+    
+    LOG.printf("[WEB] MDNS ready, configuring HTTP service\n");
+    
+    // Додаємо HTTP сервіс (якщо вже існує - він буде оновлено)
+    if (!MDNS.addService("http", "tcp", 80)) {
+        LOG.printf("[WEB] Failed to add MDNS HTTP service\n");
+        return;
+    }
+    
+    LOG.printf("[WEB] MDNS HTTP service added on port 80\n");
+    
+    // Встановлюємо instance name для HTTP сервісу (це відображається як title в Bonjour Browser)
+    const char* deviceName = settings->getString(DEVICE_NAME);
+    if (deviceName && strlen(deviceName) > 0) {
+        if (mdns_service_instance_name_set("_http", "_tcp", deviceName)) {
+            LOG.printf("[WEB] Failed setting MDNS HTTP service instance name\n");
+        } else {
+            LOG.printf("[WEB] MDNS HTTP service instance name set to: %s\n", deviceName);
+        }
+    }
+    
+    // Додаємо TXT записи для HTTP сервісу
+    MDNS.addServiceTxt("http", "tcp", "path", "/");
+    
+    if (chipId) {
+        MDNS.addServiceTxt("http", "tcp", "mac", chipId);
+    }
+    
+    MDNS.addServiceTxt("http", "tcp", "manufacturer", "JAAM");
+    
+    if (fwVersion) {
+        MDNS.addServiceTxt("http", "tcp", "version", fwVersion);
+    }
+    
+    // TXT запис name (для додаткової інформації, але не для відображення title)
+    if (deviceName && strlen(deviceName) > 0) {
+        MDNS.addServiceTxt("http", "tcp", "name", deviceName);
+    }
+    
+    LOG.printf("[WEB] MDNS HTTP TXT records added\n");
 }
 
 String JaamWeb::getMeta() {
@@ -1192,7 +1255,13 @@ function evaluateCondition(condition) {
     const hwSelect = document.getElementById(field);
     if (!hwSelect) return true;
     
-    const currentValue = hwSelect.value;
+    // For checkboxes, convert checked state to "1" or "0" for comparison
+    let currentValue;
+    if (hwSelect.type === 'checkbox') {
+        currentValue = hwSelect.checked ? '1' : '0';
+    } else {
+        currentValue = hwSelect.value;
+    }
     
     if (operator === '!=') {
         return String(currentValue) !== String(value);
@@ -1742,14 +1811,19 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(API_ENABLED, boolValue);
             LOG.printf("[WEB] Setting api_enabled: %d\n", boolValue);
-            // Запускаємо або зупиняємо API
-            if (boolValue) {
-                api.start();
-                LOG.printf("[WEB] API started\n");
-            } else {
-                api.stop();
-                LOG.printf("[WEB] API stopped\n");
+            // Встановлюємо прапорець для реконфігурації API
+            needReconfigureApi = true;
+        } else if (name == "api_port") {
+            // Перевіряємо що порт не 80 (зайнятий веб-сервером)
+            if (intValue == 80) {
+                LOG.printf("[WEB] api_port cannot be 80 (used by web server)\n");
+                server.send(400, "application/json", "{\"error\":\"Port 80 is reserved for web server\"}");
+                return;
             }
+            settings->saveInt(API_PORT, intValue);
+            LOG.printf("[WEB] Setting api_port: %d\n", intValue);
+            // Встановлюємо прапорець для реконфігурації API
+            needReconfigureApi = true;
         } else if (name == "brightness_mode") {
             settings->saveInt(BRIGHTNESS_MODE, intValue);
             LOG.printf("[WEB] Setting brightness_mode: %d\n", intValue);
@@ -2038,12 +2112,16 @@ void JaamWeb::handleTextParameter() {
         if (name == "device_name") {
             settings->saveString(DEVICE_NAME, valuePtr);
             LOG.printf("[WEB] Setting device_name: %s\n", valuePtr);
+            configureMDNS();
+            needReconfigureApi = true;
         } else if (name == "device_description") {
             settings->saveString(DEVICE_DESCRIPTION, valuePtr);
             LOG.printf("[WEB] Setting device_description: %s\n", valuePtr);
         } else if (name == "broadcast_name") {
             settings->saveString(BROADCAST_NAME, valuePtr);
             LOG.printf("[WEB] Setting broadcast_name: %s\n", valuePtr);
+            configureMDNS();
+            needReconfigureApi = true;
         } else if (name == "ws_server_host") {
             settings->saveString(WS_SERVER_HOST, valuePtr);
             needReconnectWebsocket = true;
@@ -2145,17 +2223,6 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     this->strip_bg = strip_bg;
     this->strip_service = strip_service;
 
-    // Ініціалізація API для Home Assistant
-    api.setSettings(settings);
-    
-    // Запускаємо API якщо він увімкнений в налаштуваннях
-    if (settings->getBool(API_ENABLED)) {
-        api.start();
-        LOG.printf("[WEB] API enabled and started\n");
-    } else {
-        LOG.printf("[WEB] API disabled in settings\n");
-    }
-
     // Налаштування веб-сервера
     //server.enableCORS();
     server.on("/", HTTP_GET, [this]() { this->handleUiPage(); });
@@ -2190,11 +2257,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
 
     server.begin();
     
-    // Реєструємо callback для автоматичного broadcast змін налаштувань
-    // ВАЖЛИВО: робимо це ПІСЛЯ повної ініціалізації сервера
-    settings->setChangeCallback([this](Type type, int intValue, const char* strValue) {
-        api.onSettingsChange(type, intValue, strValue);
-    });
+    // Налаштовуємо MDNS
+    configureMDNS();
 }
 
 void JaamWeb::handleClient() {
@@ -2202,9 +2266,6 @@ void JaamWeb::handleClient() {
         return;
     }
     server.handleClient();
-    
-    // Обробляємо WebSocket клієнтів
-    api.handleWebSocketClients();
 }
 
 void JaamWeb::handleSystemInfo() {
@@ -2527,6 +2588,10 @@ void JaamWeb::handleUiSchema() {
     // For color editor: show only when bg_led_mode = individual (2)
     uint8_t showColorEditorForIndividual[] = {2};
     String individualOnly = buildVisibilityCondition("bg_led_mode", "==", showColorEditorForIndividual, 1);
+    
+    // For api_port: show only when api_enabled = true (1)
+    uint8_t showApiPortWhenEnabled[] = {1};
+    String apiEnabledOnly = buildVisibilityCondition("api_enabled", "==", showApiPortWhenEnabled, 1);
 
     // Helper to add a dropdown control referencing a named list and reading current from settings key
     auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key, const char* visibility = nullptr){
@@ -2602,7 +2667,6 @@ void JaamWeb::handleUiSchema() {
     addDropdown("general", "time_zone", "Часовий пояс", "timezones", TIME_ZONE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
     addText("general", "device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
-    addText("general", "broadcast_name", "Ім'я в мережі", String(settings->getString(BROADCAST_NAME)), "jaam");
 
     // Display settings
     addInfo("display", "Налаштуйте параметри дисплея та візуального відображення мапи", "#28a745", "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z");
@@ -2614,6 +2678,7 @@ void JaamWeb::handleUiSchema() {
 
     // Мережеві налаштування
     addInfo("network", "Налаштуйте підключення до серверів та мережевих сервісів", "#17a2b8", "M17,3A2,2 0 0,1 19,5V15A2,2 0 0,1 17,17H13V19H14A1,1 0 0,1 15,20H22V22H15A1,1 0 0,1 14,21H10A1,1 0 0,1 9,22H2V20H9A1,1 0 0,1 10,19H11V17H7C5.89,17 5,16.1 5,15V5A2,2 0 0,1 7,3H17Z");
+    addText("network", "broadcast_name", "Ім'я в мережі", String(settings->getString(BROADCAST_NAME)), "jaam");
     addText("network", "ws_server_host", "Сервер WebSocket", String(settings->getString(WS_SERVER_HOST)), "ws.jaam.net.ua");
     addText("network", "ws_server_port", "Порт WebSocket", String(settings->getInt(WS_SERVER_PORT)), "80");
     addText("network", "ntp_host", "NTP сервер", String(settings->getString(NTP_HOST)), "time.google.com");
@@ -2621,6 +2686,8 @@ void JaamWeb::handleUiSchema() {
     // Home Assistant
     addLabel("network", "Home Assistant");
     addBool("network", "api_enabled", "Увімкнути API (WebSocket)", API_ENABLED);
+    addText("network", "api_port", "Порт API (WebSocket)", String(settings->getInt(API_PORT)), "81", apiEnabledOnly.c_str());
+    addInfoWarning("network", "Увага: Порт 80 зарезервований для веб-сервера. Використовуйте інший порт (наприклад, 81).", apiEnabledOnly.c_str());
     // addText("network", "ha_mqtt_user", "MQTT користувач", String(settings->getString(HA_MQTT_USER)), "");
     // addText("network", "ha_mqtt_password", "MQTT пароль", String(settings->getString(HA_MQTT_PASSWORD)), "");
     // addText("network", "ha_broker_address", "Адреса брокера", String(settings->getString(HA_BROKER_ADDRESS)), "");

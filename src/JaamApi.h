@@ -11,8 +11,10 @@ public:
     JaamApi();
     void setSettings(JaamSettings* settings);
     void setDeviceInfo(const char* chipId, const char* fwVersion);
-    void start();
-    void stop();
+    void setSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);
+    void setHomeAlert(uint16_t flags16);
+    void setHomeDistrictTemp(int temp);
+    void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
     
@@ -21,6 +23,13 @@ public:
     void broadcastLampChange(const String& color, int brightness);
     void broadcastHomeRegionChange(int regionId);
     void broadcastAlertChange(int regionId, int alertType);
+    void broadcastHomeAlertChange(uint16_t flags16);
+    void broadcastSystemInfo();
+    
+    // Оновлення даних
+    void updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);
+    void updateHomeAlert(uint16_t flags16);
+    void updateHomeDistrictTemp(int temp);
     
     // Обробка змін налаштувань
     void onSettingsChange(Type type, int intValue, const char* strValue);
@@ -32,12 +41,27 @@ private:
     const char* chipId;
     const char* fwVersion;
     bool isRunning;
+    int currentPort;
+    
+    // Приватні методи управління сервісом
+    void start();
+    void stop();
+    void startMDNS();
+    void stopMDNS();
+    uint32_t usedMemory;
+    uint32_t uptime;
+    uint32_t wifiUptime;
+    int8_t wifiSignal;
+    bool websocketStatus;
+    uint32_t websocketUptime;
+    uint16_t homeAlertFlags;
+    float cpuTemp;
+    int homeDistrictTemp;
     
     // WebSocket handlers
     void handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage message);
     void sendInitialState(WebsocketsClient& client);
-    
-    // Helper methods
-    String getMapModeName(int mode);
     void broadcastWebSocket(const String& jsonMessage);
+    void broadcastDeviceNameChange(const char* deviceName);
+    void broadcastHomeDistrictTempChange(int temp);
 };

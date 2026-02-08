@@ -218,7 +218,8 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_EXPLOSION_CYCLE_TIME, {"aect", 500}},
     {BRIGHTNESS_LAMP, {"blamp", 50}},
     {TIME_ZONE, {"tzn", 0}},
-    {API_ENABLED, {"apie", 1}},
+    {API_ENABLED, {"apie", 0}},
+    {API_PORT, {"apip", 81}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {
@@ -393,6 +394,14 @@ bool JaamSettings::getBool(Type type) {
 
 void JaamSettings::saveBool(Type type, bool value, bool saveToPrefs) {
     saveInt(type, value ? 1 : 0, saveToPrefs);
+}
+
+bool JaamSettings::hasKey(Type type) {
+    const char* key = getKey(type);
+    preferences.begin(PREFS_NAME, true);
+    bool exists = preferences.isKey(key);
+    preferences.end();
+    return exists;
 }
 
 void JaamSettings::getSettingsBackup(Print* stream, const char* fwVersion, const char* chipID, const char* time) {

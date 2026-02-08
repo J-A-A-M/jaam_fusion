@@ -1056,3 +1056,10 @@ inline int getCurrentPeriodIndex(int periodLength, int periodCount, long current
   }
   return (currentSeconds / periodLength) % periodCount;
 }
+
+// Helper: decode encoded temperature byte (7 bits value, 1 bit sign: 0=+, 1=-)
+static inline int decodeTemperature(uint8_t enc) {
+    int magnitude = (int)(enc & 0x7F);
+    bool negative = (enc & 0x80) != 0; // last bit is sign
+    return negative ? -magnitude : magnitude;
+}

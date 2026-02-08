@@ -3,10 +3,13 @@
 #include "JaamUtils.h"
 #include "JaamLogs.h"
 #include <ArduinoJson.h>
+#include <ESPmDNS.h>
+#include <mdns.h>
 
 extern volatile bool needAdaptColors;
 
-JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false) {}
+JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
+    usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0) {}
 
 void JaamApi::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -17,19 +20,121 @@ void JaamApi::setDeviceInfo(const char* chipId, const char* fwVersion) {
     this->fwVersion = fwVersion;
 }
 
+void JaamApi::setSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp) {
+    this->usedMemory = usedMemory;
+    this->uptime = uptime;
+    this->wifiUptime = wifiUptime;
+    this->wifiSignal = wifiSignal;
+    this->websocketStatus = websocketStatus;
+    this->websocketUptime = websocketUptime;
+    this->cpuTemp = cpuTemp;
+}
 
+void JaamApi::setHomeAlert(uint16_t flags16) {
+    this->homeAlertFlags = flags16;
+}
+
+void JaamApi::setHomeDistrictTemp(int temp) {
+    this->homeDistrictTemp = temp;
+}
+
+void JaamApi::reconfigure() {
+    if (!settings) {
+        LOG.printf("[API] Settings not initialized, skipping reconfigure\n");
+        return;
+    }
+    
+    bool shouldBeRunning = settings->getBool(API_ENABLED);
+    int newPort = settings->getInt(API_PORT);
+    
+    // Перевіряємо чи змінився порт
+    if (isRunning && currentPort != newPort) {
+        LOG.printf("[API] Port changed from %d to %d, restarting server\n", currentPort, newPort);
+        stop();
+    }
+    
+    if (shouldBeRunning) {
+        start();
+    } else {
+        stop();
+    }
+}
+
+void JaamApi::startMDNS() {
+    if (!settings) {
+        return;
+    }
+    
+    const char* hostname = settings->getString(BROADCAST_NAME);
+    if (!hostname || strlen(hostname) == 0) {
+        LOG.printf("[API] MDNS not started: BROADCAST_NAME is empty\n");
+        return;
+    }
+    
+    if (!MDNS.begin(hostname)) {
+        LOG.printf("[API] MDNS failed to start\n");
+        return;
+    }
+    
+    // Додаємо WebSocket сервіс для Home Assistant
+    int port = settings->getInt(API_PORT);
+    if (!MDNS.addService("jaam-ws", "tcp", port)) {
+        LOG.printf("[API] Failed to add MDNS jaam-ws service\n");
+        return;
+    }
+    
+    LOG.printf("[API] MDNS jaam-ws service added on port %d\n", port);
+    
+    // Встановлюємо instance name для jaam-ws сервісу (це відображається як title в Bonjour Browser)
+    const char* deviceName = settings->getString(DEVICE_NAME);
+    if (deviceName && strlen(deviceName) > 0) {
+        if (mdns_service_instance_name_set("_jaam-ws", "_tcp", deviceName)) {
+            LOG.printf("[API] Failed setting MDNS jaam-ws service instance name\n");
+        } else {
+            LOG.printf("[API] MDNS jaam-ws service instance name set to: %s\n", deviceName);
+        }
+    }
+    
+    // Додаємо TXT metadata
+    if (chipId) {
+        MDNS.addServiceTxt("jaam-ws", "tcp", "chipId", chipId);
+    }
+    if (fwVersion) {
+        MDNS.addServiceTxt("jaam-ws", "tcp", "version", fwVersion);
+    }
+    if (deviceName && strlen(deviceName) > 0) {
+        MDNS.addServiceTxt("jaam-ws", "tcp", "deviceName", deviceName);
+    }
+    
+    LOG.printf("[API] MDNS started: %s.local\n", hostname);
+}
+
+void JaamApi::stopMDNS() {
+    // Видаляємо MDNS сервіс (але не зупиняємо MDNS повністю)
+    if (mdns_service_remove("_jaam-ws", "_tcp")) {
+        LOG.printf("[API] Failed removing MDNS service\n");
+    } else {
+        LOG.printf("[API] MDNS service removed\n");
+    }
+}
 
 void JaamApi::start() {
     if (!isRunning) {
         // Створюємо новий WebSocket сервер
         wsServer = new WebsocketsServer();
-        wsServer->listen(81);
+        int port = settings->getInt(API_PORT);
+        wsServer->listen(port);
+        currentPort = port;
         isRunning = true;
-        LOG.printf("[API] WebSocket server started on port 81\n");
+        LOG.printf("[API] WebSocket server started on port %d\n", port);
     }
+    // Запускаємо MDNS
+    startMDNS();
 }
 
 void JaamApi::stop() {
+    // Видаляємо MDNS сервіс
+    stopMDNS();
     if (isRunning) {
         // Закриваємо всіх підключених клієнтів
         for (auto& client : wsClients) {
@@ -45,6 +150,7 @@ void JaamApi::stop() {
             wsServer = nullptr;
         }
         
+        currentPort = -1;
         isRunning = false;
         LOG.printf("[API] WebSocket server stopped\n");
     }
@@ -52,17 +158,6 @@ void JaamApi::stop() {
 
 bool JaamApi::isApiRunning() const {
     return isRunning;
-}
-
-String JaamApi::getMapModeName(int mode) {
-    switch (mode) {
-        case MapModes::OFF: return "off";
-        case MapModes::ALERT: return "alert";
-        case MapModes::WEATHER: return "weather";
-        case MapModes::FLAG: return "flag";
-        case MapModes::LAMP: return "lamp";
-        default: return "unknown";
-    }
 }
 
 void JaamApi::sendInitialState(WebsocketsClient& client) {
@@ -74,13 +169,29 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     if (chipId) doc["chip_id"] = chipId;
     if (fwVersion) doc["fw_version"] = fwVersion;
     
+    // Назва пристрою
+    doc["device_name"] = settings->getString(DEVICE_NAME);
+    
     // Режим мапи
-    int currentMode = settings->getInt(MAP_MODE);
-    doc["map_mode"] = getMapModeName(currentMode);
-    doc["map_mode_id"] = currentMode;
+    doc["map_mode_id"] = settings->getInt(MAP_MODE);
     
     // Домашній регіон
     doc["home_region"] = settings->getInt(HOME_DISTRICT);
+    
+    // Стан тривоги в домашньому регіоні
+    doc["home_alert_flags"] = homeAlertFlags;
+    
+    // Температура в домашньому регіоні
+    doc["home_district_temp"] = homeDistrictTemp;
+    
+    // Системна інформація
+    doc["used_memory"] = usedMemory;
+    doc["uptime"] = uptime;
+    doc["wifi_uptime"] = wifiUptime;
+    doc["wifi_signal"] = wifiSignal;
+    doc["websocket_status"] = websocketStatus;
+    doc["websocket_uptime"] = websocketUptime;
+    doc["cpu_temp"] = cpuTemp;
     
     // Налаштування лампи
     JsonObject lamp = doc["lamp"].to<JsonObject>();
@@ -115,27 +226,16 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
     
     // Обробляємо команду set_map_mode
     if (type == "set_map_mode") {
-        int newMode = -1;
-        
         if (!doc["mode_id"].isNull()) {
-            newMode = doc["mode_id"].as<int>();
-        } else if (!doc["mode"].isNull()) {
-            String modeName = doc["mode"].as<String>();
-            modeName.toLowerCase();
+            int newMode = doc["mode_id"].as<int>();
             
-            if (modeName == "off") newMode = MapModes::OFF;
-            else if (modeName == "alert") newMode = MapModes::ALERT;
-            else if (modeName == "weather") newMode = MapModes::WEATHER;
-            else if (modeName == "flag") newMode = MapModes::FLAG;
-            else if (modeName == "lamp") newMode = MapModes::LAMP;
-        }
-        
-        if (newMode >= 0 && newMode <= 4) {
-            settings->saveInt(MAP_MODE, newMode);
-            needAdaptColors = true;
-            LOG.printf("[API] Map mode changed to: %d\n", newMode);
-        } else {
-            LOG.printf("[API] Invalid map mode: %d\n", newMode);
+            if (newMode >= 0 && newMode <= 4) {
+                settings->saveInt(MAP_MODE, newMode);
+                needAdaptColors = true;
+                LOG.printf("[API] Map mode changed to: %d\n", newMode);
+            } else {
+                LOG.printf("[API] Invalid map mode: %d\n", newMode);
+            }
         }
     }
     // Обробляємо команду set_lamp
@@ -231,7 +331,6 @@ void JaamApi::broadcastWebSocket(const String& jsonMessage) {
 void JaamApi::broadcastMapModeChange(int newMode) {
     JsonDocument doc;
     doc["type"] = "map_mode_change";
-    doc["map_mode"] = getMapModeName(newMode);
     doc["map_mode_id"] = newMode;
     
     String data;
@@ -280,6 +379,85 @@ void JaamApi::broadcastAlertChange(int regionId, int alertType) {
     LOG.printf("[API] Broadcast alert change: region %d, type %d\n", regionId, alertType);
 }
 
+void JaamApi::broadcastHomeAlertChange(uint16_t flags16) {
+    JsonDocument doc;
+    doc["type"] = "home_alert_change";
+    doc["home_alert_flags"] = flags16;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast home alert change: 0x%04X\n", flags16);
+}
+
+void JaamApi::broadcastDeviceNameChange(const char* deviceName) {
+    JsonDocument doc;
+    doc["type"] = "device_name_change";
+    doc["device_name"] = deviceName;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast device name change: %s\n", deviceName);
+}
+
+void JaamApi::broadcastHomeDistrictTempChange(int temp) {
+    JsonDocument doc;
+    doc["type"] = "home_district_temp_change";
+    doc["home_district_temp"] = temp;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast home district temp change: %d\n", temp);
+}
+
+void JaamApi::updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp) {
+    this->usedMemory = usedMemory;
+    this->uptime = uptime;
+    this->wifiUptime = wifiUptime;
+    this->wifiSignal = wifiSignal;
+    this->websocketStatus = websocketStatus;
+    this->websocketUptime = websocketUptime;
+    this->cpuTemp = cpuTemp;
+    if (isRunning) {
+        broadcastSystemInfo();
+    }
+}
+
+void JaamApi::updateHomeAlert(uint16_t flags16) {
+    this->homeAlertFlags = flags16;
+    if (isRunning) {
+        broadcastHomeAlertChange(flags16);
+    }
+}
+
+void JaamApi::updateHomeDistrictTemp(int temp) {
+    this->homeDistrictTemp = temp;
+    if (isRunning) {
+        broadcastHomeDistrictTempChange(temp);
+    }
+}
+
+void JaamApi::broadcastSystemInfo() {
+    JsonDocument doc;
+    doc["type"] = "system_info";
+    doc["used_memory"] = usedMemory;
+    doc["uptime"] = uptime;
+    doc["wifi_uptime"] = wifiUptime;
+    doc["wifi_signal"] = wifiSignal;
+    doc["websocket_status"] = websocketStatus;
+    doc["websocket_uptime"] = websocketUptime;
+    doc["cpu_temp"] = cpuTemp;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+}
+
 // --- Обробка змін налаштувань ---
 
 void JaamApi::onSettingsChange(Type type, int intValue, const char* strValue) {
@@ -308,6 +486,13 @@ void JaamApi::onSettingsChange(Type type, int intValue, const char* strValue) {
             
         case HOME_DISTRICT:
             broadcastHomeRegionChange(intValue);
+            break;
+            
+        case DEVICE_NAME:
+            // Якщо змінилась назва пристрою, відправляємо оновлення
+            if (strValue) {
+                broadcastDeviceNameChange(strValue);
+            }
             break;
             
         default:

@@ -9,11 +9,34 @@ import json
 import sys
 
 
+def parse_alert_flags(flags16):
+    """Parse flags16 and return list of active alert types."""
+    alert_names = {
+        0: 'Air',
+        1: 'Artillery',
+        2: 'Urban',
+        3: 'Chemical',
+        4: 'Nuclear',
+        5: 'Drones',
+        6: 'Missiles',
+        7: 'KAB',
+        8: 'Ballistic',
+        9: 'Explosion',
+        10: 'Recon Drones'
+    }
+    active_alerts = []
+    for bit, name in alert_names.items():
+        if flags16 & (1 << bit):
+            active_alerts.append(name)
+    return active_alerts if active_alerts else ['NO_ALERT']
+
+
+
 async def send_command(websocket):
     """Інтерактивна відправка команд."""
     print("\n" + "=" * 60)
     print("Available commands:")
-    print("  1. Set map mode (off/alert/weather/flag/lamp)")
+    print("  1. Set map mode - mode_id: 0=OFF, 1=ALERT, 2=WEATHER, 3=FLAG, 4=LAMP")
     print("  2. Set lamp color and brightness")
     print("  3. Set home region")
     print("  q. Quit")
@@ -39,15 +62,34 @@ async def receive_messages(websocket):
 
                 # Виводимо зручний summary
                 if msg_type == "initial_state":
+                    mode_names = {0: "OFF", 1: "ALERT", 2: "WEATHER", 3: "FLAG", 4: "LAMP"}
+                    mode_id = data.get("map_mode_id")
+                    mode_name = mode_names.get(mode_id, f"Unknown({mode_id})")
+
+                    flags16 = data.get("home_alert_flags", 0)
+                    active_alerts = parse_alert_flags(flags16)
+
                     print(f"✓ Initial state received")
                     print(f"  Device: {data.get('chip_id')} (FW: {data.get('fw_version')})")
-                    print(f"  Mode: {data.get('map_mode')} (ID: {data.get('map_mode_id')})")
-                    print(f"  Region: {data.get('home_region')}")
+                    print(f"  Name: {data.get('device_name', 'N/A')}")
+                    print(f"  Map mode: {mode_name} (id={mode_id})")
+                    print(f"  Home region: {data.get('home_region')}")
+                    print(f"  Home alert: {", ".join(active_alerts)} (flags=0x{flags16:04X})")
+                    print(f"  Home temp: {data.get('home_district_temp', 'N/A')}°C")
+                    print(f"  Memory: {data.get('used_memory', 0) / 1024:.1f} KB")
+                    print(f"  Uptime: {data.get('uptime')} min, WiFi: {data.get('wifi_uptime')} min")
+                    print(
+                        f"  WiFi signal: {data.get('wifi_signal')} dBm, WebSocket: {'up' if data.get('websocket_status') else 'down'} ({data.get('websocket_uptime')} min)"
+                    )
+                    print(f"  CPU temp: {data.get('cpu_temp', 'N/A')}°C")
                     lamp = data.get("lamp", {})
                     print(f"  Lamp: {lamp.get('color')} @ {lamp.get('brightness')}%")
 
                 elif msg_type == "map_mode_change":
-                    print(f"→ Map mode changed to: {data.get('map_mode')}")
+                    mode_names = {0: "OFF", 1: "ALERT", 2: "WEATHER", 3: "FLAG", 4: "LAMP"}
+                    mode_id = data.get("map_mode_id")
+                    mode_name = mode_names.get(mode_id, f"Unknown({mode_id})")
+                    print(f"→ Map mode changed to: {mode_name} (id={mode_id})")
 
                 elif msg_type == "lamp_change":
                     lamp = data.get("lamp", {})
@@ -59,11 +101,28 @@ async def receive_messages(websocket):
                 elif msg_type == "alert_change":
                     print(f"→ Alert: region {data.get('region_id')}, type {data.get('alert_type')}")
 
-                print("-" * 60)
+                elif msg_type == "home_alert_change":
+                    flags16 = data.get("home_alert_flags", 0)
+                    active_alerts = parse_alert_flags(flags16)
+                    print(f"→ Home alert changed to: {", ".join(active_alerts)} (flags=0x{flags16:04X})")
+
+                elif msg_type == "system_info":
+                    mem_kb = data.get("used_memory", 0) / 1024
+                    print(f"→ System: {mem_kb:.1f} KB, {data.get('uptime')} min uptime")
+                    print(f"  WiFi: {data.get('wifi_signal')} dBm, {data.get('wifi_uptime')} min")
+                    print(
+                        f"  WebSocket: {'up' if data.get('websocket_status') else 'down'}, {data.get('websocket_uptime')} min"
+                    )
+                    print(f"  CPU temp: {data.get('cpu_temp', 'N/A')}°C")
+
+                elif msg_type == "device_name_change":
+                    print(f"→ Device name changed to: {data.get('device_name')}")
+
+                elif msg_type == "home_district_temp_change":
+                    print(f"→ Home district temp changed to: {data.get('home_district_temp')}°C")
 
             except json.JSONDecodeError as e:
-                print(f"JSON Error: {e}")
-                print(f"Data: {message}")
+                print(f"\n✗ Failed to parse JSON: {e}")
 
     except websockets.exceptions.ConnectionClosed:
         print("\n✗ Connection closed")
@@ -78,9 +137,9 @@ async def test_commands(websocket):
     print("Testing commands...")
     print("=" * 60)
 
-    # Тест 1: Змінюємо режим мапи на LAMP
-    print("\n→ Sending: set_map_mode to 'lamp'")
-    await websocket.send(json.dumps({"type": "set_map_mode", "mode": "lamp"}))
+    # Тест 1: Змінюємо режим мапи на LAMP (mode_id=4)
+    print("\n→ Sending: set_map_mode to LAMP (mode_id=4)")
+    await websocket.send(json.dumps({"type": "set_map_mode", "mode_id": 4}))
     await asyncio.sleep(2)
 
     # Тест 2: Змінюємо колір та яскравість лампи
@@ -93,9 +152,9 @@ async def test_commands(websocket):
     await websocket.send(json.dumps({"type": "set_home_region", "region_id": 31}))
     await asyncio.sleep(2)
 
-    # Тест 4: Повертаємось до режиму ALERT
-    print("\n→ Sending: set_map_mode to 'alert'")
-    await websocket.send(json.dumps({"type": "set_map_mode", "mode": "alert"}))
+    # Тест 4: Повертаємось до режиму ALERT (mode_id=1)
+    print("\n→ Sending: set_map_mode to ALERT (mode_id=1)")
+    await websocket.send(json.dumps({"type": "set_map_mode", "mode_id": 1}))
 
     print("\n" + "=" * 60)
     print("Commands test completed. Listening for events...")
