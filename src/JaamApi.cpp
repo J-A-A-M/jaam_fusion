@@ -38,6 +38,12 @@ void JaamApi::setHomeDistrictTemp(int temp) {
     this->homeDistrictTemp = temp;
 }
 
+void JaamApi::setClimateData(float temperature, float humidity, float pressure) {
+    climateTemperature = temperature;
+    climateHumidity = humidity;
+    climatePressure = pressure;
+}
+
 void JaamApi::reconfigure() {
     if (!settings) {
         LOG.printf("[API] Settings not initialized, skipping reconfigure\n");
@@ -219,6 +225,17 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     doc["websocket_status"] = websocketStatus;
     doc["websocket_uptime"] = websocketUptime;
     doc["cpu_temp"] = cpuTemp;
+
+    // Температура, вологість і тиск з кліматичного датчика, якщо є
+    if (climateTemperature != NAN) {
+        doc["climate_temp"] = climateTemperature;
+    }
+    if (climateHumidity != NAN) {
+        doc["climate_humidity"] = climateHumidity;
+    }
+    if (climatePressure != NAN) {
+        doc["climate_pressure"] = climatePressure;
+    }
 
     // Налаштування лампи
     JsonObject lamp = doc["lamp"].to<JsonObject>();
@@ -478,6 +495,15 @@ void JaamApi::updateHomeDistrictTemp(int temp) {
     }
 }
 
+void JaamApi::updateClimateData(float temp, float humidity, float pressure) {
+    this->climateTemperature = temp;
+    this->climateHumidity = humidity;
+    this->climatePressure = pressure;
+    if (isRunning) {
+        broadcastClimateDataChange(temp, humidity, pressure);
+    }
+}
+
 void JaamApi::broadcastSystemInfo() {
     JsonDocument doc;
     doc["type"] = "system_info";
@@ -492,6 +518,20 @@ void JaamApi::broadcastSystemInfo() {
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
+}
+
+void JaamApi::broadcastClimateDataChange(float temp, float humidity, float pressure) {
+    JsonDocument doc;
+    doc["type"] = "climate_data_change";
+    doc["climate_temp"] = temp;
+    doc["climate_humidity"] = humidity;
+    doc["climate_pressure"] = pressure;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast climate data change: temp=%.2f, humidity=%.2f, pressure=%.2f\n", temp, humidity, pressure);
 }
 
 // --- Обробка змін налаштувань ---

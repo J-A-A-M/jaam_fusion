@@ -1781,6 +1781,25 @@ uint8_t getCurrentBrightnes() {
     return settings.getInt(BRIGHTNESS);
 }
 
+void updateClimateData() {
+    if (climate.isAnySensorAvailable()) {
+        climate.read();
+        float temp = NAN;
+        float hum = NAN;
+        float press = NAN;
+        if (climate.isTemperatureAvailable()) {
+            temp = climate.getTemperature();
+        }
+        if (climate.isHumidityAvailable()) {
+            hum = climate.getHumidity();
+        }
+        if (climate.isPressureAvailable()) {
+            press = climate.getPressure();
+        }
+        api.updateClimateData(temp, hum, press);
+    }
+}
+
 void initSettings() {
     LOG.printf("[INIT] Init settings\n");
     settings.init();
@@ -1822,20 +1841,33 @@ void initDisplay() {
 }
 
 void initSensors() {
-//  lightSensor.begin(hardware);
-//   if (lightSensor.isLightSensorAvailable()) {
-//     lightSensorCycle();
-//   }
-//   if (isAnalogLightSensorEnabled()) {
-//     lightSensor.setPhotoresistorPin(settings.getInt(LIGHT_SENSOR_PIN));
-//   }
+    //  lightSensor.begin(hardware);
+    //   if (lightSensor.isLightSensorAvailable()) {
+    //     lightSensorCycle();
+    //   }
+    //   if (isAnalogLightSensorEnabled()) {
+    //     lightSensor.setPhotoresistorPin(settings.getInt(LIGHT_SENSOR_PIN));
+    //   }
 
-  // init climate sensor
-  climate.begin();
-  // try to get climate sensor data
-  climate.read();
+    // init climate sensor
+    climate.begin();
+    // try to get climate sensor data
+    climate.read();
+    float temp = NAN;
+    float hum = NAN;
+    float press = NAN;
+    if (climate.isTemperatureAvailable()) {
+        temp = climate.getTemperature();
+    }
+    if (climate.isHumidityAvailable()) {
+        hum = climate.getHumidity();
+    }
+    if (climate.isPressureAvailable()) {
+        press = climate.getPressure();
+    }
+    api.setClimateData(temp, hum, press);
 
-  //initDisplayModes();
+    // initDisplayModes();
 }
 
 void initSound() {
@@ -2461,7 +2493,7 @@ void freeMinLedsLog() {
 // --- Climate Process ---
 void climateProcess() {
   if (!climate.isAnySensorAvailable()) return;
-  climate.read();
+  updateClimateData();
   //updateHaTempSensors();
   //updateHaHumSensors();
   //updateHaPressureSensors();

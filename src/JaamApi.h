@@ -14,6 +14,7 @@ public:
     void setSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);
     void setHomeAlert(uint16_t flags16);
     void setHomeDistrictTemp(int temp);
+    void setClimateData(float temperature, float humidity, float pressure);
     void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
@@ -25,12 +26,14 @@ public:
     void broadcastHomeRegionChange(int regionId);
     void broadcastAlertChange(int regionId, int alertType);
     void broadcastHomeAlertChange(uint16_t flags16);
+    void broadcastClimateDataChange(float temp, float humidity, float pressure);
     void broadcastSystemInfo();
     
     // Оновлення даних
     void updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);
     void updateHomeAlert(uint16_t flags16);
     void updateHomeDistrictTemp(int temp);
+    void updateClimateData(float temp, float humidity, float pressure);
     
     // Обробка змін налаштувань
     void onSettingsChange(Type type, int intValue, const char* strValue);
@@ -43,7 +46,7 @@ private:
     const char* fwVersion;
     bool isRunning;
     int currentPort;
-    
+
     // Приватні методи управління сервісом
     void start();
     void stop();
@@ -58,7 +61,12 @@ private:
     uint16_t homeAlertFlags;
     float cpuTemp;
     int homeDistrictTemp;
-    
+
+    // Climate sensor data
+    float climateTemperature;
+    float climateHumidity;
+    float climatePressure;
+
     // WebSocket handlers
     void handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage message);
     void sendInitialState(WebsocketsClient& client);
