@@ -51,7 +51,9 @@ void sendLargeJson(WebServer* server, const String& json) {
     LOG.printf("[WEB] Sending JSON, size: %d bytes\n", jsonLen);
     
     server->send(200, "application/json", json);
-    server->client().flush();
+    if (server->client().connected()) {
+        server->client().flush();
+    }
 }
 
 

@@ -308,6 +308,10 @@ void JaamApi::handleWebSocketClients() {
     }
 }
 
+int JaamApi::getClientsCount() const {
+    return wsClients.size();
+}
+
 void JaamApi::broadcastWebSocket(const String& jsonMessage) {
     // Відправляємо всім підключеним клієнтам
     for (auto& client : wsClients) {

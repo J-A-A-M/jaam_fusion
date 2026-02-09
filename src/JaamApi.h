@@ -17,6 +17,7 @@ public:
     void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
+    int getClientsCount() const;
     
     // Broadcast події до всіх підключених WebSocket клієнтів
     void broadcastMapModeChange(int newMode);

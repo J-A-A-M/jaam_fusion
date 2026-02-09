@@ -6,6 +6,7 @@
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
 #include "JaamHardware.h"
+#include "JaamApi.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -49,6 +50,7 @@ static const char ICON_BATTERY[] PROGMEM = "<svg class='metric-icon' viewBox='0 
 static const char ICON_TEMPERATURE[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M15,13V5A3,3 0 0,0 9,5V13A5,5 0 1,0 15,13M12,4A1,1 0 0,1 13,5V8H11V5A1,1 0 0,1 12,4Z' /></svg>";
 static const char ICON_HUMIDITY[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,3.25C12,3.25 6,10 6,14C6,17.32 8.69,20 12,20A6,6 0 0,0 18,14C18,10 12,3.25 12,3.25Z' /></svg>";
 static const char ICON_PRESSURE[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M6,14A1,1 0 0,1 7,13A1,1 0 0,1 8,14A5,5 0 0,0 13,19A1,1 0 0,1 12,20A1,1 0 0,1 11,19A7,7 0 0,1 4,12A1,1 0 0,1 5,11A1,1 0 0,1 6,12M17,10A2,2 0 0,1 19,12A7,7 0 0,1 12,19A2,2 0 0,1 10,17A4,4 0 0,0 14,13A2,2 0 0,1 12,11A2,2 0 0,1 14,9A4,4 0 0,0 10,5A2,2 0 0,1 12,3A7,7 0 0,1 19,10A2,2 0 0,1 17,12A2,2 0 0,1 15,10H17Z' /></svg>";
+static const char ICON_USERS[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z' /></svg>";
 
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
@@ -61,6 +63,7 @@ extern JaamStorage                      storage;
 extern JaamDisplay                      display;
 extern bool                             wifiConnected;
 extern bool                             apiConnected;
+extern JaamApi                          api;
 extern uint8_t                          hardware;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
@@ -904,6 +907,17 @@ inline String getSystemInfoJson() {
             item.add(ICON_PRESSURE);
             item.add(roundToDecimal(climate.getPressure(settings.getFloat(PRESSURE_CORRECTION)), 0));
         }
+    }
+
+    // API clients count (number)
+    {
+        item = system.add<JsonArray>();
+        item.add("number");
+        item.add("apiClients");
+        item.add("API клієнтів");
+        item.add("");
+        item.add(ICON_USERS);
+        item.add(api.isApiRunning() ? api.getClientsCount() : 0);
     }
 
 
