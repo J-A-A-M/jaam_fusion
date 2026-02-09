@@ -39,6 +39,8 @@ private:
     void handleUiSchema();
     void handleUiPage();
     void handleMapData();
+    void handleCss();
+    void handleJs();
     String getMeta();
     String getStyles();
     String getScripts();

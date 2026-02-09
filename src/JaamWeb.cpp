@@ -46,6 +46,14 @@ extern volatile int testTrackId;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 
+void sendLargeJson(WebServer* server, const String& json) {
+    size_t jsonLen = json.length();
+    LOG.printf("[WEB] Sending JSON, size: %d bytes\n", jsonLen);
+    
+    server->send(200, "application/json", json);
+    server->client().flush();
+}
+
 
 void JaamWeb::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -1533,6 +1541,599 @@ document.addEventListener('DOMContentLoaded', () => {
     return html;
 }
 
+void JaamWeb::handleCss() {
+    String css = R"CSS(
+/* Основні CSS змінні для темізації */
+:root {
+    --bg-color: #f0f0f0;
+    --container-bg: #ffffff;
+    --text-color: #000000;
+    --border-color: #dee2e6;
+    --panel-bg: #f8f9fa;
+    --alerts-panel-bg: #fff5f5;
+    --alerts-panel-border: #fed7d7;
+    --input-bg: #ffffff;
+    --input-border: #ddd;
+    --warning-bg: #fff3cd;
+    --warning-border: #ffeaa7;
+    --warning-text: #856404;
+    --secondary-text: #6c757d;
+}
+
+/* Темна тема */
+[data-theme='dark'] {
+    --bg-color: #1a1a1a;
+    --container-bg: #2d2d2d;
+    --text-color: #ffffff;
+    --border-color: #444444;
+    --panel-bg: #3a3a3a;
+    --alerts-panel-bg: #4a2c2c;
+    --alerts-panel-border: #8b4545;
+    --input-bg: #3a3a3a;
+    --input-border: #555555;
+    --warning-bg: #5a4a2d;
+    --warning-border: #8b7355;
+    --warning-text: #d4b855;
+    --secondary-text: #aaaaaa;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: var(--container-bg);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    transition: background-color 0.3s ease;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+/* Кнопки управління */
+.control-button {
+    background: none;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-button:hover {
+    background-color: var(--panel-bg);
+}
+
+.control-button.active {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.control-button svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--text-color);
+    transition: fill 0.3s ease;
+}
+
+.control-button.active svg {
+    fill: white;
+}
+
+/* Перемикач теми - залишаємо для зворотної сумісності */
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.theme-toggle:hover {
+    background-color: var(--panel-bg);
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+    fill: var(--text-color);
+    transition: fill 0.3s ease;
+}
+
+.system-panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.alerts-panel {
+    background: var(--alerts-panel-bg);
+    border: 1px solid var(--alerts-panel-border);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: block;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.alert-metric {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+    min-width: 120px;
+}
+
+.alerts-loading {
+    color: var(--secondary-text);
+    font-size: 12px;
+}
+
+.alerts-no-alerts {
+    color: #28a745;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.alerts-error {
+    color: #dc3545;
+    font-size: 12px;
+}
+
+.system-metric {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+    min-width: 120px;
+}
+
+.metric-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    fill: currentColor;
+}
+
+.metric-label {
+    font-size: 12px;
+    color: var(--secondary-text);
+    margin-right: 5px;
+}
+
+.metric-value {
+    font-weight: bold;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.memory-bar {
+    width: 100px;
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-left: 8px;
+}
+
+.memory-fill {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.slider-container {
+    margin: 20px 0;
+}
+
+.slider {
+    width: 100%;
+    height: 25px;
+    background: var(--border-color);
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.value {
+    font-size: 18px;
+    margin-right: 10px;
+    width: 60px;
+    display: inline-block;
+    text-align: right;
+    color: var(--text-color);
+}
+
+.color-picker-container {
+    margin: 20px 0;
+}
+
+.text-input-container {
+    margin: 20px 0;
+}
+
+.text-input {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    box-sizing: border-box;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.text-input-container label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.form-group {
+    margin: 20px 0;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.warning {
+    background-color: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    color: var(--warning-text);
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 14px;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.switch-container {
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+}
+
+.switch-container label {
+    margin-left: 8px;
+    color: var(--text-color);
+}
+
+.switch {
+    appearance: none;
+    width: 50px;
+    height: 24px;
+    background: var(--border-color);
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.switch:checked {
+    background: #007bff;
+}
+
+.switch::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s ease;
+}
+
+.switch:checked::before {
+    transform: translateX(26px);
+}
+
+.alerts-details-panel {
+    background: var(--alerts-panel-bg);
+    border: 1px solid var(--alerts-panel-border);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.alert-detail-row {
+    display: flex;
+    align-items: center;
+    margin: 0 0;
+    min-width: 120px;
+}
+
+.alert-detail-region {
+    font-size: 12px;
+    color: var(--secondary-text);
+    margin-right: 5px;
+    font-weight: bold;
+    min-width: 60px;
+}
+
+.alert-detail-icon {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    margin-right: 8px;
+}
+
+/* Navigation menu styles */
+.nav-menu {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.nav-item {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--container-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    white-space: nowrap;
+    user-select: none;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.nav-item:hover {
+    background: var(--panel-bg);
+    border-color: var(--text-color);
+}
+
+.nav-item.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.nav-item.active:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+}
+
+/* Section container styles */
+.section-container {
+    display: none;
+}
+
+.section-container.active {
+    display: block;
+}
+
+.section-header {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-color);
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* Info panel styles */
+.info-panel {
+    border-radius: 8px;
+    padding: 5px;
+    margin: 5px 0;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    border: 1px solid;
+}
+
+.info-metric {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.info-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 5px;
+    flex-shrink: 0;
+    fill: currentColor;
+}
+
+.info-text {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* Button container styles */
+.button-container {
+    margin: 15px 0;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.form-button {
+    background: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    min-width: 120px;
+    text-align: center;
+}
+
+.form-button:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.form-button:active {
+    transform: translateY(0);
+}
+
+/* Visibility and animations for dynamic hiding/showing */
+[data-visibility] {
+    transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease;
+    overflow: hidden;
+}
+
+[data-visibility].hidden {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+[data-visibility]:not(.hidden) {
+    opacity: 1;
+    max-height: 1000px;
+}
+)CSS";
+    // Використовуємо chunked transfer для великого CSS
+    WiFiClient client = server.client();
+    if (!client || !client.connected()) {
+        return; // Клієнт відключився
+    }
+    
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/css", "");
+    
+    // Відправляємо CSS частинами по ~2KB
+    const size_t chunkSize = 2048;
+    size_t len = css.length();
+    for (size_t i = 0; i < len; i += chunkSize) {
+        // Перевіряємо з'єднання перед кожною частиною
+        if (!client.connected()) {
+            css.clear();
+            return;
+        }
+        size_t remaining = len - i;
+        size_t sendSize = (remaining < chunkSize) ? remaining : chunkSize;
+        server.sendContent(css.substring(i, i + sendSize));
+        yield(); // Даємо змогу іншим задачам виконатись
+    }
+    server.sendContent(""); // Завершуємо chunked transfer
+    css.clear(); // Звільнення пам'яті
+}
+
+void JaamWeb::handleJs() {
+    // Return getScripts() content without <script> tags
+    String js = getScripts();
+    // Extract content between <script> and </script>
+    int startIdx = js.indexOf("<script>");
+    int endIdx = js.lastIndexOf("</script>");
+    if (startIdx != -1 && endIdx != -1) {
+        startIdx += 8; // length of "<script>"
+        js = js.substring(startIdx, endIdx);
+    }
+    
+    // Використовуємо chunked transfer для великого JS
+    WiFiClient client = server.client();
+    if (!client || !client.connected()) {
+        return; // Клієнт відключився
+    }
+    
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "application/javascript", "");
+    
+    // Відправляємо JS частинами по ~2KB
+    const size_t chunkSize = 2048;
+    size_t len = js.length();
+    for (size_t i = 0; i < len; i += chunkSize) {
+        // Перевіряємо з'єднання перед кожною частиною
+        if (!client.connected()) {
+            js.clear();
+            return;
+        }
+        size_t remaining = len - i;
+        size_t sendSize = (remaining < chunkSize) ? remaining : chunkSize;
+        server.sendContent(js.substring(i, i + sendSize));
+        yield(); // Даємо змогу іншим задачам виконатись
+    }
+    server.sendContent(""); // Завершуємо chunked transfer
+    js.clear(); // Звільнення пам'яті
+}
+
 
 void JaamWeb::handleColorParameter() {
     if (server.hasArg("name") && server.hasArg("value")) {
@@ -1811,17 +2412,6 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(API_ENABLED, boolValue);
             LOG.printf("[WEB] Setting api_enabled: %d\n", boolValue);
-            // Встановлюємо прапорець для реконфігурації API
-            needReconfigureApi = true;
-        } else if (name == "api_port") {
-            // Перевіряємо що порт не 80 (зайнятий веб-сервером)
-            if (intValue == 80) {
-                LOG.printf("[WEB] api_port cannot be 80 (used by web server)\n");
-                server.send(400, "application/json", "{\"error\":\"Port 80 is reserved for web server\"}");
-                return;
-            }
-            settings->saveInt(API_PORT, intValue);
-            LOG.printf("[WEB] Setting api_port: %d\n", intValue);
             // Встановлюємо прапорець для реконфігурації API
             needReconfigureApi = true;
         } else if (name == "brightness_mode") {
@@ -2180,6 +2770,18 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(DF_TX_PIN, value.toInt());
             needReconfigureSound = true;
             LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
+        } else if (name == "api_port") {
+            // Перевіряємо що порт не 80 (зайнятий веб-сервером)
+            int apiPort = value.toInt();
+            if (apiPort == 80) {
+                LOG.printf("[WEB] api_port cannot be 80 (used by web server)\n");
+                server.send(400, "application/json", "{\"error\":\"Port 80 is reserved for web server\"}");
+                return;
+            }
+            settings->saveInt(API_PORT, apiPort);
+            LOG.printf("[WEB] Setting api_port: %d\n", apiPort);
+            // Встановлюємо прапорець для реконфігурації API
+            needReconfigureApi = true;
         } else if (name == "button_1_pin") {
             settings->saveInt(BUTTON_1_PIN, value.toInt());
             needReconfigureButtons = true;
@@ -2227,6 +2829,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     //server.enableCORS();
     server.on("/", HTTP_GET, [this]() { this->handleUiPage(); });
     server.on("/", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/styles.css", HTTP_GET, [this]() { this->handleCss(); });
+    server.on("/scripts.js", HTTP_GET, [this]() { this->handleJs(); });
     server.on("/map-editor", HTTP_GET, [this]() { this->handleMapEditor(); });
     server.on("/save-map", HTTP_POST, [this]() { this->handleSaveMap(); });
     server.on("/bg-color-editor", HTTP_GET, [this]() { this->handleBgColorEditor(); });
@@ -2271,13 +2875,15 @@ void JaamWeb::handleClient() {
 void JaamWeb::handleSystemInfo() {
     setCrossOrigin();
     String response = getSystemInfoJson();
-    server.send(200, "application/json", response);
+    sendLargeJson(&server, response);
+    response.clear();
 }
 
 void JaamWeb::handleAlertsInfo() {
     setCrossOrigin();
     String response = getAlertsJson();
-    server.send(200, "application/json", response);
+    sendLargeJson(&server, response);
+    response.clear();
 }
 
 void JaamWeb::handleMapData() {
@@ -2315,9 +2921,11 @@ void JaamWeb::handleMapData() {
         region["leds_string"] = leds_str;
     }
     
+    // Серіалізуємо JSON у компактному форматі
     String response;
     serializeJson(doc, response);
-    server.send(200, "application/json", response);
+    sendLargeJson(&server, response);
+    response.clear();
 }
 
 void JaamWeb::handleUiPage() {
@@ -2336,10 +2944,12 @@ void JaamWeb::handleUiPage() {
         html += deviceName;
         html += R"HTML(</title>
 )HTML";
-        // Inject meta/styles/scripts from existing helpers
+        // Inject meta and link to external CSS/JS
         html += getMeta();
-        html += getStyles();
-        html += getScripts(); // Reuse system theme and utils scripts
+        html += R"HTML(
+<link rel="stylesheet" href="/styles.css">
+<script src="/scripts.js"></script>
+)HTML";
 
         // Body start
         html += R"HTML(
@@ -2395,6 +3005,12 @@ void JaamWeb::handleUiPage() {
 </html>
 )HTML";
     server.send(200, "text/html", html);
+    html.clear(); // Звільнення пам'яті
+    // Перевіряємо, чи клієнт ще підключений перед flush
+    WiFiClient client = server.client();
+    if (client && client.connected()) {
+        client.flush();
+    }
 }
 
 // Helper to push dropdown options to a JsonArray as compact lists: [id, name, sub]
@@ -2846,10 +3462,12 @@ void JaamWeb::handleUiSchema() {
     addDropdown("sound", "melody_on_kabs", "Мелодія при загрозі КАБ (буззер)", "melodies", MELODY_ON_KABS);
     addDropdown("sound", "melody_on_ballistic", "Мелодія при загрозі балістики (буззер)", "melodies", MELODY_ON_BALLISTIC);
 
-
+    // Серіалізуємо JSON у компактному форматі (без пробілів і відступів)
     String response;
-    serializeJson(doc, response);
-    server.send(200, "application/json", response);
+    serializeJson(doc, response); // Компактний JSON без форматування
+    
+    sendLargeJson(&server, response);
+    response.clear(); // Звільнення пам'яті
 }
 
 void JaamWeb::handleSaveMap() {
@@ -2918,8 +3536,8 @@ void JaamWeb::handleMapEditor() {
     if (deviceName.isEmpty()) deviceName = "JAAM";
     html += "<title>" + deviceName + "</title>";
     html += getMeta();
-    html += getStyles();
-    html += getScripts();
+    html += "<link rel=\"stylesheet\" href=\"/styles.css\">";
+    html += "<script src=\"/scripts.js\"></script>";
     
     // Add map editor specific JavaScript
     html += R"HTML(
@@ -3060,6 +3678,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     html += "</div></body></html>";
     server.send(200, "text/html", html);
+    html.clear(); // Звільнення пам'яті
+    WiFiClient client = server.client();
+    if (client && client.connected()) {
+        client.flush();
+    }
 }
 
 void JaamWeb::handleBgColorsData() {
@@ -3086,9 +3709,11 @@ void JaamWeb::handleBgColorsData() {
         }
     }
     
+    // Серіалізуємо JSON у компактному форматі
     String response;
     serializeJson(doc, response);
-    server.send(200, "application/json", response);
+    sendLargeJson(&server, response);
+    response.clear();
 }
 
 void JaamWeb::handleSaveBgColors() {
@@ -3147,8 +3772,8 @@ void JaamWeb::handleBgColorEditor() {
     if (deviceName.isEmpty()) deviceName = "JAAM";
     html += "<title>" + deviceName + "</title>";
     html += getMeta();
-    html += getStyles();
-    html += getScripts();
+    html += "<link rel=\"stylesheet\" href=\"/styles.css\">";
+    html += "<script src=\"/scripts.js\"></script>";
     
     // Add BG color editor specific JavaScript
     html += R"HTML(
@@ -3324,4 +3949,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     html += "</div></body></html>";
     server.send(200, "text/html", html);
+    html.clear(); // Звільнення пам'яті
+    WiFiClient client = server.client();
+    if (client && client.connected()) {
+        client.flush();
+    }
 }
