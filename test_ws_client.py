@@ -33,7 +33,10 @@ def parse_alert_flags(flags16):
 
 
 async def send_command(websocket):
-    """Інтерактивна відправка команд."""
+    """
+    Інтерактивна відправка команд через WebSocket.
+    Використовує websocket.send для надсилання команд.
+    """
     print("\n" + "=" * 60)
     print("Available commands:")
     print("  1. Set map mode - mode_id: 0=OFF, 1=ALERT, 2=WEATHER, 3=FLAG, 4=LAMP")
@@ -42,8 +45,44 @@ async def send_command(websocket):
     print("  q. Quit")
     print("=" * 60)
 
-    # Read from stdin in non-blocking way would be complex
-    # So we'll just provide examples
+    while True:
+        cmd = input("Enter command (1/2/3/q): ").strip()
+        if cmd == "1":
+            mode_id = input("Enter map mode id (0-4): ").strip()
+            try:
+                mode_id = int(mode_id)
+            except ValueError:
+                print("Invalid mode id")
+                continue
+            msg = {"type": "set_map_mode", "mode_id": mode_id}
+            await websocket.send(json.dumps(msg))
+            print(f"Sent: {msg}")
+        elif cmd == "2":
+            color = input("Enter lamp color (e.g. #FF0000): ").strip()
+            brightness = input("Enter brightness (0-100): ").strip()
+            try:
+                brightness = int(brightness)
+            except ValueError:
+                print("Invalid brightness")
+                continue
+            msg = {"type": "set_lamp", "color": color, "brightness": brightness}
+            await websocket.send(json.dumps(msg))
+            print(f"Sent: {msg}")
+        elif cmd == "3":
+            region_id = input("Enter home region id: ").strip()
+            try:
+                region_id = int(region_id)
+            except ValueError:
+                print("Invalid region id")
+                continue
+            msg = {"type": "set_home_region", "region_id": region_id}
+            await websocket.send(json.dumps(msg))
+            print(f"Sent: {msg}")
+        elif cmd.lower() == "q":
+            print("Exiting command sender.")
+            break
+        else:
+            print("Unknown command.")
 
 
 async def receive_messages(websocket):
@@ -69,7 +108,7 @@ async def receive_messages(websocket):
                     flags16 = data.get("home_alert_flags", 0)
                     active_alerts = parse_alert_flags(flags16)
 
-                    print(f"✓ Initial state received")
+                    print("✓ Initial state received")
                     print(f"  Device: {data.get('chip_id')} (FW: {data.get('fw_version')})")
                     print(f"  Name: {data.get('device_name', 'N/A')}")
                     print(f"  Map mode: {mode_name} (id={mode_id})")

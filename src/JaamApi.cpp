@@ -161,14 +161,37 @@ bool JaamApi::isApiRunning() const {
 }
 
 void JaamApi::sendInitialState(WebsocketsClient& client) {
+    if (!settings) {
+        // Settings not initialized, only send fields not dependent on settings
+        JsonDocument doc;
+        doc["type"] = "initial_state";
+        doc["connected"] = true;
+        if (chipId) doc["chip_id"] = chipId;
+        if (fwVersion) doc["fw_version"] = fwVersion;
+        doc["home_alert_flags"] = homeAlertFlags;
+        doc["home_district_temp"] = homeDistrictTemp;
+        doc["used_memory"] = usedMemory;
+        doc["uptime"] = uptime;
+        doc["wifi_uptime"] = wifiUptime;
+        doc["wifi_signal"] = wifiSignal;
+        doc["websocket_status"] = websocketStatus;
+        doc["websocket_uptime"] = websocketUptime;
+        doc["cpu_temp"] = cpuTemp;
+        String initialData;
+        serializeJson(doc, initialData);
+        LOG.printf("[API] Sending initial state (no settings): %s\n", initialData.c_str());
+        client.send(initialData);
+        return;
+    }
+
     JsonDocument doc;
     doc["type"] = "initial_state";
     doc["connected"] = true;
-    
+
     // Інформація про пристрій
     if (chipId) doc["chip_id"] = chipId;
     if (fwVersion) doc["fw_version"] = fwVersion;
-    
+
     // Назва пристрою
     doc["device_name"] = settings->getString(DEVICE_NAME);
     
@@ -180,10 +203,10 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     
     // Стан тривоги в домашньому регіоні
     doc["home_alert_flags"] = homeAlertFlags;
-    
+
     // Температура в домашньому регіоні
     doc["home_district_temp"] = homeDistrictTemp;
-    
+
     // Системна інформація
     doc["used_memory"] = usedMemory;
     doc["uptime"] = uptime;
@@ -192,7 +215,7 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     doc["websocket_status"] = websocketStatus;
     doc["websocket_uptime"] = websocketUptime;
     doc["cpu_temp"] = cpuTemp;
-    
+
     // Налаштування лампи
     JsonObject lamp = doc["lamp"].to<JsonObject>();
     lamp["color"] = settings->getString(COLOR_LAMP);
@@ -200,7 +223,7 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     
     String initialData;
     serializeJson(doc, initialData);
-    
+
     LOG.printf("[API] Sending initial state: %s\n", initialData.c_str());
     client.send(initialData);
 }

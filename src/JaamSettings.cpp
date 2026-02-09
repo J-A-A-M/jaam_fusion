@@ -397,7 +397,13 @@ void JaamSettings::saveBool(Type type, bool value, bool saveToPrefs) {
 }
 
 bool JaamSettings::hasKey(Type type) {
-    const char* key = getKey(type);
+    const char* key = nullptr;
+    try {
+        key = getKey(type);
+    } catch (const std::runtime_error&) {
+        // Unknown type, treat as absent
+        return false;
+    }
     preferences.begin(PREFS_NAME, true);
     bool exists = preferences.isKey(key);
     preferences.end();
