@@ -309,6 +309,17 @@ h1 {
     font-size: 12px;
 }
 
+.system-no-data {
+    color: #6c757d;
+    font-style: italic;
+    padding: 10px;
+}
+
+.system-loading {
+    color: var(--secondary-text);
+    font-size: 12px;
+}
+
 .alerts-error {
     color: #dc3545;
     font-size: 12px;
@@ -831,6 +842,9 @@ function renderSystemPanelFromSchema(data) {
 }
 
 function updateSystemInfo() {
+    // Only fetch if system panel is visible
+    if (!systemPanelVisible) return;
+    
     fetch('/system-info')
         .then(r => r.json())
         .then(data => {
@@ -839,7 +853,7 @@ function updateSystemInfo() {
             } else {
                 const panel = document.getElementById('systemPanel');
                 if (panel) {
-                    panel.innerHTML = '';
+                    panel.innerHTML = '<span class="system-no-data">Системна інформація недоступна</span>';
                 }
             }
         })
@@ -848,6 +862,9 @@ function updateSystemInfo() {
 
 // Alerts panel
 function updateAlertsInfo() {
+    // Only fetch if alerts panel is visible
+    if (!alertsPanelVisible) return;
+    
     fetch('/alerts-info')
         .then(r => r.json())
         .then(data => {
@@ -1422,6 +1439,8 @@ function toggleSystemPanel() {
     if (systemPanelVisible) {
         panel.style.display = 'flex';
         button.classList.add('active');
+        // Immediately fetch data when panel is expanded
+        updateSystemInfo();
     } else {
         panel.style.display = 'none';
         button.classList.remove('active');
@@ -1446,6 +1465,8 @@ function toggleAlertsPanel() {
     if (alertsPanelVisible) {
         panel.style.display = 'block';
         button.classList.add('active');
+        // Immediately fetch data when panel is expanded
+        updateAlertsInfo();
     } else {
         panel.style.display = 'none';
         button.classList.remove('active');
@@ -1719,6 +1740,17 @@ h1 {
 .alerts-no-alerts {
     color: #28a745;
     font-weight: bold;
+    font-size: 12px;
+}
+
+.system-no-data {
+    color: #6c757d;
+    font-style: italic;
+    padding: 10px;
+}
+
+.system-loading {
+    color: var(--secondary-text);
     font-size: 12px;
 }
 
@@ -3001,7 +3033,9 @@ void JaamWeb::handleUiPage() {
         </div>
 
         <!-- System panel (rendered dynamically from /system-info schema) -->
-        <div class='system-panel' id='systemPanel'></div>
+        <div class='system-panel' id='systemPanel'>
+            <span class='system-loading'>Завантаження...</span>
+        </div>
 
         <!-- Alerts panel (content filled by updateAlertsInfo) -->
         <div class='alerts-panel' id='alertsPanel'>
