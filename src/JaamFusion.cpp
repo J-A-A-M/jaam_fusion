@@ -1847,27 +1847,32 @@ void initSound() {
     settings.getInt(MELODY_VOLUME_NIGHT)
   );
 #endif
+
+  int soundSource = settings.getInt(SOUND_SOURCE);
+  LOG.printf("[SOUND] source setting: %d\n", soundSource);
+
 #if BUZZER_ENABLED
-  if (sound.isBuzzerEnabled()) {  
+  // Only initialize buzzer if SOUND_SOURCE is 0 (Buzzer) and buzzer is enabled
+  if (sound.isBuzzerEnabled() && soundSource == 0) {
     sound.initBuzzer();
   }
 #endif
 #if DFPLAYER_PRO_ENABLED
-  if (sound.isDFPlayerEnabled()) {
+  // Only initialize DFPlayer if SOUND_SOURCE is 1 (DFPlayer) and DFPlayer is enabled
+  if (sound.isDFPlayerEnabled() && soundSource == 1) {
     sound.initDFPlayer();
   }
 #endif
 
-  if (sound.isBuzzerEnabled() && sound.isDFPlayerConnected()) {
-    sound.setSoundSource(settings.getInt(SOUND_SOURCE));
-  } else if (sound.isBuzzerEnabled()) {
+  // Set the actual sound source based on what was initialized
+  if (soundSource == 0 && sound.isBuzzerEnabled()) {
     sound.setSoundSource(0);
-  } else if (sound.isDFPlayerConnected()) {
+  } else if (soundSource == 1 && sound.isDFPlayerConnected()) {
     sound.setSoundSource(1);
   } else {
     sound.setSoundSource(-1);
   }
-  LOG.printf("[SOUND] source: %d\n", sound.soundSource);
+  LOG.printf("[SOUND] active source: %d\n", sound.soundSource);
 }
 
 

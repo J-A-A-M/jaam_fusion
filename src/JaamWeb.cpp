@@ -2587,6 +2587,7 @@ void JaamWeb::handleParameter() {
         } else if (name == "sound_source") {
             settings->saveInt(SOUND_SOURCE, intValue);
             LOG.printf("[WEB] Setting sound_source: %d\n", intValue);
+            needReconfigureSound = true;
         } else if (name == "melody_on_alert") {
             settings->saveInt(MELODY_ON_ALERT, intValue);
             LOG.printf("[WEB] Setting melody_on_alert: %d\n", intValue);
