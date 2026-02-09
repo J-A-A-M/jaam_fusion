@@ -142,7 +142,6 @@ String JaamWeb::getMeta() {
 
 String JaamWeb::getStyles() {
     return R"HTML(
-<style>
 /* Основні CSS змінні для темізації */
 :root {
     --bg-color: #f0f0f0;
@@ -679,14 +678,12 @@ h1 {
     opacity: 1;
     max-height: 1000px;
 }
-</style>
 )HTML";
 }
 
 String JaamWeb::getScripts() {
     // All site JavaScript: theme, system panel, alerts, and dynamic UI rendering
     String html = R"JS(
-<script>
 // Theme helpers
 function detectSystemTheme() {
     return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
@@ -1570,7 +1567,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateSystemInfo, 5000);
     setInterval(updateAlertsInfo, 10000);
 });
-</script>
 )JS";
     return html;
 }
@@ -2126,31 +2122,28 @@ h1 {
     // Відправляємо CSS частинами по ~2KB
     const size_t chunkSize = 2048;
     size_t len = css.length();
+    bool disconnected = false;
     for (size_t i = 0; i < len; i += chunkSize) {
         // Перевіряємо з'єднання перед кожною частиною
         if (!client.connected()) {
             css.clear();
-            return;
+            disconnected = true;
+            break;
         }
         size_t remaining = len - i;
         size_t sendSize = (remaining < chunkSize) ? remaining : chunkSize;
         server.sendContent(css.substring(i, i + sendSize));
         yield(); // Даємо змогу іншим задачам виконатись
     }
-    server.sendContent(""); // Завершуємо chunked transfer
+    if (!disconnected) {
+        server.sendContent(""); // Завершуємо chunked transfer
+    }
     css.clear(); // Звільнення пам'яті
 }
 
 void JaamWeb::handleJs() {
-    // Return getScripts() content without <script> tags
+    // Return getScripts() content (already without script tags)
     String js = getScripts();
-    // Extract content between <script> and </script>
-    int startIdx = js.indexOf("<script>");
-    int endIdx = js.lastIndexOf("</script>");
-    if (startIdx != -1 && endIdx != -1) {
-        startIdx += 8; // length of "<script>"
-        js = js.substring(startIdx, endIdx);
-    }
     
     // Використовуємо chunked transfer для великого JS
     WiFiClient client = server.client();
@@ -2164,18 +2157,22 @@ void JaamWeb::handleJs() {
     // Відправляємо JS частинами по ~2KB
     const size_t chunkSize = 2048;
     size_t len = js.length();
+    bool disconnected = false;
     for (size_t i = 0; i < len; i += chunkSize) {
         // Перевіряємо з'єднання перед кожною частиною
         if (!client.connected()) {
             js.clear();
-            return;
+            disconnected = true;
+            break;
         }
         size_t remaining = len - i;
         size_t sendSize = (remaining < chunkSize) ? remaining : chunkSize;
         server.sendContent(js.substring(i, i + sendSize));
         yield(); // Даємо змогу іншим задачам виконатись
     }
-    server.sendContent(""); // Завершуємо chunked transfer
+    if (!disconnected) {
+        server.sendContent(""); // Завершуємо chunked transfer
+    }
     js.clear(); // Звільнення пам'яті
 }
 
@@ -3372,7 +3369,7 @@ void JaamWeb::handleSaveBgColors() {
             String colorStr = server.arg(paramName);
             // Видаляємо символ '#' якщо є
             if (colorStr.startsWith("#")) {
-                colorStr = colorStr.substring(1);
+                colorStr = String(colorStr.c_str() + 1); // Skip first character
             }
             colors[i] = strtol(colorStr.c_str(), nullptr, 16);
             LOG.printf("[WEB] Setting LED %d color: %s -> 0x%06X\n", i, colorStr.c_str(), colors[i]);
