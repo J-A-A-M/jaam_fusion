@@ -134,11 +134,11 @@ bool needDivider = false;
 struct SystemInfo {
     size_t usedMemory;
     size_t freeMemory;
-    uint32_t uptime;
-    uint32_t wifiUptime;
+    uint32_t uptime;         // seconds
+    uint32_t wifiUptime;     // seconds
     int8_t wifiSignal;
     bool websocketStatus;
-    uint32_t websocketUptime;
+    uint32_t websocketUptime; // seconds
     float cpuTemp;
 };
 
@@ -146,11 +146,11 @@ SystemInfo getSystemInfo() {
     SystemInfo info;
     info.freeMemory = ESP.getFreeHeap();
     info.usedMemory = ESP.getHeapSize() - info.freeMemory;
-    info.uptime = millis() / 60000;
-    info.wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 60000 : 0;
+    info.uptime = millis() / 1000;
+    info.wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
     info.wifiSignal = wifiConnected ? WiFi.RSSI() : 0;
     info.websocketStatus = websocket.available();
-    info.websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 60000 : 0;
+    info.websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 1000 : 0;
     info.cpuTemp = temperatureRead();
     return info;
 }
@@ -1217,7 +1217,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint8_t flags8 = ptr[2]; // flags8 займає 1 байт
-            temperatureMap[region_id] = static_cast<int8_t>(flags8);; // Зберігаємо температуру для регіону
+            temperatureMap[region_id] = flags8; // Зберігаємо температуру для регіону
             LOG.printf("[WEBSOCKET] weather region %u:\tflags8=%u\n", region_id, flags8);
             ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
         }
@@ -1803,7 +1803,9 @@ void initSettings() {
     
     // Реєструємо callback для автоматичного broadcast змін налаштувань до API
     settings.setChangeCallback([](Type type, int intValue, const char* strValue) {
-        api.onSettingsChange(type, intValue, strValue);
+        if (api.isApiRunning()) {
+            api.onSettingsChange(type, intValue, strValue);
+        }
     });
 }
 
@@ -2388,11 +2390,11 @@ void memoryProcess() {
         loopCount,
         info.usedMemory,
         info.freeMemory,
-        info.uptime,
+        info.uptime / 60,
         wifiStatus.c_str(),
-        info.wifiUptime,
+        info.wifiUptime / 60,
         websocketStatus.c_str(),
-        info.websocketUptime
+        info.websocketUptime / 60
     );
     
     api.updateSystemInfo(

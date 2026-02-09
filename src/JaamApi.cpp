@@ -119,6 +119,10 @@ void JaamApi::stopMDNS() {
 }
 
 void JaamApi::start() {
+    if (!settings) {
+        LOG.printf("[API] Cannot start: settings is null\n");
+        return;
+    }
     if (!isRunning) {
         // Створюємо новий WebSocket сервер
         wsServer = new WebsocketsServer();
@@ -230,28 +234,33 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
 
 void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage message) {
     LOG.printf("[API] WebSocket message received: %s\n", message.data().c_str());
-    
+
+    if (!settings) {
+        LOG.printf("[API] Cannot process WebSocket message: settings is null\n");
+        return;
+    }
+
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, message.data());
-    
+
     if (error) {
         LOG.printf("[API] Failed to parse JSON: %s\n", error.c_str());
         return;
     }
-    
+
     // Перевіряємо тип команди
     if (doc["type"].isNull()) {
         LOG.printf("[API] Missing 'type' field\n");
         return;
     }
-    
+
     String type = doc["type"].as<String>();
-    
+
     // Обробляємо команду set_map_mode
     if (type == "set_map_mode") {
         if (!doc["mode_id"].isNull()) {
             int newMode = doc["mode_id"].as<int>();
-            
+
             if (newMode >= 0 && newMode <= 4) {
                 settings->saveInt(MAP_MODE, newMode);
                 needAdaptColors = true;
@@ -271,7 +280,7 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
                 LOG.printf("[API] Lamp color changed to: %s\n", color.c_str());
             }
         }
-        
+
         if (!doc["brightness"].isNull()) {
             int brightness = doc["brightness"].as<int>();
             if (brightness >= 0 && brightness <= 100) {
