@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ArduinoJson.h>
 #include <WebServer.h>
 #include <WiFiManager.h>
 #include "JaamSettings.h"
@@ -37,6 +38,10 @@ private:
     void handleSystemInfo();
     void handleAlertsInfo();
     void handleUiSchema();
+    void handleUiSchemaModels();
+    void handleUiSchemaSections();
+    void handleUiSchemaDropdownLists();
+    void handleUiSchemaControls();
     void handleUiPage();
     void handleMapData();
     void handleCss();
@@ -45,4 +50,8 @@ private:
     String getStyles();
     String getScripts();
     void configureMDNS();
+    void buildUiSchemaModels(JsonDocument& doc);
+    void buildUiSchemaSections(JsonDocument& doc);
+    void buildUiSchemaDropdownLists(JsonDocument& doc);
+    void buildUiSchemaControls(JsonDocument& doc);
 };
