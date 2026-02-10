@@ -50,8 +50,6 @@ private:
     // Приватні методи управління сервісом
     void start();
     void stop();
-    void startMDNS();
-    void stopMDNS();
     uint32_t usedMemory;
     uint32_t uptime;
     uint32_t wifiUptime;

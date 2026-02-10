@@ -4,8 +4,6 @@
 #include "JaamUtils.h"
 #include <esp_system.h>
 #include <ArduinoJson.h>
-#include <ESPmDNS.h>
-#include <mdns.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +29,6 @@ extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needReconfigureSound;
 extern volatile bool needReconfigureButtons;
-extern volatile bool needReconfigureApi;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
 extern volatile bool needToRegenerateBgColorMap;
@@ -68,61 +65,6 @@ void JaamWeb::setStorage(JaamStorage* storage) {
 void JaamWeb::setDeviceInfo(const char* chipId, const char* fwVersion) {
     this->chipId = chipId;
     this->fwVersion = fwVersion;
-}
-
-void JaamWeb::configureMDNS() {
-    // Налаштування MDNS сервісу
-    const char* hostname = settings->getString(BROADCAST_NAME);
-    if (!hostname || strlen(hostname) == 0) {
-        LOG.printf("[WEB] MDNS not configured: BROADCAST_NAME is empty\n");
-        return;
-    }
-    
-    // Ініціалізуємо MDNS (якщо вже запущений - повинно повернути success)
-    if (!MDNS.begin(hostname)) {
-        LOG.printf("[WEB] MDNS failed to start\n");
-        return;
-    }
-    
-    LOG.printf("[WEB] MDNS ready, configuring HTTP service\n");
-    
-    // Додаємо HTTP сервіс (якщо вже існує - він буде оновлено)
-    if (!MDNS.addService("http", "tcp", 80)) {
-        LOG.printf("[WEB] Failed to add MDNS HTTP service\n");
-        return;
-    }
-    
-    LOG.printf("[WEB] MDNS HTTP service added on port 80\n");
-    
-    // Встановлюємо instance name для HTTP сервісу (це відображається як title в Bonjour Browser)
-    const char* deviceName = settings->getString(DEVICE_NAME);
-    if (deviceName && strlen(deviceName) > 0) {
-        if (mdns_service_instance_name_set("_http", "_tcp", deviceName)) {
-            LOG.printf("[WEB] Failed setting MDNS HTTP service instance name\n");
-        } else {
-            LOG.printf("[WEB] MDNS HTTP service instance name set to: %s\n", deviceName);
-        }
-    }
-    
-    // Додаємо TXT записи для HTTP сервісу
-    MDNS.addServiceTxt("http", "tcp", "path", "/");
-    
-    if (chipId) {
-        MDNS.addServiceTxt("http", "tcp", "mac", chipId);
-    }
-    
-    MDNS.addServiceTxt("http", "tcp", "manufacturer", "JAAM");
-    
-    if (fwVersion) {
-        MDNS.addServiceTxt("http", "tcp", "version", fwVersion);
-    }
-    
-    // TXT запис name (для додаткової інформації, але не для відображення title)
-    if (deviceName && strlen(deviceName) > 0) {
-        MDNS.addServiceTxt("http", "tcp", "name", deviceName);
-    }
-    
-    LOG.printf("[WEB] MDNS HTTP TXT records added\n");
 }
 
 String JaamWeb::getMeta() {
@@ -2454,8 +2396,6 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(API_ENABLED, boolValue);
             LOG.printf("[WEB] Setting api_enabled: %d\n", boolValue);
-            // Встановлюємо прапорець для реконфігурації API
-            needReconfigureApi = true;
         } else if (name == "brightness_mode") {
             settings->saveInt(BRIGHTNESS_MODE, intValue);
             LOG.printf("[WEB] Setting brightness_mode: %d\n", intValue);
@@ -2745,16 +2685,12 @@ void JaamWeb::handleTextParameter() {
         if (name == "device_name") {
             settings->saveString(DEVICE_NAME, valuePtr);
             LOG.printf("[WEB] Setting device_name: %s\n", valuePtr);
-            configureMDNS();
-            needReconfigureApi = true;
         } else if (name == "device_description") {
             settings->saveString(DEVICE_DESCRIPTION, valuePtr);
             LOG.printf("[WEB] Setting device_description: %s\n", valuePtr);
         } else if (name == "broadcast_name") {
             settings->saveString(BROADCAST_NAME, valuePtr);
             LOG.printf("[WEB] Setting broadcast_name: %s\n", valuePtr);
-            configureMDNS();
-            needReconfigureApi = true;
         } else if (name == "ws_server_host") {
             settings->saveString(WS_SERVER_HOST, valuePtr);
             needReconnectWebsocket = true;
@@ -2823,8 +2759,6 @@ void JaamWeb::handleTextParameter() {
             }
             settings->saveInt(API_PORT, apiPort);
             LOG.printf("[WEB] Setting api_port: %d\n", apiPort);
-            // Встановлюємо прапорець для реконфігурації API
-            needReconfigureApi = true;
         } else if (name == "button_1_pin") {
             settings->saveInt(BUTTON_1_PIN, value.toInt());
             needReconfigureButtons = true;
@@ -2911,9 +2845,6 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.onNotFound([this]() { this->handleNotFound(); });
 
     server.begin();
-    
-    // Налаштовуємо MDNS
-    configureMDNS();
 }
 
 void JaamWeb::handleClient() {

@@ -49,7 +49,6 @@ private:
     String getMeta();
     String getStyles();
     String getScripts();
-    void configureMDNS();
     void buildUiSchemaModels(JsonDocument& doc);
     void buildUiSchemaSections(JsonDocument& doc);
     void buildUiSchemaDropdownLists(JsonDocument& doc);

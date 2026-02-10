@@ -3,8 +3,6 @@
 #include "JaamUtils.h"
 #include "JaamLogs.h"
 #include <ArduinoJson.h>
-#include <ESPmDNS.h>
-#include <mdns.h>
 #include <cmath>
 
 extern volatile bool needAdaptColors;
@@ -68,64 +66,6 @@ void JaamApi::reconfigure() {
     }
 }
 
-void JaamApi::startMDNS() {
-    if (!settings) {
-        return;
-    }
-    
-    const char* hostname = settings->getString(BROADCAST_NAME);
-    if (!hostname || strlen(hostname) == 0) {
-        LOG.printf("[API] MDNS not started: BROADCAST_NAME is empty\n");
-        return;
-    }
-    
-    if (!MDNS.begin(hostname)) {
-        LOG.printf("[API] MDNS failed to start\n");
-        return;
-    }
-    
-    // Додаємо WebSocket сервіс для Home Assistant
-    int port = settings->getInt(API_PORT);
-    if (!MDNS.addService("jaam-ws", "tcp", port)) {
-        LOG.printf("[API] Failed to add MDNS jaam-ws service\n");
-        return;
-    }
-    
-    LOG.printf("[API] MDNS jaam-ws service added on port %d\n", port);
-    
-    // Встановлюємо instance name для jaam-ws сервісу (це відображається як title в Bonjour Browser)
-    const char* deviceName = settings->getString(DEVICE_NAME);
-    if (deviceName && strlen(deviceName) > 0) {
-        if (mdns_service_instance_name_set("_jaam-ws", "_tcp", deviceName)) {
-            LOG.printf("[API] Failed setting MDNS jaam-ws service instance name\n");
-        } else {
-            LOG.printf("[API] MDNS jaam-ws service instance name set to: %s\n", deviceName);
-        }
-    }
-    
-    // Додаємо TXT metadata
-    if (chipId) {
-        MDNS.addServiceTxt("jaam-ws", "tcp", "chipId", chipId);
-    }
-    if (fwVersion) {
-        MDNS.addServiceTxt("jaam-ws", "tcp", "version", fwVersion);
-    }
-    if (deviceName && strlen(deviceName) > 0) {
-        MDNS.addServiceTxt("jaam-ws", "tcp", "deviceName", deviceName);
-    }
-    
-    LOG.printf("[API] MDNS started: %s.local\n", hostname);
-}
-
-void JaamApi::stopMDNS() {
-    // Видаляємо MDNS сервіс (але не зупиняємо MDNS повністю)
-    if (mdns_service_remove("_jaam-ws", "_tcp")) {
-        LOG.printf("[API] Failed removing MDNS service\n");
-    } else {
-        LOG.printf("[API] MDNS service removed\n");
-    }
-}
-
 void JaamApi::start() {
     if (!settings) {
         LOG.printf("[API] Cannot start: settings is null\n");
@@ -140,13 +80,9 @@ void JaamApi::start() {
         isRunning = true;
         LOG.printf("[API] WebSocket server started on port %d\n", port);
     }
-    // Запускаємо MDNS
-    startMDNS();
 }
 
 void JaamApi::stop() {
-    // Видаляємо MDNS сервіс
-    stopMDNS();
     if (isRunning) {
         // Закриваємо всіх підключених клієнтів
         for (auto& client : wsClients) {
@@ -572,6 +508,12 @@ void JaamApi::onSettingsChange(Type type, int intValue, const char* strValue) {
     
     // Відстежуємо зміни критичних налаштувань і broadcast-имо їх
     switch (type) {
+        case API_ENABLED:
+        case API_PORT:
+            // При зміні API_ENABLED або API_PORT перезапускаємо сервер
+            reconfigure();
+            break;
+            
         case MAP_MODE:
             broadcastMapModeChange(intValue);
             break;

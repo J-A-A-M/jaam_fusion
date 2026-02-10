@@ -18,6 +18,7 @@
 #include "JaamSettings.h"
 #include "JaamWeb.h"
 #include "JaamApi.h"
+#include "JaamMDNS.h"
 #include "JaamLed.h"
 #include "JaamUtils.h"
 #include "JaamStorage.h"
@@ -42,6 +43,7 @@ JaamSettings        settings;
 JaamFirmware        firmware;
 JaamWeb             web;
 JaamApi             api;
+JaamMDNS            mdnsService;
 JaamLed             led;
 JaamBattery         battery;
 JaamStorage         storage;
@@ -89,7 +91,6 @@ volatile bool needUpdateBatteryPin = false;
 volatile bool needReconfigureDisplay = false;
 volatile bool needReconfigureSound = false;
 volatile bool needReconfigureButtons = false;
-volatile bool needReconfigureApi = false;
 volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
 volatile bool needAdaptVolume = false;
@@ -1822,9 +1823,11 @@ void initSettings() {
     
     // Реєструємо callback для автоматичного broadcast змін налаштувань до API
     settings.setChangeCallback([](Type type, int intValue, const char* strValue) {
-        if (api.isApiRunning()) {
-            api.onSettingsChange(type, intValue, strValue);
-        }
+        // Повідомляємо mDNS про зміни налаштувань
+        mdnsService.onSettingsChange(type, intValue, strValue);
+        
+        // Повідомляємо API про зміни налаштувань
+        api.onSettingsChange(type, intValue, strValue);
     });
 }
 
@@ -1941,8 +1944,17 @@ void initTime() {
     timeInitialized = true;
 }
 
+void initMDNS() {
+    LOG.printf("[INIT] Init mDNS\n");
+    mdnsService.setSettings(&settings);
+    mdnsService.setDeviceInfo(chipID, currentFwVersion);
+    mdnsService.begin();
+}
+
 void initApi() {
     LOG.printf("[INIT] Init API\n");
+    
+    // Ініціалізуємо API
     api.setSettings(&settings);
     api.setDeviceInfo(chipID, currentFwVersion);
     
@@ -2049,6 +2061,7 @@ void initWifi() {
     initTime();
     initWeb();
     initApi();
+    initMDNS();
     
     // // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
     // WiFi.begin();
@@ -2630,12 +2643,6 @@ void mainThreadProcess() {
         LOG.printf("[MAIN] Reconfiguring buttons\n");
         initButtons();
         needReconfigureButtons = false;
-    }
-
-    if (needReconfigureApi) {
-        LOG.printf("[MAIN] Reconfiguring API\n");
-        api.reconfigure();
-        needReconfigureApi = false;
     }
 
     if (needUpdateAnimationsMode) {
