@@ -298,9 +298,20 @@ void JaamApi::handleWebSocketClients() {
     }
     
     // Poll всіх клієнтів для обробки повідомлень
-    for (auto& client : wsClients) {
-        if (client.available()) {
-            client.poll();
+    for (auto it = wsClients.begin(); it != wsClients.end(); ) {
+        if (it->available()) {
+            it->poll();
+            // Check again after polling in case connection was closed
+            if (!it->available()) {
+                LOG.printf("[API] Client disconnected during poll, removing from list\n");
+                it = wsClients.erase(it);
+            } else {
+                ++it;
+            }
+        } else {
+            // Client was already unavailable before polling
+            LOG.printf("[API] Removing unavailable client from list\n");
+            it = wsClients.erase(it);
         }
     }
 }
@@ -341,18 +352,20 @@ void JaamApi::broadcastMapModeChange(int newMode) {
     LOG.printf("[API] Broadcast map mode change: %d\n", newMode);
 }
 
-void JaamApi::broadcastLampChange(const String& color, int brightness) {
+void JaamApi::broadcastLampChange(const char* color, int brightness) {
     JsonDocument doc;
     doc["type"] = "lamp_change";
     JsonObject lamp = doc["lamp"].to<JsonObject>();
-    lamp["color"] = color;
+    if (color) {
+        lamp["color"] = color;
+    }
     lamp["brightness"] = brightness;
     
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
     
-    LOG.printf("[API] Broadcast lamp change: %s, %d\n", color.c_str(), brightness);
+    LOG.printf("[API] Broadcast lamp change: %s, %d\n", color ? color : "(null)", brightness);
 }
 
 void JaamApi::broadcastHomeRegionChange(int regionId) {
@@ -393,15 +406,17 @@ void JaamApi::broadcastHomeAlertChange(uint16_t flags16) {
 }
 
 void JaamApi::broadcastDeviceNameChange(const char* deviceName) {
+    const char* deviceNameSafe = deviceName ? deviceName : "(null)";
+    
     JsonDocument doc;
     doc["type"] = "device_name_change";
-    doc["device_name"] = deviceName;
+    doc["device_name"] = deviceNameSafe;
     
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
     
-    LOG.printf("[API] Broadcast device name change: %s\n", deviceName);
+    LOG.printf("[API] Broadcast device name change: %s\n", deviceNameSafe);
 }
 
 void JaamApi::broadcastHomeDistrictTempChange(int temp) {
@@ -525,9 +540,7 @@ void JaamApi::onSettingsChange(Type type, int intValue, const char* strValue) {
             
         case COLOR_LAMP:
             // Якщо змінився колір лампи, відправляємо оновлення
-            if (strValue) {
-                broadcastLampChange(strValue, settings->getInt(BRIGHTNESS_LAMP));
-            }
+            broadcastLampChange(strValue, settings->getInt(BRIGHTNESS_LAMP));
             break;
             
         case HOME_DISTRICT:
