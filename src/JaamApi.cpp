@@ -313,10 +313,20 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
     else if (type == "set_home_region") {
         if (!doc["region_id"].isNull()) {
             int regionId = doc["region_id"].as<int>();
-            if (regionId >= 0 && regionId <= 100) {
+            // Валідація: перевіряємо чи region_id існує в DISTRICTS
+            bool validRegion = false;
+            for (int i = 0; i < MAX_REGIONS; i++) {
+                if (DISTRICTS[i].id == regionId) {
+                    validRegion = true;
+                    break;
+                }
+            }
+            if (validRegion) {
                 settings->saveInt(HOME_DISTRICT, regionId);
                 needAdaptColors = true;
                 LOG.printf("[API] Home region changed to: %d\n", regionId);
+            } else {
+                LOG.printf("[API] Invalid region id: %d\n", regionId);
             }
         }
     }
@@ -523,17 +533,33 @@ void JaamApi::broadcastSystemInfo() {
 }
 
 void JaamApi::broadcastClimateDataChange(float temp, float humidity, float pressure) {
+    // Якщо всі значення NaN - не відправляємо нічого
+    if (isnan(temp) && isnan(humidity) && isnan(pressure)) {
+        return;
+    }
+    
     JsonDocument doc;
     doc["type"] = "climate_data_change";
-    doc["climate_temp"] = temp;
-    doc["climate_humidity"] = humidity;
-    doc["climate_pressure"] = pressure;
+    
+    // Додаємо тільки валідні значення (не NaN)
+    if (!isnan(temp)) {
+        doc["climate_temp"] = temp;
+    }
+    if (!isnan(humidity)) {
+        doc["climate_humidity"] = humidity;
+    }
+    if (!isnan(pressure)) {
+        doc["climate_pressure"] = pressure;
+    }
     
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
     
-    LOG.printf("[API] Broadcast climate data change: temp=%.2f, humidity=%.2f, pressure=%.2f\n", temp, humidity, pressure);
+    LOG.printf("[API] Broadcast climate data change: temp=%s, humidity=%s, pressure=%s\n", 
+               isnan(temp) ? "N/A" : String(temp, 2).c_str(),
+               isnan(humidity) ? "N/A" : String(humidity, 2).c_str(),
+               isnan(pressure) ? "N/A" : String(pressure, 2).c_str());
 }
 
 // --- Обробка змін налаштувань ---
