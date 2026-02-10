@@ -1572,7 +1572,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 void JaamWeb::handleCss() {
-    String css = R"CSS(
+    String css = minify(R"CSS(
 /* Основні CSS змінні для темізації */
 :root {
     --bg-color: #f0f0f0;
@@ -2109,7 +2109,7 @@ h1 {
     opacity: 1;
     max-height: 1000px;
 }
-)CSS";
+)CSS");
     // Використовуємо chunked transfer для великого CSS
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
@@ -2143,7 +2143,7 @@ h1 {
 
 void JaamWeb::handleJs() {
     // Return getScripts() content (already without script tags)
-    String js = getScripts();
+    String js = minify(getScripts());
     
     // Використовуємо chunked transfer для великого JS
     WiFiClient client = server.client();
@@ -4017,4 +4017,84 @@ void JaamWeb::handleUiSchemaControls() {
     serializeJson(doc, response);
     sendLargeJson(&server, response);
     response.clear();
+}
+
+String JaamWeb::minify(const String& source) {
+    String result;
+    result.reserve(source.length() / 2);
+    
+    bool inString = false;
+    bool inSingleQuote = false;
+    bool inBlockComment = false;
+    bool inLineComment = false;
+    char prevChar = '\0';
+    
+    for (size_t i = 0; i < source.length(); i++) {
+        char c = source[i];
+        char nextChar = (i + 1 < source.length()) ? source[i + 1] : '\0';
+        
+        // Перевірка початку/кінця рядків
+        if (!inBlockComment && !inLineComment) {
+            if (c == '"' && prevChar != '\\') {
+                inString = !inString;
+            } else if (c == '\'' && prevChar != '\\') {
+                inSingleQuote = !inSingleQuote;
+            }
+        }
+        
+        // Пропуск коментарів
+        if (!inString && !inSingleQuote) {
+            if (!inBlockComment && !inLineComment && c == '/' && nextChar == '*') {
+                inBlockComment = true;
+                i++;
+                continue;
+            }
+            if (inBlockComment && c == '*' && nextChar == '/') {
+                inBlockComment = false;
+                i++;
+                continue;
+            }
+            if (inBlockComment) {
+                continue;
+            }
+            
+            if (!inLineComment && c == '/' && nextChar == '/') {
+                inLineComment = true;
+                i++;
+                continue;
+            }
+            if (inLineComment) {
+                if (c == '\n' || c == '\r') {
+                    inLineComment = false;
+                }
+                continue;
+            }
+        }
+        
+        // Видалити всі whitespace символи поза рядками
+        if (!inString && !inSingleQuote) {
+            if (c == '\n' || c == '\r') {
+                // Замінюємо new line на пробіл
+                c = ' ';
+            }
+            if (c == ' ' || c == '\t') {
+                // Перевірити чи потрібен пробіл між буквено-цифровими токенами
+                if (result.length() > 0) {
+                    char lastChar = result[result.length() - 1];
+                    // Пробіл потрібен тільки між літерами/цифрами або після return/var/function тощо
+                    if ((isalnum(lastChar) || lastChar == '_' || lastChar == '$') && 
+                        (isalnum(nextChar) || nextChar == '_' || nextChar == '$')) {
+                        result += ' ';
+                    }
+                }
+                prevChar = c;
+                continue;
+            }
+        }
+        
+        result += c;
+        prevChar = c;
+    }
+    
+    return result;
 }

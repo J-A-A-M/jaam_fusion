@@ -54,4 +54,5 @@ private:
     void buildUiSchemaSections(JsonDocument& doc);
     void buildUiSchemaDropdownLists(JsonDocument& doc);
     void buildUiSchemaControls(JsonDocument& doc);
+    String minify(const String& source);
 };
