@@ -4,7 +4,7 @@
 #include <JaamUtils.h>
 #include <Adafruit_NeoPixel.h>
 
-JaamSettings::JaamSettings() {
+JaamSettings::JaamSettings() : changeCallback(nullptr) {
 }
 
 const char* PF_STRING = "S";
@@ -218,6 +218,8 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_EXPLOSION_CYCLE_TIME, {"aect", 500}},
     {BRIGHTNESS_LAMP, {"blamp", 50}},
     {TIME_ZONE, {"tzn", 0}},
+    {API_ENABLED, {"apie", 0}},
+    {API_PORT, {"apip", 81}},
 };
 
 std::map<Type, SettingItemString> stringSettings = {
@@ -318,6 +320,12 @@ void JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         setting.value = value;
         intSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: %d (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
+        
+        // Викликаємо callback якщо зареєстрований
+        if (changeCallback) {
+            changeCallback(type, value, nullptr);
+        }
+        
         return;
     }
     LOG.printf("[SETTINGS] Unknown int setting type\n");
@@ -343,6 +351,12 @@ void JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
         setting.value = value;
         stringSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: '%s' (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
+        
+        // Викликаємо callback якщо зареєстрований
+        if (changeCallback) {
+            changeCallback(type, 0, value);
+        }
+        
         return;
     }
     LOG.printf("[SETTINGS] Unknown stringsetting type\n");
@@ -380,6 +394,20 @@ bool JaamSettings::getBool(Type type) {
 
 void JaamSettings::saveBool(Type type, bool value, bool saveToPrefs) {
     saveInt(type, value ? 1 : 0, saveToPrefs);
+}
+
+bool JaamSettings::hasKey(Type type) {
+    const char* key = nullptr;
+    try {
+        key = getKey(type);
+    } catch (const std::runtime_error&) {
+        // Unknown type, treat as absent
+        return false;
+    }
+    preferences.begin(PREFS_NAME, true);
+    bool exists = preferences.isKey(key);
+    preferences.end();
+    return exists;
 }
 
 void JaamSettings::getSettingsBackup(Print* stream, const char* fwVersion, const char* chipID, const char* time) {
@@ -461,4 +489,8 @@ bool JaamSettings::restoreSettingsBackup(const char* settings) {
     preferences.end();
 
     return restored;
+}
+
+void JaamSettings::setChangeCallback(SettingsChangeCallback callback) {
+    changeCallback = callback;
 }

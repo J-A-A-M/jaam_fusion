@@ -25,13 +25,6 @@ static inline uint32_t hsvToRgb(float h, float s, float v) {
     return ((uint32_t)R << 16) | ((uint32_t)G << 8) | B;
 }
 
-// Helper: decode encoded temperature byte (7 bits value, 1 bit sign: 0=+, 1=-)
-static inline int decodeTemperature(uint8_t enc) {
-    int magnitude = (int)(enc & 0x7F);
-    bool negative = (enc & 0x80) != 0; // last bit is sign
-    return negative ? -magnitude : magnitude;
-}
-
 // Helper: convert temperature (C) to color using violet->red gradient via HSV
 static inline uint32_t colorFromTemperature(int tempC, int minC, int maxC) {
     if (maxC <= minC) {

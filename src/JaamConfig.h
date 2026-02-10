@@ -818,6 +818,8 @@ enum Type {
     TRACK_ON_RECON_DRONES,
     COLOR_LAMP,
     BRIGHTNESS_LAMP,
+    API_ENABLED,
+    API_PORT,
 };
 
 static SettingListItem DISTRICTS[MAX_REGIONS] = {

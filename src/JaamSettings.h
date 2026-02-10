@@ -2,7 +2,10 @@
 #include <Print.h>
 #include <JaamConfig.h>
 #include <Preferences.h>
+#include <functional>
 
+// Callback для повідомлення про зміни налаштувань
+typedef std::function<void(Type type, int intValue, const char* strValue)> SettingsChangeCallback;
 
 class JaamSettings {
 
@@ -18,9 +21,14 @@ public:
     void saveFloat(Type type, float value, bool saveToPrefs = true);
     bool getBool(Type type);
     void saveBool(Type type, bool value, bool saveToPrefs = true);
+    bool hasKey(Type type);
     void getSettingsBackup(Print* stream, const char* fwVersion, const char* chipID, const char* time);
     bool restoreSettingsBackup(const char* settings);
+    
+    // Реєстрація callback для відстеження змін
+    void setChangeCallback(SettingsChangeCallback callback);
 
 private:
     Preferences preferences;
+    SettingsChangeCallback changeCallback;
 };
