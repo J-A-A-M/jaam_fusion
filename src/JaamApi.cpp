@@ -5,11 +5,13 @@
 #include <ArduinoJson.h>
 #include <ESPmDNS.h>
 #include <mdns.h>
+#include <cmath>
 
 extern volatile bool needAdaptColors;
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
-    usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0) {}
+    usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
+    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN) {}
 
 void JaamApi::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -227,13 +229,13 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     doc["cpu_temp"] = cpuTemp;
 
     // Температура, вологість і тиск з кліматичного датчика, якщо є
-    if (climateTemperature != NAN) {
+    if (!isnan(climateTemperature)) {
         doc["climate_temp"] = climateTemperature;
     }
-    if (climateHumidity != NAN) {
+    if (!isnan(climateHumidity)) {
         doc["climate_humidity"] = climateHumidity;
     }
-    if (climatePressure != NAN) {
+    if (!isnan(climatePressure)) {
         doc["climate_pressure"] = climatePressure;
     }
 

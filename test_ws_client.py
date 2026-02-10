@@ -7,29 +7,52 @@ import asyncio
 import websockets
 import json
 import sys
+import traceback
 
 
 def parse_alert_flags(flags16):
     """Parse flags16 and return list of active alert types."""
     alert_names = {
-        0: 'Air',
-        1: 'Artillery',
-        2: 'Urban',
-        3: 'Chemical',
-        4: 'Nuclear',
-        5: 'Drones',
-        6: 'Missiles',
-        7: 'KAB',
-        8: 'Ballistic',
-        9: 'Explosion',
-        10: 'Recon Drones'
+        0: "Air",
+        1: "Artillery",
+        2: "Urban",
+        3: "Chemical",
+        4: "Nuclear",
+        5: "Drones",
+        6: "Missiles",
+        7: "KAB",
+        8: "Ballistic",
+        9: "Explosion",
+        10: "Recon Drones",
     }
     active_alerts = []
     for bit, name in alert_names.items():
         if flags16 & (1 << bit):
             active_alerts.append(name)
-    return active_alerts if active_alerts else ['NO_ALERT']
+    return active_alerts if active_alerts else ["NO_ALERT"]
 
+
+def format_uptime(seconds):
+    """Format uptime from seconds to human-readable string."""
+    if seconds is None:
+        return "N/A"
+
+    days = seconds // 86400
+    hours = (seconds % 86400) // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    if secs > 0 or not parts:  # Show seconds if it's the only value or non-zero
+        parts.append(f"{secs}s")
+
+    return " ".join(parts)
 
 
 async def send_command(websocket):
@@ -113,12 +136,14 @@ async def receive_messages(websocket):
                     print(f"  Name: {data.get('device_name', 'N/A')}")
                     print(f"  Map mode: {mode_name} (id={mode_id})")
                     print(f"  Home region: {data.get('home_region')}")
-                    print(f"  Home alert: {", ".join(active_alerts)} (flags=0x{flags16:04X})")
+                    print(f"  Home alert: {', '.join(active_alerts)} (flags=0x{flags16:04X})")
                     print(f"  Home temp: {data.get('home_district_temp', 'N/A')}°C")
                     print(f"  Memory: {data.get('used_memory', 0) / 1024:.1f} KB")
-                    print(f"  Uptime: {data.get('uptime')} min, WiFi: {data.get('wifi_uptime')} min")
                     print(
-                        f"  WiFi signal: {data.get('wifi_signal')} dBm, WebSocket: {'up' if data.get('websocket_status') else 'down'} ({data.get('websocket_uptime')} min)"
+                        f"  Uptime: {format_uptime(data.get('uptime'))}, WiFi: {format_uptime(data.get('wifi_uptime'))}"
+                    )
+                    print(
+                        f"  WiFi signal: {data.get('wifi_signal')} dBm, WebSocket: {'up' if data.get('websocket_status') else 'down'} ({format_uptime(data.get('websocket_uptime'))})"
                     )
                     print(f"  CPU temp: {data.get('cpu_temp', 'N/A')}°C")
                     lamp = data.get("lamp", {})
@@ -143,14 +168,14 @@ async def receive_messages(websocket):
                 elif msg_type == "home_alert_change":
                     flags16 = data.get("home_alert_flags", 0)
                     active_alerts = parse_alert_flags(flags16)
-                    print(f"→ Home alert changed to: {", ".join(active_alerts)} (flags=0x{flags16:04X})")
+                    print(f"→ Home alert changed to: {', '.join(active_alerts)} (flags=0x{flags16:04X})")
 
                 elif msg_type == "system_info":
                     mem_kb = data.get("used_memory", 0) / 1024
-                    print(f"→ System: {mem_kb:.1f} KB, {data.get('uptime')} min uptime")
-                    print(f"  WiFi: {data.get('wifi_signal')} dBm, {data.get('wifi_uptime')} min")
+                    print(f"→ System: {mem_kb:.1f} KB, {format_uptime(data.get('uptime'))} uptime")
+                    print(f"  WiFi: {data.get('wifi_signal')} dBm, {format_uptime(data.get('wifi_uptime'))}")
                     print(
-                        f"  WebSocket: {'up' if data.get('websocket_status') else 'down'}, {data.get('websocket_uptime')} min"
+                        f"  WebSocket: {'up' if data.get('websocket_status') else 'down'}, {format_uptime(data.get('websocket_uptime'))}"
                     )
                     print(f"  CPU temp: {data.get('cpu_temp', 'N/A')}°C")
 
@@ -163,6 +188,8 @@ async def receive_messages(websocket):
             except json.JSONDecodeError as e:
                 print(f"\n✗ Failed to parse JSON: {e}")
 
+    except asyncio.CancelledError:
+        print("\n✓ Receive task cancelled")
     except websockets.exceptions.ConnectionClosed:
         print("\n✗ Connection closed")
 
@@ -238,6 +265,7 @@ async def test_websocket_client(host="192.168.1.100", test_mode=False):
         print("\n\nDisconnected by user")
     except Exception as e:
         print(f"\nError: {e}")
+        traceback.print_exc()
         return 1
 
     return 0
@@ -253,4 +281,8 @@ if __name__ == "__main__":
     host = sys.argv[1]
     test_mode = "--test" in sys.argv
 
-    asyncio.run(test_websocket_client(host, test_mode))
+    try:
+        asyncio.run(test_websocket_client(host, test_mode))
+    except KeyboardInterrupt:
+        print("\n\n✓ Interrupted by user")
+        sys.exit(0)
