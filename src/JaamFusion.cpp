@@ -112,7 +112,7 @@ bool                wifiConnected = false;
 WebsocketsClient    websocket;
 time_t              websocketLastPingTime = 0;
 bool                isFirstDataFetchCompleted = false;
-bool                apiConnected;
+bool                websocketConnected;
 bool                websocketReconnect = false;
 time_t              lastWebsocketConnectTime = 0;
 
@@ -1302,14 +1302,14 @@ void logWebsocketCloseReason(websockets::CloseReason reason) {
 
 void onEventsCallback(WebsocketsEvent event, String data) {
     if (event == WebsocketsEvent::ConnectionOpened) {
-        apiConnected = true;
+        websocketConnected = true;
         servicePin(DATA);
         LOG.printf("[WEBSOCKET] connection opened\n");
         
         websocketLastPingTime = millis();
-        //ha.setMapApiConnect(apiConnected);
+        //ha.setMapApiConnect(websocketConnected);
     } else if (event == WebsocketsEvent::ConnectionClosed) {
-        apiConnected = false;
+        websocketConnected = false;
         servicePin(DATA);
         LOG.printf("[WEBSOCKET] connection closed\n");
         LOG.printf("[MEMORY] Heap before close: %u\n", ESP.getFreeHeap());
@@ -1318,7 +1318,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         logWebsocketCloseReason(reason);
         delay(500);
         LOG.printf("[MEMORY] Heap after close: %u\n", ESP.getFreeHeap());
-        //ha.setMapApiConnect(apiConnected);
+        //ha.setMapApiConnect(websocketConnected);
     } else if (event == WebsocketsEvent::GotPing) {
         LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
         websocketLastPingTime = millis();
@@ -1345,7 +1345,7 @@ void socketConnect() {
     LOG.printf("[WEBSOCKET] url:%s\n", webSocketUrl);
     websocket.connect(webSocketUrl);
     if (websocket.available()) {
-        apiConnected = true;
+        websocketConnected = true;
         servicePin(DATA);
         clearAllAlertsMaps();
         clearAllWeatherMaps();
@@ -2133,6 +2133,7 @@ void initWebsocket() {
 
 void initStrip() {
     // Створюємо м'ютекс для захисту доступу до стрічок
+    servicePin(POWER);
     stripMutex = xSemaphoreCreateMutex();
     if (stripMutex == NULL) {
         LOG.printf("[ERROR] Failed to create stripMutex semaphore\n");
@@ -2414,12 +2415,12 @@ void websocketProcess() {
     }
     if (!websocket.available()) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
-        apiConnected = false;
+        websocketConnected = false;
         socketConnect();
     }
     if (websocketReconnect) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
-        apiConnected = false;
+        websocketConnected = false;
         socketConnect();
     }
 }
@@ -2530,7 +2531,7 @@ void mainThreadProcess() {
     if (needReconnectWebsocket && !needReconnectMainStrip) {
         LOG.printf("[MAIN] Reconnecting WebSocket\n");
         needReconnectWebsocket = false;
-        apiConnected = false;
+        websocketConnected = false;
         socketConnect();
     }
 

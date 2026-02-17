@@ -62,7 +62,7 @@ extern JaamBattery                      battery;
 extern JaamStorage                      storage;
 extern JaamDisplay                      display;
 extern bool                             wifiConnected;
-extern bool                             apiConnected;
+extern bool                             websocketConnected;
 extern JaamApi                          api;
 extern uint8_t                          hardware;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
@@ -88,7 +88,7 @@ enum ServiceLed {
     POWER,
     WIFI,
     DATA,
-    HA,
+    API,
     UPD_AVAILABLE
 };
 
@@ -728,11 +728,12 @@ inline uint32_t getServicePinColor(int type) {
             color = wifiConnected ? DefaultColors::WIFI : DefaultColors::OFF;
             break;
         case DATA:
-            LOG.printf("[SERVICE LED] apiConnected %d\n", apiConnected);
-            color = apiConnected ? DefaultColors::DATA : DefaultColors::OFF;
+            LOG.printf("[SERVICE LED] dataConnected %d\n", websocketConnected);
+            color = websocketConnected ? DefaultColors::DATA : DefaultColors::OFF;
             break;
-        case HA:
-            color = DefaultColors::OFF;
+        case API:
+            LOG.printf("[SERVICE LED] apiConnected %d\n", api.getClientsCount());
+            color = api.getClientsCount() > 0 ? DefaultColors::API : DefaultColors::OFF;
             break;
         case UPD_AVAILABLE:
             color = DefaultColors::OFF;
