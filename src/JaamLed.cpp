@@ -27,7 +27,10 @@ uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
     if (percent > 100) percent = 100;
     uint8_t maxBrightness = hardwareConfig.getMaxBrightness();
-    return map(percent, 0, 100, 0, maxBrightness);
+    uint8_t minBrightness = hardwareConfig.getMinBrightness();
+    // Використовуємо функцію map для лінійного масштабування відсотків до діапазону мінімальної та максимальної яскравості,
+    // визначених для поточного апаратного забезпечення
+    return (uint8_t) map(percent, 0, 100, minBrightness, maxBrightness);
 }
 
 // Перевірка ініціалізації стрічки
