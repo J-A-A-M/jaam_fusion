@@ -62,7 +62,7 @@ extern JaamBattery                      battery;
 extern JaamStorage                      storage;
 extern JaamDisplay                      display;
 extern bool                             wifiConnected;
-extern bool                             apiConnected;
+extern bool                             websocketConnected;
 extern JaamApi                          api;
 extern uint8_t                          hardware;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
@@ -88,7 +88,7 @@ enum ServiceLed {
     POWER,
     WIFI,
     DATA,
-    HA,
+    API,
     UPD_AVAILABLE
 };
 
@@ -728,11 +728,12 @@ inline uint32_t getServicePinColor(int type) {
             color = wifiConnected ? DefaultColors::WIFI : DefaultColors::OFF;
             break;
         case DATA:
-            LOG.printf("[SERVICE LED] apiConnected %d\n", apiConnected);
-            color = apiConnected ? DefaultColors::DATA : DefaultColors::OFF;
+            LOG.printf("[SERVICE LED] websocketConnected %d\n", websocketConnected);
+            color = websocketConnected ? DefaultColors::DATA : DefaultColors::OFF;
             break;
-        case HA:
-            color = DefaultColors::OFF;
+        case API:
+            LOG.printf("[SERVICE LED] apiClients %d\n", api.getClientsCount());
+            color = api.getClientsCount() > 0 ? DefaultColors::API : DefaultColors::OFF;
             break;
         case UPD_AVAILABLE:
             color = DefaultColors::OFF;
@@ -1010,12 +1011,8 @@ inline bool saveMapMode(int newMapMode) {
   settings.saveInt(MAP_MODE, newMapMode);
   needAdaptColors = true;
   //reportSettingsChange("map_mode", newMapMode);
-  //ha.setLampState(newMapMode == 5);
-  //ha.setMapMode(haMapModeMap.second[newMapMode]);
   const char* mapModeName = getNameById(MAP_MODES, newMapMode, MAP_MODES_COUNT);
   display.showServiceMessage(mapModeName, "Режим мапи:");
-  //ha.setMapModeCurrent(mapModeName);
-  //showServiceMessage(mapModeName, "Режим мапи:");
   // update to selected mapMode
   //mapCycle();
   return true;
@@ -1038,10 +1035,8 @@ inline bool saveDisplayMode(int newDisplayMode) {
   if (newDisplayMode == settings.getInt(DISPLAY_MODE)) return false;
   settings.saveInt(DISPLAY_MODE, newDisplayMode);
   //reportSettingsChange("display_mode", newDisplayMode);
-  //if (display.isDisplayAvailable()) {
-  //  ha.setDisplayMode(haDisplayModeMap.second[newDisplayMode]);
-  //}
-  //showServiceMessage(getNameById(DISPLAY_MODES, newDisplayMode, DISPLAY_MODE_OPTIONS_MAX), "Режим дисплея:", 1000);
+  const char* displayModeName = getNameById(DISPLAY_MODES, newDisplayMode, DISPLAY_MODES_COUNT);
+  display.showServiceMessage(displayModeName, "Режим дисплея:");
   // update to selected displayMode
   //displayCycle();
   return true;

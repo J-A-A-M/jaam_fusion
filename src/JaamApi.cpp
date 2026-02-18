@@ -6,6 +6,7 @@
 #include <cmath>
 
 extern volatile bool needAdaptColors;
+extern void servicePin(ServiceLed type);
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
@@ -91,7 +92,7 @@ void JaamApi::stop() {
             }
         }
         wsClients.clear();
-        
+        servicePin(API);
         // Видаляємо WebSocket сервер
         if (wsServer) {
             delete wsServer;
@@ -292,7 +293,7 @@ void JaamApi::handleWebSocketClients() {
             
             // Зберігаємо клієнта в список
             wsClients.push_back(client);
-            
+            servicePin(API);
             LOG.printf("[API] Client added, total clients: %d\n", wsClients.size());
         }
     }
@@ -305,6 +306,7 @@ void JaamApi::handleWebSocketClients() {
             if (!it->available()) {
                 LOG.printf("[API] Client disconnected during poll, removing from list\n");
                 it = wsClients.erase(it);
+                servicePin(API);
             } else {
                 ++it;
             }
@@ -312,6 +314,7 @@ void JaamApi::handleWebSocketClients() {
             // Client was already unavailable before polling
             LOG.printf("[API] Removing unavailable client from list\n");
             it = wsClients.erase(it);
+            servicePin(API);
         }
     }
 }

@@ -10,8 +10,8 @@ namespace DefaultColors {
     static const uint32_t POWER = 0xFF0000;  // Red
     static const uint32_t WIFI = 0x0000FF;  // Blue
     static const uint32_t DATA = 0x00FF00;  // Green
-    static const uint32_t HA = 0xFFFF00;  // Blue
-    static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // Blue
+    static const uint32_t API = 0xFFFF00;  // Yellow
+    static const uint32_t UPD_AVAILABLE = 0xFFFFFF;  // White
     // Ukrainian flag colors
     static const uint32_t FLAG_BLUE = 0x0057B7;  // Blue
     static const uint32_t FLAG_YELLOW = 0xFFD700;  // Yellow
