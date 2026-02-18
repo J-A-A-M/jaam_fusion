@@ -306,7 +306,15 @@ uint8_t JaamHardware::getMinBrightness() {
             return JaamHardwareLed::BRIGHTNESS_JAAM_2_1_MIN;
         case HARDWARE::JAAM_1_3:
             return JaamHardwareLed::BRIGHTNESS_JAAM_1_3_MIN;
-        default:
-            return settings.getInt(BRIGHTNESS_MIN);
+        default: {
+            // Read settings-derived min brightness (int), clamp to [0,100],
+            // ensure it does not exceed hardware max, then cast.
+            int val = settings.getInt(BRIGHTNESS_MIN);
+            if (val < 0) val = 0;
+            if (val > 100) val = 100;
+            uint8_t maxB = getMaxBrightness();
+            if (val > maxB) val = maxB;
+            return static_cast<uint8_t>(val);
+        }
     }
 }
