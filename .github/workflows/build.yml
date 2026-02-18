@@ -47,4 +47,8 @@ jobs:
     - name: Build artifact size check
       run: |
         echo "Firmware binary size for ${{ matrix.environment }}:"
-        ls -lh .pio/build/${{ matrix.environment }}/*.bin || echo "Binary not found"
+        if ! ls .pio/build/${{ matrix.environment }}/*.bin 1> /dev/null 2>&1; then
+          echo "ERROR: No binary files found in .pio/build/${{ matrix.environment }}/"
+          exit 1
+        fi
+        ls -lh .pio/build/${{ matrix.environment }}/*.bin
