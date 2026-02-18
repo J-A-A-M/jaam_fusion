@@ -2247,6 +2247,10 @@ void JaamWeb::handleParameter() {
             needAdaptStripBrightness = true;
             // needAdaptColors = true;
             // needAdaptAnimationColors = true;
+        } else if (name == "brightness_min") {
+            settings->saveInt(BRIGHTNESS_MIN, intValue);
+            LOG.printf("[WEB] Setting brightness_min: %d\n", intValue);
+            needAdaptStripBrightness = true;
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);
@@ -3789,6 +3793,8 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addLabel("hardware", "Батарея", exceptJaam1And2And32.c_str());
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING, exceptJaam1And2And32.c_str());
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1", exceptJaam1And2And32.c_str());
+    addSlider("hardware", "brightness_min", "Мінімальна яскравість", 0, 15, 1, settings->getInt(BRIGHTNESS_MIN), exceptJaamHardware.c_str());
+    addInfoWarning("hardware", "Цей рівень вважатиметься нульовим значенням яскравості LED", exceptJaamHardware.c_str());
 
     // Налаштування погоди / температури
     addInfo("climate", "Налаштування погодних переметрів та кліматичних сенсорів", "#34f396", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");

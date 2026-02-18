@@ -63,6 +63,11 @@ namespace JaamHardwareLed {
     constexpr uint8_t BRIGHTNESS_JAAM_1_3_MAX = 50;
     constexpr uint8_t BRIGHTNESS_JAAM_2_1_MAX = 50;
     constexpr uint8_t BRIGHTNESS_DEFAULT_MAX = 50;
+    
+    constexpr uint8_t BRIGHTNESS_JAAM_3_0_MIN = 2;
+    constexpr uint8_t BRIGHTNESS_JAAM_3_2_MIN = 2;
+    constexpr uint8_t BRIGHTNESS_JAAM_1_3_MIN = 3;
+    constexpr uint8_t BRIGHTNESS_JAAM_2_1_MIN = 2;
 }
 
 class JaamHardware {
@@ -87,6 +92,7 @@ public:
     static int getBgLedColorFormat();
     static int getServiceLedColorFormat();
     static uint8_t getMaxBrightness();
+    static uint8_t getMinBrightness();
     
 private:
     static uint8_t getCurrentHardwareType();

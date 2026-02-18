@@ -294,3 +294,19 @@ uint8_t JaamHardware::getMaxBrightness() {
             return JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX;
     }
 }
+
+uint8_t JaamHardware::getMinBrightness() {
+    uint8_t hwType = getCurrentHardwareType();
+    switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_3_2_MIN;
+        case HARDWARE::JAAM_3_0:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_3_0_MIN;
+        case HARDWARE::JAAM_2_1:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_2_1_MIN;
+        case HARDWARE::JAAM_1_3:
+            return JaamHardwareLed::BRIGHTNESS_JAAM_1_3_MIN;
+        default:
+            return settings.getInt(BRIGHTNESS_MIN);
+    }
+}
