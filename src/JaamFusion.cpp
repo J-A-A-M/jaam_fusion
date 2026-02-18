@@ -1307,7 +1307,6 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         LOG.printf("[WEBSOCKET] connection opened\n");
         
         websocketLastPingTime = millis();
-        //ha.setMapApiConnect(websocketConnected);
     } else if (event == WebsocketsEvent::ConnectionClosed) {
         websocketConnected = false;
         servicePin(DATA);
@@ -1318,7 +1317,6 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         logWebsocketCloseReason(reason);
         delay(500);
         LOG.printf("[MEMORY] Heap after close: %u\n", ESP.getFreeHeap());
-        //ha.setMapApiConnect(websocketConnected);
     } else if (event == WebsocketsEvent::GotPing) {
         LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
         websocketLastPingTime = millis();
