@@ -70,9 +70,9 @@ bool JaamClimateSensor::begin() {
   ahtxx = new AHTxx(AHTXX_ADDRESS_X38, AHT2x_SENSOR);
   ahtxxInitialized = ahtxx->begin();
   if (ahtxxInitialized) {
-    LOG.printf("[SENSORS] Found AHTxx temp/hum sensor! Success.\n");
+    LOG.printf("[SENSORS] Found AHT2x/AHT3x temp/hum sensor! Success.\n");
   } else {
-    LOG.printf("[SENSORS] Not found AHTxx temp/hum sensor!\n");
+    LOG.printf("[SENSORS] Not found AHT2x/AHT3x temp/hum sensor!\n");
   }
 #endif
 return bme280Initialized || bmp280Initialized || sht2xInitialized || sht3xInitialized || ahtxxInitialized;
@@ -114,10 +114,17 @@ void JaamClimateSensor::read() {
 #endif
 #if AHTXX_ENABLED
   if (ahtxxInitialized) {
-    localTemp = ahtxx->readTemperature();
-    localHum = ahtxx->readHumidity();
+    float tempReading = ahtxx->readTemperature();
+    float humReading = ahtxx->readHumidity();
 
-    LOG.printf("[CLIMATE] AHTxx! Temp: %.2f°C  Humidity: %.2f%%\n", localTemp, localHum);
+    if (tempReading == AHTXX_ERROR || humReading == AHTXX_ERROR) {
+      LOG.printf("[CLIMATE] AHT2x/AHT3x read error! Temp: %.2f, Humidity: %.2f\n", tempReading, humReading);
+      return;
+    }
+
+    localTemp = tempReading;
+    localHum = humReading;
+    LOG.printf("[CLIMATE] AHT2x/AHT3x! Temp: %.2f°C  Humidity: %.2f%%\n", localTemp, localHum);
     return;
   }
 #endif
