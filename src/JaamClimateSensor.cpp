@@ -11,10 +11,14 @@ SHTSensor *sht2x;
 #if SHT3X_ENABLED
 SHTSensor *sht3x;
 #endif
+#if AHTXX_ENABLED
+AHTxx *ahtxx;
+#endif
 bool bme280Initialized = false;
 bool bmp280Initialized = false;
 bool sht2xInitialized = false;
 bool sht3xInitialized = false;
+bool ahtxxInitialized = false;
 float localTemp = -273;
 float localHum = -1;
 float localPressure = -1;
@@ -23,7 +27,7 @@ JaamClimateSensor::JaamClimateSensor() {
 }
 
 bool JaamClimateSensor::begin() {
-#if BME280_ENABLED || SHT2X_ENABLED || SHT3X_ENABLED
+#if BME280_ENABLED || SHT2X_ENABLED || SHT3X_ENABLED || AHTXX_ENABLED
   Wire.begin();
 #endif
 #if BME280_ENABLED
@@ -62,7 +66,16 @@ bool JaamClimateSensor::begin() {
     LOG.printf("[SENSORS] Not found SHT3x temp/hum sensor!\n");
   }
 #endif
-return bme280Initialized || bmp280Initialized || sht2xInitialized || sht3xInitialized;
+#if AHTXX_ENABLED
+  ahtxx = new AHTxx(AHTXX_ADDRESS_X38, AHT2x_SENSOR);
+  ahtxxInitialized = ahtxx->begin();
+  if (ahtxxInitialized) {
+    LOG.printf("[SENSORS] Found AHTxx temp/hum sensor! Success.\n");
+  } else {
+    LOG.printf("[SENSORS] Not found AHTxx temp/hum sensor!\n");
+  }
+#endif
+return bme280Initialized || bmp280Initialized || sht2xInitialized || sht3xInitialized || ahtxxInitialized;
 }
 
 void JaamClimateSensor::read() {
@@ -99,14 +112,23 @@ void JaamClimateSensor::read() {
     return;
   }
 #endif
+#if AHTXX_ENABLED
+  if (ahtxxInitialized) {
+    localTemp = ahtxx->readTemperature();
+    localHum = ahtxx->readHumidity();
+
+    LOG.printf("[CLIMATE] AHTxx! Temp: %.2f°C  Humidity: %.2f%%\n", localTemp, localHum);
+    return;
+  }
+#endif
 }
 
 bool JaamClimateSensor::isTemperatureAvailable() {
-  return (bme280Initialized || bmp280Initialized || sht2xInitialized || sht3xInitialized) && localTemp > -273;
+  return (bme280Initialized || bmp280Initialized || sht2xInitialized || sht3xInitialized || ahtxxInitialized) && localTemp > -273;
 }
 
 bool JaamClimateSensor::isHumidityAvailable() {
-  return (bme280Initialized || sht2xInitialized || sht3xInitialized) && localHum >= 0;
+  return (bme280Initialized || sht2xInitialized || sht3xInitialized || ahtxxInitialized) && localHum >= 0;
 }
 
 bool JaamClimateSensor::isPressureAvailable() {
@@ -138,15 +160,18 @@ String JaamClimateSensor::getSensorModel() {
   if (sht2xInitialized) {
     return "SHT2X";
   }
+  if (ahtxxInitialized) {
+    return "AHTxx";
+  }
   return "Немає";
 }
 
 bool JaamClimateSensor::isAnySensorAvailable() {
-  return isBME280Available() || isBMP280Available() || isSHT2XAvailable() || isSHT3XAvailable();
+  return isBME280Available() || isBMP280Available() || isSHT2XAvailable() || isSHT3XAvailable() || isAHTxxAvailable();
 }
 
 bool JaamClimateSensor::isAnySensorEnabled() {
-  return BME280_ENABLED || SHT2X_ENABLED || SHT3X_ENABLED;
+  return BME280_ENABLED || SHT2X_ENABLED || SHT3X_ENABLED || AHTXX_ENABLED;
 }
 
 bool JaamClimateSensor::isBME280Available() {
@@ -164,4 +189,8 @@ bool JaamClimateSensor::isSHT2XAvailable() {
 
 bool JaamClimateSensor::isSHT3XAvailable() {
   return sht3xInitialized;
+}
+
+bool JaamClimateSensor::isAHTxxAvailable() {
+  return ahtxxInitialized;
 }
