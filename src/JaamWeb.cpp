@@ -2247,6 +2247,10 @@ void JaamWeb::handleParameter() {
             needAdaptStripBrightness = true;
             // needAdaptColors = true;
             // needAdaptAnimationColors = true;
+        } else if (name == "night_mode_light_threshold") {
+            settings->saveInt(NIGHT_MODE_LIGHT_THRESHOLD, intValue);
+            LOG.printf("[WEB] Setting night_mode_light_threshold: %d\n", intValue);
+            needAdaptStripBrightness = true;
         } else if (name == "brightness_min") {
             settings->saveInt(BRIGHTNESS_MIN, intValue);
             LOG.printf("[WEB] Setting brightness_min: %d\n", intValue);
@@ -3865,6 +3869,7 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addSlider("brightness", "brightness", "Загальна", 0, 100, 1, settings->getInt(BRIGHTNESS));
     addSlider("brightness", "brightness_day", "День", 0, 100, 1, settings->getInt(BRIGHTNESS_DAY));
     addSlider("brightness", "brightness_night", "Ніч", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT));
+    addSlider("brightness", "night_mode_light_threshold", "Освітлення переходу в нічний режим (lx)", 0, 500, 5, settings->getInt(NIGHT_MODE_LIGHT_THRESHOLD));
     addSlider("brightness", "brightness_alert", "Тривога", 0, 100, 1, settings->getInt(BRIGHTNESS_ALERT));
     addSlider("brightness", "brightness_clear", "Без тривоги", 0, 100, 1, settings->getInt(BRIGHTNESS_CLEAR));
     addSlider("brightness", "brightness_explosion", "Вибухи", 0, 100, 1, settings->getInt(BRIGHTNESS_EXPLOSION));

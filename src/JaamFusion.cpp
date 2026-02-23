@@ -24,6 +24,7 @@
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
+#include "JaamLightSensor.h"
 #include "JaamSound.h"
 #include "JaamButton.h"
 #include "JaamHardware.h"
@@ -49,6 +50,7 @@ JaamBattery         battery;
 JaamStorage         storage;
 JaamDisplay         display;
 JaamClimateSensor   climate;
+JaamLightSensor     lightSensor;
 JaamSound           sound;
 JaamButton          buttons;
 JaamHardware        hardwareConfig;
@@ -1777,6 +1779,13 @@ uint8_t getCurrentBrightnes() {
     if (settings.getInt(BRIGHTNESS_MODE) == 1) {
         return isItNightNow() ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
     }
+    if (settings.getInt(BRIGHTNESS_MODE) == 2 && lightSensor.isLightSensorAvailable()) {
+        lightSensor.read();
+        float lightLevel = lightSensor.getLightLevel();
+        int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
+        // Визначаємо день/ніч за рівнем освітлення
+        return lightLevel < threshold ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+    }
     return settings.getInt(BRIGHTNESS);
 }
 
@@ -1842,13 +1851,12 @@ void initDisplay() {
 }
 
 void initSensors() {
-    //  lightSensor.begin(hardware);
-    //   if (lightSensor.isLightSensorAvailable()) {
-    //     lightSensorCycle();
-    //   }
-    //   if (isAnalogLightSensorEnabled()) {
-    //     lightSensor.setPhotoresistorPin(settings.getInt(LIGHT_SENSOR_PIN));
-    //   }
+     // init light sensor
+     lightSensor.begin(settings.getInt(HARDWARE) == HARDWARE::JAAM_2_1);
+     lightSensor.read();
+     if (lightSensor.isLightSensorAvailable()) {
+        //  api.setLightLevel(lightSensor.getLightLevel());
+     }
 
     // init climate sensor
     climate.begin();

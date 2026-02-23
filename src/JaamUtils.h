@@ -64,7 +64,6 @@ extern JaamDisplay                      display;
 extern bool                             wifiConnected;
 extern bool                             websocketConnected;
 extern JaamApi                          api;
-extern uint8_t                          hardware;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 extern JaamClimateSensor                climate;
