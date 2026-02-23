@@ -28,6 +28,7 @@ extern volatile bool needUpdateBatteryPin;
 extern volatile bool needRecalculateLeds;
 extern volatile bool needReconfigureDisplay;
 extern volatile bool needReconfigureSound;
+extern volatile bool needReconfigureSensors;
 extern volatile bool needReconfigureButtons;
 extern volatile bool needUpdateAnimationsMode;
 extern volatile bool needAdaptClimate;
@@ -2178,6 +2179,7 @@ void JaamWeb::handleParameter() {
             needAdaptStripBrightness = true;
             needReconfigureButtons = true;
             needReconfigureSound = true;
+            needReconfigureSensors = true;
         } else if (name == "district_mode_kyiv") {
             settings->saveInt(DISTRICT_MODE_KYIV, intValue);
             LOG.printf("[WEB] Setting district_mode_kyiv: %d\n", intValue);

@@ -92,6 +92,7 @@ volatile bool needReconnectServiceStrip = false;
 volatile bool needUpdateBatteryPin = false;
 volatile bool needReconfigureDisplay = false;
 volatile bool needReconfigureSound = false;
+volatile bool needReconfigureSensors = false;
 volatile bool needReconfigureButtons = false;
 volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
@@ -1810,7 +1811,7 @@ void updateClimateData() {
 void updateLightLevelData() {
     if (lightSensor.isAnySensorAvailable()) {
         float lightLevel = lightSensor.getLightLevel();
-        // api.setLightLevel(lightLevel);
+        api.updateLightLevel(lightLevel);
     }
 }
 
@@ -1857,11 +1858,11 @@ void initDisplay() {
 }
 
 void initSensors() {
-     // init light sensor
+     // init light sensor, additional initialization for JAAM 2.1 with light sensor
      lightSensor.begin(settings.getInt(HARDWARE) == HARDWARE::JAAM_2_1);
-     lightSensor.read();
      if (lightSensor.isLightSensorAvailable()) {
-        //  api.setLightLevel(lightSensor.getLightLevel());
+        lightSensor.read();
+        api.setLightLevel(lightSensor.getLightLevel());
      }
 
     // init climate sensor
@@ -2655,6 +2656,12 @@ void mainThreadProcess() {
         LOG.printf("[MAIN] Reconfiguring sound\n");
         initSound();
         needReconfigureSound = false;
+    }
+
+    if (needReconfigureSensors) {
+        LOG.printf("[MAIN] Reconfiguring sensors\n");
+        initSensors();
+        needReconfigureSensors = false;
     }
 
     if (needReconfigureButtons) {
