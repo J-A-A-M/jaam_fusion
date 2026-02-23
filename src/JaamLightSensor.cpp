@@ -12,11 +12,11 @@ bool JaamLightSensor::begin(bool activation) {
   // Additional activation sequence for BH1750
   if (activation) {
     LOG.println("[SENSORS] Additional activation sequence for BH1750.");
-    pinMode(19, OUTPUT);
-    digitalWrite(19, HIGH); 
-    digitalWrite(19, LOW);
+    pinMode(BH1750_POWER_PIN, OUTPUT);
+    digitalWrite(BH1750_POWER_PIN, HIGH); 
+    digitalWrite(BH1750_POWER_PIN, LOW);
     delay(50); 
-    digitalWrite(19, HIGH);
+    digitalWrite(BH1750_POWER_PIN, HIGH);
   }
 
   // Clean up previous instance to prevent memory leak
