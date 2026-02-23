@@ -2,12 +2,6 @@
 #include <Arduino.h>
 #include "JaamLogs.h"
 
-#if BH1750_ENABLED
-BH1750_WE *bh1750;
-#endif
-bool bh1750Initialized = false;
-float lightLevel = -1;
-
 JaamLightSensor::JaamLightSensor() {
 }
 
@@ -25,6 +19,12 @@ bool JaamLightSensor::begin(bool activation) {
     digitalWrite(19, HIGH);
   }
 
+  // Clean up previous instance to prevent memory leak
+  if (bh1750 != nullptr) {
+    delete bh1750;
+    bh1750 = nullptr;
+  }
+
   bh1750 = new BH1750_WE();
   bh1750Initialized = bh1750->init();
   if (bh1750Initialized) {
@@ -33,8 +33,10 @@ bool JaamLightSensor::begin(bool activation) {
   } else {
     LOG.println("[SENSORS] Not found BH1750 light sensor!");
   }
+#else
+  bh1750Initialized = false;
 #endif
-return bh1750Initialized;
+  return bh1750Initialized;
 }
 
 void JaamLightSensor::read() {

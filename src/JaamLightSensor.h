@@ -15,4 +15,11 @@ public:
     bool isLightSensorEnabled();
     bool isAnySensorAvailable();
     String getSensorModel();
+
+private:
+#if BH1750_ENABLED
+    BH1750_WE* bh1750 = nullptr;
+#endif
+    bool bh1750Initialized = false;
+    float lightLevel = 0.0f;
 };

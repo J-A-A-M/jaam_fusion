@@ -2,27 +2,6 @@
 #include <Arduino.h>
 #include "JaamLogs.h"
 
-#if BME280_ENABLED
-ForcedBME280Float *bme280;
-#endif
-#if SHT2X_ENABLED
-SHTSensor *sht2x;
-#endif
-#if SHT3X_ENABLED
-SHTSensor *sht3x;
-#endif
-#if AHTXX_ENABLED
-AHTxx *ahtxx;
-#endif
-bool bme280Initialized = false;
-bool bmp280Initialized = false;
-bool sht2xInitialized = false;
-bool sht3xInitialized = false;
-bool ahtxxInitialized = false;
-float localTemp = -273;
-float localHum = -1;
-float localPressure = -1;
-
 JaamClimateSensor::JaamClimateSensor() {
 }
 
@@ -31,6 +10,11 @@ bool JaamClimateSensor::begin() {
   Wire.begin();
 #endif
 #if BME280_ENABLED
+  // Clean up previous instance to prevent memory leak
+  if (bme280 != nullptr) {
+    delete bme280;
+    bme280 = nullptr;
+  }
   bme280 = new ForcedBME280Float();
   bme280->begin();
   switch (bme280->getChipID()) {
@@ -49,6 +33,11 @@ bool JaamClimateSensor::begin() {
   }
 #endif
 #if SHT2X_ENABLED
+  // Clean up previous instance to prevent memory leak
+  if (sht2x != nullptr) {
+    delete sht2x;
+    sht2x = nullptr;
+  }
   sht2x = new SHTSensor(SHTSensor::SHT2X);
   sht2xInitialized = sht2x->init();
   if (sht2xInitialized) {
@@ -58,6 +47,11 @@ bool JaamClimateSensor::begin() {
   }
 #endif
 #if SHT3X_ENABLED
+  // Clean up previous instance to prevent memory leak
+  if (sht3x != nullptr) {
+    delete sht3x;
+    sht3x = nullptr;
+  }
   sht3x = new SHTSensor(SHTSensor::SHT3X);
   sht3xInitialized = sht3x->init();
   if (sht3xInitialized) {
@@ -67,6 +61,11 @@ bool JaamClimateSensor::begin() {
   }
 #endif
 #if AHTXX_ENABLED
+  // Clean up previous instance to prevent memory leak
+  if (ahtxx != nullptr) {
+    delete ahtxx;
+    ahtxx = nullptr;
+  }
   ahtxx = new AHTxx(AHTXX_ADDRESS_X38, AHT2x_SENSOR);
   ahtxxInitialized = ahtxx->begin();
   if (ahtxxInitialized) {
