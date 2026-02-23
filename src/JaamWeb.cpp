@@ -37,11 +37,14 @@ extern volatile bool needUpdateHomeAlertBit;
 extern volatile bool needUpdateTimezone;
 extern volatile bool needPlayTestMelody;
 extern volatile bool needPlayTestTrack;
+extern volatile bool needUpdateFirmware;
 extern volatile int testMelodyId;
 extern volatile int testTrackId;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
+extern JaamFirmware                     firmware[10];
+extern char                             firmwareUpdateId[50];
 
 void sendLargeJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
@@ -2668,6 +2671,10 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(MIN_OF_SILENCE, boolValue);
             LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
+        } else if (name == "firmware_id") {
+            snprintf(firmwareUpdateId, sizeof(firmwareUpdateId), "%s", valuePtr);
+            LOG.printf("[WEB] Setting firmware_id: %s\n", valuePtr);
+            needUpdateFirmware = true;
         }
 
         server.send(200, "text/plain", "OK");
@@ -3627,6 +3634,32 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         JsonArray arr = dropdownLists["timezones"].to<JsonArray>();
         appendOptionsList(arr, TIMEZONES, TIMEZONES_COUNT);
     }
+    {
+        JsonArray arr = dropdownLists["firmware_versions"].to<JsonArray>();
+        for (int i = 0; i < 10; ++i) {
+            if ((firmware[i].major | firmware[i].minor | firmware[i].patch | firmware[i].beta) == 0) continue;
+            
+            char buffer[32];
+            if (firmware[i].patch > 0) {
+                if (firmware[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d b%d", firmware[i].major, firmware[i].minor, firmware[i].patch, firmware[i].beta);
+                } else {
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d", firmware[i].major, firmware[i].minor, firmware[i].patch);
+                }
+            } else {
+                if (firmware[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d b%d", firmware[i].major, firmware[i].minor, firmware[i].beta);
+                } else {
+                     snprintf(buffer, sizeof(buffer), "%d.%d", firmware[i].major, firmware[i].minor);
+                }
+            }
+            
+            JsonArray option = arr.add<JsonArray>();
+            option.add(buffer); // ID (version string)
+            option.add(buffer); // Display Name
+            option.add(0);      // Sub (not used)
+        }
+    }
 }
 
 void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
@@ -3738,6 +3771,16 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addDropdown("general", "time_zone", "Часовий пояс", "timezones", TIME_ZONE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
     addText("general", "device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
+    {
+        JsonArray c = controls.add<JsonArray>();
+        c.add("dropdown");
+        c.add("firmware_id");
+        c.add("Вибрати прошивку");
+        c.add("firmware_versions");
+        c.add(String(firmwareUpdateId));
+        c.add("general");
+        c.add("");
+    }
 
     // Display settings
     addInfo("display", "Налаштуйте параметри дисплея та візуального відображення мапи", "#28a745", "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z");
