@@ -32,6 +32,8 @@ bool JaamLightSensor::begin(bool activation) {
     LOG.println("[SENSORS] Found BH1750 light sensor! Success.");
   } else {
     LOG.println("[SENSORS] Not found BH1750 light sensor!");
+    delete bh1750;
+    bh1750 = nullptr;
   }
 #else
   bh1750Initialized = false;

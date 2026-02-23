@@ -14,6 +14,7 @@
 class JaamClimateSensor {
     public:
         JaamClimateSensor();
+        ~JaamClimateSensor();
         bool begin();
         void read();
         bool isTemperatureAvailable();

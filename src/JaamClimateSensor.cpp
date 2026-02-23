@@ -5,6 +5,33 @@
 JaamClimateSensor::JaamClimateSensor() {
 }
 
+JaamClimateSensor::~JaamClimateSensor() {
+#if BME280_ENABLED
+  if (bme280 != nullptr) {
+    delete bme280;
+    bme280 = nullptr;
+  }
+#endif
+#if SHT2X_ENABLED
+  if (sht2x != nullptr) {
+    delete sht2x;
+    sht2x = nullptr;
+  }
+#endif
+#if SHT3X_ENABLED
+  if (sht3x != nullptr) {
+    delete sht3x;
+    sht3x = nullptr;
+  }
+#endif
+#if AHTXX_ENABLED
+  if (ahtxx != nullptr) {
+    delete ahtxx;
+    ahtxx = nullptr;
+  }
+#endif
+}
+
 bool JaamClimateSensor::begin() {
 #if BME280_ENABLED || SHT2X_ENABLED || SHT3X_ENABLED || AHTXX_ENABLED
   Wire.begin();
@@ -15,6 +42,8 @@ bool JaamClimateSensor::begin() {
     delete bme280;
     bme280 = nullptr;
   }
+  bme280Initialized = false;
+  bmp280Initialized = false;
   bme280 = new ForcedBME280Float();
   bme280->begin();
   switch (bme280->getChipID()) {
