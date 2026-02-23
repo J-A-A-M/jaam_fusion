@@ -15,6 +15,8 @@ class JaamClimateSensor {
     public:
         JaamClimateSensor();
         ~JaamClimateSensor();
+        JaamClimateSensor(const JaamClimateSensor&) = delete;
+        JaamClimateSensor& operator=(const JaamClimateSensor&) = delete;
         bool begin();
         void read();
         bool isTemperatureAvailable();
