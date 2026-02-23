@@ -603,22 +603,9 @@ h1 {
     transform: translateY(0);
 }
 
-/* Visibility and animations for dynamic hiding/showing */
-[data-visibility] {
-    transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease;
-    overflow: hidden;
-}
-
+/* Visibility for dynamic hiding/showing */
 [data-visibility].hidden {
-    opacity: 0;
-    max-height: 0;
-    margin: 0;
-    padding: 0;
-}
-
-[data-visibility]:not(.hidden) {
-    opacity: 1;
-    max-height: 1000px;
+    display: none !important;
 }
 )HTML";
 }
@@ -2034,22 +2021,9 @@ h1 {
     transform: translateY(0);
 }
 
-/* Visibility and animations for dynamic hiding/showing */
-[data-visibility] {
-    transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease;
-    overflow: hidden;
-}
-
+/* Visibility for dynamic hiding/showing */
 [data-visibility].hidden {
-    opacity: 0;
-    max-height: 0;
-    margin: 0;
-    padding: 0;
-}
-
-[data-visibility]:not(.hidden) {
-    opacity: 1;
-    max-height: 1000px;
+    display: none !important;
 }
 )CSS");
     // Використовуємо chunked transfer для великого CSS
@@ -3679,6 +3653,15 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     uint8_t showApiPortWhenEnabled[] = {1};
     String apiEnabledOnly = buildVisibilityCondition("api_enabled", "==", showApiPortWhenEnabled, 1);
 
+    uint8_t showLightSensorSettings[] = {2};
+    String lightSensorModeOnly = buildVisibilityCondition("brightness_mode", "==", showLightSensorSettings, 1);
+
+    uint8_t showDayNightSettings[] = {1};
+    String dayNightModeOnly = buildVisibilityCondition("brightness_mode", "==", showDayNightSettings, 1);
+
+    uint8_t showDayNightAndLightSensorSettings[] = {0};
+    String dayNightAndLightSensorMode = buildVisibilityCondition("brightness_mode", "!=", showDayNightAndLightSensorSettings, 1);
+
     // Helper lambdas
     auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key, const char* visibility = nullptr){
         JsonArray c = controls.add<JsonArray>();
@@ -3728,6 +3711,9 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     };
     auto addInfoError = [&](const char* section, const char* text, const char* visibility = nullptr){
         addInfo(section, text, "#dc3545", "M13,14H11V10H13M13,18H11V16H13M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z", visibility);
+    };
+    auto addInfoTips = [&](const char* section, const char* text, const char* visibility = nullptr){
+        addInfo(section, text, "#17a2b8", "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M13,17H11V11H13V17M13,9H11V7H13V9Z", visibility);
     };
 
     // Загальні налаштування
@@ -3864,12 +3850,13 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     // Яскравість
     addInfo("brightness", "Контроль яскравості LED стрічок для різних режимів та часу доби", "#ffc107", "M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8M12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z");
     addDropdown("brightness", "brightness_mode", "Режим яскравості", "auto_brightness_modes", BRIGHTNESS_MODE);
-    addSlider("brightness", "day_start", "Початок дня", 0, 24, 1, settings->getInt(DAY_START));
-    addSlider("brightness", "night_start", "Початок ночі", 0, 24, 1, settings->getInt(NIGHT_START));
+    addSlider("brightness", "day_start", "Початок дня", 0, 24, 1, settings->getInt(DAY_START), dayNightModeOnly.c_str());
+    addSlider("brightness", "night_start", "Початок ночі", 0, 24, 1, settings->getInt(NIGHT_START), dayNightModeOnly.c_str());
+    addInfoTips("brightness", "Поточний рівень освітленості можна побачити у системній панелі", lightSensorModeOnly.c_str());
+    addSlider("brightness", "night_mode_light_threshold", "Освітленість переходу в нічний режим (lx)", 0, 500, 5, settings->getInt(NIGHT_MODE_LIGHT_THRESHOLD), lightSensorModeOnly.c_str());
     addSlider("brightness", "brightness", "Загальна", 0, 100, 1, settings->getInt(BRIGHTNESS));
-    addSlider("brightness", "brightness_day", "День", 0, 100, 1, settings->getInt(BRIGHTNESS_DAY));
-    addSlider("brightness", "brightness_night", "Ніч", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT));
-    addSlider("brightness", "night_mode_light_threshold", "Освітлення переходу в нічний режим (lx)", 0, 500, 5, settings->getInt(NIGHT_MODE_LIGHT_THRESHOLD));
+    addSlider("brightness", "brightness_day", "День", 0, 100, 1, settings->getInt(BRIGHTNESS_DAY), dayNightAndLightSensorMode.c_str());
+    addSlider("brightness", "brightness_night", "Ніч", 0, 100, 1, settings->getInt(BRIGHTNESS_NIGHT), dayNightAndLightSensorMode.c_str());
     addSlider("brightness", "brightness_alert", "Тривога", 0, 100, 1, settings->getInt(BRIGHTNESS_ALERT));
     addSlider("brightness", "brightness_clear", "Без тривоги", 0, 100, 1, settings->getInt(BRIGHTNESS_CLEAR));
     addSlider("brightness", "brightness_explosion", "Вибухи", 0, 100, 1, settings->getInt(BRIGHTNESS_EXPLOSION));

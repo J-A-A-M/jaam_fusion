@@ -1780,7 +1780,6 @@ uint8_t getCurrentBrightnes() {
         return isItNightNow() ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
     }
     if (settings.getInt(BRIGHTNESS_MODE) == 2 && lightSensor.isLightSensorAvailable()) {
-        lightSensor.read();
         float lightLevel = lightSensor.getLightLevel();
         int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
         // Визначаємо день/ніч за рівнем освітлення
@@ -1805,6 +1804,13 @@ void updateClimateData() {
             press = climate.getPressure();
         }
         api.updateClimateData(temp, hum, press);
+    }
+}
+
+void updateLightLevelData() {
+    if (lightSensor.isAnySensorAvailable()) {
+        float lightLevel = lightSensor.getLightLevel();
+        // api.setLightLevel(lightLevel);
     }
 }
 
@@ -2514,9 +2520,14 @@ void freeMinLedsLog() {
 void climateProcess() {
   if (!climate.isAnySensorAvailable()) return;
   updateClimateData();
-  //updateHaTempSensors();
-  //updateHaHumSensors();
-  //updateHaPressureSensors();
+}
+
+// --- Light Sensor Process ---
+void lightSensorProcess() {
+  if (!lightSensor.isAnySensorAvailable()) return;
+  // read current light level
+  lightSensor.read();
+  updateLightLevelData();
 }
 
 void mainThreadProcess() {
@@ -2866,6 +2877,7 @@ void setup() {
     async.setInterval(batteryProcess, BATTERY_CHECK_INTERVAL);
     async.setInterval(displayProcess, DISPLAY_CHECK_INTERVAL);
     async.setInterval(climateProcess, CLIMATE_CHECK_INTERVAL);
+    async.setInterval(lightSensorProcess, LIGHT_SENSOR_CHECK_INTERVAL);
     async.setInterval(volumeProcess, VOLUME_CHECK_INTERVAL);
     async.setInterval(beepHourProcess, BEEP_HOUR_CHECK_INTERVAL);
 
