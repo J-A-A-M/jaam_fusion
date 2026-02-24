@@ -1092,7 +1092,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         }
 
         // Знаходимо найновішу версію серед отриманих
-        JaamFirmware latestInBatch;
+        JaamFirmware latestInBatch{};
         for (size_t i = 0; i < count; ++i) {
             if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
             if (isNewerFirmware(firmwares[i], latestInBatch)) {
