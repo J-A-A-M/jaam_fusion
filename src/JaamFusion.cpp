@@ -2841,7 +2841,7 @@ void displayProcess()
         showMinOfSilenceScreen(1);
         return;
     }
-    if (fwUpdate.isUpdateAvailable()) {
+    if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION)) {
         showNewFirmwareNotification();
         return;
     }
