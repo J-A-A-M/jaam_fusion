@@ -44,7 +44,7 @@ extern volatile int testTrackId;
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 extern JaamFirmware                     firmwares[10];
-extern char                             firmwareUpdateId[25];
+extern char                             fwUpdateId[25];
 
 void sendLargeJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
@@ -2672,7 +2672,7 @@ void JaamWeb::handleParameter() {
             settings->saveBool(MIN_OF_SILENCE, boolValue);
             LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
         } else if (name == "firmware_id") {
-            snprintf(firmwareUpdateId, sizeof(firmwareUpdateId), "%s", valuePtr);
+            snprintf(fwUpdateId, sizeof(fwUpdateId), "%s", valuePtr);
             LOG.printf("[WEB] Setting firmware_id: %s\n", valuePtr);
             needUpdateFirmware = true;
         }
@@ -3777,7 +3777,7 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
         c.add("firmware_id");
         c.add("Вибрати прошивку");
         c.add("firmware_versions");
-        c.add(String(firmwareUpdateId));
+        c.add(String(fwUpdateId));
         c.add("general");
         c.add("");
     }

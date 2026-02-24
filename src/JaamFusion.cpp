@@ -35,7 +35,9 @@ using namespace websockets;
 // --- MAIN Configuration ---
 char                chipID[13];
 char                currentFwVersion[25];
-char                firmwareUpdateId[25];  // Version ID for firmware updates
+char                newFwVersion[25];
+char                fwUpdateId[25];  // Version ID for firmware updates
+bool                fwUpdateAvailable = false;
 
 Async               async = Async(20);
 
@@ -45,6 +47,7 @@ DSTime*             currentDST = nullptr;  // Буде налаштовуват�
 JaamSettings        settings;
 JaamFirmware        firmwares[10];
 JaamFirmware        firmware;
+JaamFirmware        latestFirmware;
 JaamWeb             web;
 JaamApi             api;
 JaamMDNS            mdnsService;
@@ -594,7 +597,7 @@ void downloadAndUpdateFw() {
     sprintf(
         firmwareUrlChar,
         "https://update.jaam.net.ua/%s",
-        firmwareUpdateId
+        fwUpdateId
     );
 
     LOG.printf("Firmware url: %s\n", firmwareUrlChar);
@@ -1089,6 +1092,26 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             ptr += RECORD_FW;
         }
+
+        // Знаходимо найновішу версію серед отриманих
+        JaamFirmware latestInBatch;
+        for (size_t i = 0; i < count; ++i) {
+            if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
+            if (isNewerFirmware(firmwares[i], latestInBatch)) {
+                latestInBatch = firmwares[i];
+            }
+        }
+
+        // Порівнюємо найновішу з поточною прошивкою
+        fillFwVersion(newFwVersion, latestInBatch);
+
+        fwUpdateAvailable = isNewerFirmware(latestInBatch, firmware);
+        if (fwUpdateAvailable) {
+            LOG.printf("[FIRMWARE] Update available: %s -> %s\n", currentFwVersion, newFwVersion);
+        } else {
+            LOG.printf("[FIRMWARE] No updates available. Current version: %s, Latest version: %s\n", currentFwVersion, newFwVersion);
+        }
+        servicePin(UPD_AVAILABLE);
         return;
     }
 
@@ -3001,8 +3024,8 @@ void setup() {
     checkFreeHeap("settings initialization");
 
     // Initialize firmware update ID with VERSION
-    snprintf(firmwareUpdateId, sizeof(firmwareUpdateId), "%s", VERSION);
-    LOG.printf("[INIT] Firmware Update ID initialized: %s\n", firmwareUpdateId);
+    snprintf(fwUpdateId, sizeof(fwUpdateId), "%s", VERSION);
+    LOG.printf("[INIT] Firmware Update ID initialized: %s\n", fwUpdateId);
 
     initUpdates();
     checkFreeHeap("updates initialization");
@@ -3025,7 +3048,7 @@ void setup() {
     checkFreeHeap("buttons initialization");
 
     initDisplay();
-    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "JAAM v" + String(VERSION) + " Слава Україні!");
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "JAAM " + String(VERSION) + "");
     checkFreeHeap("display initialization");
 
     initStorage();

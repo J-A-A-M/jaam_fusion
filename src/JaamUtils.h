@@ -79,6 +79,11 @@ struct JaamFirmware {
     int beta = 0;
 };
 
+extern JaamFirmware                     firmwares[10];
+extern JaamFirmware                     firmware;
+extern JaamFirmware                     latestFirmware;
+extern bool                             fwUpdateAvailable;
+
 struct LedBit {
     int highest_bit;
     uint16_t region_id;
@@ -113,6 +118,20 @@ inline void logMemoryUsage(const char* context) {
     // }
 }
   
+// Повертає true якщо 'candidate' новіший за 'current'.
+// patch і beta можуть бути відсутніми (0).
+// Стабільний (beta==0) вважається новішим за будь-який beta з тим самим major.minor.patch.
+static bool isNewerFirmware(const JaamFirmware& candidate, const JaamFirmware& current) {
+    if (candidate.major != current.major) return candidate.major > current.major;
+    if (candidate.minor != current.minor) return candidate.minor > current.minor;
+    if (candidate.patch != current.patch) return candidate.patch > current.patch;
+    // Однакові major.minor.patch: stable > beta
+    if (candidate.beta == 0 && current.beta > 0) return true;
+    if (candidate.beta > 0 && current.beta == 0) return false;
+    // Обидва beta або обидва stable: більший номер beta → новіший
+    return candidate.beta > current.beta;
+}
+
 static JaamFirmware parseFirmwareVersion(const char* version) {
 
     JaamFirmware firmware;
@@ -130,7 +149,7 @@ static JaamFirmware parseFirmwareVersion(const char* version) {
             firmware.patch = atoi(token);
         part++;
         } else if (token[0] == 'b' && strcmp(token, "bin") != 0) {
-        firmware.beta = true;
+        firmware.beta = atoi(token + 1);
         }
         token = strtok(NULL, ".-");
     }
@@ -731,7 +750,8 @@ inline uint32_t getServicePinColor(int type) {
             color = api.getClientsCount() > 0 ? DefaultColors::API : DefaultColors::OFF;
             break;
         case UPD_AVAILABLE:
-            color = DefaultColors::OFF;
+            LOG.printf("[SERVICE LED] fwUpdateAvailable %d\n", fwUpdateAvailable);
+            color = fwUpdateAvailable ? DefaultColors::UPD_AVAILABLE : DefaultColors::OFF;
             break;
     }
     return color;
