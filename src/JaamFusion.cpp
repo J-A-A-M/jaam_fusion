@@ -29,15 +29,12 @@
 #include "JaamSound.h"
 #include "JaamButton.h"
 #include "JaamHardware.h"
+#include "JaamFirmwareUpdate.h"
 
 using namespace websockets;
 
 // --- MAIN Configuration ---
 char                chipID[13];
-char                currentFwVersion[25];
-char                newFwVersion[25];
-char                fwUpdateId[25];  // Version ID for firmware updates
-bool                fwUpdateAvailable = false;
 
 Async               async = Async(20);
 
@@ -45,8 +42,7 @@ NTPtime             timeClient(2);
 DSTime*             currentDST = nullptr;  // Буде налаштовуватися для кожного поясу
 
 JaamSettings        settings;
-JaamFirmware        firmwares[10];
-JaamFirmware        firmware;
+JaamFirmwareUpdate  fwUpdate;
 JaamWeb             web;
 JaamApi             api;
 JaamMDNS            mdnsService;
@@ -104,12 +100,10 @@ volatile bool needUpdateHomeAlertBit = false;
 volatile bool needUpdateTimezone = false;
 volatile bool needPlayTestMelody = false;
 volatile bool needPlayTestTrack = false;
-volatile bool needUpdateFirmware = false;
 
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
-WiFiClientSecure    updateClient;
 
 time_t              lastWifiConnectTime = 0;  // Track when WiFi was last connected
 uint16_t            alertsHash = 0;
@@ -462,11 +456,11 @@ bool needToPlaySound(SoundType type) {
 //     }
 //   }
 //   latestFirmware = firmware;
-//   fwUpdateAvailable = firstIsNewer(latestFirmware, currentFirmware);
-//   servicePin(UPD_AVAILABLE, fwUpdateAvailable ? HIGH : LOW, false);
+//   fwUpdate.isUpdateAvailable() = firstIsNewer(latestFirmware, currentFirmware);
+//   servicePin(UPD_AVAILABLE, fwUpdate.isUpdateAvailable() ? HIGH : LOW, false);
 //   fillFwVersion(newFwVersion, latestFirmware);
 //   LOG.printf("Latest firmware version: %s\n", newFwVersion);
-//   LOG.println(fwUpdateAvailable ? "New fw available!" : "No new firmware available");
+//   LOG.println(fwUpdate.isUpdateAvailable() ? "New fw available!" : "No new firmware available");
 // }
 
 void mapUpdate(float percents) {
@@ -517,101 +511,6 @@ void mapUpdate(float percents) {
 
 }
 
-void showUpdateProgress(size_t progress, size_t total) {
-  if (total == 0) return;
-  uint8_t percent = static_cast<uint8_t>((progress * 100) / total);
-  if (percent > 100) {
-    percent = 100;
-  }
-  LOG.printf("[UPDATE] Progress: %u%%\n", percent);
-  char progressText[5];
-  snprintf(progressText, sizeof(progressText), "%u%%", percent);
-  display.showServiceMessage(progressText, "Оновлення:");
-  mapUpdate(percent / 100.0f);
-}
-
-void showUpdateStart() {
-  display.showServiceMessage("Починаємо!", "Оновлення:");
-  delay(1000);
-}
-
-void showUpdateEnd() {
-  display.showServiceMessage("Перезавантаження..", "Оновлення:");
-  delay(1000);
-}
-
-void showHttpUpdateErrorMessage(int error) {
-  switch (error) {
-    case HTTP_UE_TOO_LESS_SPACE:
-      display.showServiceMessage("Замало місця", "Помилка оновлення:", 5000);
-      break;
-    case HTTP_UE_SERVER_NOT_REPORT_SIZE:
-      display.showServiceMessage("Невідомий розмір файлу", "Помилка оновлення:", 5000);
-      break;
-    case HTTP_UE_BIN_FOR_WRONG_FLASH:
-      display.showServiceMessage("Неправильний тип пам'яті", "Помилка оновлення:", 5000);
-      break;
-    default:
-      display.showServiceMessage("Щось пішло не так", "Помилка оновлення:", 5000);
-      break;
-  }
-}
-
-void initUpdates() {
-  httpUpdate.onStart(showUpdateStart);
-  httpUpdate.onEnd(showUpdateEnd);
-  httpUpdate.onProgress(showUpdateProgress);
-  httpUpdate.onError(showHttpUpdateErrorMessage);
-}
-
-void handleUpdateStatus(t_httpUpdate_return ret, bool isSpiffsUpdate) {
-  LOG.printf("%s update status:\n", isSpiffsUpdate ? "Spiffs" : "Firmware");
-  switch (ret) {
-    case HTTP_UPDATE_FAILED:
-      LOG.printf("Error Occurred. Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-      break;
-    case HTTP_UPDATE_NO_UPDATES:
-      LOG.println("HTTP_UPDATE_NO_UPDATES");
-      break;
-    case HTTP_UPDATE_OK:
-      if (isSpiffsUpdate) {
-        LOG.println("Spiffs update successfully completed. Starting firmware update...");
-      } else {
-        LOG.println("Firmware update successfully completed. Rebooting...");
-        rebootDevice();
-      }
-      break;
-  }
-}
-
-void downloadAndUpdateFw() {
-    // disable watchdog timer while update
-    disableLoopWDT();
-
-    LOG.println("Starting firmware update...");
-    char firmwareUrlChar[100];
-
-    LOG.println("Building firmware url...");
-    sprintf(
-        firmwareUrlChar,
-        "https://update.jaam.net.ua/%s",
-        fwUpdateId
-    );
-
-    LOG.printf("Firmware url: %s\n", firmwareUrlChar);
-    updateClient.setInsecure();
-    httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    t_httpUpdate_return fwRet = httpUpdate.update(
-        updateClient,
-        firmwareUrlChar,
-        VERSION
-    );
-    handleUpdateStatus(fwRet, false);
-
-    // enable watchdog timer after update
-    enableLoopWDT();
-}
-//--Update end
 
 
 // --- Buttons Functions ---
@@ -657,22 +556,11 @@ void handleClick(int event, JaamButton::Action action) {
       break;
     // toggle lamp (singl click) or reboot device (long click)
     case 10:
-    
-    //   if (action == JaamButton::Action::SINGLE_CLICK) {
-    //     int newMapMode = settings.getInt(MAP_MODE) == 5 ? prevMapMode : 5;
-    //     saveMapMode(newMapMode);
-    //   } else if (JaamButton::Action::LONG_CLICK) {
-    //     rebootDevice();
-    //   }
       rebootDevice();
       break;
-#if FW_UPDATE_ENABLED
     case 100:
-      char updateFileName[30];
-      sprintf(updateFileName, "%s.bin", newFwVersion);
-      downloadAndUpdateFw(updateFileName, settings.getInt(FW_UPDATE_CHANNEL) == 1);
+      fwUpdate.requestUpdate(fwUpdate.getNewVersion());
       break;
-#endif
     default:
       // do nothing
       break;
@@ -688,12 +576,10 @@ void singleClick(int mode) {
 }
 
 void longClick(int modeLong) {
-#if FW_UPDATE_ENABLED
-  if (settings.getInt(NEW_FW_NOTIFICATION) == 1 && fwUpdateAvailable && isButtonActivated() && !isDisplayOff) {
+  if (fwUpdate.isUpdateAvailable()) {
     handleClick(100, JaamButton::LONG_CLICK);
     return;
   }
-#endif
   handleClick(modeLong, JaamButton::LONG_CLICK);
 }
 
@@ -715,7 +601,7 @@ void buttonLongClick(const char* buttonName, int modeLong) {
 
 void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Action action) {
 #if FW_UPDATE_ENABLED
-  if (settings.getInt(NEW_FW_NOTIFICATION) == 1 && fwUpdateAvailable && isButtonActivated() && !isDisplayOff) {
+  if (settings.getInt(NEW_FW_NOTIFICATION) == 1 && fwUpdate.isUpdateAvailable() && isButtonActivated() && !isDisplayOff) {
     return;
   }
 #endif
@@ -1071,45 +957,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             return;
         }
 
-        // Обчислюємо кількість записів
-        size_t count = bodyLen / RECORD_FW;
-
-        // Розбираємо count записів по RECORD_FW
-        const uint8_t* ptr = data + HEADER_SZ;
-
-        LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_BATCH data processing\n");
-
-        for (size_t i = 0; i < count; ++i) {
-            firmwares[i].major = ptr[0];
-            firmwares[i].minor = ptr[1];
-            firmwares[i].patch = ptr[2];
-            // Little-Endian: low byte first, high byte second
-            firmwares[i].beta = ptr[3] | (ptr[4] << 8);
-
-            LOG.printf("Parsed FW: %d.%d.%d b%d\n", firmwares[i].major, firmwares[i].minor, firmwares[i].patch, firmwares[i].beta);
-
-            ptr += RECORD_FW;
-        }
-
-        // Знаходимо найновішу версію серед отриманих
-        JaamFirmware latestInBatch{};
-        for (size_t i = 0; i < count; ++i) {
-            if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
-            if (isNewerFirmware(firmwares[i], latestInBatch)) {
-                latestInBatch = firmwares[i];
-            }
-        }
-
-        // Порівнюємо найновішу з поточною прошивкою
-        fillFwVersion(newFwVersion, latestInBatch);
-
-        fwUpdateAvailable = isNewerFirmware(latestInBatch, firmware);
-        if (fwUpdateAvailable) {
-            LOG.printf("[FIRMWARE] Update available: %s -> %s\n", currentFwVersion, newFwVersion);
-        } else {
-            LOG.printf("[FIRMWARE] No updates available. Current version: %s, Latest version: %s\n", currentFwVersion, newFwVersion);
-        }
-        servicePin(UPD_AVAILABLE);
+        fwUpdate.processBatch(data + HEADER_SZ, bodyLen);
         return;
     }
 
@@ -1583,7 +1431,7 @@ void socketConnect() {
         LOG.printf("[WEBSOCKET] %s\n", chipIdInfo);
         websocket.send(chipIdInfo);
         char firmwareInfo[100];
-        sprintf(firmwareInfo, "firmware:%s_%s", currentFwVersion, settings.getString(ID));
+        sprintf(firmwareInfo, "firmware:%s_%s", fwUpdate.getCurrentVersion(), settings.getString(ID));
         LOG.printf("[WEBSOCKET] %s\n", firmwareInfo);
         websocket.send(firmwareInfo);
         char userInfo[250];
@@ -2031,11 +1879,7 @@ void updateClimateData() {
 void initSettings() {
     LOG.printf("[INIT] Init settings\n");
     settings.init();
-    firmware = parseFirmwareVersion(VERSION);
-    LOG.printf("[INIT] major: %d, minor: %d, patch: %d, beta: %d\n",
-             firmware.major, firmware.minor, firmware.patch, firmware.beta);
-    fillFwVersion(currentFwVersion, firmware);
-    LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
+    fwUpdate.init(VERSION);
     
     // Перевіряємо чи є збережене значення hostname
     if (!settings.hasKey(BROADCAST_NAME)) {
@@ -2174,7 +2018,7 @@ void initTime() {
 void initMDNS() {
     LOG.printf("[INIT] Init mDNS\n");
     mdnsService.setSettings(&settings);
-    mdnsService.setDeviceInfo(chipID, currentFwVersion);
+    mdnsService.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
     mdnsService.begin();
 }
 
@@ -2183,7 +2027,7 @@ void initApi() {
     
     // Ініціалізуємо API
     api.setSettings(&settings);
-    api.setDeviceInfo(chipID, currentFwVersion);
+    api.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
     
     SystemInfo info = getSystemInfo();
     api.setSystemInfo(
@@ -2208,7 +2052,7 @@ void initWeb() {
     }
     web.setSettings(&settings);
     web.setStorage(&storage);
-    web.setDeviceInfo(chipID, currentFwVersion);
+    web.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
     
     web.begin(strip_main, strip_bg, strip_service);
     webInitialized = true;
@@ -2560,6 +2404,25 @@ void showClock() {
     }
     String date = timeClient.unixToString("DSTRUA DD.MM.YYYY");
     display.printClock(time, date);
+}
+
+void showNewFirmwareNotification() {
+    int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), 2, timeClient.second());
+    char title[50];
+    char message[50];
+    if (periodIndex) {
+        strcpy(title, "Доступне оновлення:");
+        strncpy(message, fwUpdate.getNewVersion(), sizeof(message) - 1);
+        message[sizeof(message) - 1] = '\0';
+    } else if (!isButtonActivated()) {
+        strcpy(title, "Введіть у браузері:");
+        strncpy(message, WiFi.localIP().toString().c_str(), sizeof(message) - 1);
+        message[sizeof(message) - 1] = '\0';
+    } else {
+        strcpy(title, "Для оновл. натисніть");
+        snprintf(message, sizeof(message), "та тримайте кнопку %c", (char)24);
+    }
+    display.printMessage(message, title);
 }
 
 void playMinOfSilenceSound() {
@@ -2917,12 +2780,12 @@ void mainThreadProcess() {
         playMelody(MELODIES[testMelodyId]);
         needPlayTestMelody = false;
     }
-    if (needUpdateFirmware) {
+    if (fwUpdate.isUpdateRequested()) {
         LOG.printf("[MAIN] Updating firmware\n");
         display.showServiceMessage("Виконано", "Запит оновлення:", 3000);
         animation.clearAllAnimations();
-        downloadAndUpdateFw();
-        needUpdateFirmware = false;
+        fwUpdate.download();
+        fwUpdate.clearUpdateRequest();
     }
 }
 
@@ -2978,6 +2841,10 @@ void displayProcess()
         showMinOfSilenceScreen(1);
         return;
     }
+    if (fwUpdate.isUpdateAvailable()) {
+        showNewFirmwareNotification();
+        return;
+    }
     showClock();
 }
 
@@ -3021,11 +2888,11 @@ void setup() {
     initSettings();
     checkFreeHeap("settings initialization");
 
-    // Initialize firmware update ID with VERSION
-    snprintf(fwUpdateId, sizeof(fwUpdateId), "%s", VERSION);
-    LOG.printf("[INIT] Firmware Update ID initialized: %s\n", fwUpdateId);
-
-    initUpdates();
+    fwUpdate.setDisplay(&display);
+    fwUpdate.setMapUpdateCallback([](float p) { mapUpdate(p); });
+    fwUpdate.setRebootCallback([]() { rebootDevice(); });
+    fwUpdate.setServicePinCallback([]() { servicePin(UPD_AVAILABLE); });
+    fwUpdate.initCallbacks();
     checkFreeHeap("updates initialization");
 
     // Передаємо settings в AnimationManager

@@ -37,14 +37,12 @@ extern volatile bool needUpdateHomeAlertBit;
 extern volatile bool needUpdateTimezone;
 extern volatile bool needPlayTestMelody;
 extern volatile bool needPlayTestTrack;
-extern volatile bool needUpdateFirmware;
 extern volatile int testMelodyId;
 extern volatile int testTrackId;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
-extern JaamFirmware                     firmwares[10];
-extern char                             fwUpdateId[25];
+extern JaamFirmwareUpdate               fwUpdate;
 
 void sendLargeJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
@@ -2672,9 +2670,7 @@ void JaamWeb::handleParameter() {
             settings->saveBool(MIN_OF_SILENCE, boolValue);
             LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
         } else if (name == "firmware_id") {
-            snprintf(fwUpdateId, sizeof(fwUpdateId), "%s", valuePtr);
-            LOG.printf("[WEB] Setting firmware_id: %s\n", valuePtr);
-            needUpdateFirmware = true;
+            fwUpdate.requestUpdate(valuePtr);
         }
 
         server.send(200, "text/plain", "OK");
@@ -3636,9 +3632,10 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
     }
     {
         JsonArray arr = dropdownLists["firmware_versions"].to<JsonArray>();
+        const JaamFirmware* firmwares = fwUpdate.getFirmwares();
         for (int i = 0; i < 10; ++i) {
             if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
-            
+
             char buffer[32];
             if (firmwares[i].patch > 0) {
                 if (firmwares[i].beta > 0) {
@@ -3653,7 +3650,7 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
                      snprintf(buffer, sizeof(buffer), "%d.%d", firmwares[i].major, firmwares[i].minor);
                 }
             }
-            
+
             JsonArray option = arr.add<JsonArray>();
             option.add(buffer); // ID (version string)
             option.add(buffer); // Display Name
@@ -3777,7 +3774,7 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
         c.add("firmware_id");
         c.add("Вибрати прошивку");
         c.add("firmware_versions");
-        c.add(String(fwUpdateId));
+        c.add(String(fwUpdate.getUpdateId()));
         c.add("general");
         c.add("");
     }

@@ -1,0 +1,61 @@
+#pragma once
+
+#include <Arduino.h>
+#include <HTTPUpdate.h>
+#include <WiFiClientSecure.h>
+#include <functional>
+#include "JaamDisplay.h"
+
+struct JaamFirmware {
+    int major = 0;
+    int minor = 0;
+    int patch = 0;
+    int beta = 0;
+};
+
+class JaamFirmwareUpdate {
+public:
+    void setDisplay(JaamDisplay* display);
+    void setMapUpdateCallback(std::function<void(float)> cb);
+    void setRebootCallback(std::function<void()> cb);
+    void setServicePinCallback(std::function<void()> cb);
+
+    void init(const char* version);
+    void initCallbacks();
+
+    // Parses websocket TYPE_FIRMWARE_UPDATE_BATCH payload (without header byte)
+    void processBatch(const uint8_t* data, size_t bodyLen);
+
+    void requestUpdate(const char* id);
+    bool isUpdateRequested() const;
+    void clearUpdateRequest();
+    void download();
+
+    bool isUpdateAvailable() const;
+    const char* getCurrentVersion() const;
+    const char* getNewVersion() const;
+    const char* getUpdateId() const;
+    const JaamFirmware* getFirmwares() const;
+    const JaamFirmware& getFirmware() const;
+
+private:
+    char _currentFwVersion[25] = {};
+    char _newFwVersion[25] = {};
+    char _fwUpdateId[25] = {};
+    bool _fwUpdateAvailable = false;
+    volatile bool _needUpdate = false;
+    JaamFirmware _firmwares[10] = {};
+    JaamFirmware _firmware = {};
+    WiFiClientSecure _updateClient;
+
+    JaamDisplay* _display = nullptr;
+    std::function<void(float)> _mapUpdateCb;
+    std::function<void()> _rebootCb;
+    std::function<void()> _servicePinCb;
+
+    void handleUpdateStatus(t_httpUpdate_return ret, bool isSpiffsUpdate);
+
+    static bool isNewerFirmware(const JaamFirmware& candidate, const JaamFirmware& current);
+    static JaamFirmware parseFirmwareVersion(const char* version);
+    static void fillFwVersion(char* result, JaamFirmware fw);
+};

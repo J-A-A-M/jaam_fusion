@@ -7,6 +7,7 @@
 #include "JaamClimateSensor.h"
 #include "JaamHardware.h"
 #include "JaamApi.h"
+#include "JaamFirmwareUpdate.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -58,6 +59,7 @@ extern time_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
 extern JaamSettings                     settings;
+extern JaamFirmwareUpdate               fwUpdate;
 extern JaamBattery                      battery;
 extern JaamStorage                      storage;
 extern JaamDisplay                      display;
@@ -71,17 +73,6 @@ extern JaamClimateSensor                climate;
 extern int                              prevMapMode;
 
 extern volatile bool                    needAdaptColors;
-
-struct JaamFirmware {
-    int major = 0;
-    int minor = 0;
-    int patch = 0;
-    int beta = 0;
-};
-
-extern JaamFirmware                     firmwares[10];
-extern JaamFirmware                     firmware;
-extern bool                             fwUpdateAvailable;
 
 struct LedBit {
     int highest_bit;
@@ -117,72 +108,6 @@ inline void logMemoryUsage(const char* context) {
     // }
 }
   
-// Повертає true якщо 'candidate' новіший за 'current'.
-// patch і beta можуть бути відсутніми (0).
-// Стабільний (beta==0) вважається новішим за будь-який beta з тим самим major.minor.patch.
-static bool isNewerFirmware(const JaamFirmware& candidate, const JaamFirmware& current) {
-    if (candidate.major != current.major) return candidate.major > current.major;
-    if (candidate.minor != current.minor) return candidate.minor > current.minor;
-    if (candidate.patch != current.patch) return candidate.patch > current.patch;
-    // Однакові major.minor.patch: stable > beta
-    if (candidate.beta == 0 && current.beta > 0) return true;
-    if (candidate.beta > 0 && current.beta == 0) return false;
-    // Обидва beta або обидва stable: більший номер beta → новіший
-    return candidate.beta > current.beta;
-}
-
-static JaamFirmware parseFirmwareVersion(const char* version) {
-
-    JaamFirmware firmware;
-
-    char* versionCopy = strdup(version);
-    char* token = strtok(versionCopy, ".-");
-    int part = 0;
-    while (token) {
-        if (isdigit(token[0])) {
-        if (part == 0)
-            firmware.major = atoi(token);
-        else if (part == 1)
-            firmware.minor = atoi(token);
-        else if (part == 2)
-            firmware.patch = atoi(token);
-        part++;
-        } else if (token[0] == 'b' && strcmp(token, "bin") != 0) {
-        firmware.beta = atoi(token + 1);
-        }
-        token = strtok(NULL, ".-");
-    }
-    free(versionCopy);
-    return firmware;
-}
-
-static void fillFwVersion(char* result, JaamFirmware firmware) {
-    std::string version = std::to_string(firmware.major) + "." + std::to_string(firmware.minor);
-  
-    if (firmware.patch > 0) {
-      version += "." + std::to_string(firmware.patch);
-    }
-  
-    if (firmware.beta > 0) {
-      version += "-b" + std::to_string(firmware.beta);
-    }
-    #if ARDUINO_ESP32S3_DEV
-    version += "-s3";
-    #elif ARDUINO_ESP32C3_DEV
-    version += "-c3";
-    #endif
-
-    #if LITE
-    version += "-lite";
-    #endif
-
-    #if TEST_MODE
-    version += "-test";
-    #endif
-
-    strcpy(result, version.c_str());
-}
-
 static float roundToDecimal(float value, int decimals) {
     if (decimals < 0) decimals = 0;
     if (decimals > 3) decimals = 3; 
@@ -749,8 +674,8 @@ inline uint32_t getServicePinColor(int type) {
             color = api.getClientsCount() > 0 ? DefaultColors::API : DefaultColors::OFF;
             break;
         case UPD_AVAILABLE:
-            LOG.printf("[SERVICE LED] fwUpdateAvailable %d\n", fwUpdateAvailable);
-            color = fwUpdateAvailable ? DefaultColors::UPD_AVAILABLE : DefaultColors::OFF;
+            LOG.printf("[SERVICE LED] fwUpdateAvailable %d\n", fwUpdate.isUpdateAvailable());
+            color = fwUpdate.isUpdateAvailable() ? DefaultColors::UPD_AVAILABLE : DefaultColors::OFF;
             break;
     }
     return color;
