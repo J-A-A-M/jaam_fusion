@@ -81,7 +81,6 @@ struct JaamFirmware {
 
 extern JaamFirmware                     firmwares[10];
 extern JaamFirmware                     firmware;
-extern JaamFirmware                     latestFirmware;
 extern bool                             fwUpdateAvailable;
 
 struct LedBit {

@@ -47,7 +47,6 @@ DSTime*             currentDST = nullptr;  // Буде налаштовуват�
 JaamSettings        settings;
 JaamFirmware        firmwares[10];
 JaamFirmware        firmware;
-JaamFirmware        latestFirmware;
 JaamWeb             web;
 JaamApi             api;
 JaamMDNS            mdnsService;
@@ -559,7 +558,6 @@ void showHttpUpdateErrorMessage(int error) {
 }
 
 void initUpdates() {
-  Update.onProgress(showUpdateProgress);
   httpUpdate.onStart(showUpdateStart);
   httpUpdate.onEnd(showUpdateEnd);
   httpUpdate.onProgress(showUpdateProgress);
