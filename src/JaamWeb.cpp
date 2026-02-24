@@ -3642,13 +3642,13 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
             char buffer[32];
             if (firmware[i].patch > 0) {
                 if (firmware[i].beta > 0) {
-                     snprintf(buffer, sizeof(buffer), "%d.%d.%d b%d", firmware[i].major, firmware[i].minor, firmware[i].patch, firmware[i].beta);
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d-b%d", firmware[i].major, firmware[i].minor, firmware[i].patch, firmware[i].beta);
                 } else {
                      snprintf(buffer, sizeof(buffer), "%d.%d.%d", firmware[i].major, firmware[i].minor, firmware[i].patch);
                 }
             } else {
                 if (firmware[i].beta > 0) {
-                     snprintf(buffer, sizeof(buffer), "%d.%d b%d", firmware[i].major, firmware[i].minor, firmware[i].beta);
+                     snprintf(buffer, sizeof(buffer), "%d.%d-b%d", firmware[i].major, firmware[i].minor, firmware[i].beta);
                 } else {
                      snprintf(buffer, sizeof(buffer), "%d.%d", firmware[i].major, firmware[i].minor);
                 }

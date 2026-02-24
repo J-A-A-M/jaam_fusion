@@ -517,11 +517,14 @@ void mapUpdate(float percents) {
 void showUpdateProgress(size_t progress, size_t total) {
   if (total == 0) return;
   uint8_t percent = static_cast<uint8_t>((progress * 100) / total);
+  if (percent > 100) {
+    percent = 100;
+  }
   LOG.printf("[UPDATE] Progress: %u%%\n", percent);
   char progressText[5];
-  sprintf(progressText, "%d%%", progress / (total / 100));
+  snprintf(progressText, sizeof(progressText), "%u%%", percent);
   display.showServiceMessage(progressText, "Оновлення:");
-  mapUpdate(progress * 1.0f / total);
+  mapUpdate(percent / 100.0f);
 }
 
 void showUpdateStart() {
@@ -584,7 +587,6 @@ void downloadAndUpdateFw() {
     disableLoopWDT();
 
     LOG.println("Starting firmware update...");
-    char spiffUrlChar[100];
     char firmwareUrlChar[100];
 
     LOG.println("Building firmware url...");
@@ -1062,7 +1064,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         // payloadLen має ділитися на RECORD_FW
         if (bodyLen == 0 || (bodyLen % RECORD_FW) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
-            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_FW\n");
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_FW) != 0\n");
             needReconnectWebsocket = true;
             return;
         }
@@ -1086,6 +1088,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             ptr += RECORD_FW;
         }
+        return;
     }
 
     if(type == TYPE_NOTIFICATIONS_BATCH) {
@@ -1095,7 +1098,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         // payloadLen має ділитися на RECORD_SZ
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
-            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ) != 0\n");
             needReconnectWebsocket = true;
             return;
         }
@@ -1177,7 +1180,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         // payloadLen має ділитися на RECORD_SZ
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
-            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ\n");
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ) != 0\n");
             needReconnectWebsocket = true;
             return;
         }
@@ -1396,6 +1399,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         }
         alertsHash = actualHash;
     }
+
     if(type == TYPE_WEATHER_BATCH) {
         LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH received\n");
         bodyLen = len - HEADER_SZ;
@@ -1403,7 +1407,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         // payloadLen має ділитися на RECORD_LZ
         if (bodyLen == 0 || (bodyLen % RECORD_LZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
-            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_LZ\n");
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_LZ) != 0\n");
             needReconnectWebsocket = true;
             return;
         }
@@ -3020,7 +3024,7 @@ void setup() {
     checkFreeHeap("buttons initialization");
 
     initDisplay();
-    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "Jaam Fusion v" + String(VERSION) + " Слава Україні!");
+    display.drawIconWithText(JaamDisplayIcon::TRIDENT, "JAAM v" + String(VERSION) + " Слава Україні!");
     checkFreeHeap("display initialization");
 
     initStorage();
