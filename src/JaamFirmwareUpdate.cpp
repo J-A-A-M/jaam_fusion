@@ -118,10 +118,17 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen) {
     if (_servicePinCb) _servicePinCb();
 }
 
-void JaamFirmwareUpdate::requestUpdate(const char* id) {
+bool JaamFirmwareUpdate::requestUpdate(const char* id) {
+    if (!isValidFirmwareId(id)) {
+        _display->showServiceMessage("Невідома версія", "Помилка оновлення:", 5000);
+        LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", id);
+        return false;
+    }
+    
     snprintf(_fwUpdateId, sizeof(_fwUpdateId), "%s", id);
-    LOG.printf("[WEB] Setting firmware_id: %s\n", _fwUpdateId);
     _needUpdate = true;
+    LOG.printf("[FIRMWARE] Update requested for: %s\n", id);
+    return true;
 }
 
 bool JaamFirmwareUpdate::isUpdateRequested() const {
@@ -209,8 +216,10 @@ bool JaamFirmwareUpdate::isNewerFirmware(const JaamFirmware& candidate, const Ja
 }
 
 JaamFirmware JaamFirmwareUpdate::parseFirmwareVersion(const char* version) {
-    JaamFirmware fw;
+    JaamFirmware fw{};
+    if (version == nullptr) return fw;
     char* versionCopy = strdup(version);
+    if (versionCopy == nullptr) return fw;
     char* token = strtok(versionCopy, ".-");
     int part = 0;
     while (token) {
@@ -254,4 +263,38 @@ void JaamFirmwareUpdate::fillFwVersion(char* result, JaamFirmware fw) {
     #endif
 
     strcpy(result, version.c_str());
+}
+
+bool JaamFirmwareUpdate::isValidFirmwareId(const char* id) const {
+    if (id == nullptr || strlen(id) == 0) {
+        return false;
+    }
+    
+    // Parse the provided ID
+    JaamFirmware candidate = parseFirmwareVersion(id);
+    
+    // Check if parsed firmware is valid (at least major.minor should be set)
+    if (candidate.major == 0 && candidate.minor == 0) {
+        return false;
+    }
+    
+    // Search for matching firmware in the list
+    for (int i = 0; i < 10; ++i) {
+        const JaamFirmware& fw = _firmwares[i];
+        
+        // Skip empty entries
+        if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) {
+            continue;
+        }
+        
+        // Check if all version components match
+        if (fw.major == candidate.major && 
+            fw.minor == candidate.minor && 
+            fw.patch == candidate.patch && 
+            fw.beta == candidate.beta) {
+            return true;
+        }
+    }
+    
+    return false;
 }

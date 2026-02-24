@@ -28,10 +28,11 @@ public:
     // Parses websocket TYPE_FIRMWARE_UPDATE_BATCH payload (without header byte)
     void processBatch(const uint8_t* data, size_t bodyLen);
 
-    void requestUpdate(const char* id);
+    bool requestUpdate(const char* id);
     bool isUpdateRequested() const;
     void clearUpdateRequest();
     void download();
+    bool isValidFirmwareId(const char* id) const;
 
     bool isUpdateAvailable() const;
     const char* getCurrentVersion() const;

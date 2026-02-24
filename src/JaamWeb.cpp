@@ -2743,7 +2743,10 @@ void JaamWeb::handleParameter() {
             settings->saveBool(MIN_OF_SILENCE, boolValue);
             LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
         } else if (name == "firmware_id") {
-            fwUpdate.requestUpdate(valuePtr);
+            LOG.printf("[WEB] Setting firmware_id: %s\n", valuePtr);
+            if (!fwUpdate.requestUpdate(valuePtr)) {
+                LOG.printf("[WEB] Invalid firmware ID: %s\n", valuePtr);
+            }
         } else if (name == "new_fw_notification") {
             bool boolValue = intValue != 0;
             settings->saveBool(NEW_FW_NOTIFICATION, boolValue);

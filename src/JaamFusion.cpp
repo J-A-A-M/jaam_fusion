@@ -442,26 +442,7 @@ bool needToPlaySound(SoundType type) {
   return false;
 }
 
-//--Update
-// void saveLatestFirmware() {
-//   int fwUpdateChannel = settings.getInt(FW_UPDATE_CHANNEL);
-//   const int *count = fwUpdateChannel ? &testBinsCount : &binsCount;
-//   Firmware firmware = currentFirmware;
-//   for (int i = 0; i < *count; i++) {
-//     const char* filename = fwUpdateChannel ? test_bin_list[i] : bin_list[i];
-//     if (prefix("latest", filename)) continue;
-//     Firmware parsedFirmware = parseFirmwareVersion(filename);
-//     if (firstIsNewer(parsedFirmware, firmware)) {
-//       firmware = parsedFirmware;
-//     }
-//   }
-//   latestFirmware = firmware;
-//   fwUpdate.isUpdateAvailable() = firstIsNewer(latestFirmware, currentFirmware);
-//   servicePin(UPD_AVAILABLE, fwUpdate.isUpdateAvailable() ? HIGH : LOW, false);
-//   fillFwVersion(newFwVersion, latestFirmware);
-//   LOG.printf("Latest firmware version: %s\n", newFwVersion);
-//   LOG.println(fwUpdate.isUpdateAvailable() ? "New fw available!" : "No new firmware available");
-// }
+// --- Firmware Update
 
 void mapUpdate(float percents) {
     if (strip_main == nullptr || num_leds_main == 0) return;
@@ -507,8 +488,6 @@ void mapUpdate(float percents) {
             serviceIndex = (serviceIndex + 1) % serviceCount;
         }
     }
-    
-
 }
 
 // --- Buttons Functions ---
