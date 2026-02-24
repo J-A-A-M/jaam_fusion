@@ -35,7 +35,7 @@ using namespace websockets;
 // --- MAIN Configuration ---
 char                chipID[13];
 char                currentFwVersion[25];
-char                firmwareUpdateId[50];  // Version ID for firmware updates
+char                firmwareUpdateId[25];  // Version ID for firmware updates
 
 Async               async = Async(20);
 
@@ -43,7 +43,8 @@ NTPtime             timeClient(2);
 DSTime*             currentDST = nullptr;  // Буде налаштовуватися для кожного поясу
 
 JaamSettings        settings;
-JaamFirmware        firmware[10];
+JaamFirmware        firmwares[10];
+JaamFirmware        firmware;
 JaamWeb             web;
 JaamApi             api;
 JaamMDNS            mdnsService;
@@ -1078,13 +1079,13 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_BATCH data processing\n");
 
         for (size_t i = 0; i < count; ++i) {
-            firmware[i].major = ptr[0];
-            firmware[i].minor = ptr[1];
-            firmware[i].patch = ptr[2];
+            firmwares[i].major = ptr[0];
+            firmwares[i].minor = ptr[1];
+            firmwares[i].patch = ptr[2];
             // Little-Endian: low byte first, high byte second
-            firmware[i].beta = ptr[3] | (ptr[4] << 8);
+            firmwares[i].beta = ptr[3] | (ptr[4] << 8);
 
-            LOG.printf("Parsed FW: %d.%d.%d b%d\n", firmware[i].major, firmware[i].minor, firmware[i].patch, firmware[i].beta);
+            LOG.printf("Parsed FW: %d.%d.%d b%d\n", firmwares[i].major, firmwares[i].minor, firmwares[i].patch, firmwares[i].beta);
 
             ptr += RECORD_FW;
         }
@@ -2009,10 +2010,10 @@ void updateClimateData() {
 void initSettings() {
     LOG.printf("[INIT] Init settings\n");
     settings.init();
-    // firmware = parseFirmwareVersion(VERSION);
-    // LOG.printf("[INIT] major: %d, minor: %d, patch: %d, isBeta: %d, betaBuild: %d\n",
-    //         firmware.major, firmware.minor, firmware.patch, firmware.isBeta, firmware.betaBuild);
-    // fillFwVersion(currentFwVersion, firmware);
+    firmware = parseFirmwareVersion(VERSION);
+    LOG.printf("[INIT] major: %d, minor: %d, patch: %d, beta: %d\n",
+             firmware.major, firmware.minor, firmware.patch, firmware.beta);
+    fillFwVersion(currentFwVersion, firmware);
     LOG.printf("[INIT] Current firmware version: %s\n", currentFwVersion);
     
     // Перевіряємо чи є збережене значення hostname
@@ -2249,7 +2250,7 @@ void initWifi() {
         display.showServiceMessage(wifiSSID, "Підключення до:");
     }
     char apssid[32];
-    snprintf(apssid, sizeof(apssid), "JAAM_FUSION_%s", chipID);
+    snprintf(apssid, sizeof(apssid), "JAAM_%s", chipID);
     if (!wm.autoConnect(apssid)) {
         LOG.printf("[WIFI] Reboot\n");
         rebootDevice(5000);
@@ -2311,7 +2312,7 @@ void initWifi() {
         
     //     // Створюємо ім'я AP з chip ID
     //     char apName[32];
-    //     snprintf(apName, sizeof(apName), "JAAM_FUSION_%s", chipID);
+    //     snprintf(apName, sizeof(apName), "JAAM_%s", chipID);
         
     //     // Спроба підключення
     //     if (!wm_temp.autoConnect(apName)) {

@@ -43,8 +43,8 @@ extern volatile int testTrackId;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
-extern JaamFirmware                     firmware[10];
-extern char                             firmwareUpdateId[50];
+extern JaamFirmware                     firmwares[10];
+extern char                             firmwareUpdateId[25];
 
 void sendLargeJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
@@ -3637,20 +3637,20 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
     {
         JsonArray arr = dropdownLists["firmware_versions"].to<JsonArray>();
         for (int i = 0; i < 10; ++i) {
-            if ((firmware[i].major | firmware[i].minor | firmware[i].patch | firmware[i].beta) == 0) continue;
+            if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
             
             char buffer[32];
-            if (firmware[i].patch > 0) {
-                if (firmware[i].beta > 0) {
-                     snprintf(buffer, sizeof(buffer), "%d.%d.%d-b%d", firmware[i].major, firmware[i].minor, firmware[i].patch, firmware[i].beta);
+            if (firmwares[i].patch > 0) {
+                if (firmwares[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d-b%d", firmwares[i].major, firmwares[i].minor, firmwares[i].patch, firmwares[i].beta);
                 } else {
-                     snprintf(buffer, sizeof(buffer), "%d.%d.%d", firmware[i].major, firmware[i].minor, firmware[i].patch);
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d", firmwares[i].major, firmwares[i].minor, firmwares[i].patch);
                 }
             } else {
-                if (firmware[i].beta > 0) {
-                     snprintf(buffer, sizeof(buffer), "%d.%d-b%d", firmware[i].major, firmware[i].minor, firmware[i].beta);
+                if (firmwares[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d-b%d", firmwares[i].major, firmwares[i].minor, firmwares[i].beta);
                 } else {
-                     snprintf(buffer, sizeof(buffer), "%d.%d", firmware[i].major, firmware[i].minor);
+                     snprintf(buffer, sizeof(buffer), "%d.%d", firmwares[i].major, firmwares[i].minor);
                 }
             }
             
