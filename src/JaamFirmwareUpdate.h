@@ -5,6 +5,7 @@
 #include <WiFiClientSecure.h>
 #include <functional>
 #include "JaamDisplay.h"
+#include "JaamApi.h"
 
 struct JaamFirmware {
     int major = 0;
@@ -16,6 +17,7 @@ struct JaamFirmware {
 class JaamFirmwareUpdate {
 public:
     void setDisplay(JaamDisplay* display);
+    void setApi(JaamApi* api);
     void setMapUpdateCallback(std::function<void(float)> cb);
     void setRebootCallback(std::function<void()> cb);
     void setServicePinCallback(std::function<void()> cb);
@@ -49,6 +51,7 @@ private:
     WiFiClientSecure _updateClient;
 
     JaamDisplay* _display = nullptr;
+    JaamApi* _api = nullptr;
     std::function<void(float)> _mapUpdateCb;
     std::function<void()> _rebootCb;
     std::function<void()> _servicePinCb;

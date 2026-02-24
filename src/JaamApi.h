@@ -28,12 +28,15 @@ public:
     void broadcastHomeAlertChange(uint16_t flags16);
     void broadcastClimateDataChange(float temp, float humidity, float pressure);
     void broadcastSystemInfo();
+    void broadcastFirmwareUpdate();
     
     // Оновлення даних
     void updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);
     void updateHomeAlert(uint16_t flags16);
     void updateHomeDistrictTemp(int temp);
     void updateClimateData(float temp, float humidity, float pressure);
+    void updateNewFirmwareInfo(const char* version);
+    void updateFirmwareProgress(int progress);
     
     // Обробка змін налаштувань
     void onSettingsChange(Type type, int intValue, const char* strValue);
@@ -64,6 +67,7 @@ private:
     float climateTemperature;
     float climateHumidity;
     float climatePressure;
+    char fwLatestVersion[25];
 
     // WebSocket handlers
     void handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage message);
@@ -71,4 +75,5 @@ private:
     void broadcastWebSocket(const String& jsonMessage);
     void broadcastDeviceNameChange(const char* deviceName);
     void broadcastHomeDistrictTempChange(int temp);
+    void broadcastFirmwareUpdate(const char* version);
 };

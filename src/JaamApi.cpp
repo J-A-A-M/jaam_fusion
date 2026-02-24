@@ -7,10 +7,11 @@
 
 extern volatile bool needAdaptColors;
 extern void servicePin(ServiceLed type);
+extern JaamFirmwareUpdate fwUpdate;
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
-    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN) {}
+    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), fwLatestVersion("") {}
 
 void JaamApi::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -117,6 +118,7 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
         doc["connected"] = true;
         if (chipId) doc["chip_id"] = chipId;
         if (fwVersion) doc["fw_version"] = fwVersion;
+        if (fwLatestVersion[0] != '\0') doc["fw_latest"] = fwLatestVersion;
         doc["home_alert_flags"] = homeAlertFlags;
         doc["home_district_temp"] = homeDistrictTemp;
         doc["used_memory"] = usedMemory;
@@ -140,6 +142,7 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     // Інформація про пристрій
     if (chipId) doc["chip_id"] = chipId;
     if (fwVersion) doc["fw_version"] = fwVersion;
+    if (fwLatestVersion[0] != '\0') doc["fw_latest"] = fwLatestVersion;
 
     // Назва пристрою
     doc["device_name"] = settings->getString(DEVICE_NAME);
@@ -265,6 +268,14 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
             } else {
                 LOG.printf("[API] Invalid region id: %d\n", regionId);
             }
+        }
+    }
+    // Обробляємо запит на оновлення прошивки
+    else if (type == "update_firmware") {
+        if (!doc["version"].isNull()) {
+            String version = doc["version"].as<String>();
+            LOG.printf("[API] Firmware update requested, version: %s\n", version.c_str());
+            fwUpdate.requestUpdate(version.c_str());
         }
     }
     else {
@@ -470,6 +481,27 @@ void JaamApi::updateClimateData(float temp, float humidity, float pressure) {
     }
 }
 
+void JaamApi::updateNewFirmwareInfo(const char* version) {
+    strcpy(fwLatestVersion, version);
+    if (isRunning) {
+        broadcastFirmwareUpdate(version);
+    }
+}
+
+void JaamApi::updateFirmwareProgress(int progress) {
+    if (isRunning) {
+        JsonDocument doc;
+        doc["type"] = "fw_update_progress";
+        doc["progress"] = progress;
+        
+        String data;
+        serializeJson(doc, data);
+        broadcastWebSocket(data);
+        
+        LOG.printf("[API] Broadcast firmware update progress: %d%%\n", progress);
+    }
+}
+
 void JaamApi::broadcastSystemInfo() {
     JsonDocument doc;
     doc["type"] = "system_info";
@@ -514,6 +546,19 @@ void JaamApi::broadcastClimateDataChange(float temp, float humidity, float press
                isnan(temp) ? "N/A" : String(temp, 2).c_str(),
                isnan(humidity) ? "N/A" : String(humidity, 2).c_str(),
                isnan(pressure) ? "N/A" : String(pressure, 2).c_str());
+}
+
+void JaamApi::broadcastFirmwareUpdate(const char* version) {
+    
+    JsonDocument doc;
+    doc["type"] = "firmware_update";
+    doc["fw_latest"] = version;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast firmware update: %s\n", version);
 }
 
 // --- Обробка змін налаштувань ---

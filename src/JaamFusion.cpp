@@ -511,8 +511,6 @@ void mapUpdate(float percents) {
 
 }
 
-
-
 // --- Buttons Functions ---
 
 void handleClick(int event, JaamButton::Action action) {
@@ -2889,6 +2887,7 @@ void setup() {
     checkFreeHeap("settings initialization");
 
     fwUpdate.setDisplay(&display);
+    fwUpdate.setApi(&api);
     fwUpdate.setMapUpdateCallback([](float p) { mapUpdate(p); });
     fwUpdate.setRebootCallback([]() { rebootDevice(); });
     fwUpdate.setServicePinCallback([]() { servicePin(UPD_AVAILABLE); });
