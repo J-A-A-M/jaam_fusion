@@ -1,0 +1,256 @@
+name: 🧪 Beta Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версія для бета релізу (наприклад: 5.0 або 5.0.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  beta-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Validate version format
+      run: |
+        if ! echo "${{ inputs.version }}" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+          echo "❌ Невірний формат версії. Використовуйте формат X.Y або X.Y.Z (наприклад: 5.0 або 5.0.1)"
+          exit 1
+        fi
+        echo "✅ Формат версії валідний: ${{ inputs.version }}"
+    
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    
+    - name: Calculate build number
+      id: build_number
+      run: |
+        VERSION="${{ inputs.version }}"
+        
+        # Отримуємо всі теги що відповідають патерну {VERSION}-b*
+        EXISTING_TAGS=$(git tag -l "${VERSION}-b*" | sort -V)
+        
+        if [ -z "$EXISTING_TAGS" ]; then
+          BUILD_NUM=1
+          echo "📦 Це перший beta build для версії ${VERSION}"
+        else
+          # Отримуємо останній build номер
+          LAST_TAG=$(echo "$EXISTING_TAGS" | tail -n 1)
+          LAST_BUILD=$(echo "$LAST_TAG" | sed -E 's/.*-b([0-9]+)$/\1/')
+          BUILD_NUM=$((LAST_BUILD + 1))
+          echo "📦 Останній beta build: ${LAST_TAG}"
+        fi
+        
+        FULL_VERSION="${VERSION}-b${BUILD_NUM}"
+        TAG_NAME="${FULL_VERSION}"
+        
+        echo "build_num=${BUILD_NUM}" >> $GITHUB_OUTPUT
+        echo "full_version=${FULL_VERSION}" >> $GITHUB_OUTPUT
+        echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+        
+        echo "🔖 Нова версія: ${FULL_VERSION}"
+        echo "🏷️  Новий тег: ${TAG_NAME}"
+    
+    - name: Update version in platformio.ini
+      run: |
+        FULL_VERSION="${{ steps.build_number.outputs.full_version }}"
+        
+        echo "📝 Оновлюємо VERSION у platformio.ini на ${FULL_VERSION}"
+        
+        # Замінюємо VERSION="..." на нову версію
+        sed -i.bak -E "s/-D VERSION=\"[^\"]+\"/-D VERSION=\"${FULL_VERSION}\"/" platformio.ini
+        
+        # Показуємо зміни
+        echo "📄 Зміни в platformio.ini:"
+        grep 'VERSION=' platformio.ini
+        
+        # Видаляємо backup файл
+        rm platformio.ini.bak
+    
+    - name: Setup PlatformIO
+      uses: ./.github/actions/setup-platformio
+    
+    - name: Build firmware (firmware)
+      run: |
+        echo "🔨 Збираємо firmware для ESP32..."
+        platformio run -e firmware
+    
+    - name: Build firmware (firmware_esp32s3)
+      run: |
+        echo "🔨 Збираємо firmware для ESP32-S3..."
+        platformio run -e firmware_esp32s3
+    
+    - name: Build firmware (firmware_esp32c3)
+      run: |
+        echo "🔨 Збираємо firmware для ESP32-C3..."
+        platformio run -e firmware_esp32c3
+    
+    - name: Prepare release artifacts
+      run: |
+        mkdir -p release
+        
+        # Копіюємо бінарники з читабельними іменами
+        cp .pio/build/firmware/firmware.bin release/JAAM_${{ steps.build_number.outputs.full_version }}.bin
+        cp .pio/build/firmware_esp32s3/firmware.bin release/JAAM_S3_${{ steps.build_number.outputs.full_version }}.bin
+        cp .pio/build/firmware_esp32c3/firmware.bin release/JAAM_C3_${{ steps.build_number.outputs.full_version }}.bin
+        
+        # Показуємо розміри
+        echo "📦 Розміри бінарників:"
+        ls -lh release/*.bin
+    
+    - name: Generate changelog with AI
+      id: changelog
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      run: |
+        TAG_NAME="${{ steps.build_number.outputs.tag_name }}"
+        FULL_VERSION="${{ steps.build_number.outputs.full_version }}"
+        
+        # Отримуємо попередній тег (останній beta або release)
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          COMMITS=$(git log --pretty=format:"- %s (%an, %h)" HEAD | head -30)
+        else
+          COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${PREVIOUS_TAG}..HEAD)
+        fi
+        
+        echo "📝 Генеруємо changelog за допомогою AI..."
+        
+        # Створюємо промпт для AI
+        cat > prompt.txt << 'PROMPT_EOF'
+        Ти - AI асистент для створення changelog для IoT пристрою "JAAM Fusion" - карти повітряних тривог України на базі ESP32.
+
+        Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
+
+        ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
+        - Зміни в GitHub Actions (.github/workflows)
+        - Зміни конфігурації білда (якщо вони не додають нові функції користувачам)
+        - Оновлення документації проекту
+        - Зміни в CI/CD
+        - Рефакторинг без нових функцій
+        
+        Включай тільки зміни, які впливають на роботу пристрою або додають нові можливості користувачам.
+
+        Коміти:
+        PROMPT_EOF
+        
+        echo "$COMMITS" >> prompt.txt
+        
+        cat >> prompt.txt << 'PROMPT_EOF'
+
+        Створи changelog з такою структурою:
+
+        # 🧪 Beta Реліз [VERSION]
+
+        > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
+
+        ## Що нового
+
+        [Згрупуй зміни за категоріями. Використовуй емоджі:]
+        - 🚀 Нові можливості
+        - 🐛 Виправлення помилок
+        - 📝 Документація
+        - 🔧 Технічні покращення
+        - ⚡ Оптимізація
+        - 🎨 UI/UX покращення
+
+        Вимоги:
+        - Будь стислим та зрозумілим для кінцевих користувачів
+        - Опиши зміни простою мовою, уникай технічного жаргону де можливо
+        - Якщо коміт технічний (refactor, cleanup) - опиши користувацьку вигоду
+        - Групуй схожі зміни разом
+        - Підкресли найважливіші зміни
+        - НЕ додавай секції про завантаження або встановлення
+
+        Заміни [VERSION] на реальну версію в тексті.
+        PROMPT_EOF
+        
+        # Викликаємо Claude API
+        if [ -n "$ANTHROPIC_API_KEY" ]; then
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d @- << API_EOF
+        {
+          "model": "claude-haiku-4-5",
+          "max_tokens": 2048,
+          "messages": [
+            {
+              "role": "user",
+              "content": $(cat prompt.txt | jq -Rs .)
+            }
+          ]
+        }
+        API_EOF
+          )
+          
+          # Витягуємо текст з відповіді
+          CHANGELOG=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
+          
+          if [ -z "$CHANGELOG" ]; then
+            echo "⚠️ AI не згенерував changelog, використовуємо fallback"
+            CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
+
+        > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
+
+        ## Що нового
+
+        ${COMMITS}"
+          else
+            echo "✅ AI згенерував changelog"
+            # Замінюємо VERSION на реальну версію
+            CHANGELOG=$(echo "$CHANGELOG" | sed "s/\[VERSION\]/${FULL_VERSION}/g")
+          fi
+        else
+          echo "⚠️ ANTHROPIC_API_KEY не знайдено, використовуємо стандартний changelog"
+          CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
+
+        > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
+
+        ## Що нового
+
+        ${COMMITS}"
+        fi
+        
+        # Зберігаємо changelog
+        echo "$CHANGELOG" > CHANGELOG.md
+        cat CHANGELOG.md
+    
+    - name: Create Git Tag
+      run: |
+        TAG_NAME="${{ steps.build_number.outputs.tag_name }}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag -a "${TAG_NAME}" -m "Beta Release ${TAG_NAME}"
+        git push origin "${TAG_NAME}"
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.build_number.outputs.tag_name }}
+        name: ${{ steps.build_number.outputs.full_version }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: true
+        files: |
+          release/*.bin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Summary
+      run: |
+        echo "### ✅ Beta Реліз Створено!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Версія**: ${{ steps.build_number.outputs.full_version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Тег**: ${{ steps.build_number.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Build номер**: ${{ steps.build_number.outputs.build_num }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 [Переглянути реліз](https://github.com/${{ github.repository }}/releases/tag/${{ steps.build_number.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY

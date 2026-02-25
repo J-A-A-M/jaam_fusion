@@ -1,4 +1,4 @@
-name: Build
+name: 🔨 Build
 
 on:
   push:
@@ -15,32 +15,8 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - name: Cache pip
-      uses: actions/cache@v5
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/platformio.ini') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Cache PlatformIO
-      uses: actions/cache@v5
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-platformio-${{ hashFiles('**/platformio.ini') }}
-        restore-keys: |
-          ${{ runner.os }}-platformio-
-
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.12'
-
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
-        pip install intelhex
+    - name: Setup PlatformIO
+      uses: ./.github/actions/setup-platformio
 
     - name: Build ${{ matrix.environment }}
       run: platformio run -e ${{ matrix.environment }}
