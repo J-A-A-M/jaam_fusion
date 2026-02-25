@@ -63,8 +63,8 @@ jobs:
         
         echo "📝 Оновлюємо VERSION у platformio.ini на ${FULL_VERSION}"
         
-        # Замінюємо VERSION="..." на нову версію
-        sed -i.bak -E "s/-D VERSION=\"[^\"]+\"/-D VERSION=\"${FULL_VERSION}\"/" platformio.ini
+        # Замінюємо VERSION="..." на нову версію (враховуючи пробіли на початку)
+        sed -i.bak -E "s/^([[:space:]]*-D VERSION=\")[^\"]+\"/\1${FULL_VERSION}\"/" platformio.ini
         
         # Показуємо зміни
         echo "📄 Зміни в platformio.ini:"
