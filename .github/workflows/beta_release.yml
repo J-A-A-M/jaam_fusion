@@ -106,18 +106,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # environment: [firmware, firmware_esp32s3, firmware_esp32c3]
-        environment: [firmware]
+        environment: [firmware, firmware_esp32s3, firmware_esp32c3]
         include:
           - environment: firmware
             chip: esp32
             bin_name: JAAM
-          # - environment: firmware_esp32s3
-          #   chip: esp32s3
-          #   bin_name: JAAM_S3
-          # - environment: firmware_esp32c3
-          #   chip: esp32c3
-          #   bin_name: JAAM_C3
+          - environment: firmware_esp32s3
+            chip: esp32s3
+            bin_name: JAAM_S3
+          - environment: firmware_esp32c3
+            chip: esp32c3
+            bin_name: JAAM_C3
     
     steps:
     - uses: actions/checkout@v6
