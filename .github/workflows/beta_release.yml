@@ -127,6 +127,28 @@ jobs:
       with:
         name: platformio-config
     
+    - name: Verify version in platformio.ini
+      run: |
+        EXPECTED_VERSION="${{ needs.prepare.outputs.full_version }}"
+        
+        echo "🔍 Перевіряємо версію в platformio.ini"
+        echo "Очікується: VERSION=\"${EXPECTED_VERSION}\""
+        
+        # Показуємо що є в файлі
+        echo "📄 Вміст VERSION у platformio.ini:"
+        grep 'VERSION=' platformio.ini || echo "VERSION не знайдено!"
+        
+        # Перевіряємо чи версія правильна
+        if grep -q "VERSION=\\\\\"${EXPECTED_VERSION}\\\\\"" platformio.ini; then
+          echo "✅ Версія правильна: ${EXPECTED_VERSION}"
+        else
+          echo "❌ ПОМИЛКА: Версія в platformio.ini не відповідає очікуваній!"
+          echo "Очікувалось: VERSION=\\\"${EXPECTED_VERSION}\\\""
+          echo "Знайдено:"
+          grep 'VERSION=' platformio.ini
+          exit 1
+        fi
+    
     - name: Setup PlatformIO
       uses: ./.github/actions/setup-platformio
     
@@ -246,7 +268,7 @@ jobs:
                 }
               }')
             
-            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}" \
+            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}" \
               -H "Content-Type: application/json" \
               -d "$JSON_PAYLOAD")
             
