@@ -556,7 +556,7 @@ void singleClick(int mode) {
 }
 
 void longClick(int modeLong) {
-  if (fwUpdate.isUpdateAvailable() && settings.getInt(NEW_FW_NOTIFICATION) == 1  && isButtonActivated() && !isDisplayOff) {
+  if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff) {
     handleClick(100, JaamButton::LONG_CLICK);
     return;
   }
@@ -580,7 +580,7 @@ void buttonLongClick(const char* buttonName, int modeLong) {
 }
 
 void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Action action) {
-  if (fwUpdate.isUpdateAvailable() && settings.getInt(NEW_FW_NOTIFICATION) == 1 && isButtonActivated() && !isDisplayOff) {
+  if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff) {
     return;
   }
   if (action == JaamButton::Action::DURING_LONG_CLICK) {
