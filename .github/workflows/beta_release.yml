@@ -63,12 +63,34 @@ jobs:
         
         echo "📝 Оновлюємо VERSION у platformio.ini на ${FULL_VERSION}"
         
+        # Перевіряємо чи файл існує
+        if [ ! -f platformio.ini ]; then
+          echo "❌ ПОМИЛКА: platformio.ini не знайдено!"
+          ls -la
+          exit 1
+        fi
+        
+        # Показуємо поточну версію
+        echo "📄 Поточна VERSION у platformio.ini:"
+        grep 'VERSION=' platformio.ini || echo "VERSION не знайдено!"
+        
+        # Показуємо команду sed
+        echo "🔧 Виконуємо: sed -i \"s/VERSION=\\\"[^\\\"]*\\\"/VERSION=\\\"${FULL_VERSION}\\\"/\" platformio.ini"
+        
         # Замінюємо VERSION="..." на нову версію
         sed -i "s/VERSION=\"[^\"]*\"/VERSION=\"${FULL_VERSION}\"/" platformio.ini
         
-        # Показуємо зміни
-        echo "📄 Зміни в platformio.ini:"
+        # Показуємо результат
+        echo "📄 Нова VERSION у platformio.ini:"
         grep 'VERSION=' platformio.ini
+        
+        # Перевіряємо чи заміна відбулась
+        if grep -q "VERSION=\"${FULL_VERSION}\"" platformio.ini; then
+          echo "✅ Версію успішно оновлено на ${FULL_VERSION}"
+        else
+          echo "❌ ПОМИЛКА: Версію не вдалося оновити!"
+          exit 1
+        fi
     
     - name: Setup PlatformIO
       uses: ./.github/actions/setup-platformio
@@ -188,6 +210,14 @@ jobs:
         }
         API_EOF
           )
+          
+          # Перевіряємо чи є помилка в відповіді
+          ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR" ]; then
+            echo "⚠️ Помилка API: $ERROR"
+            echo "📄 Повна відповідь:"
+            echo "$RESPONSE" | jq .
+          fi
           
           # Витягуємо текст з відповіді
           CHANGELOG=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
