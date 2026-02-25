@@ -79,6 +79,8 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen) {
     size_t count = bodyLen / RECORD_FW;
     const uint8_t* ptr = data;
 
+    memset(_firmwares, 0, sizeof(_firmwares));
+
     LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_BATCH data processing\n");
 
     for (size_t i = 0; i < count; ++i) {
