@@ -146,7 +146,7 @@ void JaamFirmwareUpdate::download() {
     char firmwareUrlChar[100];
 
     LOG.println("Building firmware url...");
-    sprintf(firmwareUrlChar, "https://update.jaam.net.ua/%s", _fwUpdateId);
+    snprintf(firmwareUrlChar, sizeof(firmwareUrlChar), "https://update.jaam.net.ua/%s", _fwUpdateId);
 
     LOG.printf("Firmware url: %s\n", firmwareUrlChar);
     _updateClient.setInsecure();
