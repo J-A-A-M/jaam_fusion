@@ -366,56 +366,36 @@ static SettingListItem MAP_MODES[] = {
   {4, "Лампа"},
 };
 
-constexpr int TIMEZONES_COUNT = 43;
+constexpr int TIMEZONES_COUNT = 23;
 static SettingListItem TIMEZONES[] = {
   {0, "Europe/Kyiv (UTC+2)"},
   // Європейські часові пояси (географічно: захід → схід)
-  {1, "Europe/Lisbon (UTC+0)"},
-  {2, "Europe/Dublin (UTC+0)"},
-  {3, "Europe/London (UTC+0)"},
-  {4, "Europe/Madrid (UTC+1)"},
-  {5, "Europe/Paris (UTC+1)"},
-  {6, "Europe/Amsterdam (UTC+1)"},
-  {7, "Europe/Berlin (UTC+1)"},
-  {8, "Europe/Prague (UTC+1)"},
-  {9, "Europe/Warsaw (UTC+1)"},
-  {10, "Europe/Rome (UTC+1)"},
-  {11, "Europe/Athens (UTC+2)"},
-  {12, "Europe/Helsinki (UTC+2)"},
-  {13, "Europe/Bucharest (UTC+2)"},
-  {14, "Europe/Istanbul (UTC+3)"},
+  {1, "Europe/London (UTC+0)"},
+  {2, "Europe/Paris (UTC+1)"},
+  {3, "Europe/Istanbul (UTC+3)"},
   // Американські часові пояси (географічно: захід → схід)
-  {15, "Pacific/Honolulu (UTC-10)"},
-  {16, "America/Anchorage (UTC-9)"},
-  {17, "America/Los_Angeles (UTC-8)"},
-  {18, "America/Vancouver (UTC-8)"},
-  {19, "America/Denver (UTC-7)"},
-  {20, "America/Chicago (UTC-6)"},
-  {21, "America/Mexico_City (UTC-6)"},
-  {22, "America/Toronto (UTC-5)"},
-  {23, "America/New_York (UTC-5)"},
-  // Південноамериканські пояси (географічно: захід → схід)
-  {24, "America/Lima (UTC-5)"},
-  {25, "America/Sao_Paulo (UTC-3)"},
-  {26, "America/Argentina/Buenos_Aires (UTC-3)"},
+  {4, "Pacific/Honolulu (UTC-10)"},
+  {5, "America/Anchorage (UTC-9)"},
+  {6, "America/Los_Angeles (UTC-8)"},
+  {7, "America/Denver (UTC-7)"},
+  {8, "America/Chicago (UTC-6)"},
+  {9, "America/Mexico_City (UTC-6)"},
+  {10, "America/New_York (UTC-5)"},
+  {11, "America/Lima (UTC-5)"},
+  // Південноамериканські пояси
+  {12, "America/Sao_Paulo (UTC-3)"},
   // Азіатські та Близькосхідні пояси (географічно: захід → схід)
-  {27, "Asia/Dubai (UTC+4)"},
-  {28, "Asia/Karachi (UTC+5)"},
-  {29, "Asia/Kolkata (UTC+5:30)"},
-  {30, "Asia/Bangkok (UTC+7)"},
-  {31, "Asia/Jakarta (UTC+7)"},
-  {32, "Asia/Singapore (UTC+8)"},
-  {33, "Asia/Hong_Kong (UTC+8)"},
-  {34, "Asia/Shanghai (UTC+8)"},
-  {35, "Asia/Tokyo (UTC+9)"},
-  {36, "Asia/Seoul (UTC+9)"},
+  {13, "Asia/Dubai (UTC+4)"},
+  {14, "Asia/Karachi (UTC+5)"},
+  {15, "Asia/Kolkata (UTC+5:30)"},
+  {16, "Asia/Bangkok (UTC+7)"},
+  {17, "Asia/Shanghai (UTC+8)"},
+  {18, "Asia/Tokyo (UTC+9)"},
   // Австралія та Океанія (географічно: захід → схід)
-  {37, "Australia/Perth (UTC+8)"},
-  {38, "Australia/Brisbane (UTC+10)"},
-  {39, "Australia/Melbourne (UTC+10)"},
-  {40, "Australia/Sydney (UTC+10)"},
-  {41, "Pacific/Auckland (UTC+12)"},
-  {42, "Pacific/Fiji (UTC+12)"},
+  {19, "Australia/Brisbane (UTC+10)"},
+  {20, "Australia/Sydney (UTC+10)"},
+  {21, "Pacific/Auckland (UTC+12)"},
+  {22, "Pacific/Fiji (UTC+12)"},
 };
 
 struct TimezoneInfo {
@@ -431,90 +411,50 @@ struct TimezoneInfo {
 static TimezoneInfo TIMEZONE_OFFSETS[] = {
   // ID 0: Europe/Kyiv - Європейський східний час (EEST)
   {0, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
-  // ID 1: Europe/Lisbon (WET/WEST)
+  // ID 1: Europe/London - британський літній час (BST)
   {1, 0, 0, true, {3, 0, 7, 1}, {10, 0, 7, 2}},
-  // ID 2: Europe/Dublin (IST/GMT)
-  {2, 0, 0, true, {3, 0, 7, 1}, {10, 0, 7, 2}},
-  // ID 3: Europe/London - британський літній час (BST)
-  {3, 0, 0, true, {3, 0, 7, 1}, {10, 0, 7, 2}},
-  // ID 4: Europe/Madrid
-  {4, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
-  // ID 5: Europe/Paris - Європейський центральний літній час (CEST)
-  {5, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
-  // ID 6: Europe/Amsterdam
-  {6, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
-  // ID 7: Europe/Berlin
-  {7, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
-  // ID 8: Europe/Prague
-  {8, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
-  // ID 9: Europe/Warsaw
-  {9, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
-  // ID 10: Europe/Rome
-  {10, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
-  // ID 11: Europe/Athens - Європейський східній літній час (EEST)
-  {11, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
-  // ID 12: Europe/Helsinki
-  {12, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
-  // ID 13: Europe/Bucharest
-  {13, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
-  // ID 14: Europe/Istanbul - немає DST з 2016
-  {14, 3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 15: Pacific/Honolulu - немає DST
-  {15, -10, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 16: America/Anchorage
-  {16, -9, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 17: America/Los_Angeles
-  {17, -8, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 18: America/Vancouver
-  {18, -8, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 19: America/Denver
-  {19, -7, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 20: America/Chicago
-  {20, -6, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 21: America/Mexico_City - немає DST
-  {21, -6, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 22: America/Toronto
-  {22, -5, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 23: America/New_York - 2-а неділя березня, 1-а неділя листопада
-  {23, -5, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
-  // ID 24: America/Lima - немає DST
-  {24, -5, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 25: America/Sao_Paulo - немає DST
-  {25, -3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 26: America/Argentina/Buenos_Aires - немає DST
-  {26, -3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 27: Asia/Dubai - немає DST
-  {27, 4, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 28: Asia/Karachi - немає DST
-  {28, 5, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 29: Asia/Kolkata - немає DST
-  {29, 5, 30, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 30: Asia/Bangkok - немає DST
-  {30, 7, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 31: Asia/Jakarta - немає DST
-  {31, 7, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 32: Asia/Singapore - немає DST
-  {32, 8, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 33: Asia/Hong_Kong - немає DST
-  {33, 8, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 34: Asia/Shanghai - немає DST
-  {34, 8, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 35: Asia/Tokyo - немає DST
-  {35, 9, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 36: Asia/Seoul - немає DST
-  {36, 9, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 37: Australia/Perth - немає DST
-  {37, 8, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 38: Australia/Brisbane - немає DST
-  {38, 10, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
-  // ID 39: Australia/Melbourne - 1-а неділя жовтня, 1-а неділя квітня
-  {39, 10, 0, true, {10, 1, 7, 2}, {4, 1, 7, 3}},
-  // ID 40: Australia/Sydney - 1-а неділя жовтня, 1-а неділя квітня
-  {40, 10, 0, true, {10, 1, 7, 2}, {4, 1, 7, 3}},
-  // ID 41: Pacific/Auckland - остання неділя вересня, 1-а неділя квітня
-  {41, 12, 0, true, {9, 0, 7, 2}, {4, 1, 7, 3}},
-  // ID 42: Pacific/Fiji - немає DST
-  {42, 12, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 2: Europe/Paris - Європейський центральний літній час (CEST)
+  {2, 1, 0, true, {3, 0, 7, 2}, {10, 0, 7, 3}},
+  // ID 3: Europe/Istanbul - немає DST з 2016
+  {3, 3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 4: Pacific/Honolulu - немає DST
+  {4, -10, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 5: America/Anchorage
+  {5, -9, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 6: America/Los_Angeles
+  {6, -8, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 7: America/Denver
+  {7, -7, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 8: America/Chicago
+  {8, -6, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 9: America/Mexico_City - немає DST
+  {9, -6, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 10: America/New_York - 2-а неділя березня, 1-а неділя листопада
+  {10, -5, 0, true, {3, 2, 7, 2}, {11, 1, 7, 2}},
+  // ID 11: America/Lima - немає DST
+  {11, -5, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 12: America/Sao_Paulo - немає DST
+  {12, -3, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 13: Asia/Dubai - немає DST
+  {13, 4, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 14: Asia/Karachi - немає DST
+  {14, 5, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 15: Asia/Kolkata - немає DST
+  {15, 5, 30, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 16: Asia/Bangkok - немає DST
+  {16, 7, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 17: Asia/Shanghai - немає DST
+  {17, 8, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 18: Asia/Tokyo - немає DST
+  {18, 9, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 19: Australia/Brisbane - немає DST
+  {19, 10, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
+  // ID 20: Australia/Sydney - 1-а неділя жовтня, 1-а неділя квітня
+  {20, 10, 0, true, {10, 1, 7, 2}, {4, 1, 7, 3}},
+  // ID 21: Pacific/Auckland - остання неділя вересня, 1-а неділя квітня
+  {21, 12, 0, true, {9, 0, 7, 2}, {4, 1, 7, 3}},
+  // ID 22: Pacific/Fiji - немає DST
+  {22, 12, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
 };
 
 constexpr int DISPLAY_MODES_COUNT = 2;
