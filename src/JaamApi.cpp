@@ -523,6 +523,10 @@ void JaamApi::updateLightLevel(float level) {
 }
 
 void JaamApi::updateNewFirmwareInfo(const char* version) {
+    if (!version) {
+        LOG.printf("[API] updateNewFirmwareInfo called with null version\n");
+        return;
+    }
     snprintf(fwLatestVersion, sizeof(fwLatestVersion), "%s", version);
     if (isRunning) {
         broadcastFirmwareUpdate(fwLatestVersion);
