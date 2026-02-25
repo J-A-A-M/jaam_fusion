@@ -12,8 +12,12 @@ permissions:
   contents: write
 
 jobs:
-  beta-release:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      full_version: ${{ steps.build_number.outputs.full_version }}
+      tag_name: ${{ steps.build_number.outputs.tag_name }}
+      build_num: ${{ steps.build_number.outputs.build_num }}
     
     steps:
     - name: Validate version format
@@ -90,44 +94,89 @@ jobs:
           exit 1
         fi
     
+    - name: Upload updated platformio.ini
+      uses: actions/upload-artifact@v4
+      with:
+        name: platformio-config
+        path: platformio.ini
+        retention-days: 1
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # environment: [firmware, firmware_esp32s3, firmware_esp32c3]
+        environment: [firmware]
+        include:
+          - environment: firmware
+            chip: esp32
+            bin_name: JAAM
+          # - environment: firmware_esp32s3
+          #   chip: esp32s3
+          #   bin_name: JAAM_S3
+          # - environment: firmware_esp32c3
+          #   chip: esp32c3
+          #   bin_name: JAAM_C3
+    
+    steps:
+    - uses: actions/checkout@v6
+    
+    - name: Download updated platformio.ini
+      uses: actions/download-artifact@v4
+      with:
+        name: platformio-config
+    
     - name: Setup PlatformIO
       uses: ./.github/actions/setup-platformio
     
-    - name: Build firmware (firmware)
+    - name: Build ${{ matrix.environment }}
       run: |
-        echo "🔨 Збираємо firmware для ESP32..."
-        platformio run -e firmware
+        echo "🔨 Збираємо firmware для ${{ matrix.chip }}..."
+        platformio run -e ${{ matrix.environment }}
     
-    - name: Build firmware (firmware_esp32s3)
-      run: |
-        echo "🔨 Збираємо firmware для ESP32-S3..."
-        platformio run -e firmware_esp32s3
-    
-    - name: Build firmware (firmware_esp32c3)
-      run: |
-        echo "🔨 Збираємо firmware для ESP32-C3..."
-        platformio run -e firmware_esp32c3
-    
-    - name: Prepare release artifacts
+    - name: Prepare binary
       run: |
         mkdir -p release
-        
-        # Копіюємо бінарники з читабельними іменами
-        cp .pio/build/firmware/firmware.bin release/JAAM_${{ steps.build_number.outputs.full_version }}.bin
-        cp .pio/build/firmware_esp32s3/firmware.bin release/JAAM_S3_${{ steps.build_number.outputs.full_version }}.bin
-        cp .pio/build/firmware_esp32c3/firmware.bin release/JAAM_C3_${{ steps.build_number.outputs.full_version }}.bin
-        
-        # Показуємо розміри
-        echo "📦 Розміри бінарників:"
+        cp .pio/build/${{ matrix.environment }}/firmware.bin release/${{ matrix.bin_name }}_${{ needs.prepare.outputs.full_version }}.bin
+        echo "📦 Розмір бінарника:"
         ls -lh release/*.bin
+    
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ matrix.chip }}
+        path: release/*.bin
+        retention-days: 1
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    
+    - name: Download all firmware binaries
+      uses: actions/download-artifact@v4
+      with:
+        pattern: firmware-*
+        path: release
+        merge-multiple: true
+    
+    - name: Show downloaded binaries
+      run: |
+        echo "📦 Завантажені бінарники:"
+        ls -lh release/
     
     - name: Generate changelog with AI
       id: changelog
       env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
-        TAG_NAME="${{ steps.build_number.outputs.tag_name }}"
-        FULL_VERSION="${{ steps.build_number.outputs.full_version }}"
+        TAG_NAME="${{ needs.prepare.outputs.tag_name }}"
+        FULL_VERSION="${{ needs.prepare.outputs.full_version }}"
         
         # Отримуємо попередній тег (останній beta або release)
         PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
@@ -140,109 +189,97 @@ jobs:
         
         echo "📝 Генеруємо changelog за допомогою AI..."
         
-        # Створюємо промпт для AI
-        cat > prompt.txt << 'PROMPT_EOF'
-        Ти - AI асистент для створення changelog для IoT пристрою "JAAM Fusion" - карти повітряних тривог України на базі ESP32.
-
-        Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
-
-        ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
-        - Зміни в GitHub Actions (.github/workflows)
-        - Зміни конфігурації білда (якщо вони не додають нові функції користувачам)
-        - Оновлення документації проекту
-        - Зміни в CI/CD
-        - Рефакторинг без нових функцій
+        # Викликаємо Gemini API
+        if [ -n "$GEMINI_API_KEY" ]; then
+          # Створюємо промпт для AI
+          PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
         
-        Включай тільки зміни, які впливають на роботу пристрою або додають нові можливості користувачам.
-
-        Коміти:
-        PROMPT_EOF
-        
-        echo "$COMMITS" >> prompt.txt
-        
-        cat >> prompt.txt << 'PROMPT_EOF'
-
-        Створи changelog з такою структурою:
-
-        # 🧪 Beta Реліз [VERSION]
-
-        > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
-
-        ## Що нового
-
-        [Згрупуй зміни за категоріями. Використовуй емоджі:]
-        - 🚀 Нові можливості
-        - 🐛 Виправлення помилок
-        - 📝 Документація
-        - 🔧 Технічні покращення
-        - ⚡ Оптимізація
-        - 🎨 UI/UX покращення
-
-        Вимоги:
-        - Будь стислим та зрозумілим для кінцевих користувачів
-        - Опиши зміни простою мовою, уникай технічного жаргону де можливо
-        - Якщо коміт технічний (refactor, cleanup) - опиши користувацьку вигоду
-        - Групуй схожі зміни разом
-        - Підкресли найважливіші зміни
-        - НЕ додавай секції про завантаження або встановлення
-
-        Заміни [VERSION] на реальну версію в тексті.
-        PROMPT_EOF
-        
-        # Викликаємо Claude API
-        if [ -n "$ANTHROPIC_API_KEY" ]; then
-          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-            -H "x-api-key: ${ANTHROPIC_API_KEY}" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
-            -d @- << API_EOF
-        {
-          "model": "claude-haiku-4-5",
-          "max_tokens": 2048,
-          "messages": [
-            {
-              "role": "user",
-              "content": $(cat prompt.txt | jq -Rs .)
+          Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
+          
+          ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
+          - Зміни в GitHub Actions (.github/workflows)
+          - Зміни конфігурації білда (якщо вони не додають нові функції користувачам)
+          - Оновлення документації проекту
+          - Зміни в CI/CD
+          - Рефакторинг без нових функцій
+          
+          Включай тільки зміни, які впливають на роботу пристрою або додають нові можливості користувачам.
+          
+          Коміти:
+          ${COMMITS}
+          
+          Створи changelog з такою структурою:
+          
+          # 🧪 Beta Реліз ${FULL_VERSION}
+          
+          > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
+          
+          ## Що нового
+          
+          [Згрупуй зміни за категоріями. Використовуй емоджі:]
+          - 🚀 Нові можливості
+          - 🐛 Виправлення помилок
+          - 🔧 Технічні покращення
+          - ⚡ Оптимізація
+          - 🎨 UI/UX покращення
+          
+          Вимоги:
+          - Будь стислим та зрозумілим для кінцевих користувачів
+          - Опиши зміни простою мовою, уникай технічного жаргону де можливо
+          - Якщо коміт технічний (refactor, cleanup) - опиши користувацьку вигоду
+          - Групуй схожі зміни разом
+          - Підкресли найважливіші зміни
+          - НЕ додавай секції про завантаження або встановлення"
+            
+            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d @- << API_EOF
+          {
+            "contents": [{
+              "parts": [{
+                "text": $(echo "$PROMPT" | jq -Rs .)
+              }]
+            }],
+            "generationConfig": {
+              "temperature": 0.7,
+              "maxOutputTokens": 2048
             }
-          ]
-        }
-        API_EOF
-          )
+          }
+          API_EOF
+            )
+            
+            # Перевіряємо чи є помилка в відповіді
+            ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+            if [ -n "$ERROR" ]; then
+              echo "⚠️ Помилка API: $ERROR"
+              echo "📄 Повна відповідь:"
+              echo "$RESPONSE" | jq .
+            fi
+            
+            # Витягуємо текст з відповіді
+            CHANGELOG=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+            
+            if [ -z "$CHANGELOG" ]; then
+              echo "⚠️ AI не згенерував changelog, використовуємо fallback"
+              CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
           
-          # Перевіряємо чи є помилка в відповіді
-          ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
-          if [ -n "$ERROR" ]; then
-            echo "⚠️ Помилка API: $ERROR"
-            echo "📄 Повна відповідь:"
-            echo "$RESPONSE" | jq .
-          fi
-          
-          # Витягуємо текст з відповіді
-          CHANGELOG=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
-          
-          if [ -z "$CHANGELOG" ]; then
-            echo "⚠️ AI не згенерував changelog, використовуємо fallback"
-            CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
-
-        > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
-
-        ## Що нового
-
-        ${COMMITS}"
-          else
-            echo "✅ AI згенерував changelog"
-            # Замінюємо VERSION на реальну версію
-            CHANGELOG=$(echo "$CHANGELOG" | sed "s/\[VERSION\]/${FULL_VERSION}/g")
-          fi
+              > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
+              
+              ## Що нового
+              
+              ${COMMITS}"
+            else
+              echo "✅ AI згенерував changelog"
+            fi
         else
-          echo "⚠️ ANTHROPIC_API_KEY не знайдено, використовуємо стандартний changelog"
+          echo "⚠️ GEMINI_API_KEY не знайдено, використовуємо стандартний changelog"
           CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
-
-        > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
-
-        ## Що нового
-
-        ${COMMITS}"
+        
+          > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
+          
+          ## Що нового
+          
+          ${COMMITS}"
         fi
         
         # Зберігаємо changelog
@@ -251,7 +288,7 @@ jobs:
     
     - name: Create Git Tag
       run: |
-        TAG_NAME="${{ steps.build_number.outputs.tag_name }}"
+        TAG_NAME="${{ needs.prepare.outputs.tag_name }}"
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git tag -a "${TAG_NAME}" -m "Beta Release ${TAG_NAME}"
@@ -260,8 +297,8 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ steps.build_number.outputs.tag_name }}
-        name: ${{ steps.build_number.outputs.full_version }}
+        tag_name: ${{ needs.prepare.outputs.tag_name }}
+        name: Beta ${{ needs.prepare.outputs.full_version }}
         body_path: CHANGELOG.md
         draft: false
         prerelease: true
@@ -274,8 +311,8 @@ jobs:
       run: |
         echo "### ✅ Beta Реліз Створено!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Версія**: ${{ steps.build_number.outputs.full_version }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Тег**: ${{ steps.build_number.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Build номер**: ${{ steps.build_number.outputs.build_num }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Версія**: ${{ needs.prepare.outputs.full_version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Тег**: ${{ needs.prepare.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Build номер**: ${{ needs.prepare.outputs.build_num }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "🔗 [Переглянути реліз](https://github.com/${{ github.repository }}/releases/tag/${{ steps.build_number.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 [Переглянути реліз](https://github.com/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
