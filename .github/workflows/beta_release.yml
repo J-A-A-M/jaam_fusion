@@ -231,22 +231,24 @@ jobs:
           - Підкресли найважливіші зміни
           - НЕ додавай секції про завантаження або встановлення"
             
+            # Створюємо JSON payload
+            JSON_PAYLOAD=$(jq -n \
+              --arg prompt "$PROMPT" \
+              '{
+                "contents": [{
+                  "parts": [{
+                    "text": $prompt
+                  }]
+                }],
+                "generationConfig": {
+                  "temperature": 0.7,
+                  "maxOutputTokens": 2048
+                }
+              }')
+            
             RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}" \
               -H "Content-Type: application/json" \
-              -d @- << API_EOF
-          {
-            "contents": [{
-              "parts": [{
-                "text": $(echo "$PROMPT" | jq -Rs .)
-              }]
-            }],
-            "generationConfig": {
-              "temperature": 0.7,
-              "maxOutputTokens": 2048
-            }
-          }
-          API_EOF
-            )
+              -d "$JSON_PAYLOAD")
             
             # Перевіряємо чи є помилка в відповіді
             ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
