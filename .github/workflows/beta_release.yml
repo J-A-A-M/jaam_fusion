@@ -74,18 +74,16 @@ jobs:
         echo "📄 Поточна VERSION у platformio.ini:"
         grep 'VERSION=' platformio.ini || echo "VERSION не знайдено!"
         
-        # Показуємо команду sed
-        echo "🔧 Виконуємо: sed -i \"s/VERSION=\\\"[^\\\"]*\\\"/VERSION=\\\"${FULL_VERSION}\\\"/\" platformio.ini"
-        
-        # Замінюємо VERSION="..." на нову версію
-        sed -i "s/VERSION=\"[^\"]*\"/VERSION=\"${FULL_VERSION}\"/" platformio.ini
+        # Замінюємо VERSION=\"...\" на нову версію (escaped лапки)
+        echo "🔧 Виконуємо заміну VERSION на ${FULL_VERSION}"
+        sed -i 's/VERSION=\\"[^\\"]*\\"/VERSION=\\"'"${FULL_VERSION}"'\\"/g' platformio.ini
         
         # Показуємо результат
         echo "📄 Нова VERSION у platformio.ini:"
         grep 'VERSION=' platformio.ini
         
         # Перевіряємо чи заміна відбулась
-        if grep -q "VERSION=\"${FULL_VERSION}\"" platformio.ini; then
+        if grep -q 'VERSION=\\"'"${FULL_VERSION}"'\\"' platformio.ini; then
           echo "✅ Версію успішно оновлено на ${FULL_VERSION}"
         else
           echo "❌ ПОМИЛКА: Версію не вдалося оновити!"
