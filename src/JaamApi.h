@@ -15,6 +15,7 @@ public:
     void setHomeAlert(uint16_t flags16);
     void setHomeDistrictTemp(int temp);
     void setClimateData(float temperature, float humidity, float pressure);
+    void setLightLevel(float lightLevel);
     void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
@@ -27,6 +28,7 @@ public:
     void broadcastAlertChange(int regionId, int alertType);
     void broadcastHomeAlertChange(uint16_t flags16);
     void broadcastClimateDataChange(float temp, float humidity, float pressure);
+    void broadcastLightLevelChange(float lightLevel);
     void broadcastSystemInfo();
     void broadcastFirmwareUpdate();
     
@@ -35,6 +37,7 @@ public:
     void updateHomeAlert(uint16_t flags16);
     void updateHomeDistrictTemp(int temp);
     void updateClimateData(float temp, float humidity, float pressure);
+    void updateLightLevel(float lightLevel);
     void updateNewFirmwareInfo(const char* version);
     void updateFirmwareProgress(int progress);
     
@@ -67,6 +70,11 @@ private:
     float climateTemperature;
     float climateHumidity;
     float climatePressure;
+
+    // Light sensor data
+    float lightLevel;
+
+    // Latest firmware version available
     char fwLatestVersion[25];
 
     // WebSocket handlers

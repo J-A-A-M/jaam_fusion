@@ -11,7 +11,7 @@ extern JaamFirmwareUpdate fwUpdate;
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
-    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), fwLatestVersion("") {}
+    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), lightLevel(NAN), fwLatestVersion("") {}
 
 void JaamApi::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -44,6 +44,10 @@ void JaamApi::setClimateData(float temperature, float humidity, float pressure) 
     climateTemperature = temperature;
     climateHumidity = humidity;
     climatePressure = pressure;
+}
+
+void JaamApi::setLightLevel(float level) {
+    lightLevel = level;
 }
 
 void JaamApi::reconfigure() {
@@ -177,6 +181,11 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     }
     if (!isnan(climatePressure)) {
         doc["climate_pressure"] = climatePressure;
+    }
+
+    // Рівень освітлення з датчика світла, якщо є
+    if (!isnan(lightLevel)) {
+        doc["light_level"] = lightLevel;
     }
 
     // Налаштування лампи
@@ -473,11 +482,41 @@ void JaamApi::updateHomeDistrictTemp(int temp) {
 }
 
 void JaamApi::updateClimateData(float temp, float humidity, float pressure) {
+    // Перевіряємо чи змінилися значення (порівнюємо з поточними)
+    bool hasChanges = false;
+    
+    // Порівнюємо з урахуванням NaN
+    if ((isnan(temp) != isnan(climateTemperature)) || (!isnan(temp) && temp != climateTemperature)) {
+        hasChanges = true;
+    }
+    if ((isnan(humidity) != isnan(climateHumidity)) || (!isnan(humidity) && humidity != climateHumidity)) {
+        hasChanges = true;
+    }
+    if ((isnan(pressure) != isnan(climatePressure)) || (!isnan(pressure) && pressure != climatePressure)) {
+        hasChanges = true;
+    }
+    
+    // Оновлюємо поточні значення
     this->climateTemperature = temp;
     this->climateHumidity = humidity;
     this->climatePressure = pressure;
-    if (isRunning) {
+    
+    // Broadcast тільки якщо є зміни
+    if (isRunning && hasChanges) {
         broadcastClimateDataChange(temp, humidity, pressure);
+    }
+}
+
+void JaamApi::updateLightLevel(float level) {
+    // Перевіряємо чи змінилося значення (порівнюємо з поточним)
+    bool hasChanged = (isnan(level) != isnan(lightLevel)) || (!isnan(level) && level != lightLevel);
+    
+    // Оновлюємо поточне значення
+    this->lightLevel = level;
+    
+    // Broadcast тільки якщо є зміни
+    if (isRunning && hasChanged) {
+        broadcastLightLevelChange(level);
     }
 }
 
@@ -546,6 +585,22 @@ void JaamApi::broadcastClimateDataChange(float temp, float humidity, float press
                isnan(temp) ? "N/A" : String(temp, 2).c_str(),
                isnan(humidity) ? "N/A" : String(humidity, 2).c_str(),
                isnan(pressure) ? "N/A" : String(pressure, 2).c_str());
+}
+
+void JaamApi::broadcastLightLevelChange(float level) {
+    if (isnan(level)) {
+        return;
+    }
+    
+    JsonDocument doc;
+    doc["type"] = "light_level_change";
+    doc["light_level"] = level;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast light level change: %s lx\n", String(level, 2).c_str());
 }
 
 void JaamApi::broadcastFirmwareUpdate(const char* version) {

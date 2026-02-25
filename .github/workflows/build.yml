@@ -40,6 +40,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install --upgrade platformio
+        pip install intelhex
 
     - name: Build ${{ matrix.environment }}
       run: platformio run -e ${{ matrix.environment }}

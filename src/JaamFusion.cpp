@@ -26,6 +26,7 @@
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
 #include "JaamClimateSensor.h"
+#include "JaamLightSensor.h"
 #include "JaamSound.h"
 #include "JaamButton.h"
 #include "JaamHardware.h"
@@ -51,6 +52,7 @@ JaamBattery         battery;
 JaamStorage         storage;
 JaamDisplay         display;
 JaamClimateSensor   climate;
+JaamLightSensor     lightSensor;
 JaamSound           sound;
 JaamButton          buttons;
 JaamHardware        hardwareConfig;
@@ -92,6 +94,7 @@ volatile bool needReconnectServiceStrip = false;
 volatile bool needUpdateBatteryPin = false;
 volatile bool needReconfigureDisplay = false;
 volatile bool needReconfigureSound = false;
+volatile bool needReconfigureSensors = false;
 volatile bool needReconfigureButtons = false;
 volatile bool needUpdateAnimationsMode = false;
 volatile bool needToRegenerateBgColorMap = false;
@@ -1831,6 +1834,12 @@ uint8_t getCurrentBrightnes() {
     if (settings.getInt(BRIGHTNESS_MODE) == 1) {
         return isItNightNow() ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
     }
+    if (settings.getInt(BRIGHTNESS_MODE) == 2 && lightSensor.isLightSensorAvailable()) {
+        float lightLevel = lightSensor.getLightLevel();
+        int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
+        // Визначаємо день/ніч за рівнем освітлення
+        return lightLevel < threshold ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+    }
     return settings.getInt(BRIGHTNESS);
 }
 
@@ -1850,6 +1859,13 @@ void updateClimateData() {
             press = climate.getPressure();
         }
         api.updateClimateData(temp, hum, press);
+    }
+}
+
+void updateLightLevelData() {
+    if (lightSensor.isAnySensorAvailable()) {
+        float lightLevel = lightSensor.getLightLevel();
+        api.updateLightLevel(lightLevel);
     }
 }
 
@@ -1892,13 +1908,12 @@ void initDisplay() {
 }
 
 void initSensors() {
-    //  lightSensor.begin(hardware);
-    //   if (lightSensor.isLightSensorAvailable()) {
-    //     lightSensorCycle();
-    //   }
-    //   if (isAnalogLightSensorEnabled()) {
-    //     lightSensor.setPhotoresistorPin(settings.getInt(LIGHT_SENSOR_PIN));
-    //   }
+     // init light sensor, additional initialization for JAAM 2.1 with light sensor
+     lightSensor.begin(settings.getInt(HARDWARE) == HARDWARE::JAAM_2_1);
+     if (lightSensor.isLightSensorAvailable()) {
+        lightSensor.read();
+        api.setLightLevel(lightSensor.getLightLevel());
+     }
 
     // init climate sensor
     climate.begin();
@@ -2575,9 +2590,14 @@ void freeMinLedsLog() {
 void climateProcess() {
   if (!climate.isAnySensorAvailable()) return;
   updateClimateData();
-  //updateHaTempSensors();
-  //updateHaHumSensors();
-  //updateHaPressureSensors();
+}
+
+// --- Light Sensor Process ---
+void lightSensorProcess() {
+  if (!lightSensor.isAnySensorAvailable()) return;
+  // read current light level
+  lightSensor.read();
+  updateLightLevelData();
 }
 
 void mainThreadProcess() {
@@ -2705,6 +2725,12 @@ void mainThreadProcess() {
         LOG.printf("[MAIN] Reconfiguring sound\n");
         initSound();
         needReconfigureSound = false;
+    }
+
+    if (needReconfigureSensors) {
+        LOG.printf("[MAIN] Reconfiguring sensors\n");
+        initSensors();
+        needReconfigureSensors = false;
     }
 
     if (needReconfigureButtons) {
@@ -2946,6 +2972,7 @@ void setup() {
     async.setInterval(batteryProcess, BATTERY_CHECK_INTERVAL);
     async.setInterval(displayProcess, DISPLAY_CHECK_INTERVAL);
     async.setInterval(climateProcess, CLIMATE_CHECK_INTERVAL);
+    async.setInterval(lightSensorProcess, LIGHT_SENSOR_CHECK_INTERVAL);
     async.setInterval(volumeProcess, VOLUME_CHECK_INTERVAL);
     async.setInterval(beepHourProcess, BEEP_HOUR_CHECK_INTERVAL);
 

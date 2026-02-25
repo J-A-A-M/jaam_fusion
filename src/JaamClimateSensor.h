@@ -14,6 +14,9 @@
 class JaamClimateSensor {
     public:
         JaamClimateSensor();
+        ~JaamClimateSensor();
+        JaamClimateSensor(const JaamClimateSensor&) = delete;
+        JaamClimateSensor& operator=(const JaamClimateSensor&) = delete;
         bool begin();
         void read();
         bool isTemperatureAvailable();
@@ -30,4 +33,26 @@ class JaamClimateSensor {
         float getHumidity(float humCorrection = 0.0);
         float getPressure(float pressCorrection = 0.0);
         String getSensorModel();
+
+    private:
+#if BME280_ENABLED
+        ForcedBME280Float* bme280 = nullptr;
+#endif
+#if SHT2X_ENABLED
+        SHTSensor* sht2x = nullptr;
+#endif
+#if SHT3X_ENABLED
+        SHTSensor* sht3x = nullptr;
+#endif
+#if AHTXX_ENABLED
+        AHTxx* ahtxx = nullptr;
+#endif
+        bool bme280Initialized = false;
+        bool bmp280Initialized = false;
+        bool sht2xInitialized = false;
+        bool sht3xInitialized = false;
+        bool ahtxxInitialized = false;
+        float localTemp = -273.0f;
+        float localHum = -1.0f;
+        float localPressure = -1.0f;
 };
