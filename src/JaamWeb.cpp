@@ -1068,39 +1068,9 @@ function renderControl(ctrl, lists) {
         confirmBtn.className = 'form-button confirm-button';
         confirmBtn.textContent = 'Підтвердити';
         confirmBtn.style.marginTop = '8px';
-        confirmBtn.disabled = true;
-        
-        // Function to update button style based on disabled state
-        const updateButtonStyle = () => {
-            if (confirmBtn.disabled) {
-                confirmBtn.style.backgroundColor = '#6c757d';
-                confirmBtn.style.borderColor = '#6c757d';
-                confirmBtn.style.cursor = 'not-allowed';
-                confirmBtn.style.opacity = '0.6';
-            } else {
-                confirmBtn.style.backgroundColor = '#e83e8c';
-                confirmBtn.style.borderColor = '#e83e8c';
-                confirmBtn.style.cursor = 'pointer';
-                confirmBtn.style.opacity = '1';
-            }
-        };
-        
-        updateButtonStyle();
-        
-        // Track original value to enable/disable confirm button
-        let originalValue = String(current);
-        
-        sel.onchange = (e) => {
-            confirmBtn.disabled = (String(e.target.value) === originalValue);
-            updateButtonStyle();
-        };
-        
+
         confirmBtn.onclick = () => {
-            const newValue = sel.value;
-            updateParameter(name, newValue);
-            originalValue = newValue;
-            confirmBtn.disabled = true;
-            updateButtonStyle();
+            updateParameter(name, sel.value);
         };
         
         div.appendChild(lab);

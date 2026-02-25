@@ -121,7 +121,7 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen) {
 bool JaamFirmwareUpdate::requestUpdate(const char* id) {
     if (!isValidFirmwareId(id)) {
         if (_display) _display->showServiceMessage("Невідома версія", "Помилка оновлення:", 5000);
-        LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", id);
+        LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", id ? id : "(null)");
         return false;
     }
     
