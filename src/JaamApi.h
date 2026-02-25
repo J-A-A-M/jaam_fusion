@@ -30,7 +30,6 @@ public:
     void broadcastClimateDataChange(float temp, float humidity, float pressure);
     void broadcastLightLevelChange(float lightLevel);
     void broadcastSystemInfo();
-    void broadcastFirmwareUpdate();
     
     // Оновлення даних
     void updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);

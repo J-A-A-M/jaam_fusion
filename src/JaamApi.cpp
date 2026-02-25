@@ -11,7 +11,9 @@ extern JaamFirmwareUpdate fwUpdate;
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
-    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), lightLevel(NAN), fwLatestVersion("") {}
+    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), lightLevel(NAN) {
+    fwLatestVersion[0] = '\0';
+}
 
 void JaamApi::setSettings(JaamSettings* settings) {
     this->settings = settings;
@@ -521,7 +523,7 @@ void JaamApi::updateLightLevel(float level) {
 }
 
 void JaamApi::updateNewFirmwareInfo(const char* version) {
-    strcpy(fwLatestVersion, version);
+    snprintf(fwLatestVersion, sizeof(fwLatestVersion), "%s", version);
     if (isRunning) {
         broadcastFirmwareUpdate(version);
     }
