@@ -8,6 +8,7 @@
 #include "JaamLightSensor.h"
 #include "JaamHardware.h"
 #include "JaamApi.h"
+#include "JaamFirmwareUpdate.h"
 #include <math.h>
 #include <string>
 #include <map>
@@ -60,6 +61,7 @@ extern time_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint16_t>     alertsMap;
 extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
 extern JaamSettings                     settings;
+extern JaamFirmwareUpdate               fwUpdate;
 extern JaamBattery                      battery;
 extern JaamStorage                      storage;
 extern JaamDisplay                      display;
@@ -74,13 +76,6 @@ extern int                              prevMapMode;
 
 extern volatile bool                    needAdaptColors;
 
-struct JaamFirmware {
-    int major = 0;
-    int minor = 0;
-    int patch = 0;
-    int betaBuild = 0;
-    bool isBeta = false;
-  };
 struct LedBit {
     int highest_bit;
     uint16_t region_id;
@@ -115,63 +110,6 @@ inline void logMemoryUsage(const char* context) {
     // }
 }
   
-static JaamFirmware parseFirmwareVersion(const char* version) {
-
-    JaamFirmware firmware;
-
-    char* versionCopy = strdup(version);
-    char* token = strtok(versionCopy, ".-");
-    int part = 0;
-    while (token) {
-        if (isdigit(token[0])) {
-        if (part == 0)
-            firmware.major = atoi(token);
-        else if (part == 1)
-            firmware.minor = atoi(token);
-        else if (part == 2)
-            firmware.patch = atoi(token);
-        part++;
-        } else if (token[0] == 'b' && strcmp(token, "bin") != 0) {
-        firmware.isBeta = true;
-        firmware.betaBuild = atoi(token + 1); // Skip the 'b' character
-        }
-        token = strtok(NULL, ".-");
-    }
-    free(versionCopy);
-    return firmware;
-}
-
-static void fillFwVersion(char* result, JaamFirmware firmware) {
-    std::string version = std::to_string(firmware.major) + "." + std::to_string(firmware.minor);
-  
-    if (firmware.patch > 0) {
-      version += "." + std::to_string(firmware.patch);
-    }
-  
-    if (firmware.isBeta) {
-      version += "-b" + std::to_string(firmware.betaBuild);
-    }
-    #if ARDUINO_ESP32S3_DEV
-    version += "-s3";
-    #elif ARDUINO_ESP32C3_DEV
-    version += "-c3";
-    #endif
-
-    #if LITE
-    version += "-lite";
-    #endif
-
-    #if TEST_MODE
-    version += "-test";
-    #endif
-
-    #if FUSION
-    version += "-fusion";
-    #endif
-
-    strcpy(result, version.c_str());
-}
-
 static float roundToDecimal(float value, int decimals) {
     if (decimals < 0) decimals = 0;
     if (decimals > 3) decimals = 3; 
@@ -738,7 +676,8 @@ inline uint32_t getServicePinColor(int type) {
             color = api.getClientsCount() > 0 ? DefaultColors::API : DefaultColors::OFF;
             break;
         case UPD_AVAILABLE:
-            color = DefaultColors::OFF;
+            LOG.printf("[SERVICE LED] fwUpdateAvailable %d\n", fwUpdate.isUpdateAvailable());
+            color = fwUpdate.isUpdateAvailable() ? DefaultColors::UPD_AVAILABLE : DefaultColors::OFF;
             break;
     }
     return color;

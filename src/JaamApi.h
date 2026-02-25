@@ -37,6 +37,8 @@ public:
     void updateHomeDistrictTemp(int temp);
     void updateClimateData(float temp, float humidity, float pressure);
     void updateLightLevel(float lightLevel);
+    void updateNewFirmwareInfo(const char* version);
+    void updateFirmwareProgress(int progress);
     
     // Обробка змін налаштувань
     void onSettingsChange(Type type, int intValue, const char* strValue);
@@ -71,10 +73,14 @@ private:
     // Light sensor data
     float lightLevel;
 
+    // Latest firmware version available
+    char fwLatestVersion[25];
+
     // WebSocket handlers
     void handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage message);
     void sendInitialState(WebsocketsClient& client);
     void broadcastWebSocket(const String& jsonMessage);
     void broadcastDeviceNameChange(const char* deviceName);
     void broadcastHomeDistrictTempChange(int temp);
+    void broadcastFirmwareUpdate(const char* version);
 };

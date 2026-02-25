@@ -43,6 +43,7 @@ extern volatile int testTrackId;
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
+extern JaamFirmwareUpdate               fwUpdate;
 
 void sendLargeJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
@@ -1032,6 +1033,49 @@ function renderControl(ctrl, lists) {
         
         div.appendChild(lab);
         div.appendChild(sel);
+        
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+        
+        return div;
+    }
+    
+    if (type === 'dropdown_confirm') {
+        const [_, name, label, list, current, section, visibility] = ctrl;
+        const div = groupDiv();
+        
+        const lab = document.createElement('label');
+        lab.setAttribute('for', name);
+        lab.textContent = label + ':';
+        
+        const sel = document.createElement('select');
+        sel.className = 'form-control';
+        sel.id = name;
+        sel.name = name;
+        
+        const opts = lists[list] || [];
+        for (const o of opts) {
+            const el = optionEl(o[0], o[1], o[2]);
+            if (String(o[0]) === String(current)) el.selected = true;
+            sel.appendChild(el);
+        }
+        
+        // Create confirm button
+        const confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.className = 'form-button confirm-button';
+        confirmBtn.textContent = 'Підтвердити';
+        confirmBtn.style.marginTop = '8px';
+
+        confirmBtn.onclick = () => {
+            updateParameter(name, sel.value);
+        };
+        
+        div.appendChild(lab);
+        div.appendChild(sel);
+        div.appendChild(confirmBtn);
         
         if (visibility && visibility.trim() !== '') {
             div.setAttribute('data-visibility', visibility);
@@ -2648,7 +2692,16 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(MIN_OF_SILENCE, boolValue);
             LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
-        }
+        } else if (name == "firmware_id") {
+            LOG.printf("[WEB] Setting firmware_id: %s\n", valuePtr);
+            if (!fwUpdate.requestUpdate(valuePtr)) {
+                LOG.printf("[WEB] Invalid firmware ID: %s\n", valuePtr);
+            }
+        } else if (name == "new_fw_notification") {
+            bool boolValue = intValue != 0;
+            settings->saveBool(NEW_FW_NOTIFICATION, boolValue);
+            LOG.printf("[WEB] Setting new_fw_notification: %d\n", boolValue);
+        } 
 
         server.send(200, "text/plain", "OK");
     } else {
@@ -3497,6 +3550,7 @@ void JaamWeb::buildUiSchemaModels(JsonDocument& doc) {
     static const char modelsJson[] PROGMEM = R"JSON(
     {
       "dropdown": ["name", "label", "list", "current", "section", "visibility"],
+      "dropdown_confirm": ["name", "label", "list", "current", "section", "visibility"],
       "bool":     ["name", "label", "current", "section", "visibility"],
       "text":     ["name", "label", "current", "placeholder", "section", "visibility"],
       "color":    ["name", "label", "current", "section", "visibility"],
@@ -3528,7 +3582,8 @@ void JaamWeb::buildUiSchemaSections(JsonDocument& doc) {
       {"id": "animations", "name": "Анімації", "color": "#fd7e14"},
       {"id": "brightness", "name": "Яскравість", "color": "#ffc107"},
       {"id": "alerts", "name": "Тривоги", "color": "#6c757d"},
-      {"id": "sound", "name": "Звук", "color": "#dc3545"}
+      {"id": "sound", "name": "Звук", "color": "#dc3545"},
+      {"id": "firmware", "name": "Оновлення прошивки", "color": "#9c1cf8"}
     ]
     )JSON";
 
@@ -3607,6 +3662,33 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         JsonArray arr = dropdownLists["timezones"].to<JsonArray>();
         appendOptionsList(arr, TIMEZONES, TIMEZONES_COUNT);
     }
+    {
+        JsonArray arr = dropdownLists["firmware_versions"].to<JsonArray>();
+        const JaamFirmware* firmwares = fwUpdate.getFirmwares();
+        for (int i = 0; i < 10; ++i) {
+            if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
+
+            char buffer[32];
+            if (firmwares[i].patch > 0) {
+                if (firmwares[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d-b%d", firmwares[i].major, firmwares[i].minor, firmwares[i].patch, firmwares[i].beta);
+                } else {
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d", firmwares[i].major, firmwares[i].minor, firmwares[i].patch);
+                }
+            } else {
+                if (firmwares[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d-b%d", firmwares[i].major, firmwares[i].minor, firmwares[i].beta);
+                } else {
+                     snprintf(buffer, sizeof(buffer), "%d.%d", firmwares[i].major, firmwares[i].minor);
+                }
+            }
+
+            JsonArray option = arr.add<JsonArray>();
+            option.add(buffer); // ID (version string)
+            option.add(buffer); // Display Name
+            option.add(0);      // Sub (not used)
+        }
+    }
 }
 
 void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
@@ -3670,6 +3752,11 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
         c.add("dropdown"); c.add(name); c.add(label); c.add(listId); c.add(settings->getInt(key)); c.add(section); c.add(visibility == nullptr ? "" : visibility);
     };
 
+    auto addDropdownConfirm = [&](const char* section, const char* name, const char* label, const char* listId, const String& current, const char* visibility = nullptr){
+        JsonArray c = controls.add<JsonArray>();
+        c.add("dropdown_confirm"); c.add(name); c.add(label); c.add(listId); c.add(current); c.add(section); c.add(visibility == nullptr ? "" : visibility);
+    };
+
     auto addLabel = [&](const char* section, const char* text, const char* visibility = nullptr){
         JsonArray group = controls.add<JsonArray>();
         group.add("label"); group.add(text); group.add(section); group.add(visibility == nullptr ? "" : visibility);
@@ -3730,6 +3817,11 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addDropdown("general", "time_zone", "Часовий пояс", "timezones", TIME_ZONE);
     addText("general", "device_name", "Назва пристрою", String(settings->getString(DEVICE_NAME)), "JAAM");
     addText("general", "device_description", "Опис пристрою", String(settings->getString(DEVICE_DESCRIPTION)), "JAAM Informer");
+
+    // Firmware update
+    addInfo("firmware", "Налаштування оновлення прошивки. Вибір версії потребує підтвердження", "#9c1cf8", "M9,16.2L4.8,12L3.4,13.4L9,19L21,7L19.6,5.6L9,16.2Z");
+    addDropdownConfirm("firmware", "firmware_id", "Вибрати прошивку", "firmware_versions", String(fwUpdate.getUpdateId()));
+    addBool("firmware", "new_fw_notification", "Показувати повідомлення про нову прошивку", NEW_FW_NOTIFICATION);
 
     // Display settings
     addInfo("display", "Налаштуйте параметри дисплея та візуального відображення мапи", "#28a745", "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z");

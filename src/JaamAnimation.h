@@ -37,7 +37,7 @@ struct FreeLedInfo {
 
 class AnimationManager {
     private:
-        static const int MAX_ANIMATIONS = 280;     
+        static const int MAX_ANIMATIONS = 400;     
         SemaphoreHandle_t animMutex;
         SemaphoreHandle_t globalTimesMutex;  // Окремий мютекс для синхронізації global start times
         int activeCount;

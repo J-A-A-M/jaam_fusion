@@ -247,7 +247,6 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_HOME_DISTRICT, {"rgbchd", "#5CFF5C"}},
     {COLOR_BG, {"rgbcbg", "#00FF00"}},
     {COLOR_LAMP, {"rgbclamp", "#D707FF"}},
-
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {
