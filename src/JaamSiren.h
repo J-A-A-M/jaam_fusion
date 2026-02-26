@@ -21,8 +21,11 @@ public:
     bool isAlertActive() const;
     bool isClearActive() const;
     
-    // Метод для періодичного виклику з loop для обробки таймерів
-    void tick();
+    // Callback методи для таймерів (викликаються через глобальні функції)
+    void onAlertTimeout();
+    void onClearTimeout();
+    void onAlertTimeout2();
+    void onClearTimeout2();
     
 private:
     JaamSettings* settings;
@@ -32,8 +35,8 @@ private:
     int activeLevel;  // HIGH або LOW
     int pinTime;      // час активації в мілісекундах
     
-    unsigned long alertActivationTime;
-    unsigned long clearActivationTime;
+    int alertTimer;
+    int clearTimer;
     bool alertActive;
     bool clearActive;
     bool alertInHomeRegion;
@@ -45,8 +48,8 @@ private:
     int activeLevel2;
     int pinTime2;
     
-    unsigned long alertActivationTime2;
-    unsigned long clearActivationTime2;
+    int alertTimer2;
+    int clearTimer2;
     bool alertActive2;
     bool clearActive2;
     

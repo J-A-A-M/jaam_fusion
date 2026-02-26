@@ -3017,5 +3017,4 @@ void loop() {
     web.handleClient();
     api.handleWebSocketClients();
     buttons.tick();
-    siren.tick();
 }
