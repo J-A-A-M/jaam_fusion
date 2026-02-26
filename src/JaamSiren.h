@@ -38,10 +38,22 @@ private:
     bool clearActive;
     bool alertInHomeRegion;
     
+    // Другий комплект пінів
+    int alertPin2;
+    int clearPin2;
+    int pinModeConfig2;
+    int activeLevel2;
+    int pinTime2;
+    
+    unsigned long alertActivationTime2;
+    unsigned long clearActivationTime2;
+    bool alertActive2;
+    bool clearActive2;
+    
     // Внутрішні методи
     void updateConfiguration();
     void setupPins();
-    void deactivatePin(int pin);
+    void deactivatePin(int pin, int activeLevel);
     void activatePin(int pin);
     void resetPins();        // Скинути всі піни
 

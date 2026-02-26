@@ -920,10 +920,27 @@ function updateTextParameter(name, value) {
     })
         .then(r => {
             if (!r.ok) {
-                console.error('Error updating text parameter:', name, value);
+                return r.json().then(data => {
+                    if (data && data.error) {
+                        console.error('Server error:', data.error);
+                    } else {
+                        console.error('Помилка оновлення параметра');
+                    }
+                    throw new Error('Server error');
+                }).catch(jsonErr => {
+                    // Якщо не JSON відповідь
+                    if (jsonErr.message !== 'Server error') {
+                        console.error('Помилка оновлення параметра');
+                    }
+                    throw jsonErr;
+                });
             }
         })
-        .catch(e => console.error('Network error:', e));
+        .catch(e => {
+            if (e.message !== 'Server error') {
+                console.error('Network error:', e);
+            }
+        });
 }
 
 // Dynamic UI rendering (from /ui-schema)
@@ -2697,6 +2714,15 @@ void JaamWeb::handleParameter() {
         } else if (name == "alert_pin_active_level") {
             settings->saveInt(ALERT_PIN_ACTIVE_LEVEL, intValue);
             LOG.printf("[WEB] Setting alert_pin_active_level: %d\n", intValue);
+        } else if (name == "alert_clear_pin_mode_2") {
+            settings->saveInt(ALERT_CLEAR_PIN_MODE_2, intValue);
+            LOG.printf("[WEB] Setting alert_clear_pin_mode_2: %d\n", intValue);
+        } else if (name == "alert_clear_pin_time_2") {
+            settings->saveInt(ALERT_CLEAR_PIN_TIME_2, intValue);
+            LOG.printf("[WEB] Setting alert_clear_pin_time_2: %d\n", intValue);
+        } else if (name == "alert_pin_active_level_2") {
+            settings->saveInt(ALERT_PIN_ACTIVE_LEVEL_2, intValue);
+            LOG.printf("[WEB] Setting alert_pin_active_level_2: %d\n", intValue);
         } else if (name == "min_of_silence") {
             bool boolValue = intValue != 0;
             settings->saveBool(MIN_OF_SILENCE, boolValue);
@@ -2796,11 +2822,61 @@ void JaamWeb::handleTextParameter() {
             needReconfigureSound = true;
             LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
         } else if (name == "alert_pin") {
-            settings->saveInt(ALERT_PIN, value.toInt());
-            LOG.printf("[WEB] Set alert_pin: %d\n", value.toInt());
+            int pin = value.toInt();
+            // Перевіряємо конфлікт тільки з другим пристроєм
+            if (pin > 0) {
+                int alertPin2 = settings->getInt(ALERT_PIN_2);
+                int clearPin2 = settings->getInt(CLEAR_PIN_2);
+                if ((alertPin2 > 0 && pin == alertPin2) || (clearPin2 > 0 && pin == clearPin2)) {
+                    LOG.printf("[WEB] alert_pin %d already used by another siren device\n", pin);
+                    server.send(400, "application/json", "{\"error\":\"Пін вже використовується іншим пристроєм сирени\"}");
+                    return;
+                }
+            }
+            settings->saveInt(ALERT_PIN, pin);
+            LOG.printf("[WEB] Set alert_pin: %d\n", pin);
         } else if (name == "clear_pin") {
-            settings->saveInt(CLEAR_PIN, value.toInt());
-            LOG.printf("[WEB] Set clear_pin: %d\n", value.toInt());
+            int pin = value.toInt();
+            // Перевіряємо конфлікт тільки з другим пристроєм
+            if (pin > 0) {
+                int alertPin2 = settings->getInt(ALERT_PIN_2);
+                int clearPin2 = settings->getInt(CLEAR_PIN_2);
+                if ((alertPin2 > 0 && pin == alertPin2) || (clearPin2 > 0 && pin == clearPin2)) {
+                    LOG.printf("[WEB] clear_pin %d already used by another siren device\n", pin);
+                    server.send(400, "application/json", "{\"error\":\"Пін вже використовується іншим пристроєм сирени\"}");
+                    return;
+                }
+            }
+            settings->saveInt(CLEAR_PIN, pin);
+            LOG.printf("[WEB] Set clear_pin: %d\n", pin);
+        } else if (name == "alert_pin_2") {
+            int pin = value.toInt();
+            // Перевіряємо конфлікт тільки з першим пристроєм
+            if (pin > 0) {
+                int alertPin = settings->getInt(ALERT_PIN);
+                int clearPin = settings->getInt(CLEAR_PIN);
+                if ((alertPin > 0 && pin == alertPin) || (clearPin > 0 && pin == clearPin)) {
+                    LOG.printf("[WEB] alert_pin_2 %d already used by another siren device\n", pin);
+                    server.send(400, "application/json", "{\"error\":\"Пін вже використовується іншим пристроєм сирени\"}");
+                    return;
+                }
+            }
+            settings->saveInt(ALERT_PIN_2, pin);
+            LOG.printf("[WEB] Set alert_pin_2: %d\n", pin);
+        } else if (name == "clear_pin_2") {
+            int pin = value.toInt();
+            // Перевіряємо конфлікт тільки з першим пристроєм
+            if (pin > 0) {
+                int alertPin = settings->getInt(ALERT_PIN);
+                int clearPin = settings->getInt(CLEAR_PIN);
+                if ((alertPin > 0 && pin == alertPin) || (clearPin > 0 && pin == clearPin)) {
+                    LOG.printf("[WEB] clear_pin_2 %d already used by another siren device\n", pin);
+                    server.send(400, "application/json", "{\"error\":\"Пін вже використовується іншим пристроєм сирени\"}");
+                    return;
+                }
+            }
+            settings->saveInt(CLEAR_PIN_2, pin);
+            LOG.printf("[WEB] Set clear_pin_2: %d\n", pin);
         } else if (name == "api_port") {
             // Перевіряємо що порт не 80 (зайнятий веб-сервером)
             int apiPort = value.toInt();
@@ -3593,6 +3669,7 @@ void JaamWeb::buildUiSchemaSections(JsonDocument& doc) {
       {"id": "display", "name": "Дисплей", "color": "#28a745"},
       {"id": "network", "name": "Мережа", "color": "#17a2b8"},
       {"id": "hardware", "name": "Апаратне забезпечення", "color": "#6f42c1"},
+      {"id": "siren", "name": "Сирена", "color": "#e83e8c"},
       {"id": "climate", "name": "Клімат", "color": "#34f396"},
       {"id": "animations", "name": "Анімації", "color": "#fd7e14"},
       {"id": "brightness", "name": "Яскравість", "color": "#ffc107"},
@@ -3774,6 +3851,12 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
 
     uint8_t showForBiStableMode[] = {0};
     String biStableModeOnly = buildVisibilityCondition("alert_clear_pin_mode", "==", showForBiStableMode, 1);
+    
+    uint8_t showForPulseMode2[] = {1};
+    String pulseModeOnly2 = buildVisibilityCondition("alert_clear_pin_mode_2", "==", showForPulseMode2, 1);
+
+    uint8_t showForBiStableMode2[] = {0};
+    String biStableModeOnly2 = buildVisibilityCondition("alert_clear_pin_mode_2", "==", showForBiStableMode2, 1);
 
     // Helper lambdas
     auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key, const char* visibility = nullptr){
@@ -3903,19 +3986,31 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addText("hardware", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1", exceptJaam2And30And32.c_str());
     addText("hardware", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1", exceptJaam30And32.c_str());
     addText("hardware", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1", exceptJaam30And32.c_str());
-    addLabel("hardware", "Сирена");
-    addDropdown("hardware", "alert_clear_pin_mode", "Режим роботи", "alert_clear_pin_modes", ALERT_CLEAR_PIN_MODE);
-    addText("hardware", "alert_pin", "Пін тривоги", String(settings->getInt(ALERT_PIN)), "-1");
-    addText("hardware", "clear_pin", "Пін відбою", String(settings->getInt(CLEAR_PIN)), "-1", pulseModeOnly.c_str());
-    addSlider("hardware", "alert_clear_pin_time", "Час активації (мс)", 100, 10000, 100, settings->getInt(ALERT_CLEAR_PIN_TIME), pulseModeOnly.c_str());
-    addDropdown("hardware", "alert_pin_active_level", "Активний рівень", "pin_levels", ALERT_PIN_ACTIVE_LEVEL);
-    addInfoTips("hardware", "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.", biStableModeOnly.c_str());
-    addInfoTips("hardware", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням.", pulseModeOnly.c_str());
     addLabel("hardware", "Батарея", exceptJaam1And2And32.c_str());
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING, exceptJaam1And2And32.c_str());
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1", exceptJaam1And2And32.c_str());
     addSlider("hardware", "brightness_min", "Мінімальна яскравість", 0, 15, 1, settings->getInt(BRIGHTNESS_MIN), exceptJaamHardware.c_str());
     addInfoWarning("hardware", "Цей рівень вважатиметься нульовим значенням яскравості LED", exceptJaamHardware.c_str());
+
+    // Налаштування сирени
+    addInfo("siren", "У цьому розділі можна налаштувати поведінку пінів тривоги та відбою, а також режим і час їх активації. Можна використовувати для підключення сирен, замків, реле або інших пристроїв, які повинні реагувати на тривоги у домашньому регіоні. Заборонено використовувати один і той самий пін для різних пристроїв", "#e83e8c", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");
+    addLabel("siren", "Пристрій 1");
+    addDropdown("siren", "alert_clear_pin_mode", "Режим роботи", "alert_clear_pin_modes", ALERT_CLEAR_PIN_MODE);
+    addText("siren", "alert_pin", "Пін тривоги", String(settings->getInt(ALERT_PIN)), "-1");
+    addText("siren", "clear_pin", "Пін відбою", String(settings->getInt(CLEAR_PIN)), "-1", pulseModeOnly.c_str());
+    addSlider("siren", "alert_clear_pin_time", "Час активації (мс)", 100, 10000, 100, settings->getInt(ALERT_CLEAR_PIN_TIME), pulseModeOnly.c_str());
+    addDropdown("siren", "alert_pin_active_level", "Активний рівень", "pin_levels", ALERT_PIN_ACTIVE_LEVEL);
+    addInfoTips("siren", "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.", biStableModeOnly.c_str());
+    addInfoTips("siren", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати 1 пін і на тривогу і на відбій", pulseModeOnly.c_str());
+    
+    addLabel("siren", "Пристрій 2");
+    addDropdown("siren", "alert_clear_pin_mode_2", "Режим роботи", "alert_clear_pin_modes", ALERT_CLEAR_PIN_MODE_2);
+    addText("siren", "alert_pin_2", "Пін тривоги", String(settings->getInt(ALERT_PIN_2)), "-1");
+    addText("siren", "clear_pin_2", "Пін відбою", String(settings->getInt(CLEAR_PIN_2)), "-1", pulseModeOnly2.c_str());
+    addSlider("siren", "alert_clear_pin_time_2", "Час активації (мс)", 100, 10000, 100, settings->getInt(ALERT_CLEAR_PIN_TIME_2), pulseModeOnly2.c_str());
+    addDropdown("siren", "alert_pin_active_level_2", "Активний рівень", "pin_levels", ALERT_PIN_ACTIVE_LEVEL_2);
+    addInfoTips("siren", "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.", biStableModeOnly2.c_str());
+    addInfoTips("siren", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати 1 пін і на тривогу і на відбій", pulseModeOnly2.c_str());
 
     // Налаштування погоди / температури
     addInfo("climate", "Налаштування погодних переметрів та кліматичних сенсорів", "#34f396", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");
