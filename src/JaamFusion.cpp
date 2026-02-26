@@ -31,6 +31,7 @@
 #include "JaamButton.h"
 #include "JaamHardware.h"
 #include "JaamFirmwareUpdate.h"
+#include "JaamSiren.h"
 
 using namespace websockets;
 
@@ -56,6 +57,7 @@ JaamLightSensor     lightSensor;
 JaamSound           sound;
 JaamButton          buttons;
 JaamHardware        hardwareConfig;
+JaamSiren           siren;
 
 // --- LED Configuration ---
 Adafruit_NeoPixel*  strip_main = nullptr;
@@ -886,6 +888,14 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     }
 }
 
+void updateSirenIfNeeded(int bit) {
+    if (bit == AlertModes::ALERT) {
+        siren.setAlert();
+    } else if (bit == AlertModes::NO_ALERT) {
+        siren.clearAlert();
+    }
+}
+
 void analyzeAlertChanges(const std::vector<AlertDiff>& diffs) {
 
 }
@@ -1240,6 +1250,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     }
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
+                updateSirenIfNeeded(localAlertBit);
             }
             alertBit = localAlertBit;
             uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
@@ -1308,6 +1319,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
         int homeTemp = decodeTemperature(encodedTemp);
         api.setHomeDistrictTemp(homeTemp);
+        updateSirenIfNeeded(alertBit);
     }
 
     isFirstDataFetchCompleted = true;
@@ -1890,6 +1902,9 @@ void initSettings() {
         
         // Повідомляємо API про зміни налаштувань
         api.onSettingsChange(type, intValue, strValue);
+
+        // Повідомляємо Siren про зміни налаштувань
+        siren.onSettingsChange(type, intValue, strValue);
     });
 }
 
@@ -2235,6 +2250,12 @@ void initStorage() {
         storage.getStorageInfo();
         storage.getFilesInfo();
     }
+}
+
+void initSiren() {
+    LOG.printf("[SIREN] Initializing siren...\n");
+    siren.setSettings(&settings);
+    siren.init();
 }
 
 
@@ -2759,7 +2780,10 @@ void mainThreadProcess() {
     if (needUpdateHomeAlertBit) {
         LOG.printf("[MAIN] Updating home alert bit\n");
         int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
-        if (localAlertBit != alertBit) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+        if (localAlertBit != alertBit) {
+            alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+            updateSirenIfNeeded(localAlertBit);
+        }
         alertBit = localAlertBit;
         uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
         LOG.printf("[MAIN] homeAlertFlags: %u\n", homeAlertFlags);
@@ -2911,6 +2935,9 @@ void setup() {
     adaptColors();
     checkFreeHeap("colors adaptation");
 
+    initSiren();
+    checkFreeHeap("siren initialization");
+
     initButtons();
     checkFreeHeap("buttons initialization");
 
@@ -2990,4 +3017,5 @@ void loop() {
     web.handleClient();
     api.handleWebSocketClients();
     buttons.tick();
+    siren.tick();
 }

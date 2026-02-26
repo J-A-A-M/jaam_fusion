@@ -2688,6 +2688,15 @@ void JaamWeb::handleParameter() {
         } else if (name == "button_3_mode_long") {
             settings->saveInt(BUTTON_3_MODE_LONG, intValue);
             LOG.printf("[WEB] Setting button_3_mode_long: %d\n", intValue);
+        } else if (name == "alert_clear_pin_mode") {
+            settings->saveInt(ALERT_CLEAR_PIN_MODE, intValue);
+            LOG.printf("[WEB] Setting alert_clear_pin_mode: %d\n", intValue);
+        } else if (name == "alert_clear_pin_time") {
+            settings->saveInt(ALERT_CLEAR_PIN_TIME, intValue);
+            LOG.printf("[WEB] Setting alert_clear_pin_time: %d\n", intValue);
+        } else if (name == "alert_pin_active_level") {
+            settings->saveInt(ALERT_PIN_ACTIVE_LEVEL, intValue);
+            LOG.printf("[WEB] Setting alert_pin_active_level: %d\n", intValue);
         } else if (name == "min_of_silence") {
             bool boolValue = intValue != 0;
             settings->saveBool(MIN_OF_SILENCE, boolValue);
@@ -2786,6 +2795,12 @@ void JaamWeb::handleTextParameter() {
             settings->saveInt(DF_TX_PIN, value.toInt());
             needReconfigureSound = true;
             LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
+        } else if (name == "alert_pin") {
+            settings->saveInt(ALERT_PIN, value.toInt());
+            LOG.printf("[WEB] Set alert_pin: %d\n", value.toInt());
+        } else if (name == "clear_pin") {
+            settings->saveInt(CLEAR_PIN, value.toInt());
+            LOG.printf("[WEB] Set clear_pin: %d\n", value.toInt());
         } else if (name == "api_port") {
             // Перевіряємо що порт не 80 (зайнятий веб-сервером)
             int apiPort = value.toInt();
@@ -3659,6 +3674,14 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         appendOptionsList(arr, LONG_CLICKS, LONG_CLICKS_COUNT);
     }
     {
+        JsonArray arr = dropdownLists["alert_clear_pin_modes"].to<JsonArray>();
+        appendOptionsList(arr, ALERT_CLEAR_PIN_MODES, ALERT_CLEAR_PIN_MODES_COUNT);
+    }
+    {
+        JsonArray arr = dropdownLists["pin_levels"].to<JsonArray>();
+        appendOptionsList(arr, PIN_LEVELS, PIN_LEVELS_COUNT);
+    }
+    {
         JsonArray arr = dropdownLists["timezones"].to<JsonArray>();
         appendOptionsList(arr, TIMEZONES, TIMEZONES_COUNT);
     }
@@ -3745,6 +3768,12 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
 
     uint8_t showDayNightAndLightSensorSettings[] = {0};
     String dayNightAndLightSensorMode = buildVisibilityCondition("brightness_mode", "!=", showDayNightAndLightSensorSettings, 1);
+    
+    uint8_t showForPulseMode[] = {1};
+    String pulseModeOnly = buildVisibilityCondition("alert_clear_pin_mode", "==", showForPulseMode, 1);
+
+    uint8_t showForBiStableMode[] = {0};
+    String biStableModeOnly = buildVisibilityCondition("alert_clear_pin_mode", "==", showForBiStableMode, 1);
 
     // Helper lambdas
     auto addDropdown = [&](const char* section, const char* name, const char* label, const char* listId, Type key, const char* visibility = nullptr){
@@ -3874,6 +3903,14 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addText("hardware", "buzzer_pin", "Буззер (пін)", String(settings->getInt(BUZZER_PIN)), "-1", exceptJaam2And30And32.c_str());
     addText("hardware", "df_rx_pin", "DF Player (RX) (пін)", String(settings->getInt(DF_RX_PIN)), "-1", exceptJaam30And32.c_str());
     addText("hardware", "df_tx_pin", "DF Player (TX) (пін)", String(settings->getInt(DF_TX_PIN)), "-1", exceptJaam30And32.c_str());
+    addLabel("hardware", "Сирена");
+    addDropdown("hardware", "alert_clear_pin_mode", "Режим роботи", "alert_clear_pin_modes", ALERT_CLEAR_PIN_MODE);
+    addText("hardware", "alert_pin", "Пін тривоги", String(settings->getInt(ALERT_PIN)), "-1");
+    addText("hardware", "clear_pin", "Пін відбою", String(settings->getInt(CLEAR_PIN)), "-1", pulseModeOnly.c_str());
+    addSlider("hardware", "alert_clear_pin_time", "Час активації (мс)", 100, 10000, 100, settings->getInt(ALERT_CLEAR_PIN_TIME), pulseModeOnly.c_str());
+    addDropdown("hardware", "alert_pin_active_level", "Активний рівень", "pin_levels", ALERT_PIN_ACTIVE_LEVEL);
+    addInfoTips("hardware", "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.", biStableModeOnly.c_str());
+    addInfoTips("hardware", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням.", pulseModeOnly.c_str());
     addLabel("hardware", "Батарея", exceptJaam1And2And32.c_str());
     addBool("hardware", "enable_battery", "Моніторинг батареї", ENABLE_BATTERY_MONITORING, exceptJaam1And2And32.c_str());
     addText("hardware", "battery_pin", "ADC пін батареї", String(settings->getInt(BATTERY_PIN)), "-1", exceptJaam1And2And32.c_str());

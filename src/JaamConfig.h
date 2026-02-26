@@ -366,6 +366,18 @@ static SettingListItem MAP_MODES[] = {
   {4, "Лампа"},
 };
 
+constexpr int ALERT_CLEAR_PIN_MODES_COUNT = 2;
+static SettingListItem ALERT_CLEAR_PIN_MODES[] = {
+  {0, "Бістабільний"},
+  {1, "Імпульсний"},
+};
+
+constexpr int PIN_LEVELS_COUNT = 2;
+static SettingListItem PIN_LEVELS[] = {
+  {0, "LOW"},
+  {1, "HIGH"},
+};
+
 constexpr int TIMEZONES_COUNT = 23;
 static SettingListItem TIMEZONES[] = {
   {0, "Europe/Kyiv (UTC+2)"},
@@ -582,6 +594,7 @@ enum Type {
     UPD_AVAILABLE_PIN,
     ALERT_CLEAR_PIN_MODE,
     ALERT_CLEAR_PIN_TIME,
+    ALERT_PIN_ACTIVE_LEVEL,
     HA_MQTT_PORT,
     HA_MQTT_USER,
     HA_MQTT_PASSWORD,
