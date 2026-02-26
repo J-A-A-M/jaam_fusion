@@ -40,6 +40,14 @@ std::map<Type, SettingItemInt> intSettings = {
     {BUTTON_3_PIN, {"b3p", -1}},
     {ALERT_PIN, {"ap", -1}},
     {CLEAR_PIN, {"cp", -1}},
+    {ALERT_CLEAR_PIN_MODE, {"acpm", 0}},
+    {ALERT_PIN_ACTIVE_LEVEL, {"apal", 1}},
+    {ALERT_CLEAR_PIN_TIME, {"acptm", 1000}},
+    {ALERT_PIN_2, {"ap2", -1}},
+    {CLEAR_PIN_2, {"cp2", -1}},
+    {ALERT_CLEAR_PIN_MODE_2, {"acpm2", 0}},
+    {ALERT_PIN_ACTIVE_LEVEL_2, {"apal2", 1}},
+    {ALERT_CLEAR_PIN_TIME_2, {"acptm2", 1000}},
     {BUZZER_PIN, {"bzp", -1}},
     {DF_RX_PIN, {"dfrx", -1}},
     {DF_TX_PIN, {"dftx", -1}},
@@ -49,7 +57,6 @@ std::map<Type, SettingItemInt> intSettings = {
     {DATA_PIN, {"datap", -1}},
     {HA_PIN, {"hap", -1}},
     {UPD_AVAILABLE_PIN, {"resp", -1}},
-    {ALERT_CLEAR_PIN_MODE, {"acpm", 0}},
     {HA_MQTT_PORT, {"ha_mqttport", 1883}},
     {CURRENT_BRIGHTNESS, {"cbr", 50}},
     {BRIGHTNESS, {"brightness", 50}},
@@ -250,7 +257,6 @@ std::map<Type, SettingItemString> stringSettings = {
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {
-    {ALERT_CLEAR_PIN_TIME, {"acpt", 1.0f}},
     {TEMP_CORRECTION, {"ltc", 0.0f}},
     {HUM_CORRECTION, {"lhc", 0.0f}},
     {PRESSURE_CORRECTION, {"lpc", 0.0f}},
