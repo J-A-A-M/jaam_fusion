@@ -731,7 +731,14 @@ function renderSystemPanelFromSchema(data) {
     for (const item of items) {
         const type = item[0];
         
-        if (type === 'bar') {
+        if (type === 'text') {
+            const label = item[2];
+            const iconSvg = item[3];
+            const value = item[4];
+            const text = (value !== null && value !== undefined) ? value : '--';
+            addMetric(panel, iconSvg, label, text);
+            
+        } else if (type === 'bar') {
             const label = item[2];
             const unit = item[3];
             const iconSvg = item[4];
@@ -4001,7 +4008,7 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addSlider("siren", "alert_clear_pin_time", "Час активації (мс)", 100, 10000, 100, settings->getInt(ALERT_CLEAR_PIN_TIME), pulseModeOnly.c_str());
     addDropdown("siren", "alert_pin_active_level", "Активний рівень", "pin_levels", ALERT_PIN_ACTIVE_LEVEL);
     addInfoTips("siren", "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.", biStableModeOnly.c_str());
-    addInfoTips("siren", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати 1 пін і на тривогу і на відбій", pulseModeOnly.c_str());
+    addInfoTips("siren", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати один і той самий пін на тривогу та на відбій", pulseModeOnly.c_str());
     
     addLabel("siren", "Пристрій 2");
     addDropdown("siren", "alert_clear_pin_mode_2", "Режим роботи", "alert_clear_pin_modes", ALERT_CLEAR_PIN_MODE_2);
@@ -4010,7 +4017,7 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addSlider("siren", "alert_clear_pin_time_2", "Час активації (мс)", 100, 10000, 100, settings->getInt(ALERT_CLEAR_PIN_TIME_2), pulseModeOnly2.c_str());
     addDropdown("siren", "alert_pin_active_level_2", "Активний рівень", "pin_levels", ALERT_PIN_ACTIVE_LEVEL_2);
     addInfoTips("siren", "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.", biStableModeOnly2.c_str());
-    addInfoTips("siren", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати 1 пін і на тривогу і на відбій", pulseModeOnly2.c_str());
+    addInfoTips("siren", "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати один і той самий пін на тривогу та на відбій", pulseModeOnly2.c_str());
 
     // Налаштування погоди / температури
     addInfo("climate", "Налаштування погодних переметрів та кліматичних сенсорів", "#34f396", "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z");

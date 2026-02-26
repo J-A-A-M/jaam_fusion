@@ -54,6 +54,7 @@ static const char ICON_HUMIDITY[] PROGMEM = "<svg class='metric-icon' viewBox='0
 static const char ICON_PRESSURE[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M6,14A1,1 0 0,1 7,13A1,1 0 0,1 8,14A5,5 0 0,0 13,19A1,1 0 0,1 12,20A1,1 0 0,1 11,19A7,7 0 0,1 4,12A1,1 0 0,1 5,11A1,1 0 0,1 6,12M17,10A2,2 0 0,1 19,12A7,7 0 0,1 12,19A2,2 0 0,1 10,17A4,4 0 0,0 14,13A2,2 0 0,1 12,11A2,2 0 0,1 14,9A4,4 0 0,0 10,5A2,2 0 0,1 12,3A7,7 0 0,1 19,10A2,2 0 0,1 17,12A2,2 0 0,1 15,10H17Z' /></svg>";
 static const char ICON_LIGHT[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M9,21H15V19H9V21M12,2A7,7 0 0,0 5,9C5,11.38 6.19,13.47 8,14.74V17H16V14.74C17.81,13.47 19,11.38 19,9A7,7 0 0,0 12,2Z' /></svg>";
 static const char ICON_USERS[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z' /></svg>";
+static const char ICON_VERSION[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M18,18H6V6H18M18,4H6A2,2 0 0,0 4,6V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18V6A2,2 0 0,0 18,4M8,8H10V10H8M8,12H10V14H8M8,16H10V18H8M16,8V10H12V8M16,12V14H12V12M16,16V18H12V16Z' /></svg>";
 
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
@@ -726,6 +727,9 @@ inline String getSystemInfoJson() {
     // models describe compact list fields
     JsonObject models = doc["system_models"].to<JsonObject>();
     {
+        JsonArray mText = models["text"].to<JsonArray>();
+        // [key, label, iconSvg, value]
+        mText.add("key"); mText.add("label"); mText.add("iconSvg"); mText.add("value");
         JsonArray mBar = models["bar"].to<JsonArray>();
         // [key, label, unit, iconSvg, used, total]
         mBar.add("key"); mBar.add("label"); mBar.add("unit"); mBar.add("iconSvg"); mBar.add("used"); mBar.add("total");
@@ -739,6 +743,7 @@ inline String getSystemInfoJson() {
 
     JsonArray system = doc["system"].to<JsonArray>();
     JsonArray item;
+
     // Memory bar (values in KB)
     {    
         item = system.add<JsonArray>();
@@ -760,6 +765,16 @@ inline String getSystemInfoJson() {
         item.add("°C");
         item.add(ICON_CPU);
         item.add(cpuTemp);
+    }
+
+        // Firmware version (text)
+    {    
+        item = system.add<JsonArray>();
+        item.add("text");
+        item.add("version");
+        item.add("Версія");
+        item.add(ICON_VERSION);
+        item.add(VERSION);
     }
 
     // Uptime (time)
