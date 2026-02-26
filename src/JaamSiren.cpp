@@ -8,7 +8,7 @@ JaamSiren::JaamSiren()
       clearPin(-1), 
       pinModeConfig(0), 
       activeLevel(HIGH),
-      pinTime(1.0f),
+      pinTime(1000),
       alertActivationTime(0),
       clearActivationTime(0),
       alertActive(false),
@@ -142,16 +142,16 @@ void JaamSiren::clearAlert() {
 
 void JaamSiren::resetPins() {
     if (alertPin > 0) {
-        digitalWrite(alertPin, LOW);
+        deactivatePin(alertPin);
         alertActive = false;
     }
     
     if (clearPin > 0) {
-        digitalWrite(clearPin, LOW);
+        deactivatePin(clearPin);
         clearActive = false;
     }
     
-    LOG.printf("[SIREN] All pins reset to LOW\n");
+    LOG.printf("[SIREN] All pins reset to inactive level\n");
 }
 
 void JaamSiren::activatePin(int pin) {
