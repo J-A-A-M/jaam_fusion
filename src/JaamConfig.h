@@ -2340,3 +2340,14 @@ const RegionLedMapEntry STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV[MAX_REGIONS] =
     { 144,  { 8 }, 1 },    // Корюківський район
     { 1591, { 8 }, 1 },    // м. Чернігів
 };
+
+// Визначення пінів для різних плат
+#if ARDUINO_ESP32_DEV
+    #define SUPPORTED_LEDS_PINS {2, 4, 12, 13, 14, 15, 16, 17, 18, 25, 26, 27, 32, 33}
+#elif ARDUINO_ESP32S3_DEV
+    #define SUPPORTED_LEDS_PINS {2, 4, 12, 13, 14, 15, 18, 21, 25, 26, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42}
+#elif ARDUINO_ESP32C3_DEV
+    #define SUPPORTED_LEDS_PINS {2, 3, 4, 5, 6, 7, 8, 9, 10, 18, 19, 20, 21}
+#else
+    #error "Платформа не підтримується!"
+#endif

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <Arduino.h>
+#if DISPLAY_ENABLED
 #include <U8g2lib.h>
+#endif
 
 // Supported display types
 enum class JaamDisplayType {
@@ -55,11 +57,16 @@ public:
 private:
     JaamDisplayType _type = JaamDisplayType::SSD1306;
     JaamDisplayHeight _height = JaamDisplayHeight::HEIGHT_64;
+    bool _isConnected = false;
+    uint8_t _i2cAddress = 0x3C;
     
+#if DISPLAY_ENABLED
     U8G2* _u8g2 = nullptr;
+#endif
     long _serviceMessageEndTime = 0;
 
     void _setupU8g2();
     bool _isServiceMessageActive();
+    bool _checkI2CConnection();
 
 };

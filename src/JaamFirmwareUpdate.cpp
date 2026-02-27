@@ -148,12 +148,18 @@ void JaamFirmwareUpdate::download() {
     char firmwareUrlChar[100];
 
     LOG.println("Building firmware url...");
+#if ARDUINO_ESP32S3_DEV
+    snprintf(firmwareUrlChar, sizeof(firmwareUrlChar), "https://update.jaam.net.ua/s3/%s", _fwUpdateId);
+#elif ARDUINO_ESP32C3_DEV
+    snprintf(firmwareUrlChar, sizeof(firmwareUrlChar), "https://update.jaam.net.ua/c3/%s", _fwUpdateId);
+#else
     snprintf(firmwareUrlChar, sizeof(firmwareUrlChar), "https://update.jaam.net.ua/%s", _fwUpdateId);
+#endif
 
     LOG.printf("Firmware url: %s\n", firmwareUrlChar);
     _updateClient.setInsecure();
     httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    t_httpUpdate_return fwRet = httpUpdate.update(_updateClient, firmwareUrlChar, VERSION);
+    t_httpUpdate_return fwRet = httpUpdate.update(_updateClient, firmwareUrlChar, _currentFwVersion);
     handleUpdateStatus(fwRet, false);
 
     enableLoopWDT();

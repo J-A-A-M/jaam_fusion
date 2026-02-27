@@ -206,7 +206,11 @@ bool JaamClimateSensor::isAnySensorAvailable() {
 }
 
 bool JaamClimateSensor::isAnySensorEnabled() {
-  return BME280_ENABLED || SHT2X_ENABLED || SHT3X_ENABLED || AHTXX_ENABLED;
+#if BME280_ENABLED || SHT2X_ENABLED || SHT3X_ENABLED || AHTXX_ENABLED
+  return true;
+#else 
+  return false;
+#endif
 }
 
 bool JaamClimateSensor::isBME280Available() {

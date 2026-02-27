@@ -1,5 +1,6 @@
 #include "JaamDisplay.h"
 #include "JaamLogs.h"
+#include <Wire.h>
 
 static const unsigned char trident[] PROGMEM = {
     0x20, 0x00, 0x01, 0x08, 0x60, 0x80, 0x03, 0x0c, 0xe0, 0x80, 0x03, 0x0e, 0xe0, 0x81, 0x03, 0x0f,
@@ -11,7 +12,7 @@ static const unsigned char trident[] PROGMEM = {
     0xe0, 0xff, 0xff, 0x0f, 0xc0, 0xff, 0xff, 0x07, 0x80, 0x3f, 0xf9, 0x03, 0x00, 0x70, 0x1d, 0x00,
     0x00, 0xe0, 0x0f, 0x00, 0x00, 0xc0, 0x07, 0x00, 0x00, 0x80, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00
 };
-
+#if DISPLAY_ENABLED
 #define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
 #define JAAM_FONT_CLOCK_64 u8g2_font_osr35_tn
 #define JAAM_FONT_CLOCK_32 u8g2_font_osr21_tn
@@ -36,10 +37,12 @@ static const uint8_t* JAAM_FONT_SIZES_32[] = {
     u8g2_font_6x12_t_cyrillic,  // 12
     u8g2_font_5x8_t_cyrillic,   // 8
 };
+#endif
 static const uint8_t JAAM_FONT_SIZES_32_COUNT = 5;
 
 // Helper function to get appropriate font array and count based on display height
 static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fontArray, uint8_t& fontCount) {
+#if DISPLAY_ENABLED
     if (height == JaamDisplayHeight::HEIGHT_32) {
         fontArray = JAAM_FONT_SIZES_32;
         fontCount = JAAM_FONT_SIZES_32_COUNT;
@@ -47,24 +50,37 @@ static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fon
         fontArray = JAAM_FONT_SIZES;
         fontCount = JAAM_FONT_SIZES_COUNT;
     }
+#endif
 }
 
 JaamDisplay::JaamDisplay() {}
 
 JaamDisplay::~JaamDisplay() {
+#if DISPLAY_ENABLED
     if (_u8g2) {
         delete _u8g2;
         _u8g2 = nullptr;
     }
+#endif
 }
 
 JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
-    : _type(other._type), _height(other._height), _u8g2(other._u8g2) {
+    : _type(other._type), _height(other._height), _isConnected(other._isConnected), _i2cAddress(other._i2cAddress), _serviceMessageEndTime(other._serviceMessageEndTime)
+#if DISPLAY_ENABLED
+    , _u8g2(other._u8g2)
+#endif
+{
+#if DISPLAY_ENABLED
     other._u8g2 = nullptr;
+#endif
+    other._isConnected = false;
+    other._i2cAddress = 0x3C;
+    other._serviceMessageEndTime = 0;
 }
 
 JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
     if (this != &other) {
+#if DISPLAY_ENABLED
         // Clean up existing resources
         if (_u8g2) {
             delete _u8g2;
@@ -73,16 +89,32 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
         // Move data from other
         _type = other._type;
         _height = other._height;
+        _isConnected = other._isConnected;
+        _i2cAddress = other._i2cAddress;
+        _serviceMessageEndTime = other._serviceMessageEndTime;
         _u8g2 = other._u8g2;
         
         // Reset other
         other._u8g2 = nullptr;
+        other._isConnected = false;
+        other._i2cAddress = 0x3C;
+        other._serviceMessageEndTime = 0;
+#else
+        _type = other._type;
+        _height = other._height;
+        _isConnected = other._isConnected;
+        _i2cAddress = other._i2cAddress;
+        _serviceMessageEndTime = other._serviceMessageEndTime;
+        other._isConnected = false;
+        other._i2cAddress = 0x3C;
+        other._serviceMessageEndTime = 0;
+#endif
     }
     return *this;
 }
 
 void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
-
+#if DISPLAY_ENABLED
     if (_u8g2) {
         clear();
         LOG.printf("[DISPLAY] Clearing existing display\n");
@@ -90,25 +122,48 @@ void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
         _u8g2 = nullptr;
         LOG.printf("[DISPLAY] Cleaned up existing U8G2 object\n");
     }
+#endif
 
     _type = type;
     _height = height;
+    _isConnected = false;
     
+    Wire.begin();
+    // Check if display is physically connected
+    if (!_checkI2CConnection()) {
+        LOG.printf("[DISPLAY] Display not detected on I2C bus - skipping initialization\n");
+        return;
+    }
+    
+#if DISPLAY_ENABLED
     _setupU8g2();
     if (_u8g2) {
+        _u8g2->setI2CAddress(_i2cAddress << 1); // U8G2 expects 8-bit address (shifted)
         _u8g2->begin();
         _u8g2->enableUTF8Print(); // Enable UTF-8 support for printing
+        _isConnected = true;
+        LOG.printf("[DISPLAY] Display successfully initialized at 0x%02X\n", _i2cAddress);
+    } else {
+        LOG.printf("[DISPLAY] Failed to initialize U8G2 object\n");
     }
+#else
+    LOG.printf("[DISPLAY] Display support is disabled (DISPLAY_ENABLED=0)\n");
+#endif
 }
 
 void JaamDisplay::clear() {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
     if (_u8g2) {
         _u8g2->clearBuffer();
         _u8g2->sendBuffer();
     }
+#endif
 }
 
 void JaamDisplay::invertDisplay(bool invert) {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
     if (_u8g2) {
         if (invert) {
             _u8g2->sendF("c", 0xa7);  // Set inverse display on
@@ -117,9 +172,12 @@ void JaamDisplay::invertDisplay(bool invert) {
         }
         LOG.printf("[DISPLAY] Display color inversion %s\n", invert ? "enabled" : "disabled");
     }
+#endif
 }
 
 void JaamDisplay::rotateDisplay(JaamDisplayRotation rotation) {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
     if (_u8g2) {
         const u8g2_cb_t* u8g2_rotation;
         switch (rotation) {
@@ -142,9 +200,11 @@ void JaamDisplay::rotateDisplay(JaamDisplayRotation rotation) {
         _u8g2->setDisplayRotation(u8g2_rotation);
         LOG.printf("[DISPLAY] Display rotation set to %d degrees\n", (int)rotation);
     }
+#endif
 }
 
 void JaamDisplay::_setupU8g2() {
+#if DISPLAY_ENABLED
     if (_u8g2) return; // Already initialized
 
     LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
@@ -183,9 +243,12 @@ void JaamDisplay::_setupU8g2() {
             }
             break;
     }
+#endif
 }
 
 void JaamDisplay::printMessage(const String& mainText, const String& title) {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printMessage, service message is active\n");
@@ -281,10 +344,13 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
     }
 
     _u8g2->sendBuffer();
+#endif
 }
 
 // Draw a monochrome bitmap icon at (x, y) with width w and height h
 void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text) {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping drawIconWithText, service message is active\n");
@@ -431,9 +497,12 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
     }
 
     _u8g2->sendBuffer();
+#endif
 }
 
 void JaamDisplay::printClock(const String& time, const String& date) {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printClock, service message is active\n");
@@ -477,15 +546,38 @@ void JaamDisplay::printClock(const String& time, const String& date) {
     _u8g2->print(time);
 
     _u8g2->sendBuffer();
+#endif
 }
 
 void JaamDisplay::showServiceMessage(const String& message, const String& title, int duration) {
-  if (!_u8g2) return;
-  _serviceMessageEndTime = 0; // Reset end time
-  printMessage(message, title);
-  _serviceMessageEndTime = millis() + duration;
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
+    if (!_u8g2) return;
+#endif
+    _serviceMessageEndTime = 0; // Reset end time
+    printMessage(message, title);
+    _serviceMessageEndTime = millis() + duration;
 }
 
 bool JaamDisplay::_isServiceMessageActive() {
     return millis() < _serviceMessageEndTime;
+}
+
+bool JaamDisplay::_checkI2CConnection() {
+    // Common I2C addresses for OLED displays
+    uint8_t addresses[] = {0x3C, 0x3D};
+    
+    for (uint8_t addr : addresses) {
+        Wire.beginTransmission(addr);
+        uint8_t error = Wire.endTransmission();
+        
+        if (error == 0) {
+            _i2cAddress = addr; // Store the detected address
+            LOG.printf("[DISPLAY] Display detected at I2C address 0x%02X\n", addr);
+            return true;
+        }
+    }
+    
+    LOG.printf("[DISPLAY] No display detected at common I2C addresses (0x3C, 0x3D)\n");
+    return false;
 }
