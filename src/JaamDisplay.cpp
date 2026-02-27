@@ -1,5 +1,6 @@
 #include "JaamDisplay.h"
 #include "JaamLogs.h"
+#include <Wire.h>
 
 static const unsigned char trident[] PROGMEM = {
     0x20, 0x00, 0x01, 0x08, 0x60, 0x80, 0x03, 0x0c, 0xe0, 0x80, 0x03, 0x0e, 0xe0, 0x81, 0x03, 0x0f,
@@ -110,17 +111,31 @@ void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
 
     _type = type;
     _height = height;
+    _isConnected = false;
+    
+    // Check if display is physically connected
+    if (!_checkI2CConnection()) {
+        LOG.printf("[DISPLAY] Display not detected on I2C bus - skipping initialization\n");
+        return;
+    }
     
 #if DISPLAY_ENABLED
     _setupU8g2();
     if (_u8g2) {
         _u8g2->begin();
         _u8g2->enableUTF8Print(); // Enable UTF-8 support for printing
+        _isConnected = true;
+        LOG.printf("[DISPLAY] Display successfully initialized\n");
+    } else {
+        LOG.printf("[DISPLAY] Failed to initialize U8G2 object\n");
     }
+#else
+    LOG.printf("[DISPLAY] Display support is disabled (DISPLAY_ENABLED=0)\n");
 #endif
 }
 
 void JaamDisplay::clear() {
+    if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (_u8g2) {
         _u8g2->clearBuffer();
@@ -130,6 +145,7 @@ void JaamDisplay::clear() {
 }
 
 void JaamDisplay::invertDisplay(bool invert) {
+    if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (_u8g2) {
         if (invert) {
@@ -143,6 +159,7 @@ void JaamDisplay::invertDisplay(bool invert) {
 }
 
 void JaamDisplay::rotateDisplay(JaamDisplayRotation rotation) {
+    if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (_u8g2) {
         const u8g2_cb_t* u8g2_rotation;
@@ -213,6 +230,7 @@ void JaamDisplay::_setupU8g2() {
 }
 
 void JaamDisplay::printMessage(const String& mainText, const String& title) {
+    if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
@@ -314,6 +332,7 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
 
 // Draw a monochrome bitmap icon at (x, y) with width w and height h
 void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text) {
+    if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
@@ -465,6 +484,7 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
 }
 
 void JaamDisplay::printClock(const String& time, const String& date) {
+    if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
@@ -513,14 +533,33 @@ void JaamDisplay::printClock(const String& time, const String& date) {
 }
 
 void JaamDisplay::showServiceMessage(const String& message, const String& title, int duration) {
+    if (!_isConnected) return;
 #if DISPLAY_ENABLED
-  if (!_u8g2) return;
+    if (!_u8g2) return;
 #endif
-  _serviceMessageEndTime = 0; // Reset end time
-  printMessage(message, title);
-  _serviceMessageEndTime = millis() + duration;
+    _serviceMessageEndTime = 0; // Reset end time
+    printMessage(message, title);
+    _serviceMessageEndTime = millis() + duration;
 }
 
 bool JaamDisplay::_isServiceMessageActive() {
     return millis() < _serviceMessageEndTime;
+}
+
+bool JaamDisplay::_checkI2CConnection() {
+    // Common I2C addresses for OLED displays
+    uint8_t addresses[] = {0x3C, 0x3D};
+    
+    for (uint8_t addr : addresses) {
+        Wire.beginTransmission(addr);
+        uint8_t error = Wire.endTransmission();
+        
+        if (error == 0) {
+            LOG.printf("[DISPLAY] Display detected at I2C address 0x%02X\n", addr);
+            return true;
+        }
+    }
+    
+    LOG.printf("[DISPLAY] No display detected at common I2C addresses (0x3C, 0x3D)\n");
+    return false;
 }
