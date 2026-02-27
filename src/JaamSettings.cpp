@@ -33,7 +33,7 @@ std::map<Type, SettingItemInt> intSettings = {
 #if ANDRUINO_ESP32_DEV || ARDUINO_ESP32S3_DEV
     {MAIN_LED_PIN, {"pp", 13}},
 #elif ARDUINO_ESP32C3_DEV
-    {MAIN_LED_PIN, {"pp", 1}},
+    {MAIN_LED_PIN, {"pp", 2}},
 #endif
     {MAIN_LED_COUNT, {"pc", 26}},
     {BG_LED_PIN, {"bpp", -1}},
