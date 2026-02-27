@@ -13,7 +13,7 @@
 #include <string>
 #include <map>
 #include <set>
-#include <utility> 
+#include <utility>
 #include <vector>
 #include <ArduinoJson.h>
 #include <WiFi.h>
@@ -96,24 +96,24 @@ inline void logMemoryUsage(const char* context) {
     size_t totalHeap = ESP.getHeapSize();
     size_t usedHeap = totalHeap - freeHeap;
     size_t maxBlock = ESP.getMaxAllocHeap();
-    
-    LOG.printf("[MEMORY] %s - Used: %u bytes, Free: %u bytes, Total: %u bytes, Max block: %u bytes\n", 
+
+    LOG.printf("[MEMORY] %s - Used: %u bytes, Free: %u bytes, Total: %u bytes, Max block: %u bytes\n",
               context, usedHeap, freeHeap, totalHeap, maxBlock);
-    
+
     // Warning if free heap is getting low
     if (freeHeap < 10000) {
         LOG.printf("[MEMORY] WARNING: Low memory! Only %u bytes free\n", freeHeap);
     }
-    
+
     // Warning if fragmentation is high
     // if (maxBlock < freeHeap * 0.7) {
     //     LOG.printf("[MEMORY] WARNING: High fragmentation! Max block: %u, Free: %u\n", maxBlock, freeHeap);
     // }
 }
-  
+
 static float roundToDecimal(float value, int decimals) {
     if (decimals < 0) decimals = 0;
-    if (decimals > 3) decimals = 3; 
+    if (decimals > 3) decimals = 3;
     static const float mults[] = {1.0f, 10.0f, 100.0f, 1000.0f};
     float m = mults[decimals];
     return roundf(value * m) / m;
@@ -150,17 +150,17 @@ inline void generateCustomRegionMap(JaamHardware& hardwareConfig) {
 inline void generateBgLedColorsMap() {
     // Очистити масив кольорів
     memset(bgLedColors, 0, sizeof(bgLedColors));
-    
+
     int bgLedCount = settings.getInt(BG_LED_COUNT);
     if (bgLedCount <= 0 || bgLedCount > MAX_BG_LEDS) {
         LOG.printf("[INIT] BG LED count not configured or invalid.\n");
         return;
     }
-    
+
     // Спробувати завантажити кольори з файлу
     uint32_t* tempColors = new uint32_t[bgLedCount];
     int actualCount = 0;
-    
+
     if (storage.loadBgLedColors(tempColors, bgLedCount, actualCount)) {
         // Копіюємо завантажені кольори
         for (int i = 0; i < bgLedCount; ++i) {
@@ -178,7 +178,7 @@ inline void generateBgLedColorsMap() {
         }
         LOG.printf("[INIT] Set %d BG LED colors to default black.\n", bgLedCount);
     }
-    
+
     delete[] tempColors;
 }
 
@@ -238,80 +238,80 @@ inline std::vector<uint16_t> getRegionsForLed(int led_position) {
 // Для інших областей - повністю СИНІ як раніше
 inline uint32_t getFlagColorForRegion(uint16_t region_id) {
     // ===== ОБЛАСТІ З СЕЛЕКТИВНИМ МАППІНГОМ =====
-    
-    // Львівська: тільки СИНІ райони: Яворівський(93), Червоноградський(92), Золочівський(94), Львівський(90), Львів(845)
+
+    // Львівська: тільки СИНІ райони: Яворівський(93), Шептицький(92), Золочівський(94), Львівський(90), Львів(845)
     // Решта районів Львівської - жовті
-    if (region_id == 93 || region_id == 92 || region_id == 94 || region_id == 90 || region_id == 845) 
+    if (region_id == 93 || region_id == 92 || region_id == 94 || region_id == 90 || region_id == 845)
         return DefaultColors::FLAG_BLUE;
     if ((region_id >= 88 && region_id <= 94) || region_id == 845)  // Це все райони Львівської
         return DefaultColors::FLAG_YELLOW;
-    
+
     // Тернопільська: тільки Кременецький(120) - синій, решта жовті
-    if (region_id == 120) 
+    if (region_id == 120)
         return DefaultColors::FLAG_BLUE;
     if (region_id >= 119 && region_id <= 121)  // Райони Тернопільської
         return DefaultColors::FLAG_YELLOW;
-    
+
     // Хмельницька: тільки Шепетівський(136) - синій, решта жовті
-    if (region_id == 136) 
+    if (region_id == 136)
         return DefaultColors::FLAG_BLUE;
     if (region_id >= 133 && region_id <= 139)  // Райони Хмельницької
         return DefaultColors::FLAG_YELLOW;
-    
+
     // Вінницька: тільки Хмільницький(34) - синій, решта жовті
-    if (region_id == 34) 
+    if (region_id == 34)
         return DefaultColors::FLAG_BLUE;
     if (region_id >= 33 && region_id <= 36)  // Райони Вінницької
         return DefaultColors::FLAG_YELLOW;
-    
+
     // Черкаська: тільки Золотоніський(153), Черкаський(152), Черкаси(1473) - сині, решта жовті
-    if (region_id == 153 || region_id == 152 || region_id == 1473) 
+    if (region_id == 153 || region_id == 152 || region_id == 1473)
         return DefaultColors::FLAG_BLUE;
     if ((region_id >= 150 && region_id <= 153) || region_id == 1473)  // Райони Черкаської
         return DefaultColors::FLAG_YELLOW;
-    
+
     // Донецька: тільки Краматорський(50), Бахмутський(54) - сині, решта жовті
-    if (region_id == 50 || region_id == 54) 
+    if (region_id == 50 || region_id == 54)
         return DefaultColors::FLAG_BLUE;
     if (region_id >= 49 && region_id <= 56)  // Райони Донецької
         return DefaultColors::FLAG_YELLOW;
-    
+
     // Луганська: тільки Сватівський(85), Старобільський(86), Щастинський(87), Сєвєродонецький(84) - сині, решта жовті
-    if (region_id == 84 || region_id == 85 || region_id == 86 || region_id == 87) 
+    if (region_id == 84 || region_id == 85 || region_id == 86 || region_id == 87)
         return DefaultColors::FLAG_BLUE;
-    
+
     // ===== ОБЛАСТІ БЕЗ ЗМІН (Повністю СИНІ як раніше) =====
     // Волинська, Рівненська, Житомирська, Київська, Чернігівська, Сумська, Полтавська, Харківська
-    
+
     // Самі області + їх райони (як було):
     if (region_id == 8 || region_id == 5 || region_id == 10 ||
         region_id == 14 || region_id == 25 || region_id == 20 ||
         region_id == 19 || region_id == 22) return DefaultColors::FLAG_BLUE;
-    
+
     // Волинська область - райони: 38-41, м. Луцьк: 225
     if ((region_id >= 38 && region_id <= 41) || region_id == 225) return DefaultColors::FLAG_BLUE;
-    
+
     // Рівненська область - райони: 110-113, м. Рівне: 1133
     if ((region_id >= 110 && region_id <= 113) || region_id == 1133) return DefaultColors::FLAG_BLUE;
-    
+
     // Житомирська область - райони: 57-60, м. Житомир: 442
     if ((region_id >= 57 && region_id <= 60) || region_id == 442) return DefaultColors::FLAG_BLUE;
-    
+
     // Київська область - райони: 73-79 + м. Київ: 31
     if ((region_id >= 73 && region_id <= 79) || region_id == 31) return DefaultColors::FLAG_BLUE;
-    
+
     // Чернігівська область - райони: 140-144, м. Чернігів: 1591
     if ((region_id >= 140 && region_id <= 144) || region_id == 1591) return DefaultColors::FLAG_BLUE;
-    
+
     // Сумська область - райони: 114-118, м. Суми: 1187
     if ((region_id >= 114 && region_id <= 118) || region_id == 1187) return DefaultColors::FLAG_BLUE;
-    
+
     // Полтавська область - райони: 106-109, м. Полтава: 1060
     if ((region_id >= 106 && region_id <= 109) || region_id == 1060) return DefaultColors::FLAG_BLUE;
-    
+
     // Харківська область - райони: 122-128, м. Харків: 1293
     if ((region_id >= 122 && region_id <= 128) || region_id == 1293) return DefaultColors::FLAG_BLUE;
-    
+
     // Всі інші регіони - жовтий (південні області без змін)
     return DefaultColors::FLAG_YELLOW;
 }
@@ -323,7 +323,7 @@ inline bool isAlertForLed(int led_position) {
         auto it = alertsMap.find(region_id);
         if (it != alertsMap.end() && it->second != 0) {
             LOG.printf("[REGION] Region %d led_position %d true\n", region_id, led_position);
-            return true;            
+            return true;
         }
     }
     LOG.printf("[REGION] Region led_position %d false\n", led_position);
@@ -332,17 +332,17 @@ inline bool isAlertForLed(int led_position) {
 
 // перевірка вільної пам'яті і порівняння з останнєю перевіркою
 inline void checkFreeHeap(const char* label) {
-    static size_t lastUsedHeap = 0; 
+    static size_t lastUsedHeap = 0;
     size_t usedHeap = ESP.getHeapSize() - ESP.getFreeHeap();
     int heapDiff = lastUsedHeap > 0 ? (int)usedHeap - (int)lastUsedHeap : 0;
-    
+
     if (lastUsedHeap > 0) {
-        LOG.printf("[MEMORY] Used heap after %s: %u bytes (change: %+d bytes)\n", 
+        LOG.printf("[MEMORY] Used heap after %s: %u bytes (change: %+d bytes)\n",
                   label, usedHeap, heapDiff);
     } else {
         LOG.printf("[MEMORY] Used heap after %s: %u bytes\n", label, usedHeap);
     }
-    
+
     lastUsedHeap = usedHeap;
 }
 
@@ -360,7 +360,7 @@ inline bool isAlertBitEnabled(int bit) {
 // Функція для пошуку номеру найстаршого дозволеного біту в 16-бітному числі
 inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
     if (value == 0) return -1; // Повертаємо -1 як індикатор відсутності бітів
-    
+
 
     // Перевіряємо наявність біта 0 (повітряна тривога)
     if (!(value & (1 << 0)) && checkBit0) {
@@ -373,14 +373,14 @@ inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
         if (value & (1 << bit)) {
             // Перевіряємо чи дозволено показувати цей тип тривоги
             bool is_enabled = isAlertBitEnabled(bit);
-                     
+
             // Якщо тип тривоги дозволено показувати - повертаємо його
             if (is_enabled) {
                 return bit;
             }
         }
     }
-    
+
     return -1; // Жоден з дозволених пріоритетних бітів не встановлений
 }
 
@@ -389,14 +389,14 @@ inline bool hasHigherPriority(int bit1, int bit2) {
     if (bit1 == -1) return false;
     if (bit2 == -1) return true;
     if (bit1 == bit2) return true;
-    
+
     // Знаходимо індекси в масиві пріоритетів
     int index1 = -1, index2 = -1;
     for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
         if (ALERT_PRIORITY_ORDER[i] == bit1) index1 = i;
         if (ALERT_PRIORITY_ORDER[i] == bit2) index2 = i;
     }
-    
+
     // Менший індекс означає вищий пріоритет
     return index1 != -1 && index2 != -1 && index1 < index2;
 }
@@ -418,7 +418,7 @@ inline int findHighestBitForLed(int position) {
         auto it = alertsMap.find(regionId);
         if (it != alertsMap.end() && it->second > 0) {
             int currentHighestBit = findHighestBit16(it->second);
-            
+
             if (currentHighestBit != -1 && (!foundAnyBit || hasHigherPriority(currentHighestBit, globalHighestBit))) {
                 globalHighestBit = currentHighestBit;
                 highestBitRegion = regionId;
@@ -426,7 +426,7 @@ inline int findHighestBitForLed(int position) {
             }
         }
     }
-    
+
     if (foundAnyBit) {
         // Знаходимо назву регіону за його ID
         const char* regionName = "Невідомий регіон";
@@ -436,11 +436,11 @@ inline int findHighestBitForLed(int position) {
                 break;
             }
         }
-        // LOG.printf("[LED] LED %d: highest bit %d ([%d] %s)\n", 
+        // LOG.printf("[LED] LED %d: highest bit %d ([%d] %s)\n",
         //           position, globalHighestBit, highestBitRegion, regionName);
         return globalHighestBit;
     }
-    
+
     return -1; // Немає активних бітів в жодному з регіонів
 }
 
@@ -529,7 +529,7 @@ inline bool isHomeRegion(int region_id) {
 
 inline int getHighestActualBit(int sourceBit) {
     int actualBit = -1;
-    
+
     // Знаходимо позицію sourceBit в ALERT_PRIORITY_ORDER
     int sourceBitIndex = -1;
     for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
@@ -538,18 +538,18 @@ inline int getHighestActualBit(int sourceBit) {
             break;
         }
     }
-    
+
     // Якщо sourceBit не знайдено в пріоритетах, повертаємо -1
     if (sourceBitIndex == -1) {
         return -1;
     }
-    
+
     // Перебираємо біти за порядком пріоритету, починаючи з sourceBit
     for (int i = sourceBitIndex; i < ALERT_PRIORITY_COUNT; ++i) {
         int bit = ALERT_PRIORITY_ORDER[i];
-        
+
         bool is_enabled = isAlertBitEnabled(bit);
-        
+
         // Якщо тип тривоги дозволено показувати - встановлюємо його і виходимо
         if (is_enabled) {
             actualBit = bit;
@@ -564,11 +564,11 @@ inline int getHighestActualBit(int sourceBit) {
 inline void forceMemoryCleanup(const char* context) {
     LOG.printf("[MEMORY] Forcing cleanup at: %s\n", context);
     size_t before = ESP.getFreeHeap();
-    
+
     // Force yield to system
     yield();
     delay(50);
-    
+
     // Check if memory was reclaimed
     size_t after = ESP.getFreeHeap();
     if (after > before) {
@@ -583,13 +583,13 @@ inline void defragmentMemory(const char* context) {
     LOG.printf("[MEMORY] Starting defragmentation at: %s\n", context);
     size_t beforeFree = ESP.getFreeHeap();
     size_t beforeMaxBlock = ESP.getMaxAllocHeap();
-    
+
     // Multiple yields and delays to allow system cleanup
     for (int i = 0; i < 5; i++) {
         yield();
         delay(20);
     }
-    
+
     // Try to trigger garbage collection by allocating and freeing small blocks
     void* tempPtrs[10];
     for (int i = 0; i < 10; i++) {
@@ -600,11 +600,11 @@ inline void defragmentMemory(const char* context) {
         }
         yield();
     }
-    
+
     size_t afterFree = ESP.getFreeHeap();
     size_t afterMaxBlock = ESP.getMaxAllocHeap();
-    
-    LOG.printf("[MEMORY] Defrag result - Free: %u->%u (%+d), MaxBlock: %u->%u (%+d)\n", 
+
+    LOG.printf("[MEMORY] Defrag result - Free: %u->%u (%+d), MaxBlock: %u->%u (%+d)\n",
               beforeFree, afterFree, (int)(afterFree - beforeFree),
               beforeMaxBlock, afterMaxBlock, (int)(afterMaxBlock - beforeMaxBlock));
 }
@@ -613,27 +613,27 @@ inline void defragmentMemory(const char* context) {
 inline bool canAllocateMemory(size_t size, const char* context) {
     size_t maxBlock = ESP.getMaxAllocHeap();
     bool canAlloc = maxBlock >= size;
-    
+
     if (!canAlloc) {
-        LOG.printf("[MEMORY] %s - Cannot allocate %u bytes, max block: %u\n", 
+        LOG.printf("[MEMORY] %s - Cannot allocate %u bytes, max block: %u\n",
                   context, size, maxBlock);
-        
+
         // Try defragmentation if allocation would fail
         defragmentMemory(context);
-        
+
         // Check again after defragmentation
         maxBlock = ESP.getMaxAllocHeap();
         canAlloc = maxBlock >= size;
-        
+
         if (canAlloc) {
-            LOG.printf("[MEMORY] %s - After defrag can allocate %u bytes, max block: %u\n", 
+            LOG.printf("[MEMORY] %s - After defrag can allocate %u bytes, max block: %u\n",
                       context, size, maxBlock);
         } else {
-            LOG.printf("[MEMORY] %s - Still cannot allocate %u bytes after defrag, max block: %u\n", 
+            LOG.printf("[MEMORY] %s - Still cannot allocate %u bytes after defrag, max block: %u\n",
                       context, size, maxBlock);
         }
     }
-    
+
     return canAlloc;
 }
 
@@ -641,14 +641,14 @@ inline bool canAllocateMemory(size_t size, const char* context) {
 inline void analyzeMemoryFragmentation(const char* context) {
     size_t freeHeap = ESP.getFreeHeap();
     size_t maxBlock = ESP.getMaxAllocHeap();
-    
+
     if (freeHeap > 0) {
         float fragmentation = 1.0f - ((float)maxBlock / (float)freeHeap);
         int fragPercent = (int)(fragmentation * 100);
-        
-        LOG.printf("[MEMORY] %s - Fragmentation: %d%% (Free: %u, MaxBlock: %u)\n", 
+
+        LOG.printf("[MEMORY] %s - Fragmentation: %d%% (Free: %u, MaxBlock: %u)\n",
                   context, fragPercent, freeHeap, maxBlock);
-        
+
         if (fragmentation > 0.5) { // More than 50% fragmented
             LOG.printf("[MEMORY] %s - HIGH FRAGMENTATION DETECTED! Consider defragmentation\n", context);
             return; // Return true to indicate high fragmentation
@@ -706,19 +706,19 @@ inline String getSystemInfoJson() {
     size_t maxBlock = ESP.getMaxAllocHeap();
     float cpuTemp = roundToDecimal(temperatureRead(), 0);
     uint32_t uptime = millis() / 1000; // uptime in seconds
-    
+
     // WiFi information
     int32_t wifiRSSI = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
-    
+
     // Websocket information - access via extern variable
     bool websocketAvailable = false;
     uint32_t websocketUptime = 0;
-    
+
     if (lastWebsocketConnectTime > 0) {
         websocketUptime = (millis() - lastWebsocketConnectTime) / 1000; // in seconds
         websocketAvailable = true;
     }
-    
+
     // WiFi uptime metric (in seconds)
     uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
 
@@ -745,7 +745,7 @@ inline String getSystemInfoJson() {
     JsonArray item;
 
     // Memory bar (values in KB)
-    {    
+    {
         item = system.add<JsonArray>();
         item.add("bar");
         item.add("memory");
@@ -757,7 +757,7 @@ inline String getSystemInfoJson() {
     }
 
     // CPU temperature (number)
-    {    
+    {
         item = system.add<JsonArray>();
         item.add("number");
         item.add("cpuTemp");
@@ -768,7 +768,7 @@ inline String getSystemInfoJson() {
     }
 
         // Firmware version (text)
-    {    
+    {
         item = system.add<JsonArray>();
         item.add("text");
         item.add("version");
@@ -778,7 +778,7 @@ inline String getSystemInfoJson() {
     }
 
     // Uptime (time)
-    {    
+    {
         item = system.add<JsonArray>();
         item.add("time");
         item.add("uptime");
@@ -788,7 +788,7 @@ inline String getSystemInfoJson() {
     }
 
     // WiFi RSSI (number)
-    {    
+    {
         item = system.add<JsonArray>();
         item.add("number");
         item.add("wifiSignal");
@@ -799,7 +799,7 @@ inline String getSystemInfoJson() {
     }
 
     // WiFi uptime (time)
-    {    
+    {
         item = system.add<JsonArray>();
         item.add("time");
         item.add("wifiUptime");
@@ -809,7 +809,7 @@ inline String getSystemInfoJson() {
     }
 
     // Websocket uptime (time)
-    {    
+    {
         item = system.add<JsonArray>();
         item.add("time");
         item.add("websocketUptime");
@@ -819,7 +819,7 @@ inline String getSystemInfoJson() {
     }
 
     // Battery voltage if available (> 0)
-    {    
+    {
         if (battery.isEnabled()) {
             item = system.add<JsonArray>();
             item.add("number");
@@ -832,7 +832,7 @@ inline String getSystemInfoJson() {
     }
 
     // Climate sensor data (only if any sensor is available)
-    {    
+    {
         if (climate.isTemperatureAvailable()) {
             item = system.add<JsonArray>();
             item.add("number");
@@ -843,7 +843,7 @@ inline String getSystemInfoJson() {
             item.add(roundToDecimal(climate.getTemperature(settings.getFloat(TEMP_CORRECTION)), 0));
         }
     }
-    {   
+    {
         if (climate.isHumidityAvailable()) {
             item = system.add<JsonArray>();
             item.add("number");
@@ -900,22 +900,22 @@ inline String getSystemInfoJson() {
 inline String getAlertsJson() {
     JsonDocument doc;
     JsonArray regions = doc["regions"].to<JsonArray>();
-    
+
     // Перебираємо всі регіони з alertsMap
     for (const auto& alertEntry : alertsMap) {
         uint16_t region_id = alertEntry.first;
         uint16_t flags16 = alertEntry.second;
-        
+
         // Перевіряємо чи є активний перший біт (повітряна тривога)
         bool airAlert = flags16 & (1 << 0);
         if (!airAlert) {
             continue; // Пропускаємо регіони без активної повітряної тривоги
         }
-        
+
         // Перевіряємо чи регіон є в DISTRICTS
         bool foundInDistricts = false;
         String regionName = "";
-        
+
         for (int i = 0; i < MAX_REGIONS; i++) {
             if (DISTRICTS[i].id == region_id) {
                 foundInDistricts = true;
@@ -923,16 +923,16 @@ inline String getAlertsJson() {
                 break;
             }
         }
-        
+
         if (!foundInDistricts) {
             continue; // Пропускаємо регіони не знайдені в DISTRICTS
         }
-        
+
         // Створюємо об'єкт регіону
         JsonObject region = regions.add<JsonObject>();
         region["regionId"] = region_id;
         region["regionName"] = regionName;
-        
+
         // Розкладаємо статуси тривог по бітам
         JsonObject alerts = region["alerts"].to<JsonObject>();
         alerts["air"] = (flags16 & (1 << 0)) ? 1 : 0;
@@ -947,7 +947,7 @@ inline String getAlertsJson() {
         alerts["explosion"] = (flags16 & (1 << 9)) ? 1 : 0;
         alerts["recon"] = (flags16 & (1 << 10)) ? 1 : 0;
     }
-    
+
     String response;
     serializeJson(doc, response);
     return response;
