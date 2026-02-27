@@ -8,6 +8,8 @@ on:
         required: true
         type: string
 
+run-name: 🧪 Beta Release ${{ inputs.version }}
+
 permissions:
   contents: write
 
@@ -102,6 +104,7 @@ jobs:
         retention-days: 1
 
   build:
+    name: 🔨 Build ${{ needs.prepare.outputs.full_version }} (${{ matrix.chip }})
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
@@ -171,6 +174,7 @@ jobs:
         retention-days: 1
 
   release:
+    name: 🚀 Release ${{ needs.prepare.outputs.full_version }}
     needs: [prepare, build]
     runs-on: ubuntu-latest
     
