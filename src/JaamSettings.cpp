@@ -30,7 +30,11 @@ std::map<Type, SettingItemInt> intSettings = {
     {WS_SERVER_PORT, {"wsnp", 80}},
     {UPDATE_SERVER_PORT, {"upp", 80}},
     {HARDWARE, {"legacy", 1}},
+#if ANDRUINO_ESP32_DEV || ARDUINO_ESP32S3_DEV
     {MAIN_LED_PIN, {"pp", 13}},
+#elif ARDUINO_ESP32C3_DEV
+    {MAIN_LED_PIN, {"pp", 9}},
+#endif
     {MAIN_LED_COUNT, {"pc", 26}},
     {BG_LED_PIN, {"bpp", -1}},
     {BG_LED_COUNT, {"bpc", 0}},

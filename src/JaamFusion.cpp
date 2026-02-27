@@ -910,6 +910,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     } else {
         //LOG.printf("[WEBSOCKET] bytes payload len: %d\n", msg.length());
     }
+    
     websocketLastPingTime = millis();
 
     WSString payload = msg.rawData();
@@ -1232,7 +1233,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 } 
                 if (hasHigherPriority(alerts_bit, diff_bit)) {
                     LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n", led.first, led.second.region_id, alerts_bit, diff_bit);
-                        animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, false);
+                    animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, false);
                 }
             }
             int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
@@ -1502,11 +1503,30 @@ void cleanupSingleStrip(Adafruit_NeoPixel*& strip, uint32_t defaultColor) {
     }
 }
 
+bool isLedPinSupported(int pin) {
+    bool supported = false;
+    if (pin <= 0) {
+        // Пін 0 або від'ємний вважаємо спеціальним випадком, який означає "без стрічки", тому підтримуємо його незалежно від того, чи є він у списку SUPPORTED_LEDS_PINS
+        return true;
+    }
+    for (int supportedPin : SUPPORTED_LEDS_PINS) {
+        if (pin == supportedPin) {
+            supported = true;
+            break;
+        }
+    }
+    return supported;
+}
+
 void initStripMain() {
     StripStatus status;
 
     num_leds_main = hardwareConfig.getMainLedsCount();
     int mainLedPin = hardwareConfig.getMainLedPin();
+    if (!isLedPinSupported(mainLedPin)) {
+        LOG.printf("[LED] SKIP: strip_main (unsupported pin %d)\n", mainLedPin);
+        return;
+    }
     
     if (mainLedPin > 0) {
         int mainLedColorFormat = hardwareConfig.getMainLedColorFormat();
@@ -1543,6 +1563,11 @@ void initStripBg() {
     int bgLedPin = hardwareConfig.getBgLedPin();
     int bgLedCount = hardwareConfig.getBgLedsCount();
 
+    if (!isLedPinSupported(bgLedPin)) {
+        LOG.printf("[LED] SKIP: strip_bg (unsupported pin %d)\n", bgLedPin);
+        return;
+    }
+
     if (bgLedPin > 0 && bgLedCount > 0) {
         int bgLedColorFormat = hardwareConfig.getBgLedColorFormat();
         uint8_t ledType = bgLedColorFormat + settings.getInt(BG_LED_FREQUENCY);
@@ -1577,6 +1602,10 @@ void initStripService() {
 
     int serviceLedPin = hardwareConfig.getServiceLedPin();
 
+    if (!isLedPinSupported(serviceLedPin)) {
+        LOG.printf("[LED] SKIP: strip_service (unsupported pin %d)\n", serviceLedPin);
+        return;
+    }
     
     if (serviceLedPin > 0) {
         int serviceLedColorFormat = hardwareConfig.getServiceLedColorFormat();

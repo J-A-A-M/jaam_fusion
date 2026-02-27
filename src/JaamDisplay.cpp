@@ -11,7 +11,7 @@ static const unsigned char trident[] PROGMEM = {
     0xe0, 0xff, 0xff, 0x0f, 0xc0, 0xff, 0xff, 0x07, 0x80, 0x3f, 0xf9, 0x03, 0x00, 0x70, 0x1d, 0x00,
     0x00, 0xe0, 0x0f, 0x00, 0x00, 0xc0, 0x07, 0x00, 0x00, 0x80, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00
 };
-
+#if DISPLAY_ENABLED
 #define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
 #define JAAM_FONT_CLOCK_64 u8g2_font_osr35_tn
 #define JAAM_FONT_CLOCK_32 u8g2_font_osr21_tn
@@ -36,10 +36,12 @@ static const uint8_t* JAAM_FONT_SIZES_32[] = {
     u8g2_font_6x12_t_cyrillic,  // 12
     u8g2_font_5x8_t_cyrillic,   // 8
 };
+#endif
 static const uint8_t JAAM_FONT_SIZES_32_COUNT = 5;
 
 // Helper function to get appropriate font array and count based on display height
 static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fontArray, uint8_t& fontCount) {
+#if DISPLAY_ENABLED
     if (height == JaamDisplayHeight::HEIGHT_32) {
         fontArray = JAAM_FONT_SIZES_32;
         fontCount = JAAM_FONT_SIZES_32_COUNT;
@@ -47,24 +49,34 @@ static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fon
         fontArray = JAAM_FONT_SIZES;
         fontCount = JAAM_FONT_SIZES_COUNT;
     }
+#endif
 }
 
 JaamDisplay::JaamDisplay() {}
 
 JaamDisplay::~JaamDisplay() {
+#if DISPLAY_ENABLED
     if (_u8g2) {
         delete _u8g2;
         _u8g2 = nullptr;
     }
+#endif
 }
 
 JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
-    : _type(other._type), _height(other._height), _u8g2(other._u8g2) {
+    : _type(other._type), _height(other._height)
+#if DISPLAY_ENABLED
+    , _u8g2(other._u8g2)
+#endif
+{
+#if DISPLAY_ENABLED
     other._u8g2 = nullptr;
+#endif
 }
 
 JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
     if (this != &other) {
+#if DISPLAY_ENABLED
         // Clean up existing resources
         if (_u8g2) {
             delete _u8g2;
@@ -77,12 +89,16 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
         
         // Reset other
         other._u8g2 = nullptr;
+#else
+        _type = other._type;
+        _height = other._height;
+#endif
     }
     return *this;
 }
 
 void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
-
+#if DISPLAY_ENABLED
     if (_u8g2) {
         clear();
         LOG.printf("[DISPLAY] Clearing existing display\n");
@@ -90,25 +106,31 @@ void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
         _u8g2 = nullptr;
         LOG.printf("[DISPLAY] Cleaned up existing U8G2 object\n");
     }
+#endif
 
     _type = type;
     _height = height;
     
+#if DISPLAY_ENABLED
     _setupU8g2();
     if (_u8g2) {
         _u8g2->begin();
         _u8g2->enableUTF8Print(); // Enable UTF-8 support for printing
     }
+#endif
 }
 
 void JaamDisplay::clear() {
+#if DISPLAY_ENABLED
     if (_u8g2) {
         _u8g2->clearBuffer();
         _u8g2->sendBuffer();
     }
+#endif
 }
 
 void JaamDisplay::invertDisplay(bool invert) {
+#if DISPLAY_ENABLED
     if (_u8g2) {
         if (invert) {
             _u8g2->sendF("c", 0xa7);  // Set inverse display on
@@ -117,9 +139,11 @@ void JaamDisplay::invertDisplay(bool invert) {
         }
         LOG.printf("[DISPLAY] Display color inversion %s\n", invert ? "enabled" : "disabled");
     }
+#endif
 }
 
 void JaamDisplay::rotateDisplay(JaamDisplayRotation rotation) {
+#if DISPLAY_ENABLED
     if (_u8g2) {
         const u8g2_cb_t* u8g2_rotation;
         switch (rotation) {
@@ -142,9 +166,11 @@ void JaamDisplay::rotateDisplay(JaamDisplayRotation rotation) {
         _u8g2->setDisplayRotation(u8g2_rotation);
         LOG.printf("[DISPLAY] Display rotation set to %d degrees\n", (int)rotation);
     }
+#endif
 }
 
 void JaamDisplay::_setupU8g2() {
+#if DISPLAY_ENABLED
     if (_u8g2) return; // Already initialized
 
     LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
@@ -183,9 +209,11 @@ void JaamDisplay::_setupU8g2() {
             }
             break;
     }
+#endif
 }
 
 void JaamDisplay::printMessage(const String& mainText, const String& title) {
+#if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printMessage, service message is active\n");
@@ -281,10 +309,12 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
     }
 
     _u8g2->sendBuffer();
+#endif
 }
 
 // Draw a monochrome bitmap icon at (x, y) with width w and height h
 void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text) {
+#if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping drawIconWithText, service message is active\n");
@@ -431,9 +461,11 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
     }
 
     _u8g2->sendBuffer();
+#endif
 }
 
 void JaamDisplay::printClock(const String& time, const String& date) {
+#if DISPLAY_ENABLED
     if (!_u8g2) return;
     if (_isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printClock, service message is active\n");
@@ -477,10 +509,13 @@ void JaamDisplay::printClock(const String& time, const String& date) {
     _u8g2->print(time);
 
     _u8g2->sendBuffer();
+#endif
 }
 
 void JaamDisplay::showServiceMessage(const String& message, const String& title, int duration) {
+#if DISPLAY_ENABLED
   if (!_u8g2) return;
+#endif
   _serviceMessageEndTime = 0; // Reset end time
   printMessage(message, title);
   _serviceMessageEndTime = millis() + duration;
