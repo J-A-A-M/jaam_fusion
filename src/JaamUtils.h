@@ -774,7 +774,7 @@ inline String getSystemInfoJson() {
         item.add("version");
         item.add("Версія");
         item.add(ICON_VERSION);
-        item.add(VERSION);
+        item.add(fwUpdate.getCurrentVersion());
     }
 
     // Uptime (time)
