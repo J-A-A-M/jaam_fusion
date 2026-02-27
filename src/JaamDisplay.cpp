@@ -548,6 +548,7 @@ bool JaamDisplay::_isServiceMessageActive() {
 
 bool JaamDisplay::_checkI2CConnection() {
     // Common I2C addresses for OLED displays
+    Wire.begin();
     uint8_t addresses[] = {0x3C, 0x3D};
     
     for (uint8_t addr : addresses) {
