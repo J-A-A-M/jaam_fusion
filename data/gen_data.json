@@ -359,7 +359,7 @@
   "SAMBIR-CITY"                : { "name": "Самбір"                           , "source_name": "Самбір (Львівська обл.)"                              , "regionId":   88, "legacyId":  4, "stateId":   27 },
   "STRIJSKYI-DSTR"             : { "name": "Стрийський район"                 , "source_name": "Стрийський район (Львівська обл.)"                    , "regionId":   89, "legacyId":  4, "stateId":   27 },
   "STRYOI-CITY"                : { "name": "Стрий"                            , "source_name": "Стрий (Львівська обл.)"                               , "regionId":   89, "legacyId":  4, "stateId":   27 },
-  "CHERVONOGRADSKYI-DSTR"      : { "name": "Червоноградський район"           , "source_name": "Шептицький район (Львівська обл.)"                    , "regionId":   92, "legacyId":  4, "stateId":   27 },
+  "CHERVONOGRADSKYI-DSTR"      : { "name": "Шептицький район"                 , "source_name": "Шептицький район (Львівська обл.)"                    , "regionId":   92, "legacyId":  4, "stateId":   27 },
   "DOBROTVIR-CITY"             : { "name": "Добротвір"                        , "source_name": "Добротвір (Львівська обл.)"                           , "regionId":   92, "legacyId":  4, "stateId":   27 },
   "CHERVONOHRAD-CITY"          : { "name": "Шептицький"                       , "source_name": "Шептицький (Львівська обл.)"                          , "regionId":   92, "legacyId":  4, "stateId":   27 },
   "YAVORIVSKYI-DSTR"           : { "name": "Яворівський район"                , "source_name": "Яворівський район (Львівська обл.)"                   , "regionId":   93, "legacyId":  4, "stateId":   27 },

@@ -6646,7 +6646,7 @@
                 },
                 {
                     "regionId": "92",
-                    "regionName": "Червоноградський район",
+                    "regionName": "Шептицький район",
                     "regionType": "District",
                     "regionChildIds": [
                         {
@@ -6681,7 +6681,7 @@
                         },
                         {
                             "regionId": "832",
-                            "regionName": "м. Червоноград та Червоноградська територіальна громада",
+                            "regionName": "м. Шептицький та Шептицька територіальна громада",
                             "regionType": "Community"
                         }
                     ]
