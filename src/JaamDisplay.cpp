@@ -65,7 +65,7 @@ JaamDisplay::~JaamDisplay() {
 }
 
 JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
-    : _type(other._type), _height(other._height)
+    : _type(other._type), _height(other._height), _isConnected(other._isConnected), _serviceMessageEndTime(other._serviceMessageEndTime)
 #if DISPLAY_ENABLED
     , _u8g2(other._u8g2)
 #endif
@@ -73,6 +73,8 @@ JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
 #if DISPLAY_ENABLED
     other._u8g2 = nullptr;
 #endif
+    other._isConnected = false;
+    other._serviceMessageEndTime = 0;
 }
 
 JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
@@ -86,13 +88,21 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
         // Move data from other
         _type = other._type;
         _height = other._height;
+        _isConnected = other._isConnected;
+        _serviceMessageEndTime = other._serviceMessageEndTime;
         _u8g2 = other._u8g2;
         
         // Reset other
         other._u8g2 = nullptr;
+        other._isConnected = false;
+        other._serviceMessageEndTime = 0;
 #else
         _type = other._type;
         _height = other._height;
+        _isConnected = other._isConnected;
+        _serviceMessageEndTime = other._serviceMessageEndTime;
+        other._isConnected = false;
+        other._serviceMessageEndTime = 0;
 #endif
     }
     return *this;
@@ -113,6 +123,7 @@ void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
     _height = height;
     _isConnected = false;
     
+    Wire.begin();
     // Check if display is physically connected
     if (!_checkI2CConnection()) {
         LOG.printf("[DISPLAY] Display not detected on I2C bus - skipping initialization\n");
@@ -548,7 +559,6 @@ bool JaamDisplay::_isServiceMessageActive() {
 
 bool JaamDisplay::_checkI2CConnection() {
     // Common I2C addresses for OLED displays
-    Wire.begin();
     uint8_t addresses[] = {0x3C, 0x3D};
     
     for (uint8_t addr : addresses) {
