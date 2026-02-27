@@ -2952,6 +2952,10 @@ void setup() {
 
     // Передаємо settings в AnimationManager
     animation.setSettings(&settings);
+
+    // Ініціалізуємо storage перед strip, щоб мати можливість завантажити кастомну мапу для стрічок з пам'яті
+    initStorage();
+    checkFreeHeap("SPIFFS initialization");
     
     initStrip();
     checkFreeHeap("LED strips initialization");
@@ -2973,9 +2977,6 @@ void setup() {
     initDisplay();
     display.drawIconWithText(JaamDisplayIcon::TRIDENT, "JAAM " + String(VERSION) + "");
     checkFreeHeap("display initialization");
-
-    initStorage();
-    checkFreeHeap("SPIFFS initialization");
 
     initBattery();
     checkFreeHeap("battery initialization");

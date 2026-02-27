@@ -65,7 +65,7 @@ JaamDisplay::~JaamDisplay() {
 }
 
 JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
-    : _type(other._type), _height(other._height), _isConnected(other._isConnected), _serviceMessageEndTime(other._serviceMessageEndTime)
+    : _type(other._type), _height(other._height), _isConnected(other._isConnected), _i2cAddress(other._i2cAddress), _serviceMessageEndTime(other._serviceMessageEndTime)
 #if DISPLAY_ENABLED
     , _u8g2(other._u8g2)
 #endif
@@ -74,6 +74,7 @@ JaamDisplay::JaamDisplay(JaamDisplay&& other) noexcept
     other._u8g2 = nullptr;
 #endif
     other._isConnected = false;
+    other._i2cAddress = 0x3C;
     other._serviceMessageEndTime = 0;
 }
 
@@ -89,19 +90,23 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
         _type = other._type;
         _height = other._height;
         _isConnected = other._isConnected;
+        _i2cAddress = other._i2cAddress;
         _serviceMessageEndTime = other._serviceMessageEndTime;
         _u8g2 = other._u8g2;
         
         // Reset other
         other._u8g2 = nullptr;
         other._isConnected = false;
+        other._i2cAddress = 0x3C;
         other._serviceMessageEndTime = 0;
 #else
         _type = other._type;
         _height = other._height;
         _isConnected = other._isConnected;
+        _i2cAddress = other._i2cAddress;
         _serviceMessageEndTime = other._serviceMessageEndTime;
         other._isConnected = false;
+        other._i2cAddress = 0x3C;
         other._serviceMessageEndTime = 0;
 #endif
     }
@@ -133,10 +138,11 @@ void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
 #if DISPLAY_ENABLED
     _setupU8g2();
     if (_u8g2) {
+        _u8g2->setI2CAddress(_i2cAddress << 1); // U8G2 expects 8-bit address (shifted)
         _u8g2->begin();
         _u8g2->enableUTF8Print(); // Enable UTF-8 support for printing
         _isConnected = true;
-        LOG.printf("[DISPLAY] Display successfully initialized\n");
+        LOG.printf("[DISPLAY] Display successfully initialized at 0x%02X\n", _i2cAddress);
     } else {
         LOG.printf("[DISPLAY] Failed to initialize U8G2 object\n");
     }
@@ -566,6 +572,7 @@ bool JaamDisplay::_checkI2CConnection() {
         uint8_t error = Wire.endTransmission();
         
         if (error == 0) {
+            _i2cAddress = addr; // Store the detected address
             LOG.printf("[DISPLAY] Display detected at I2C address 0x%02X\n", addr);
             return true;
         }

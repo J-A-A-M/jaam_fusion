@@ -58,6 +58,7 @@ private:
     JaamDisplayType _type = JaamDisplayType::SSD1306;
     JaamDisplayHeight _height = JaamDisplayHeight::HEIGHT_64;
     bool _isConnected = false;
+    uint8_t _i2cAddress = 0x3C;
     
 #if DISPLAY_ENABLED
     U8G2* _u8g2 = nullptr;
