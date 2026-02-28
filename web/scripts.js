@@ -24,9 +24,7 @@ function applyTheme(theme) {
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    apply
-
-Theme(newTheme);
+    applyTheme(newTheme);
 }
 
 function initTheme() {
@@ -731,7 +729,9 @@ async function renderUI() {
         const sectionContainers = createSectionContainers(sections);
         
         // Set up the UI structure
-        root.innerHTML = navMenu + sectionContainers;
+        root.innerHTML = '';
+        root.appendChild(navMenu);
+        root.appendChild(sectionContainers);
         
         // Group controls by section
         const controlsBySection = {};
@@ -910,22 +910,50 @@ function applyPanelStates() {
 }
 
 function createNavigationMenu(sections) {
-    const navHtml = sections.map(section => 
-        `<div class="nav-item" data-section="${section.id}" onclick="switchSection('${section.id}')" style="border-left: 3px solid ${section.color}">
-            ${section.name}
-        </div>`
-    ).join('');
+    const navMenu = document.createElement('div');
+    navMenu.className = 'nav-menu';
     
-    return `<div class="nav-menu">${navHtml}</div>`;
+    sections.forEach(section => {
+        const navItem = document.createElement('div');
+        navItem.className = 'nav-item';
+        navItem.setAttribute('data-section', section.id);
+        navItem.textContent = section.name;
+        navItem.style.borderLeft = '3px solid ' + (section.color || '#ccc');
+        
+        // Use addEventListener instead of inline onclick
+        navItem.addEventListener('click', function() {
+            switchSection(section.id);
+        });
+        
+        navMenu.appendChild(navItem);
+    });
+    
+    return navMenu;
 }
 
 function createSectionContainers(sections) {
-    return sections.map(section => 
-        `<div class="section-container" id="section-${section.id}">
-            <div class="section-header" style="border-color: ${section.color}">${section.name}</div>
-            <div class="section-content" id="content-${section.id}"></div>
-        </div>`
-    ).join('');
+    const fragment = document.createDocumentFragment();
+    
+    sections.forEach(section => {
+        const container = document.createElement('div');
+        container.className = 'section-container';
+        container.id = 'section-' + section.id;
+        
+        const header = document.createElement('div');
+        header.className = 'section-header';
+        header.textContent = section.name;
+        header.style.borderColor = section.color || '#ccc';
+        
+        const content = document.createElement('div');
+        content.className = 'section-content';
+        content.id = 'content-' + section.id;
+        
+        container.appendChild(header);
+        container.appendChild(content);
+        fragment.appendChild(container);
+    });
+    
+    return fragment;
 }
 
 function loadSavedSection(sections) {

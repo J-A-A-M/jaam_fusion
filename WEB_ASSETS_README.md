@@ -24,7 +24,7 @@
 
 ### Структура файлів
 
-```
+```text
 jaam_fusion/
 ├── web/                          # Вихідні веб-ресурси
 │   ├── styles.css               # Основні CSS стилі
@@ -66,7 +66,7 @@ jaam_fusion/
 # Автоматична компресія та збірка
 platformio run
 
-# Або для enviroment specific
+# Або для environment specific
 platformio run -e firmware
 ```
 
@@ -80,7 +80,7 @@ platformio run -e firmware
 
 ### ETag для кешування
 
-Кожен скомпонований файл має унікальний MD5 hash, який використовується як ETag для HTTP кешування:
+Кожен скомпонований файл має унікальний SHA256 hash, який використовується як ETag для HTTP кешування:
 - При першому завантаженні: повні 15.0KB
 - При повторних візитах: 0 bytes (304 Not Modified)
 

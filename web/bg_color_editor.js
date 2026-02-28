@@ -29,7 +29,11 @@ function renderColorEditor(data) {
     form.method = 'post';
     
     const info = document.createElement('div');
-    info.innerHTML = '<p style="margin-bottom: 20px; color: var(--text-color);">Налаштування індивідуальних кольорів для ' + data.count + ' задніх LED. Чорний колір означає відсутність підсвітки.</p>';
+    const infoParagraph = document.createElement('p');
+    infoParagraph.textContent = 'Налаштування індивідуальних кольорів для ' + data.count + ' задніх LED. Чорний колір означає відсутність підсвітки.';
+    infoParagraph.style.marginBottom = '20px';
+    infoParagraph.style.color = 'var(--text-color)';
+    info.appendChild(infoParagraph);
     form.appendChild(info);
     
     const grid = document.createElement('div');
@@ -47,7 +51,27 @@ function renderColorEditor(data) {
         picker.type = 'color';
         picker.id = 'color_' + colorData.led;
         picker.name = 'color_' + colorData.led;
-        picker.value = '#' + colorData.color.padStart(6, '0');
+        
+        // Normalize and validate color value
+        let colorValue = colorData.color;
+        if (colorValue == null) {
+            colorValue = '000000';
+        } else {
+            colorValue = String(colorValue).trim();
+            // Strip leading "0x" if present
+            if (colorValue.toLowerCase().startsWith('0x')) {
+                colorValue = colorValue.substring(2);
+            }
+            // Remove any non-hex characters
+            colorValue = colorValue.replace(/[^0-9a-fA-F]/g, '');
+            // Pad to 6 characters or fall back to default
+            if (colorValue.length > 0) {
+                colorValue = colorValue.padStart(6, '0').substring(0, 6);
+            } else {
+                colorValue = '000000';
+            }
+        }
+        picker.value = '#' + colorValue;
         picker.className = 'led-color-picker';
         
         item.appendChild(label);

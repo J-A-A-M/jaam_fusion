@@ -1130,6 +1130,11 @@ void JaamWeb::handleMapData() {
 }
 
 void JaamWeb::handleUiPage() {
+        // Prevent HTML caching to ensure new CSS/JS versions are loaded
+        server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        server.sendHeader("Pragma", "no-cache");
+        server.sendHeader("Expires", "0");
+        
         // Serve a dynamic UI page that mirrors getHtmlTemplate design but renders from /ui-schema
         String html;
         html.reserve(12000);
@@ -1145,12 +1150,10 @@ void JaamWeb::handleUiPage() {
         html += deviceName;
         html += R"HTML(</title>
 )HTML";
-        // Inject meta and link to external CSS/JS
+        // Inject meta and link to external CSS/JS with version hashes
         html += getMeta();
-        html += R"HTML(
-<link rel="stylesheet" href="/styles.css">
-<script src="/scripts.js"></script>
-)HTML";
+        html += "<link rel=\"stylesheet\" href=\"/styles.css?v=" + String(styles_css_hash) + "\">\n";
+        html += "<script src=\"/scripts.js?v=" + String(scripts_js_hash) + "\"></script>\n";
 
         // Body start
         html += R"HTML(
@@ -1305,16 +1308,21 @@ void JaamWeb::handleSaveMap() {
 }
 
 void JaamWeb::handleMapEditor() {
+    // Prevent HTML caching to ensure new CSS/JS versions are loaded
+    server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    server.sendHeader("Pragma", "no-cache");
+    server.sendHeader("Expires", "0");
+    
     String html = "<!DOCTYPE html><html>";
     html += "<head>";
     String deviceName = settings->getString(DEVICE_NAME);
     if (deviceName.isEmpty()) deviceName = "JAAM";
     html += "<title>" + deviceName + "</title>";
     html += getMeta();
-    html += "<link rel=\"stylesheet\" href=\"/styles.css\">";
-    html += "<script src=\"/scripts.js\"></script>";
-    html += "<link rel=\"stylesheet\" href=\"/map-editor.css\">";
-    html += "<script src=\"/map-editor.js\"></script>";
+    html += "<link rel=\"stylesheet\" href=\"/styles.css?v=" + String(styles_css_hash) + "\">";
+    html += "<script src=\"/scripts.js?v=" + String(scripts_js_hash) + "\"></script>";
+    html += "<link rel=\"stylesheet\" href=\"/map-editor.css?v=" + String(map_editor_css_hash) + "\">";
+    html += "<script src=\"/map-editor.js?v=" + String(map_editor_js_hash) + "\"></script>";
     
     html += "</head><body>";
 
@@ -1427,16 +1435,21 @@ void JaamWeb::handleSaveBgColors() {
 }
 
 void JaamWeb::handleBgColorEditor() {
+    // Prevent HTML caching to ensure new CSS/JS versions are loaded
+    server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    server.sendHeader("Pragma", "no-cache");
+    server.sendHeader("Expires", "0");
+    
     String html = "<!DOCTYPE html><html>";
     html += "<head>";
     String deviceName = settings->getString(DEVICE_NAME);
     if (deviceName.isEmpty()) deviceName = "JAAM";
     html += "<title>" + deviceName + "</title>";
     html += getMeta();
-    html += "<link rel=\"stylesheet\" href=\"/styles.css\">";
-    html += "<script src=\"/scripts.js\"></script>";
-    html += "<link rel=\"stylesheet\" href=\"/bg-color-editor.css\">";
-    html += "<script src=\"/bg-color-editor.js\"></script>";
+    html += "<link rel=\"stylesheet\" href=\"/styles.css?v=" + String(styles_css_hash) + "\">";
+    html += "<script src=\"/scripts.js?v=" + String(scripts_js_hash) + "\"></script>";
+    html += "<link rel=\"stylesheet\" href=\"/bg-color-editor.css?v=" + String(bg_color_editor_css_hash) + "\">";
+    html += "<script src=\"/bg-color-editor.js?v=" + String(bg_color_editor_js_hash) + "\"></script>";
     
     html += "</head><body>";
 

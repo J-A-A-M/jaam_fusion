@@ -37,3 +37,12 @@
     padding: 20px !important;
     transition: background-color 0.3s ease !important;
 }
+
+/* Region label styles */
+label.root-region {
+    font-weight: bold;
+}
+
+label.sub-region {
+    padding-left: 2em;
+}

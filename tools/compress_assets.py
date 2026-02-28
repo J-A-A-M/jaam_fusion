@@ -13,7 +13,7 @@ try:
     Import("env")
     PROJECT_DIR = env["PROJECT_DIR"]
     print("[PlatformIO] Running asset compression script...")
-except:
+except (NameError, KeyError):
     # Standalone mode
     PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     print("[Standalone] Running asset compression script...")
@@ -41,7 +41,7 @@ def compress_file(file_path):
     compressed = gzip.compress(data, compresslevel=9, mtime=0)
 
     # Calculate hash for versioning/ETag
-    file_hash = hashlib.md5(compressed).hexdigest()[:8]
+    file_hash = hashlib.sha256(compressed).hexdigest()[:16]
 
     return compressed, file_hash, len(data), len(compressed)
 

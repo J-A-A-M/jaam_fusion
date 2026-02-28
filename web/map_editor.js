@@ -29,11 +29,14 @@ function renderMapEditor(regions) {
         
         const label = document.createElement('label');
         label.setAttribute('for', 'region_' + region.id);
+        label.textContent = region.name;
         
-        const displayName = region.sub ? 
-            '&nbsp;&nbsp;&nbsp;&nbsp;' + region.name : 
-            '<b>' + region.name + '</b>';
-        label.innerHTML = displayName;
+        // Apply styling via CSS classes instead of HTML injection
+        if (region.sub) {
+            label.classList.add('sub-region');
+        } else {
+            label.classList.add('root-region');
+        }
         
         const input = document.createElement('input');
         input.type = 'text';
