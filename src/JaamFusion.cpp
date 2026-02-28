@@ -1257,6 +1257,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
             api.updateHomeAlert(homeAlertFlags);
         }
+        isFirstDataFetchCompleted = true;
         alertsHash = actualHash;
     }
 
@@ -1323,7 +1324,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         updateSirenIfNeeded(alertBit);
     }
 
-    isFirstDataFetchCompleted = true;
+    
     checkFreeHeap("Websockets data processing");
 }
 
@@ -1413,8 +1414,8 @@ void socketConnect() {
     if (websocket.available()) {
         websocketConnected = true;
         servicePin(DATA);
-        clearAllAlertsMaps();
-        clearAllWeatherMaps();
+        //clearAllAlertsMaps();
+        //clearAllWeatherMaps();
         //animation.clearAllAnimations();
         LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
         char chipIdInfo[25];
@@ -2522,6 +2523,7 @@ void websocketProcess() {
         websocketReconnect = true;
         clearAllAlertsMaps();
         clearAllWeatherMaps();
+        isFirstDataFetchCompleted = false;
         animation.clearAllAnimations();
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
