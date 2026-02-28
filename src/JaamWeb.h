@@ -46,6 +46,10 @@ private:
     void handleMapData();
     void handleCss();
     void handleJs();
+    void handleMapEditorCss();
+    void handleMapEditorJs();
+    void handleBgColorEditorCss();
+    void handleBgColorEditorJs();
     String getMeta();
     String getStyles();
     String getScripts();
