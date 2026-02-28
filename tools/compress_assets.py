@@ -129,7 +129,7 @@ def generate_header():
     total_compressed = sum(s["compressed"] for s in stats)
     total_ratio = (1 - total_compressed / total_original) * 100 if total_original > 0 else 0
 
-    print(f"\n📊 Total compression:")
+    print("\n📊 Total compression:")
     print(f"   Original:   {total_original:6d} bytes")
     print(f"   Compressed: {total_compressed:6d} bytes")
     print(f"   Saved:      {total_original - total_compressed:6d} bytes ({total_ratio:.1f}%)")

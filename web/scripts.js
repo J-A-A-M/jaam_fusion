@@ -16,26 +16,28 @@ function setThemeCookie(theme) {
     document.cookie = 'jaam_theme=' + theme + '; max-age=31536000; path=/';
 }
 
-function applyTheme(theme) {
+function applyTheme(theme, persist = true) {
     document.documentElement.setAttribute('data-theme', theme);
-    setThemeCookie(theme);
+    if (persist) {
+        setThemeCookie(theme);
+    }
 }
 
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    applyTheme(newTheme);
+    applyTheme(newTheme, true);
 }
 
 function initTheme() {
     const savedTheme = getThemeFromCookie();
     const theme = savedTheme || detectSystemTheme();
-    applyTheme(theme);
+    applyTheme(theme, !!savedTheme);
     if (!savedTheme && window.matchMedia) {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         mediaQuery.addListener(function(e) {
             if (!getThemeFromCookie()) {
-                applyTheme(e.matches ? 'dark' : 'light');
+                applyTheme(e.matches ? 'dark' : 'light', false);
             }
         });
     }
@@ -201,9 +203,11 @@ function updateAlertsInfo() {
             let activeRegions = data.regions.length;
             let totalAlerts = 0;
             data.regions.forEach(region => {
-                Object.values(region.alerts).forEach(alert => {
-                    if (alert) totalAlerts++;
-                });
+                if (region.alerts && typeof region.alerts === 'object') {
+                    Object.values(region.alerts).forEach(alert => {
+                        if (alert) totalAlerts++;
+                    });
+                }
             });
             
             alertsContent.innerHTML = '<span class="alerts-error">' + 
@@ -636,7 +640,10 @@ function renderControl(ctrl, lists) {
         btn.textContent = label;
         btn.style.backgroundColor = color;
         btn.style.borderColor = color;
-        btn.onclick = () => window.open(url, '_blank');
+        btn.onclick = () => {
+            const w = window.open(url, '_blank', 'noopener,noreferrer');
+            if (w) w.opener = null;
+        };
         
         div.appendChild(btn);
         
