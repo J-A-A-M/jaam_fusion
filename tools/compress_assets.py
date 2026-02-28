@@ -84,8 +84,7 @@ def generate_header():
 
     for asset_name, file_path in ASSETS.items():
         if not os.path.exists(file_path):
-            print(f"⚠️  Warning: {file_path} not found, skipping...")
-            continue
+            raise FileNotFoundError(f"Asset file not found: {file_path}")
 
         compressed, file_hash, original_size, compressed_size = compress_file(file_path)
         ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0

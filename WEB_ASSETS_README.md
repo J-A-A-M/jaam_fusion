@@ -8,17 +8,17 @@
 
 ### Основні файли
 - **styles.css**: 10,169 bytes → 2,072 bytes (**79.6%** reduction)
-- **scripts.js**: 39,071 bytes → 9,749 bytes (**75.0%** reduction)
+- **scripts.js**: 39,934 bytes → 9,868 bytes (**75.3%** reduction)
 
 ### Page-specific файли
-- **map_editor.css**: 1,119 bytes → 437 bytes (**60.9%** reduction)
-- **map_editor.js**: 2,379 bytes → 912 bytes (**61.7%** reduction)
+- **map_editor.css**: 1,236 bytes → 490 bytes (**60.4%** reduction)
+- **map_editor.js**: 2,456 bytes → 952 bytes (**61.2%** reduction)
 - **bg_color_editor.css**: 1,712 bytes → 621 bytes (**63.7%** reduction)
-- **bg_color_editor.js**: 3,113 bytes → 1,175 bytes (**62.3%** reduction)
+- **bg_color_editor.js**: 4,010 bytes → 1,463 bytes (**63.5%** reduction)
 
 ### Загальна статистика
-- **Разом**: 57,563 bytes → 14,966 bytes (**74.0%** reduction)
-- **Економія**: 42,597 bytes
+- **Разом**: 59,517 bytes → 15,466 bytes (**74.0%** reduction)
+- **Економія**: 44,051 bytes
 
 ## Архітектура
 
@@ -81,7 +81,7 @@ platformio run -e firmware
 ### ETag для кешування
 
 Кожен скомпонований файл має унікальний SHA256 hash, який використовується як ETag для HTTP кешування:
-- При першому завантаженні: повні 15.0KB
+- При першому завантаженні: повні 15.1KB
 - При повторних візитах: 0 bytes (304 Not Modified)
 
 ### PROGMEM

@@ -212,7 +212,6 @@ function updateAlertsInfo() {
             const alertsDetailsPanel = document.getElementById('alertsDetailsPanel');
             if (!alertsDetailsPanel) return;
             
-            let detailsHtml = '';
             const alertTypes = [
                 {key: 'air', label: 'Повітряна тривога', 
                  icon: '<svg class="alert-detail-icon" viewBox="0 0 38 38" fill="none"><defs><clipPath id="clip0_1253_836"><rect width="24" height="24" fill="white" transform="translate(7 7)"/></clipPath></defs><circle cx="19" cy="19" r="19" fill="#D55B50"/><g clip-path="url(#clip0_1253_836)"><path fill-rule="evenodd" clip-rule="evenodd" d="M23.1813 12.3365L23.4098 8.798L24.6992 7.50708L25.8692 9.64465L23.1813 12.3365ZM10.161 23.9349C10.1088 23.9926 10.0586 24.0535 10.0106 24.1177C8.82995 25.6952 8.22721 27.0553 7.92452 28.0985C7.54354 29.4114 8.58945 30.4574 9.90208 30.0752C10.9451 29.7716 12.3049 29.167 13.8817 27.9826C13.9451 27.9349 14.0055 27.8851 14.0627 27.8333C14.69 27.3603 15.3494 26.7923 16.0747 26.0659L11.935 21.9264C11.2079 22.6546 10.6339 23.3054 10.161 23.9349ZM29.2034 14.5938L25.6678 14.8229L28.356 12.1295L30.4931 13.3026L29.2034 14.5938ZM19.9385 13.9233L12.4869 21.3745L16.6267 25.514L24.0782 18.0629L19.9385 13.9233ZM23.249 12.9607C23.2588 12.9496 23.269 12.9387 23.2796 12.9281L26.3258 9.8821C26.6087 9.5992 27.0674 9.5992 27.3503 9.8821L28.1197 10.6514C28.4026 10.9343 28.4026 11.393 28.1197 11.6759L25.0735 14.7219C25.0629 14.7325 25.052 14.7427 25.041 14.7525C25.514 15.6383 25.3771 16.7641 24.6302 17.5109L20.4904 13.3714C21.2373 12.6246 22.3632 12.4877 23.249 12.9607Z" fill="#141921"/></g></svg>'},
@@ -236,19 +235,31 @@ function updateAlertsInfo() {
                  icon: '<svg class="alert-detail-icon" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></svg>'}
             ];
             
+            // Clear existing content
+            alertsDetailsPanel.innerHTML = '';
+            
+            // Build alert rows using DOM APIs
             data.regions.forEach(region => {
-                let icons = '';
+                const row = document.createElement('div');
+                row.className = 'alert-detail-row';
+                
+                const regionSpan = document.createElement('span');
+                regionSpan.className = 'alert-detail-region';
+                regionSpan.textContent = region.regionName;
+                row.appendChild(regionSpan);
+                
                 alertTypes.forEach(type => {
                     if (region.alerts && region.alerts[type.key]) {
-                        icons += '<span title="' + type.label + '">' + type.icon + '</span>';
+                        const iconSpan = document.createElement('span');
+                        iconSpan.setAttribute('title', type.label);
+                        // Icons are from static alertTypes array, safe to use innerHTML
+                        iconSpan.innerHTML = type.icon;
+                        row.appendChild(iconSpan);
                     }
                 });
-                detailsHtml += '<div class="alert-detail-row">' +
-                             '<span class="alert-detail-region">' + region.regionName + '</span>' +
-                             icons + '</div>';
+                
+                alertsDetailsPanel.appendChild(row);
             });
-            
-            alertsDetailsPanel.innerHTML = detailsHtml;
         })
         .catch(err => {
             console.error('Error fetching alerts info:', err);
@@ -970,6 +981,13 @@ function loadSavedSection(sections) {
 
 // Startup tasks
 document.addEventListener('DOMContentLoaded', () => {
+    // Only run UI rendering and polling on the main UI page
+    const uiControls = document.getElementById('uiControls');
+    if (!uiControls) {
+        // Editor pages don't have uiControls - skip polling
+        return;
+    }
+    
     loadPanelStates();
     renderUI();
     applyPanelStates();
