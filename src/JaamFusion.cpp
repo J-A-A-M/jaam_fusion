@@ -1257,6 +1257,35 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
             api.updateHomeAlert(homeAlertFlags);
         }
+        if (!isFirstDataFetchCompleted) {
+            LOG.printf("[WEBSOCKET] init processing\n");
+            if (strip_main != nullptr) {
+                animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }
+            if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
+                animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+                    uint32_t color = animation.stripActualColor(strip);
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        strip->setPixelColor(i, color);
+                    }
+                    strip->show();
+                });
+            }   
+            alertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
+            uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
+            api.setHomeAlert(homeAlertFlags);
+            uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
+            int homeTemp = decodeTemperature(encodedTemp);
+            api.setHomeDistrictTemp(homeTemp);
+            updateSirenIfNeeded(alertBit);
+        }
+        isFirstDataFetchCompleted = true;
         alertsHash = actualHash;
     }
 
@@ -1294,36 +1323,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         api.updateHomeDistrictTemp(homeTemp);
         needAdaptColors = true;
     }
-    if (!isFirstDataFetchCompleted) {
-        LOG.printf("[WEBSOCKET] init processing\n");
-        if (strip_main != nullptr) {
-            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-        }
-        if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
-            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                uint32_t color = animation.stripActualColor(strip);
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-        }   
-        alertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
-        uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
-        api.setHomeAlert(homeAlertFlags);
-        uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
-        int homeTemp = decodeTemperature(encodedTemp);
-        api.setHomeDistrictTemp(homeTemp);
-        updateSirenIfNeeded(alertBit);
-    }
-
-    isFirstDataFetchCompleted = true;
+    
     checkFreeHeap("Websockets data processing");
 }
 
@@ -1413,8 +1413,8 @@ void socketConnect() {
     if (websocket.available()) {
         websocketConnected = true;
         servicePin(DATA);
-        clearAllAlertsMaps();
-        clearAllWeatherMaps();
+        //clearAllAlertsMaps();
+        //clearAllWeatherMaps();
         //animation.clearAllAnimations();
         LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
         char chipIdInfo[25];
@@ -2522,6 +2522,7 @@ void websocketProcess() {
         websocketReconnect = true;
         clearAllAlertsMaps();
         clearAllWeatherMaps();
+        isFirstDataFetchCompleted = false;
         animation.clearAllAnimations();
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
