@@ -6,6 +6,9 @@
 #include <esp_system.h>
 #include <ArduinoJson.h>
 
+#define DEST_FS_USES_LITTLEFS
+#include <ESP32-targz.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -54,6 +57,68 @@ void sendLargeJson(WebServer* server, const String& json) {
     if (server->client().connected()) {
         server->client().flush();
     }
+}
+
+void sendCompressedJson(WebServer* server, const String& json) {
+    size_t jsonLen = json.length();
+    uint8_t* compressedBytes = nullptr;
+    
+    // Compress using ESP32-targz LZPacker
+    size_t compressedSize = LZPacker::compress((uint8_t*)json.c_str(), jsonLen, &compressedBytes);
+    
+    if (compressedSize == 0 || compressedBytes == nullptr) {
+        LOG.printf("[WEB] Compression failed, sending uncompressed\n");
+        if (compressedBytes) free(compressedBytes);
+        sendLargeJson(server, json);
+        return;
+    }
+    
+    float ratio = (1.0f - (float)compressedSize / (float)jsonLen) * 100.0f;
+    LOG.printf("[WEB] Compressed JSON: %d → %d bytes (%.1f%% reduction)\n", jsonLen, compressedSize, ratio);
+    
+    // Send compressed data
+    server->sendHeader("Content-Encoding", "gzip");
+    server->setContentLength(compressedSize);
+    server->send(200, "application/json", "");
+    
+    WiFiClient client = server->client();
+    if (client && client.connected()) {
+        client.write(compressedBytes, compressedSize);
+        client.flush();
+    }
+    
+    free(compressedBytes);
+}
+
+void sendCompressedHtml(WebServer* server, const String& html) {
+    size_t htmlLen = html.length();
+    uint8_t* compressedBytes = nullptr;
+    
+    // Compress using ESP32-targz LZPacker
+    size_t compressedSize = LZPacker::compress((uint8_t*)html.c_str(), htmlLen, &compressedBytes);
+    
+    if (compressedSize == 0 || compressedBytes == nullptr) {
+        LOG.printf("[WEB] HTML compression failed, sending uncompressed\n");
+        if (compressedBytes) free(compressedBytes);
+        server->send(200, "text/html", html);
+        return;
+    }
+    
+    float ratio = (1.0f - (float)compressedSize / (float)htmlLen) * 100.0f;
+    LOG.printf("[WEB] Compressed HTML: %d → %d bytes (%.1f%% reduction)\n", htmlLen, compressedSize, ratio);
+    
+    // Send compressed data
+    server->sendHeader("Content-Encoding", "gzip");
+    server->setContentLength(compressedSize);
+    server->send(200, "text/html", "");
+    
+    WiFiClient client = server->client();
+    if (client && client.connected()) {
+        client.write(compressedBytes, compressedSize);
+        client.flush();
+    }
+    
+    free(compressedBytes);
 }
 
 
@@ -1074,14 +1139,14 @@ void JaamWeb::handleClient() {
 void JaamWeb::handleSystemInfo() {
     setCrossOrigin();
     String response = getSystemInfoJson();
-    sendLargeJson(&server, response);
+    sendCompressedJson(&server, response);
     response.clear();
 }
 
 void JaamWeb::handleAlertsInfo() {
     setCrossOrigin();
     String response = getAlertsJson();
-    sendLargeJson(&server, response);
+    sendCompressedJson(&server, response);
     response.clear();
 }
 
@@ -1123,7 +1188,7 @@ void JaamWeb::handleMapData() {
     // Серіалізуємо JSON у компактному форматі
     String response;
     serializeJson(doc, response);
-    sendLargeJson(&server, response);
+    sendCompressedJson(&server, response);
     response.clear();
 }
 
@@ -1209,7 +1274,7 @@ void JaamWeb::handleUiPage() {
 </body>
 </html>
 )HTML";
-    server.send(200, "text/html", html);
+    sendCompressedHtml(&server, html);
     html.clear(); // Звільнення пам'яті
     // Перевіряємо, чи клієнт ще підключений перед flush
     WiFiClient client = server.client();
@@ -1327,7 +1392,7 @@ void JaamWeb::handleMapEditor() {
     html += "</div>";
     
     html += "</div></body></html>";
-    server.send(200, "text/html", html);
+    sendCompressedHtml(&server, html);
     html.clear(); // Звільнення пам'яті
     WiFiClient client = server.client();
     if (client && client.connected()) {
@@ -1362,7 +1427,7 @@ void JaamWeb::handleBgColorsData() {
     // Серіалізуємо JSON у компактному форматі
     String response;
     serializeJson(doc, response);
-    sendLargeJson(&server, response);
+    sendCompressedJson(&server, response);
     response.clear();
 }
 
@@ -1451,7 +1516,7 @@ void JaamWeb::handleBgColorEditor() {
     // Container for dynamically loaded color content
     html += "<div id='colorContent'>";
     html += "</div></body></html>";
-    server.send(200, "text/html", html);
+    sendCompressedHtml(&server, html);
     html.clear(); // Звільнення пам'яті
     WiFiClient client = server.client();
     if (client && client.connected()) {
@@ -1959,7 +2024,7 @@ void JaamWeb::handleUiSchemaDropdownLists() {
     buildUiSchemaDropdownLists(doc);
     String response;
     serializeJson(doc, response);
-    sendLargeJson(&server, response);
+    sendCompressedJson(&server, response);
     response.clear();
 }
 
@@ -1969,6 +2034,6 @@ void JaamWeb::handleUiSchemaControls() {
     buildUiSchemaControls(doc);
     String response;
     serializeJson(doc, response);
-    sendLargeJson(&server, response);
+    sendCompressedJson(&server, response);
     response.clear();
 }

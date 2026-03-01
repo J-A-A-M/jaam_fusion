@@ -16,9 +16,15 @@
 - **bg_color_editor.css**: 1,712 bytes → 621 bytes (**63.7%** reduction)
 - **bg_color_editor.js**: 4,010 bytes → 1,463 bytes (**63.5%** reduction)
 
+### UI Schema (JSON)
+- **ui_schema_models.json**: 705 bytes → 207 bytes (**70.6%** reduction)
+- **ui_schema_sections.json**: 789 bytes → 379 bytes (**52.0%** reduction)
+
 ### Загальна статистика
-- **Разом**: 59,517 bytes → 15,466 bytes (**74.0%** reduction)
-- **Економія**: 44,051 bytes
+- **Разом**: 62,114 bytes → 16,351 bytes (**73.7%** reduction)
+- **Економія**: 45,763 bytes
+
+**Примітка**: Окрім статичних файлів, всі динамічні JSON та HTML відповіді також стискаються в реальному часі (див. розділ "Динамічне стиснення відповідей").
 
 ## Архітектура
 
@@ -32,7 +38,9 @@ jaam_fusion/
 │   ├── map_editor.css           # CSS для редактора карти
 │   ├── map_editor.js            # JavaScript для редактора карти
 │   ├── bg_color_editor.css      # CSS для редактора кольорів
-│   └── bg_color_editor.js       # JavaScript для редактора кольорів
+│   ├── bg_color_editor.js       # JavaScript для редактора кольорів
+│   ├── ui_schema_models.json    # UI моделі (статичні)
+│   └── ui_schema_sections.json  # UI секції (статичні)
 ├── tools/
 │   └── compress_assets.py       # PlatformIO pre-build script
 └── src/
@@ -59,6 +67,8 @@ jaam_fusion/
 - `web/map_editor.js` - логіка редактора карти
 - `web/bg_color_editor.css` - стилі редактора кольорів
 - `web/bg_color_editor.js` - логіка редактора кольорів
+- `web/ui_schema_models.json` - моделі UI елементів (статичні)
+- `web/ui_schema_sections.json` - секції налаштувань (статичні)
 
 ### Збірка проекту
 
@@ -88,6 +98,55 @@ platformio run -e firmware
 
 Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGMEM`), що економить RAM.
 
+## Динамічне стиснення відповідей
+
+Окрім pre-compressed статичних файлів, сервер також стискає динамічні відповіді в реальному часі:
+
+### JSON API Endpoints
+
+Всі JSON API endpoints стискаються через `ESP32-targz` бібліотеку:
+
+- `/ui-schema/dropdown_lists` - списки для dropdown елементів
+- `/ui-schema/controls` - конфігурація UI контролів
+- `/system-info` - системна інформація
+- `/alerts-info` - дані про тривоги
+- `/map-data` - дані для редактора мапи
+- `/bg-colors-data` - дані кольорів фону
+
+**Функція**: `sendCompressedJson()` використовує `LZPacker::compress()` для автоматичного gzip стиснення.
+
+### HTML Pages
+
+Динамічно згенеровані HTML сторінки також стискаються:
+
+- `/` - головна UI сторінка
+- `/map-editor` - редактор мапи
+- `/bg-color-editor` - редактор кольорів фону
+
+**Функція**: `sendCompressedHtml()` стискає великі HTML рядки перед відправкою.
+
+### Переваги динамічного стиснення
+
+- ✅ **Економія трафіку**: 60-80% зменшення розміру JSON/HTML відповідей
+- ✅ **Швидше завантаження**: менше часу на передачу даних через WiFi
+- ✅ **Менше навантаження**: на WiFi радіо та точку доступу
+- ✅ **Автоматичне**: браузер автоматично розпаковує `Content-Encoding: gzip`
+- ✅ **Fallback**: при помилці стиснення відправляється нестиснута версія
+
+### Технічні деталі
+
+**Бібліотека**: `tobozo/ESP32-targz@1.2.4`
+
+**Метод стиснення**: `LZPacker::compress()` - високоефективний gzip компресор
+
+**Приклад логування**:
+```
+[WEB] Compressed JSON: 3245 → 892 bytes (72.5% reduction)
+[WEB] Compressed HTML: 8921 → 2134 bytes (76.1% reduction)
+```
+
+**Управління пам'яттю**: Стиснуті дані автоматично звільняються після відправки через `free(compressedBytes)`.
+
 ## Порівняння з попередніми підходами
 
 ### До змін
@@ -100,7 +159,8 @@ Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGME
 - ✅ CSS/JS у окремих файлах (легше редагувати та підтримувати)
 - ✅ GZIP compression під час build (без навантаження на ESP32)
 - ✅ Pre-compressed binary arrays у PROGMEM
-- ✅ Розмір: **~15KB** (74% економії)
+- ✅ Розмір статичних assets: **~16KB** (73.7% економії)
+- ✅ Динамічне стиснення JSON/HTML через ESP32-targz (60-80% економії)
 - ✅ Hash-based ETag для ефективного кешування
 - ✅ Переиспользування коду між сторінками
 
@@ -150,6 +210,8 @@ platformio run -t clean && platformio run
        "map_editor_js": os.path.join(WEB_DIR, "map_editor.js"),
        "bg_color_editor_css": os.path.join(WEB_DIR, "bg_color_editor.css"),
        "bg_color_editor_js": os.path.join(WEB_DIR, "bg_color_editor.js"),
+       "ui_schema_models_json": os.path.join(WEB_DIR, "ui_schema_models.json"),
+       "ui_schema_sections_json": os.path.join(WEB_DIR, "ui_schema_sections.json"),
        "new_file": os.path.join(WEB_DIR, "new_file.txt"),  # Нове
    }
    ```
