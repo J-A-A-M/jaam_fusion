@@ -3211,6 +3211,7 @@ void JaamWeb::handleSaveMap() {
     if (storage->saveCustomMap(customMap)) {
         //generateCustomRegionMap();
         needRecalculateLeds = true;
+        needAdaptColors = true;
         LOG.printf("[WEB] Custom map saved successfully.\n");
         server.sendHeader("Location", "/map-editor", true);
         server.send(303);
