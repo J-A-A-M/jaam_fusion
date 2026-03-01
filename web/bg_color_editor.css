@@ -1,0 +1,70 @@
+/* Background Color Editor specific styles */
+
+#saveBtn {
+    background: var(--success-color, #28a745) !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    transition: background 0.3s ease !important;
+    min-width: 140px !important;
+}
+
+#saveBtn:hover:not(:disabled) {
+    background: var(--success-hover, #218838) !important;
+}
+
+#saveBtn:disabled {
+    background: var(--text-secondary, #6c757d) !important;
+    color: white !important;
+    cursor: not-allowed !important;
+}
+
+#saveBtn:focus {
+    outline: 2px solid var(--accent-color, #007bff) !important;
+    outline-offset: 2px !important;
+}
+
+#colorContent {
+    max-width: 600px !important;
+    margin: 20px auto !important;
+    background: var(--panel-bg, var(--main-bg)) !important;
+    border: 1px solid var(--border-color, #dee2e6) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3) !important;
+    padding: 20px !important;
+    transition: background-color 0.3s ease !important;
+}
+
+.led-color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.led-color-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--panel-bg);
+}
+
+.led-color-item label {
+    font-size: 12px;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.led-color-picker {
+    width: 80px;
+    height: 40px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
