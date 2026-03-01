@@ -523,7 +523,7 @@ platformio device monitor
 
 ---
 
-## 🐛 Відлагодження
+## 🐛 Налагодження
 
 ### Serial Monitor
 ```bash
