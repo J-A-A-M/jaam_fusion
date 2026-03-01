@@ -350,16 +350,17 @@ function updateTextParameter(name, value) {
 
 // Dynamic UI rendering (from /ui-schema)
 async function fetchSchema() {
+    const h = window.JAAM_HASHES || {};
     const [models, sections, dropdownLists, controls] = await Promise.all([
-        fetch('/ui-schema/models').then(r => r.json()),
-        fetch('/ui-schema/sections').then(r => r.json()),
+        fetch('/ui-schema/models' + (h.uiModels ? '?v=' + h.uiModels : '')).then(r => r.json()),
+        fetch('/ui-schema/sections' + (h.uiSections ? '?v=' + h.uiSections : '')).then(r => r.json()),
         fetch('/ui-schema/dropdown_lists').then(r => r.json()),
         fetch('/ui-schema/controls').then(r => r.json())
     ]);
     
     return {
-        models: models.models,
-        sections: sections.sections,
+        models: models,
+        sections: sections,
         dropdown_lists: dropdownLists.dropdown_lists,
         controls: controls.controls
     };

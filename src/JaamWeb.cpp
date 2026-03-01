@@ -1046,8 +1046,6 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/system-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/alerts-info", HTTP_GET, [this]() { this->handleAlertsInfo(); });
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema", HTTP_GET, [this]() { this->handleUiSchema(); });
-    server.on("/ui-schema", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/models", HTTP_GET, [this]() { this->handleUiSchemaModels(); });
     server.on("/ui-schema/models", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/sections", HTTP_GET, [this]() { this->handleUiSchemaSections(); });
@@ -1153,6 +1151,7 @@ void JaamWeb::handleUiPage() {
         // Inject meta and link to external CSS/JS with version hashes
         html += getMeta();
         html += "<link rel=\"stylesheet\" href=\"/styles.css?v=" + String(styles_css_hash) + "\">\n";
+        html += "<script>window.JAAM_HASHES={uiModels:'" + String(ui_schema_models_json_hash) + "',uiSections:'" + String(ui_schema_sections_json_hash) + "'};</script>\n";
         html += "<script src=\"/scripts.js?v=" + String(scripts_js_hash) + "\"></script>\n";
 
         // Body start
@@ -1228,24 +1227,6 @@ static void appendOptionsList(JsonArray arr, SettingListItem items[], int itemCo
         opt.add(items[i].name);
         opt.add(items[i].sub ? 1 : 0);
     }
-}
-
-void JaamWeb::handleUiSchema() {
-    setCrossOrigin();
-
-    JsonDocument doc;
-    
-    // Build all components
-    buildUiSchemaModels(doc);
-    buildUiSchemaSections(doc);
-    buildUiSchemaDropdownLists(doc);
-    buildUiSchemaControls(doc);
-
-    // Serialize JSON and send
-    String response;
-    serializeJson(doc, response);
-    sendLargeJson(&server, response);
-    response.clear(); // Звільнення пам'яті
 }
 
 void JaamWeb::handleSaveMap() {
@@ -1476,57 +1457,6 @@ void JaamWeb::handleBgColorEditor() {
     if (client && client.connected()) {
         client.flush();
     }
-}
-
-void JaamWeb::buildUiSchemaModels(JsonDocument& doc) {
-    static const char modelsJson[] PROGMEM = R"JSON(
-    {
-      "dropdown": ["name", "label", "list", "current", "section", "visibility"],
-      "dropdown_confirm": ["name", "label", "list", "current", "section", "visibility"],
-      "bool":     ["name", "label", "current", "section", "visibility"],
-      "text":     ["name", "label", "current", "placeholder", "section", "visibility"],
-      "color":    ["name", "label", "current", "section", "visibility"],
-      "slider":   ["name", "label", "min", "max", "step", "current", "section", "visibility"],
-      "button":   ["name", "label", "color", "url", "section", "visibility"],
-      "label":    ["label", "section", "visibility"],
-      "info":     ["text", "color", "icon", "section", "visibility"],
-      "option":   ["id", "name", "sub"]
-    }
-    )JSON";
-
-    JsonDocument modelsDoc;
-    DeserializationError err = deserializeJson(modelsDoc, modelsJson);
-    if (err) {
-        LOG.printf("[WEB] Failed to parse models JSON: %s\n", err.c_str());
-        return;
-    }
-    doc["models"].set(modelsDoc.as<JsonObject>());
-}
-
-void JaamWeb::buildUiSchemaSections(JsonDocument& doc) {
-    static const char sectionsJson[] PROGMEM = R"JSON(
-    [
-      {"id": "general", "name": "Загальні", "color": "#007bff"},
-      {"id": "display", "name": "Дисплей", "color": "#28a745"},
-      {"id": "network", "name": "Мережа", "color": "#17a2b8"},
-      {"id": "hardware", "name": "Апаратне забезпечення", "color": "#6f42c1"},
-      {"id": "siren", "name": "Сирена", "color": "#e83e8c"},
-      {"id": "climate", "name": "Клімат", "color": "#34f396"},
-      {"id": "animations", "name": "Анімації", "color": "#fd7e14"},
-      {"id": "brightness", "name": "Яскравість", "color": "#ffc107"},
-      {"id": "alerts", "name": "Тривоги", "color": "#6c757d"},
-      {"id": "sound", "name": "Звук", "color": "#dc3545"},
-      {"id": "firmware", "name": "Оновлення прошивки", "color": "#9c1cf8"}
-    ]
-    )JSON";
-
-    JsonDocument sectionsDoc;
-    DeserializationError err = deserializeJson(sectionsDoc, sectionsJson);
-    if (err) {
-        LOG.printf("[WEB] Failed to parse sections JSON: %s\n", err.c_str());
-        return;
-    }
-    doc["sections"].set(sectionsDoc.as<JsonArray>());
 }
 
 void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
@@ -1977,22 +1907,50 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
 
 void JaamWeb::handleUiSchemaModels() {
     setCrossOrigin();
-    JsonDocument doc;
-    buildUiSchemaModels(doc);
-    String response;
-    serializeJson(doc, response);
-    sendLargeJson(&server, response);
-    response.clear();
+    
+    // Cache for 24 hours with hash-based ETag
+    String etag = "\"" + String(ui_schema_models_json_hash) + "\"";
+    server.sendHeader("Cache-Control", "public, max-age=86400");
+    server.sendHeader("ETag", etag);
+    
+    // Check If-None-Match for 304 response
+    if (server.hasHeader("If-None-Match") && server.header("If-None-Match") == etag) {
+        server.send(304);
+        return;
+    }
+    
+    WiFiClient client = server.client();
+    if (!client || !client.connected()) {
+        return;
+    }
+    
+    server.sendHeader("Content-Encoding", "gzip");
+    server.setContentLength(ui_schema_models_json_gz_len);
+    server.send_P(200, "application/json", (const char*)ui_schema_models_json_gz, ui_schema_models_json_gz_len);
 }
 
 void JaamWeb::handleUiSchemaSections() {
     setCrossOrigin();
-    JsonDocument doc;
-    buildUiSchemaSections(doc);
-    String response;
-    serializeJson(doc, response);
-    sendLargeJson(&server, response);
-    response.clear();
+    
+    // Cache for 24 hours with hash-based ETag
+    String etag = "\"" + String(ui_schema_sections_json_hash) + "\"";
+    server.sendHeader("Cache-Control", "public, max-age=86400");
+    server.sendHeader("ETag", etag);
+    
+    // Check If-None-Match for 304 response
+    if (server.hasHeader("If-None-Match") && server.header("If-None-Match") == etag) {
+        server.send(304);
+        return;
+    }
+    
+    WiFiClient client = server.client();
+    if (!client || !client.connected()) {
+        return;
+    }
+    
+    server.sendHeader("Content-Encoding", "gzip");
+    server.setContentLength(ui_schema_sections_json_gz_len);
+    server.send_P(200, "application/json", (const char*)ui_schema_sections_json_gz, ui_schema_sections_json_gz_len);
 }
 
 void JaamWeb::handleUiSchemaDropdownLists() {

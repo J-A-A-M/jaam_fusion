@@ -37,7 +37,6 @@ private:
     void handleTextParameter();
     void handleSystemInfo();
     void handleAlertsInfo();
-    void handleUiSchema();
     void handleUiSchemaModels();
     void handleUiSchemaSections();
     void handleUiSchemaDropdownLists();
@@ -51,11 +50,6 @@ private:
     void handleBgColorEditorCss();
     void handleBgColorEditorJs();
     String getMeta();
-    String getStyles();
-    String getScripts();
-    void buildUiSchemaModels(JsonDocument& doc);
-    void buildUiSchemaSections(JsonDocument& doc);
     void buildUiSchemaDropdownLists(JsonDocument& doc);
     void buildUiSchemaControls(JsonDocument& doc);
-    String minify(const String& source);
 };
