@@ -1,0 +1,127 @@
+JAAM Fusion Firmware License
+=============================
+
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+(CC BY-NC-SA 4.0)
+
+Copyright (c) 2024-2026 JAAM Project Contributors
+
+This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 
+4.0 International License.
+
+SUMMARY
+-------
+
+You are free to:
+  ✓ Share — copy and redistribute the material in any medium or format
+  ✓ Adapt — remix, transform, and build upon the material
+
+Under the following terms:
+  • Attribution — You must give appropriate credit to JAAM Project, provide a link 
+    to the license, and indicate if changes were made. You may do so in any 
+    reasonable manner, but not in any way that suggests the licensor endorses 
+    you or your use.
+    
+  • NonCommercial — You may NOT use the material for commercial purposes without 
+    explicit written permission from the copyright holders. This includes but is 
+    not limited to:
+    - Selling devices with this firmware
+    - Offering paid services based on this firmware
+    - Using in commercial products
+    - Any activity intended for or directed toward commercial advantage or 
+      monetary compensation
+    
+  • ShareAlike — If you remix, transform, or build upon the material, you must 
+    distribute your contributions under the same license (CC BY-NC-SA 4.0) as 
+    the original.
+    
+  • No additional restrictions — You may not apply legal terms or technological 
+    measures that legally restrict others from doing anything the license permits.
+
+
+COMMERCIAL USE
+--------------
+
+For commercial licensing inquiries, please contact:
+  • Telegram: https://t.me/jaam_project
+  • GitHub: https://github.com/J-A-A-M/jaam_fusion/issues
+
+We are open to discussing commercial licensing arrangements on a case-by-case basis.
+
+
+FULL LICENSE TEXT
+-----------------
+
+To view a copy of this license, visit:
+https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
+Or send a letter to:
+Creative Commons
+PO Box 1866
+Mountain View, CA 94042
+USA
+
+
+ATTRIBUTION REQUIREMENTS
+------------------------
+
+When using or distributing this work, please include:
+  1. The name "JAAM Fusion" or "JAAM Project"
+  2. A link to the original repository: https://github.com/J-A-A-M/jaam_fusion
+  3. A link to this license
+  4. An indication if you made any modifications
+
+Example attribution:
+  "Based on JAAM Fusion (https://github.com/J-A-A-M/jaam_fusion) 
+   by JAAM Project, licensed under CC BY-NC-SA 4.0"
+
+
+DISCLAIMER
+----------
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+THE SOFTWARE.
+
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+This project uses several third-party libraries and components, each with their 
+own licenses. Please refer to the respective library documentation for their 
+license terms:
+
+  • ESP32 Arduino Core - LGPL-2.1
+  • ArduinoAsync - MIT
+  • Adafruit NeoPixel - LGPL-3.0
+  • WiFiManager - MIT
+  • ArduinoJson - MIT
+  • ArduinoWebsockets - GPL-3.0
+  • NTPtime - GPL-3.0
+  • U8g2 - BSD-2-Clause
+  • And others (see platformio.ini for full list)
+
+These dependencies are not covered by the CC BY-NC-SA 4.0 license and retain 
+their original licenses.
+
+
+STAND WITH UKRAINE
+------------------
+
+This project was created to support Ukraine during the ongoing war. If you 
+benefit from this work, please consider supporting Ukraine:
+
+  • Stand With Ukraine: http://stand-with-ukraine.pp.ua/
+  • Come Back Alive Foundation: https://savelife.in.ua/
+  • United24: https://u24.gov.ua/
+
+Слава Україні! 🇺🇦
+
+---
+
+For questions about this license, please open an issue on GitHub:
+https://github.com/J-A-A-M/jaam_fusion/issues
