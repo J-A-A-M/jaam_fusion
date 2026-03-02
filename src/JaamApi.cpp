@@ -620,7 +620,7 @@ void JaamApi::broadcastFirmwareUpdate(const char* version) {
 
 // --- Обробка змін налаштувань ---
 
-void JaamApi::onSettingsChange(Type type, int intValue, const char* strValue) {
+void JaamApi::onSettingsChange(Type type, int intValue, float fltValue, const char* strValue) {
     // Перевіряємо чи settings ініціалізовані
     if (!settings) {
         return;

@@ -13,7 +13,7 @@ public:
     void begin();
     
     // Обробка змін налаштувань
-    void onSettingsChange(Type type, int intValue, const char* strValue);
+    void onSettingsChange(Type type, int intValue, float fltValue, const char* strValue);
     
 private:
     JaamSettings* settings;

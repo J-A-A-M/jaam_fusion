@@ -1888,16 +1888,16 @@ void initSettings() {
     }
     
     // Реєструємо callback для автоматичного broadcast змін налаштувань до API
-    settings.setChangeCallback([](Type type, int intValue, const char* strValue) {
+    settings.setChangeCallback([](Type type, int intValue, float fltValue, const char* strValue) {
       
         // Повідомляємо mDNS про зміни налаштувань
-        mdnsService.onSettingsChange(type, intValue, strValue);
+        mdnsService.onSettingsChange(type, intValue, fltValue, strValue);
         
         // Повідомляємо API про зміни налаштувань
-        api.onSettingsChange(type, intValue, strValue);
+        api.onSettingsChange(type, intValue, fltValue, strValue);
 
         // Повідомляємо Siren про зміни налаштувань
-        siren.onSettingsChange(type, intValue, strValue);
+        siren.onSettingsChange(type, intValue, fltValue, strValue);
         
         // Обробляємо зміни налаштувань локально
         switch(type) {
@@ -2931,7 +2931,7 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
         handleAdaptColors();
         
         // Оновлюємо посилання в веб-інтерфейсі
-        web.begin(strip_main, strip_bg, strip_service);
+        web.setStrips(strip_main, strip_bg, strip_service);
         
         LOG.printf("[LED] Strip reconnection completed.\n");
         logMemoryUsage("after strip reconnection complete");
@@ -3047,6 +3047,14 @@ void requestWebsocketReconnect() {
     }
 }
 
+void updateFirmware() {
+    LOG.printf("[FIRMWARE] Update started\n");
+    display.showServiceMessage("Виконано", "Запит оновлення:", 3000);
+    animation.clearAllAnimations();
+    fwUpdate.download();
+    fwUpdate.clearUpdateRequest();
+}
+
 void requestFirmwareUpdate(const char* firmwareId) {
     const char* versionToUse = firmwareId ? firmwareId : fwUpdate.getNewVersion();
     
@@ -3062,10 +3070,7 @@ void requestFirmwareUpdate(const char* firmwareId) {
     }
     
     LOG.printf("[FIRMWARE] Update requested for version: %s\n", versionToUse);
-    display.showServiceMessage("Виконано", "Запит оновлення:", 3000);
-    animation.clearAllAnimations();
-    fwUpdate.download();
-    fwUpdate.clearUpdateRequest();
+    async.setTimeout(updateFirmware, 500); // Додаємо невелику затримку перед початком оновлення
 }
 
 void requestRecalculateLeds() {

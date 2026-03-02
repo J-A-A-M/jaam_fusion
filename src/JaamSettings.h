@@ -5,7 +5,7 @@
 #include <functional>
 
 // Callback для повідомлення про зміни налаштувань
-typedef std::function<void(Type type, int intValue, const char* strValue)> SettingsChangeCallback;
+typedef std::function<void(Type type, int intValue, float fltValue, const char* strValue)> SettingsChangeCallback;
 
 class JaamSettings {
 

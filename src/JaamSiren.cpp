@@ -61,7 +61,7 @@ void JaamSiren::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
 
-void JaamSiren::onSettingsChange(Type type, int intValue, const char* strValue) {
+void JaamSiren::onSettingsChange(Type type, int intValue, float fltValue, const char* strValue) {
     if (!settings) {
         return;
     }

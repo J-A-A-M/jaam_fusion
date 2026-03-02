@@ -735,10 +735,14 @@ void JaamWeb::handleNotFound() {
     server.send(404, "text/plain", "Not found");
 }
 
-void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
+void JaamWeb::setStrips(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
     this->strip_main = strip_main;
     this->strip_bg = strip_bg;
     this->strip_service = strip_service;
+}
+
+void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
+    setStrips(strip_main, strip_bg, strip_service);
 
     // Налаштування веб-сервера
     //server.enableCORS();

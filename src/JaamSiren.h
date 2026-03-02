@@ -11,7 +11,7 @@ public:
     void init();
     
     // Обробка змін налаштувань
-    void onSettingsChange(Type type, int intValue, const char* strValue);
+    void onSettingsChange(Type type, int intValue, float fltValue, const char* strValue);
     
     // Основні методи управління GPIO пінами
     void setAlert();     // Активувати пін тривоги
