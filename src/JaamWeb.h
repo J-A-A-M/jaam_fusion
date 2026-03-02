@@ -13,6 +13,7 @@ public:
     void setStorage(JaamStorage* storage);
     void setDeviceInfo(const char* chipId, const char* fwVersion);
     void begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service);
+    void setStrips(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service);
     void handleClient();
 
 private:

@@ -5,9 +5,9 @@
 #include <ArduinoJson.h>
 #include <cmath>
 
-extern volatile bool needAdaptColors;
 extern void servicePin(ServiceLed type);
 extern JaamFirmwareUpdate fwUpdate;
+extern void requestFirmwareUpdate(const char* firmwareId);
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
@@ -233,7 +233,6 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
 
             if (newMode >= 0 && newMode <= 4) {
                 settings->saveInt(MAP_MODE, newMode);
-                needAdaptColors = true;
                 LOG.printf("[API] Map mode changed to: %d\n", newMode);
             } else {
                 LOG.printf("[API] Invalid map mode: %d\n", newMode);
@@ -246,7 +245,6 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
             String color = doc["color"].as<String>();
             if (color.length() == 7 && color[0] == '#') {
                 settings->saveString(COLOR_LAMP, color.c_str());
-                needAdaptColors = true;
                 LOG.printf("[API] Lamp color changed to: %s\n", color.c_str());
             }
         }
@@ -255,7 +253,6 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
             int brightness = doc["brightness"].as<int>();
             if (brightness >= 0 && brightness <= 100) {
                 settings->saveInt(BRIGHTNESS_LAMP, brightness);
-                needAdaptColors = true;
                 LOG.printf("[API] Lamp brightness changed to: %d\n", brightness);
             }
         }
@@ -274,7 +271,6 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
             }
             if (validRegion) {
                 settings->saveInt(HOME_DISTRICT, regionId);
-                needAdaptColors = true;
                 LOG.printf("[API] Home region changed to: %d\n", regionId);
             } else {
                 LOG.printf("[API] Invalid region id: %d\n", regionId);
@@ -286,7 +282,7 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
         if (!doc["version"].isNull()) {
             String version = doc["version"].as<String>();
             LOG.printf("[API] Firmware update requested, version: %s\n", version.c_str());
-            fwUpdate.requestUpdate(version.c_str());
+            requestFirmwareUpdate(version.c_str());
         }
     }
     else {
@@ -624,7 +620,7 @@ void JaamApi::broadcastFirmwareUpdate(const char* version) {
 
 // --- Обробка змін налаштувань ---
 
-void JaamApi::onSettingsChange(Type type, int intValue, const char* strValue) {
+void JaamApi::onSettingsChange(Type type, int intValue, float fltValue, const char* strValue) {
     // Перевіряємо чи settings ініціалізовані
     if (!settings) {
         return;

@@ -275,7 +275,7 @@ void JaamMDNS::reconfigureWsService() {
     }
 }
 
-void JaamMDNS::onSettingsChange(Type type, int intValue, const char* strValue) {
+void JaamMDNS::onSettingsChange(Type type, int intValue, float fltValue, const char* strValue) {
     if (!settings) {
         return;
     }

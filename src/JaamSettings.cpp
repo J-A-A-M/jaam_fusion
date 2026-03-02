@@ -320,8 +320,50 @@ int JaamSettings::getInt(Type type) {
     throw std::runtime_error("Unknown setting type");
 }
 
-void JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
+bool JaamSettings::validateIntSetting(Type type, int value) {
+    // Перевірка API_PORT != 80 (зарезервований для веб-сервера)
+    if (type == API_PORT && value == 80) {
+        LOG.printf("[SETTINGS] API_PORT cannot be 80 (reserved for web server)\n");
+        return false;
+    }
+    
+    // Для JAAM2: піни сирени не можуть бути BH1750_POWER_PIN (керуючий пін живлення для сенсора освітлення)
+    if (getInt(HARDWARE) == HARDWARE::JAAM_2_1) { // JAAM2
+        if ((type == ALERT_PIN || type == CLEAR_PIN || type == ALERT_PIN_2 || type == CLEAR_PIN_2) && value == BH1750_POWER_PIN) {
+            LOG.printf("[SETTINGS] Siren pins cannot be %d for JAAM2 (power control pin for light sensor)\n", BH1750_POWER_PIN);
+            return false;
+        }
+    }
+    
+    // Перевірка перетину пінів першого та другого пристрою сирени
+    if ((type == ALERT_PIN || type == CLEAR_PIN) && value > 0) {
+        int alertPin2 = getInt(ALERT_PIN_2);
+        int clearPin2 = getInt(CLEAR_PIN_2);
+        if ((alertPin2 > 0 && value == alertPin2) || (clearPin2 > 0 && value == clearPin2)) {
+            LOG.printf("[SETTINGS] Pin %d for first siren device conflicts with second siren device\n", value);
+            return false;
+        }
+    }
+    
+    if ((type == ALERT_PIN_2 || type == CLEAR_PIN_2) && value > 0) {
+        int alertPin = getInt(ALERT_PIN);
+        int clearPin = getInt(CLEAR_PIN);
+        if ((alertPin > 0 && value == alertPin) || (clearPin > 0 && value == clearPin)) {
+            LOG.printf("[SETTINGS] Pin %d for second siren device conflicts with first siren device\n", value);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+bool JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
     if (intSettings.find(type) != intSettings.end()) {
+        // Валідація перед збереженням
+        if (!validateIntSetting(type, value)) {
+            return false;
+        }
+        
         SettingItemInt setting = intSettings[type];
         if (saveToPrefs) {
             preferences.begin(PREFS_NAME, false);
@@ -332,15 +374,35 @@ void JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         intSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: %d (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
         
+        // Якщо змінюємо HARDWARE на JAAM2, скидаємо піни сирени що дорівнюють BH1750_POWER_PIN
+        if (type == HARDWARE && value == HARDWARE::JAAM_2_1) {
+            if (getInt(ALERT_PIN) == BH1750_POWER_PIN) {
+                LOG.printf("[SETTINGS] Resetting ALERT_PIN to -1 (conflicts with JAAM2 light sensor power pin)\n");
+                saveInt(ALERT_PIN, -1, saveToPrefs);
+            }
+            if (getInt(CLEAR_PIN) == BH1750_POWER_PIN) {
+                LOG.printf("[SETTINGS] Resetting CLEAR_PIN to -1 (conflicts with JAAM2 light sensor power pin)\n");
+                saveInt(CLEAR_PIN, -1, saveToPrefs);
+            }
+            if (getInt(ALERT_PIN_2) == BH1750_POWER_PIN) {
+                LOG.printf("[SETTINGS] Resetting ALERT_PIN_2 to -1 (conflicts with JAAM2 light sensor power pin)\n");
+                saveInt(ALERT_PIN_2, -1, saveToPrefs);
+            }
+            if (getInt(CLEAR_PIN_2) == BH1750_POWER_PIN) {
+                LOG.printf("[SETTINGS] Resetting CLEAR_PIN_2 to -1 (conflicts with JAAM2 light sensor power pin)\n");
+                saveInt(CLEAR_PIN_2, -1, saveToPrefs);
+            }
+        }
+
         // Викликаємо callback якщо зареєстрований
         if (changeCallback) {
-            changeCallback(type, value, nullptr);
+            changeCallback(type, value, 0.0f, nullptr);
         }
         
-        return;
+        return true;
     }
     LOG.printf("[SETTINGS] Unknown int setting type\n");
-    throw std::runtime_error("Unknown setting type");
+    return false;
 }
 
 const char* JaamSettings::getString(Type type) {
@@ -351,7 +413,7 @@ const char* JaamSettings::getString(Type type) {
     throw std::runtime_error("Unknown setting type");
 }
 
-void JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
+bool JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
     if (stringSettings.find(type) != stringSettings.end()) {
         SettingItemString setting = stringSettings[type];
         if (saveToPrefs) {
@@ -365,13 +427,13 @@ void JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
         
         // Викликаємо callback якщо зареєстрований
         if (changeCallback) {
-            changeCallback(type, 0, value);
+            changeCallback(type, 0, 0.0f, value);
         }
         
-        return;
+        return true;
     }
     LOG.printf("[SETTINGS] Unknown stringsetting type\n");
-    throw std::runtime_error("Unknown setting type");
+    return false;
 }
 
 float JaamSettings::getFloat(Type type) {
@@ -382,7 +444,7 @@ float JaamSettings::getFloat(Type type) {
     throw std::runtime_error("Unknown setting type");
 }
 
-void JaamSettings::saveFloat(Type type, float value, bool saveToPrefs) {
+bool JaamSettings::saveFloat(Type type, float value, bool saveToPrefs) {
     if (floatSettings.find(type) != floatSettings.end()) {
         SettingItemFloat setting = floatSettings[type];
         if (saveToPrefs) {
@@ -393,18 +455,24 @@ void JaamSettings::saveFloat(Type type, float value, bool saveToPrefs) {
         setting.value = value;
         floatSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: %.1f (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
-        return;
+        
+        // Викликаємо callback якщо зареєстрований
+        if (changeCallback) {
+            changeCallback(type, 0, value, nullptr);
+        }
+        
+        return true;
     }
     LOG.printf("[SETTINGS] Unknown floatsetting type\n");
-    throw std::runtime_error("Unknown setting type");
+    return false;
 }
 
 bool JaamSettings::getBool(Type type) {
     return getInt(type) == 1;
 }
 
-void JaamSettings::saveBool(Type type, bool value, bool saveToPrefs) {
-    saveInt(type, value ? 1 : 0, saveToPrefs);
+bool JaamSettings::saveBool(Type type, bool value, bool saveToPrefs) {
+    return saveInt(type, value ? 1 : 0, saveToPrefs);
 }
 
 bool JaamSettings::hasKey(Type type) {

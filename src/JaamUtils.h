@@ -75,8 +75,6 @@ extern JaamClimateSensor                climate;
 extern JaamLightSensor                  lightSensor;
 extern int                              prevMapMode;
 
-extern volatile bool                    needAdaptColors;
-
 struct LedBit {
     int highest_bit;
     uint16_t region_id;
@@ -978,7 +976,7 @@ inline bool saveMapMode(int newMapMode) {
     prevMapMode = settings.getInt(MAP_MODE);
   }
   settings.saveInt(MAP_MODE, newMapMode);
-  needAdaptColors = true;
+  // Callback автоматично викличе handleAdaptColors()
   //reportSettingsChange("map_mode", newMapMode);
   const char* mapModeName = getNameById(MAP_MODES, newMapMode, MAP_MODES_COUNT);
   display.showServiceMessage(mapModeName, "Режим мапи:");

@@ -5,7 +5,7 @@
 #include <functional>
 
 // Callback для повідомлення про зміни налаштувань
-typedef std::function<void(Type type, int intValue, const char* strValue)> SettingsChangeCallback;
+typedef std::function<void(Type type, int intValue, float fltValue, const char* strValue)> SettingsChangeCallback;
 
 class JaamSettings {
 
@@ -14,13 +14,13 @@ public:
     void init();
     const char* getKey(Type type);
     int getInt(Type type);
-    void saveInt(Type type, int value, bool saveToPrefs = true);
+    bool saveInt(Type type, int value, bool saveToPrefs = true);
     const char* getString(Type type);
-    void saveString(Type type, const char* value, bool saveToPrefs = true);
+    bool saveString(Type type, const char* value, bool saveToPrefs = true);
     float getFloat(Type type);
-    void saveFloat(Type type, float value, bool saveToPrefs = true);
+    bool saveFloat(Type type, float value, bool saveToPrefs = true);
     bool getBool(Type type);
-    void saveBool(Type type, bool value, bool saveToPrefs = true);
+    bool saveBool(Type type, bool value, bool saveToPrefs = true);
     bool hasKey(Type type);
     void getSettingsBackup(Print* stream, const char* fwVersion, const char* chipID, const char* time);
     bool restoreSettingsBackup(const char* settings);
@@ -31,4 +31,7 @@ public:
 private:
     Preferences preferences;
     SettingsChangeCallback changeCallback;
+    
+    // Валідація значень перед збереженням
+    bool validateIntSetting(Type type, int value);
 };
