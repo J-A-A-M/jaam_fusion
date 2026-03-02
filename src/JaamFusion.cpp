@@ -2020,8 +2020,8 @@ void initSettings() {
             case BG_LED_PIN:
             case BG_LED_COUNT:
                 handleRecalculateLeds();
-                handleReconnectStrips(false, true, false);
                 handleRegenerateBgColorMap();
+                handleReconnectStrips(false, true, false);
                 break;
             
             // LED SERVICE конфігурація (формат/частота/пін)
