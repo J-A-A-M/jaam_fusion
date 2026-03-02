@@ -399,8 +399,8 @@ void playMelody(SoundType type) {
 
 bool needToPlaySound(SoundType type) {
 #if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
-  // do not play any sound before websocket connection
-  if (startup) return false;
+  // do not play any sound before websocket connection and startup
+  if (startup || !isFirstDataFetchCompleted) return false;
 
   // ignore mute on alert
   //if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
