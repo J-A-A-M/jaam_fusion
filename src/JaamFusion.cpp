@@ -122,6 +122,7 @@ bool                wifiConnected = false;
 WebsocketsClient    websocket;
 time_t              websocketLastPingTime = 0;
 bool                isFirstDataFetchCompleted = false;
+bool                startup = true;
 bool                websocketConnected;
 bool                websocketReconnect = false;
 time_t              lastWebsocketConnectTime = 0;
@@ -261,7 +262,7 @@ bool isItNightNow() {
 }
 
 int getCurrentMapMode() {
-  if (minuteOfSilence || uaAnthemPlaying || !isFirstDataFetchCompleted) return MapModes::FLAG; // ua flag
+  if (minuteOfSilence || uaAnthemPlaying || startup) return MapModes::FLAG; // ua flag
 
 //   int homeRegionId = settings.getInt(HOME_DISTRICT);
 //   int alarmMode = settings.getInt(ALARMS_AUTO_SWITCH);
@@ -399,7 +400,7 @@ void playMelody(SoundType type) {
 bool needToPlaySound(SoundType type) {
 #if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
   // do not play any sound before websocket connection
-  if (!isFirstDataFetchCompleted) return false;
+  if (startup) return false;
 
   // ignore mute on alert
   //if (SoundType::ALERT_ON == type && settings.getBool(SOUND_ON_ALERT) && settings.getBool(IGNORE_MUTE_ON_ALERT)) return true;
@@ -1287,6 +1288,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             updateSirenIfNeeded(alertBit);
         }
         isFirstDataFetchCompleted = true;
+        startup = false;
         alertsHash = actualHash;
     }
 
