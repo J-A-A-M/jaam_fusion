@@ -1414,6 +1414,10 @@ void socketConnect() {
     if (websocket.available()) {
         websocketConnected = true;
         servicePin(DATA);
+        if (websocketReconnect) {
+            animation.clearAllAnimations();
+            websocketReconnect = false;
+        }
         //clearAllAlertsMaps();
         //clearAllWeatherMaps();
         //animation.clearAllAnimations();
@@ -1433,12 +1437,7 @@ void socketConnect() {
         LOG.printf("[WEBSOCKET] %s\n", userInfo);
         websocket.send(userInfo);
         websocket.ping("A");
-        if (websocketReconnect) {
-            animation.clearAllAnimations();
-            websocketReconnect = false;
-        }
         lastWebsocketConnectTime  = millis();
-
         display.showServiceMessage("підключено!", "Сервер даних", 3000);
     } else {
         display.showServiceMessage("недоступний", "Сервер даних", 3000);
@@ -2865,18 +2864,42 @@ void handleAdaptStripBrightness() {
     if (strip_main != nullptr) {
         animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
+            for (uint16_t i = 0; i < strip->numPixels(); i++) {
+                    uint32_t color = animation.ledActualColor(strip, i);
+                    strip->setPixelColor(i, color);
+                }
             strip->show();
         });
     }
     if (strip_bg != nullptr) {
         animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
+            switch (settings.getInt(BG_LED_MODE)) {
+                case BgLedModes::COLOR_MAP: {
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
+                    }
+                    break;
+                }
+                default: {
+                    uint32_t color = animation.stripActualColor(strip);
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        strip->setPixelColor(i, color);
+                    }
+                    break;
+                }
+            }
             strip->show();
         });
     }
     if (strip_service != nullptr) {
         animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
             strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
+            for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
             strip->show();
         });
     }
@@ -2928,7 +2951,6 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
         }
         
         handleAdaptStripBrightness();
-        handleAdaptColors();
         
         // Оновлюємо посилання в веб-інтерфейсі
         web.setStrips(strip_main, strip_bg, strip_service);
@@ -3094,24 +3116,8 @@ void brightnessProcess() {
     if (settings.getInt(CURRENT_BRIGHTNESS) != currentBrightness) {
         settings.saveInt(CURRENT_BRIGHTNESS, currentBrightness);
         LOG.printf("[BRIGHTNESS] Setting current_brightness to %d\n", currentBrightness);
-        if (strip_main != nullptr) {
-            animation.safeStripOperation(strip_main, [currentBrightness](Adafruit_NeoPixel* strip) {
-                strip->setBrightness(led.brightnessMapped(currentBrightness));
-                strip->show();
-            });
-        }
-        if (strip_bg != nullptr) {
-            animation.safeStripOperation(strip_bg, [currentBrightness](Adafruit_NeoPixel* strip) {
-                strip->setBrightness(led.brightnessMapped(currentBrightness));
-                strip->show();
-            });
-        }
-        if (strip_service != nullptr) {
-            animation.safeStripOperation(strip_service, [currentBrightness](Adafruit_NeoPixel* strip) {
-                strip->setBrightness(led.brightnessMapped(currentBrightness));
-                strip->show();
-            });
-        }
+        handleAdaptStripBrightness();     
+        handleAdaptAnimationColors();
     }
 }
 
