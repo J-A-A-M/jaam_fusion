@@ -75,6 +75,8 @@ namespace WiFiConfig {
     static const uint16_t WEB_PORT = 8080;
 }
 
+#define BH1750_POWER_PIN 19
+
 // --- Timing Configuration ---
 static const uint32_t ANIMATION_INTERVAL = 1000;            // 1 second
 static const uint32_t MEMORY_CHECK_INTERVAL = 60000;        // 1 minute

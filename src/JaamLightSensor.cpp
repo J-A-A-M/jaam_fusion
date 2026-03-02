@@ -1,6 +1,7 @@
 #include "JaamLightSensor.h"
 #include <Arduino.h>
 #include "JaamLogs.h"
+#include "JaamConfig.h"
 
 JaamLightSensor::JaamLightSensor() {
 }
