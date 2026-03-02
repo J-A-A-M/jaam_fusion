@@ -2865,9 +2865,9 @@ void handleAdaptStripBrightness() {
         animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
             for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
             strip->show();
         });
     }
