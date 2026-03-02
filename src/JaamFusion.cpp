@@ -56,10 +56,14 @@ void handleUpdateHomeAlertBit();
 void handleUpdateTimezone();
 void handleUpdateNtpHost();
 void handleReconnectWebsocket();
+void handleRegenerateBgColorMap();
 void requestPlayTestMelody(int melodyId);
 void requestPlayTestTrack(int trackId);
 void requestWebsocketReconnect();
 void requestFirmwareUpdate(const char* firmwareId = nullptr);
+void requestRecalculateLeds();
+void requestAdaptColors();
+void requestToRegenerateBgColorMap();
 
 // --- MAIN Configuration ---
 char                chipID[13];
@@ -2017,6 +2021,7 @@ void initSettings() {
             case BG_LED_COUNT:
                 handleRecalculateLeds();
                 handleReconnectStrips(false, true, false);
+                handleRegenerateBgColorMap();
                 break;
             
             // LED SERVICE конфігурація (формат/частота/пін)
@@ -2897,16 +2902,17 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
                    needReconnectMain, needReconnectBg, needReconnectService);
         
         if (needReconnectMain) {
-            // Перезбираємо список індексів для Main
+            reconnectStripMain();
+            // Перезбираємо список індексів для Main після reconnect
             allLedsMain.clear();
             for (uint32_t i = 0; i < num_leds_main; ++i) {
                 allLedsMain.push_back(i);
             }
-            reconnectStripMain();
             needReconnectMain = false;
         }
         if (needReconnectBg) {
-            // Перезбираємо список індексів для BG
+            reconnectStripBg();
+            // Перезбираємо список індексів для BG після reconnect
             allLedsBg.clear();
             int bgCount = hardwareConfig.getBgLedsCount();
             if (bgCount > 0) {
@@ -2914,7 +2920,6 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
                     allLedsBg.push_back(i);
                 }
             }
-            reconnectStripBg();
             needReconnectBg = false;
         }
         if (needReconnectService) {
@@ -3032,7 +3037,14 @@ void requestPlayTestTrack(int trackId) {
 void requestWebsocketReconnect() {
     LOG.printf("[WEBSOCKET] Reconnection requested\n");
     websocketConnected = false;
-    socketConnect();
+    websocketReconnect = true;
+    clearAllAlertsMaps();
+    clearAllWeatherMaps();
+    isFirstDataFetchCompleted = false;
+    alertsHash = 0;
+    if (websocket.available()) {
+        websocket.close();
+    }
 }
 
 void requestFirmwareUpdate(const char* firmwareId) {
@@ -3054,6 +3066,21 @@ void requestFirmwareUpdate(const char* firmwareId) {
     animation.clearAllAnimations();
     fwUpdate.download();
     fwUpdate.clearUpdateRequest();
+}
+
+void requestRecalculateLeds() {
+    LOG.printf("[REQUEST] Recalculating LEDs\n");
+    handleRecalculateLeds();
+}
+
+void requestAdaptColors() {
+    LOG.printf("[REQUEST] Adapting colors\n");
+    handleAdaptColors();
+}
+
+void requestToRegenerateBgColorMap() {
+    LOG.printf("[REQUEST] Regenerating BG LED color map\n");
+    handleRegenerateBgColorMap();
 }
 
 void brightnessProcess() {

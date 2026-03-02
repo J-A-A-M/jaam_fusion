@@ -26,6 +26,28 @@ extern JaamFirmwareUpdate               fwUpdate;
 extern void requestPlayTestMelody(int melodyId);
 extern void requestPlayTestTrack(int trackId);
 extern void requestFirmwareUpdate(const char* firmwareId);
+extern void requestRecalculateLeds();
+extern void requestAdaptColors();
+extern void requestToRegenerateBgColorMap();
+
+// Допоміжні функції для строгого парсингу
+static bool parseStrictInt(const String& s, int& out) {
+    if (s.length() == 0) return false;
+    char* end = nullptr;
+    long v = strtol(s.c_str(), &end, 10);
+    if (*end != '\0') return false;
+    out = (int)v;
+    return true;
+}
+
+static bool parseStrictFloat(const String& s, float& out) {
+    if (s.length() == 0) return false;
+    char* end = nullptr;
+    float v = strtof(s.c_str(), &end);
+    if (*end != '\0') return false;
+    out = v;
+    return true;
+}
 
 // Типи значень параметрів
 enum ValueType { 
@@ -342,6 +364,23 @@ void JaamWeb::handleColorParameter() {
         return;
     }
 
+    // Валідація формату #RRGGBB
+    if (value.length() != 7 || value[0] != '#') {
+        LOG.printf("[WEB] Invalid color format for %s (settingType: %d): '%s' - must be #RRGGBB\n", 
+                   name.c_str(), settingType, valuePtr);
+        server.send(400, "application/json", "{\"error\":\"Invalid color format, expected #RRGGBB\"}");
+        return;
+    }
+    for (int i = 1; i < 7; i++) {
+        char c = value[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
+            LOG.printf("[WEB] Invalid hex character in color for %s (settingType: %d): '%s' at position %d\n", 
+                       name.c_str(), settingType, valuePtr, i);
+            server.send(400, "application/json", "{\"error\":\"Invalid hex character in color\"}");
+            return;
+        }
+    }
+
     // Зберігаємо та перевіряємо результат
     bool success = settings->saveString(settingType, valuePtr);
     LOG.printf("[WEB] Setting %s: raw=%s (success: %d)\n", name.c_str(), valuePtr, success);
@@ -520,10 +559,17 @@ void JaamWeb::handleParameter() {
 
     // Викликаємо відповідний save метод
     bool success = false;
-    int intValue = value.toInt();
     
     switch (valueType) {
-        case TYPE_INT:
+        case TYPE_INT: {
+            int intValue;
+            if (!parseStrictInt(value, intValue)) {
+                LOG.printf("[WEB] Invalid integer value for %s (settingType: %d): '%s'\n", 
+                           name.c_str(), settingType, valuePtr);
+                server.send(400, "application/json", "{\"error\":\"Invalid integer value\"}");
+                return;
+            }
+            
             success = settings->saveInt(settingType, intValue);
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), intValue, success);
             
@@ -535,16 +581,35 @@ void JaamWeb::handleParameter() {
                 requestPlayTestMelody(intValue);
             }
             break;
+        }
             
-        case TYPE_BOOL:
+        case TYPE_BOOL: {
+            int intValue;
+            if (!parseStrictInt(value, intValue)) {
+                LOG.printf("[WEB] Invalid boolean value for %s (settingType: %d): '%s'\n", 
+                           name.c_str(), settingType, valuePtr);
+                server.send(400, "application/json", "{\"error\":\"Invalid boolean value\"}");
+                return;
+            }
+            
             success = settings->saveBool(settingType, intValue != 0);
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), intValue != 0, success);
             break;
+        }
             
-        case TYPE_FLOAT:
-            success = settings->saveFloat(settingType, value.toFloat());
-            LOG.printf("[WEB] Setting %s: %.2f (success: %d)\n", name.c_str(), value.toFloat(), success);
+        case TYPE_FLOAT: {
+            float floatValue;
+            if (!parseStrictFloat(value, floatValue)) {
+                LOG.printf("[WEB] Invalid float value for %s (settingType: %d): '%s'\n", 
+                           name.c_str(), settingType, valuePtr);
+                server.send(400, "application/json", "{\"error\":\"Invalid float value\"}");
+                return;
+            }
+            
+            success = settings->saveFloat(settingType, floatValue);
+            LOG.printf("[WEB] Setting %s: %.2f (success: %d)\n", name.c_str(), floatValue, success);
             break;
+        }
             
         case TYPE_STRING:
             success = settings->saveString(settingType, valuePtr);
@@ -938,6 +1003,8 @@ void JaamWeb::handleSaveMap() {
         //generateCustomRegionMap();
         LOG.printf("[WEB] Custom map saved successfully.\n");
         server.sendHeader("Location", "/map-editor", true);
+        requestRecalculateLeds();
+        requestAdaptColors();
         server.send(303);
     } else {
         LOG.printf("[WEB] Custom map saving error.\n");
@@ -1060,6 +1127,8 @@ void JaamWeb::handleSaveBgColors() {
     
     if (storage->saveBgLedColors(colors, bgLedCount)) {
         LOG.printf("[WEB] BG LED colors saved successfully and global structure updated.\n");
+        requestToRegenerateBgColorMap();
+        requestAdaptColors();
         server.sendHeader("Location", "/bg-color-editor", true);
         server.send(303);
     } else {
