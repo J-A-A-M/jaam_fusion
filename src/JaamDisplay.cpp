@@ -1,5 +1,6 @@
 #include "JaamDisplay.h"
 #include "JaamLogs.h"
+#include "JaamFonts.h"
 #include <Wire.h>
 
 static const unsigned char trident[] PROGMEM = {
@@ -14,8 +15,8 @@ static const unsigned char trident[] PROGMEM = {
 };
 #if DISPLAY_ENABLED
 #define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
-#define JAAM_FONT_CLOCK_64 u8g2_font_osr35_tn
-#define JAAM_FONT_CLOCK_32 u8g2_font_osr21_tn
+#define JAAM_FONT_CLOCK_64 u8g2_font_reddit_mono_45
+#define JAAM_FONT_CLOCK_32 u8g2_font_reddit_mono_30
 static const uint8_t* JAAM_FONT_SIZES[] = {
     u8g2_font_inr38_t_cyrillic, // 38
     u8g2_font_inr33_t_cyrillic, // 33
