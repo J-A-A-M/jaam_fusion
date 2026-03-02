@@ -18,36 +18,14 @@ uint8_t temprature_sens_read();
 }
 #endif
 
-extern volatile bool needAdaptAnimationColors;
-extern volatile bool needAdaptStripBrightness;
-extern volatile bool needAdaptColors;
-extern volatile bool needAdaptAnimationBrightness;
-extern volatile bool needAdaptAnimationPeriod;
-extern volatile bool needAdaptAnimationType;
-extern volatile bool needReconnectWebsocket;
-extern volatile bool needReconnectMainStrip;
-extern volatile bool needReconnectBgStrip;
-extern volatile bool needReconnectServiceStrip;
-extern volatile bool needUpdateBatteryPin;
-extern volatile bool needRecalculateLeds;
-extern volatile bool needReconfigureDisplay;
-extern volatile bool needReconfigureSound;
-extern volatile bool needReconfigureSensors;
-extern volatile bool needReconfigureButtons;
-extern volatile bool needUpdateAnimationsMode;
-extern volatile bool needAdaptClimate;
-extern volatile bool needToRegenerateBgColorMap;
-extern volatile bool needAdaptVolume;
-extern volatile bool needUpdateHomeAlertBit;
-extern volatile bool needUpdateTimezone;
-extern volatile bool needPlayTestMelody;
-extern volatile bool needPlayTestTrack;
-extern volatile int testMelodyId;
-extern volatile int testTrackId;
-
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
 extern uint32_t                         bgLedColors[MAX_BG_LEDS];
 extern JaamFirmwareUpdate               fwUpdate;
+
+// Функції для тестового відтворення та оновлення прошивки
+extern void requestPlayTestMelody(int melodyId);
+extern void requestPlayTestTrack(int trackId);
+extern void requestFirmwareUpdate(const char* firmwareId);
 
 void sendLargeJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
@@ -361,8 +339,6 @@ void JaamWeb::handleColorParameter() {
             settings->saveString(COLOR_LAMP, valuePtr);
             LOG.printf("[WEB] Setting color_lamp: raw=%s\n", valuePtr);
         }
-        needAdaptColors = true;
-        needAdaptAnimationColors = true;
 
         server.send(200, "text/plain", "OK");
     } else {
@@ -384,173 +360,112 @@ void JaamWeb::handleParameter() {
         if (name == "hardware") {
             settings->saveInt(HARDWARE, intValue);
             LOG.printf("[WEB] Setting hardware: %d\n", intValue);
-            needRecalculateLeds = true;
-            needReconnectMainStrip = true;
-            needReconnectBgStrip = true;
-            needReconnectServiceStrip = true;
-            needReconfigureDisplay = true;
-            needAdaptStripBrightness = true;
-            needReconfigureButtons = true;
-            needReconfigureSound = true;
-            needReconfigureSensors = true;
         } else if (name == "district_mode_kyiv") {
             settings->saveInt(DISTRICT_MODE_KYIV, intValue);
             LOG.printf("[WEB] Setting district_mode_kyiv: %d\n", intValue);
-            needRecalculateLeds = true;
         } else if (name == "district_mode_kharkiv") {
             settings->saveInt(DISTRICT_MODE_KHARKIV, intValue);
             LOG.printf("[WEB] Setting district_mode_kharkiv: %d\n", intValue);
-            needRecalculateLeds = true;
         } else if (name == "district_mode_zp") {
             settings->saveInt(DISTRICT_MODE_ZP, intValue);
             LOG.printf("[WEB] Setting district_mode_zp: %d\n", intValue);
-            needRecalculateLeds = true;
         } else if (name == "home_district") {
             settings->saveInt(HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting home_district: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
-            needUpdateHomeAlertBit = true;
         } else if (name == "bg_led_mode") {
             settings->saveInt(BG_LED_MODE, intValue);
             LOG.printf("[WEB] Setting bg_led_mode: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
         } else if (name == "map_mode") {
             settings->saveInt(MAP_MODE, intValue);
             LOG.printf("[WEB] Setting map_mode: %d\n", intValue);
-            needAdaptColors = true;
         } else if (name == "brightness") {
             settings->saveInt(BRIGHTNESS, intValue);
             LOG.printf("[WEB] Setting brightness: %d\n", intValue);
-            needAdaptStripBrightness = true;
         } else if (name == "brightness_day") {
             settings->saveInt(BRIGHTNESS_DAY, intValue);
             LOG.printf("[WEB] Setting brightness_day: %d\n", intValue);
-            needAdaptStripBrightness = true;
-            // needAdaptColors = true;
-            // needAdaptAnimationColors = true;
         } else if (name == "brightness_night") {
             settings->saveInt(BRIGHTNESS_NIGHT, intValue);
             LOG.printf("[WEB] Setting brightness_night: %d\n", intValue);
-            needAdaptStripBrightness = true;
-            // needAdaptColors = true;
-            // needAdaptAnimationColors = true;
         } else if (name == "night_mode_light_threshold") {
             settings->saveInt(NIGHT_MODE_LIGHT_THRESHOLD, intValue);
             LOG.printf("[WEB] Setting night_mode_light_threshold: %d\n", intValue);
-            needAdaptStripBrightness = true;
         } else if (name == "brightness_min") {
             settings->saveInt(BRIGHTNESS_MIN, intValue);
             LOG.printf("[WEB] Setting brightness_min: %d\n", intValue);
-            needAdaptStripBrightness = true;
         } else if (name == "brightness_alert") {
             settings->saveInt(BRIGHTNESS_ALERT, intValue);
             LOG.printf("[WEB] Setting brightness_alert: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_clear") {
             settings->saveInt(BRIGHTNESS_CLEAR, intValue);
             LOG.printf("[WEB] Setting brightness_clear: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_explosion") {
             settings->saveInt(BRIGHTNESS_EXPLOSION, intValue);
             LOG.printf("[WEB] Setting brightness_explosion: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_missiles") {
             settings->saveInt(BRIGHTNESS_MISSILES, intValue);
             LOG.printf("[WEB] Setting brightness_missiles: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_drones") {
             settings->saveInt(BRIGHTNESS_DRONES, intValue);
             LOG.printf("[WEB] Setting brightness_drones: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_recon_drones") {
             settings->saveInt(BRIGHTNESS_RECON_DRONES, intValue);
             LOG.printf("[WEB] Setting brightness_recon_drones: %d\n", intValue  );
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_kabs") {
             settings->saveInt(BRIGHTNESS_KABS, intValue);
             LOG.printf("[WEB] Setting brightness_kabs: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_ballistic") {
             settings->saveInt(BRIGHTNESS_BALLISTIC, intValue);
             LOG.printf("[WEB] Setting brightness_ballistic: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_home_district") {
             settings->saveInt(BRIGHTNESS_HOME_DISTRICT, intValue);
             LOG.printf("[WEB] Setting brightness_home_district: %d\n", intValue);
-            needAdaptColors = true; 
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_bg") {
             settings->saveInt(BRIGHTNESS_BG, intValue);
             LOG.printf("[WEB] Setting brightness_bg: %d\n", intValue);
-            needAdaptColors = true;
-            needAdaptAnimationBrightness = true;
         } else if (name == "brightness_lamp") {
             settings->saveInt(BRIGHTNESS_LAMP, intValue);
             LOG.printf("[WEB] Setting brightness_lamp: %d\n", intValue);
-            needAdaptColors = true;
         } else if (name == "time_zone") {
             settings->saveInt(TIME_ZONE, intValue);
             LOG.printf("[WEB] Setting time_zone: %d\n", intValue);
-            needUpdateTimezone = true;
         } else if (name == "brightness_service") {
             settings->saveInt(BRIGHTNESS_SERVICE, intValue);
             LOG.printf("[WEB] Setting brightness_service: %d\n", intValue);
-            needAdaptColors = true; 
         } else if (name == "brightness_animation_end") {
             settings->saveInt(BRIGHTNESS_ANIMATION_END, intValue);
             LOG.printf("[WEB] Setting brightness_animation_end: %d\n", intValue);
-            needAdaptAnimationBrightness = true;
         } else if (name == "main_led_color_format") {
             settings->saveInt(MAIN_LED_COLOR_FORMAT, intValue);
             LOG.printf("[WEB] Setting main_led_color_format: %d\n", intValue);
-            needReconnectMainStrip = true;
         } else if (name == "main_led_frequency") {
             settings->saveInt(MAIN_LED_FREQUENCY, intValue);
             LOG.printf("[WEB] Setting main_led_frequency: %d\n", intValue);
-            needReconnectMainStrip = true;
         } else if (name == "bg_led_color_format") {
             settings->saveInt(BG_LED_COLOR_FORMAT, intValue);
             LOG.printf("[WEB] Setting bg_led_color_format: %d\n", intValue);
-            needReconnectBgStrip = true;
         } else if (name == "bg_led_frequency") {
             settings->saveInt(BG_LED_FREQUENCY, intValue);
             LOG.printf("[WEB] Setting bg_led_frequency: %d\n", intValue);
-            needReconnectBgStrip = true;
         } else if (name == "service_led_color_format") {
             settings->saveInt(SERVICE_LED_COLOR_FORMAT, intValue);
             LOG.printf("[WEB] Setting service_led_color_format: %d\n", intValue);
-            needReconnectServiceStrip = true;
         } else if (name == "service_led_frequency") {
             settings->saveInt(SERVICE_LED_FREQUENCY, intValue);
             LOG.printf("[WEB] Setting service_led_frequency: %d\n", intValue);
-            needReconnectServiceStrip = true;
         } else if (name == "display_model") {
             settings->saveInt(DISPLAY_MODEL, intValue);
             LOG.printf("[WEB] Setting display_model: %d\n", intValue);
-            needReconfigureDisplay = true;
         } else if (name == "display_height") {
             settings->saveInt(DISPLAY_HEIGHT, intValue);
             LOG.printf("[WEB] Setting display_height: %d\n", intValue);
-            needReconfigureDisplay = true;
         } else if (name == "display_rotation") {
             settings->saveInt(DISPLAY_ROTATION, intValue);
             LOG.printf("[WEB] Setting display_rotation: %d\n", intValue);
-            needReconfigureDisplay = true;
         } else if (name == "invert_display") {
             bool boolValue = intValue != 0;
             settings->saveBool(INVERT_DISPLAY, boolValue);
             LOG.printf("[WEB] Setting invert_display: %d\n", boolValue);
-            needReconfigureDisplay = true;
         } else if (name == "display_alert_message_time") {
             settings->saveInt(DISPLAY_ALERT_MESSAGE_TIME, intValue);
             LOG.printf("[WEB] Setting display_alert_message_time: %d\n", intValue);
@@ -558,37 +473,30 @@ void JaamWeb::handleParameter() {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_KABS, boolValue);
             LOG.printf("[WEB] Setting enable_kabs: %d\n", boolValue);
-            needAdaptColors = true;
         } else if (name == "enable_missiles") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_MISSILES, boolValue);
             LOG.printf("[WEB] Setting enable_missiles: %d\n", boolValue);
-            needAdaptColors = true;
         } else if (name == "enable_drones") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_DRONES, boolValue);
             LOG.printf("[WEB] Setting enable_drones: %d\n", boolValue);
-            needAdaptColors = true;
         } else if (name == "enable_recon_drones") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_RECON_DRONES, boolValue);
             LOG.printf("[WEB] Setting enable_recon_drones: %d\n", boolValue);
-            needAdaptColors = true;
         } else if (name == "enable_ballistic") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BALLISTIC, boolValue);
             LOG.printf("[WEB] Setting enable_ballistic: %d\n", boolValue);
-            needAdaptColors = true;
         } else if (name == "enable_explosions") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_EXPLOSIONS, boolValue);
             LOG.printf("[WEB] Setting enable_explosions: %d\n", boolValue);
-            needAdaptColors = true;
         } else if (name == "enable_sync_animations") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_SYNC_ANIMATIONS, boolValue);
             LOG.printf("[WEB] Setting enable_sync_animations: %d\n", boolValue);
-            needUpdateAnimationsMode = true;
         } else if (name == "api_enabled") {
             bool boolValue = intValue != 0;
             settings->saveBool(API_ENABLED, boolValue);
@@ -629,148 +537,114 @@ void JaamWeb::handleParameter() {
         } else if (name == "alert_on_cycle") {
             settings->saveInt(ANIMATION_ALERT_ON_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting alert_on_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "alert_off_cycle") {
             settings->saveInt(ANIMATION_ALERT_OFF_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting alert_off_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "drone_cycle") {
             settings->saveInt(ANIMATION_DRONE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting drone_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "recon_drone_cycle") {
             settings->saveInt(ANIMATION_RECON_DRONE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting recon_drone_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "missile_cycle") {
             settings->saveInt(ANIMATION_MISSILE_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting missile_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "kab_cycle") {
             settings->saveInt(ANIMATION_KAB_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting kab_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "ballistic_cycle") {
             settings->saveInt(ANIMATION_BALLISTIC_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting ballistic_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "explosion_cycle") {
             settings->saveInt(ANIMATION_EXPLOSION_CYCLE_TIME, intValue);
             LOG.printf("[WEB] Setting explosion_cycle: %d\n", intValue);
-            needAdaptAnimationPeriod = true;
         } else if (name == "alert_on_animation") {
             settings->saveInt(ANIMATION_ALERT_ON_TYPE, intValue);
             LOG.printf("[WEB] Setting alert_on_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "alert_off_animation") {
             settings->saveInt(ANIMATION_ALERT_OFF_TYPE, intValue);
             LOG.printf("[WEB] Setting alert_off_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "drone_animation") {
             settings->saveInt(ANIMATION_DRONE_TYPE, intValue);
             LOG.printf("[WEB] Setting drone_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "recon_drone_animation") {
             settings->saveInt(ANIMATION_RECON_DRONE_TYPE, intValue);
             LOG.printf("[WEB] Setting recon_drone_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "missile_animation") {
             settings->saveInt(ANIMATION_MISSILE_TYPE, intValue);
             LOG.printf("[WEB] Setting missile_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "kab_animation") {
             settings->saveInt(ANIMATION_KAB_TYPE, intValue);
             LOG.printf("[WEB] Setting kab_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "ballistic_animation") {
             settings->saveInt(ANIMATION_BALLISTIC_TYPE, intValue);
             LOG.printf("[WEB] Setting ballistic_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "explosion_animation") {
             settings->saveInt(ANIMATION_EXPLOSION_TYPE, intValue);
             LOG.printf("[WEB] Setting explosion_animation: %d\n", intValue);
-            needAdaptAnimationType = true;
         } else if (name == "enable_battery") {
             bool boolValue = intValue != 0;
             settings->saveBool(ENABLE_BATTERY_MONITORING, boolValue);
-            needUpdateBatteryPin = true;
             LOG.printf("[WEB] Set enable_battery: %d\n", intValue);
         } else if (name == "kyiv_led") {
             bool boolValue = intValue != 0;
             settings->saveBool(KYIV_LED, boolValue);
-            needRecalculateLeds = true;
             LOG.printf("[WEB] Set kyiv_led: %d\n", intValue);
         } else if (name == "weather_min_temp") {
             settings->saveInt(WEATHER_MIN_TEMP, intValue);
-            needAdaptColors = true;
             LOG.printf("[WEB] Set weather_min_temp: %d\n", intValue);
         } else if (name == "weather_max_temp") {
             settings->saveInt(WEATHER_MAX_TEMP, intValue);
-            needAdaptColors = true;
             LOG.printf("[WEB] Set weather_max_temp: %d\n", intValue);
         } else if (name == "temp_correction") {
             settings->saveFloat(TEMP_CORRECTION, floatValue);
-            needAdaptClimate = true;
             LOG.printf("[WEB] Set temp_correction: %.2f\n", floatValue);
         } else if (name == "hum_correction") {
             settings->saveFloat(HUM_CORRECTION, floatValue);
-            needAdaptClimate = true;
             LOG.printf("[WEB] Set hum_correction: %.2f\n", floatValue);
         } else if (name == "pressure_correction") {
             settings->saveFloat(PRESSURE_CORRECTION, floatValue);
-            needAdaptClimate = true;
             LOG.printf("[WEB] Set pressure_correction: %.2f\n", floatValue);
         } else if (name == "sound_source") {
             settings->saveInt(SOUND_SOURCE, intValue);
             LOG.printf("[WEB] Setting sound_source: %d\n", intValue);
-            needReconfigureSound = true;
         } else if (name == "melody_on_alert") {
             settings->saveInt(MELODY_ON_ALERT, intValue);
             LOG.printf("[WEB] Setting melody_on_alert: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue;
+            requestPlayTestMelody(intValue);
         } else if (name == "melody_on_alert_end") {
             settings->saveInt(MELODY_ON_ALERT_END, intValue);
             LOG.printf("[WEB] Setting melody_on_alert_end: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue;
+            requestPlayTestMelody(intValue);
         } else if (name == "melody_on_explosion") {
             settings->saveInt(MELODY_ON_EXPLOSION, intValue);
             LOG.printf("[WEB] Setting melody_on_explosion: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue; 
+            requestPlayTestMelody(intValue); 
         } else if (name == "melody_on_drones") {
             settings->saveInt(MELODY_ON_DRONES, intValue);
             LOG.printf("[WEB] Setting melody_on_drones: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue; 
+            requestPlayTestMelody(intValue); 
         } else if (name == "melody_on_missiles") {
             settings->saveInt(MELODY_ON_MISSILES, intValue);
             LOG.printf("[WEB] Setting melody_on_missiles: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue; 
+            requestPlayTestMelody(intValue); 
         } else if (name == "melody_on_kabs") {
             settings->saveInt(MELODY_ON_KABS, intValue);
             LOG.printf("[WEB] Setting melody_on_kabs: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue; 
+            requestPlayTestMelody(intValue); 
         } else if (name == "melody_on_ballistic") {
             settings->saveInt(MELODY_ON_BALLISTIC, intValue);
             LOG.printf("[WEB] Setting melody_on_ballistic: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue; 
+            requestPlayTestMelody(intValue); 
         } else if (name == "melody_on_recon_drones") {
             settings->saveInt(MELODY_ON_RECON_DRONES, intValue);
             LOG.printf("[WEB] Setting melody_on_recon_drones: %d\n", intValue);
-            needPlayTestMelody = true;
-            testMelodyId = intValue; 
+            requestPlayTestMelody(intValue); 
         } else if (name == "melody_volume_day") {
             settings->saveInt(MELODY_VOLUME_DAY, intValue);
-            needAdaptVolume = true;
             LOG.printf("[WEB] Setting melody_volume_day: %d\n", intValue);
         } else if (name == "melody_volume_night") {
             settings->saveInt(MELODY_VOLUME_NIGHT, intValue);
-            needAdaptVolume = true;
             LOG.printf("[WEB] Setting melody_volume_night: %d\n", intValue);
         } else if (name == "sound_on_alert") {
             bool boolValue = intValue != 0;
@@ -827,17 +701,14 @@ void JaamWeb::handleParameter() {
         } else if (name == "button_1_touch") {
             bool boolValue = intValue != 0;
             settings->saveBool(USE_TOUCH_BUTTON_1, boolValue);
-            needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_1_touch: %d\n", intValue);
         } else if (name == "button_2_touch") {
             bool boolValue = intValue != 0;
             settings->saveBool(USE_TOUCH_BUTTON_2, boolValue);
-            needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_2_touch: %d\n", intValue);
         } else if (name == "button_3_touch") {
             bool boolValue = intValue != 0;
             settings->saveBool(USE_TOUCH_BUTTON_3, boolValue);
-            needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_3_touch: %d\n", intValue);
         } else if (name == "button_1_mode") {
             settings->saveInt(BUTTON_1_MODE, intValue);
@@ -881,9 +752,7 @@ void JaamWeb::handleParameter() {
             LOG.printf("[WEB] Setting min_of_silence: %d\n", boolValue);
         } else if (name == "firmware_id") {
             LOG.printf("[WEB] Setting firmware_id: %s\n", valuePtr);
-            if (!fwUpdate.requestUpdate(valuePtr)) {
-                LOG.printf("[WEB] Invalid firmware ID: %s\n", valuePtr);
-            }
+            requestFirmwareUpdate(valuePtr);
         } else if (name == "new_fw_notification") {
             bool boolValue = intValue != 0;
             settings->saveBool(NEW_FW_NOTIFICATION, boolValue);
@@ -917,11 +786,9 @@ void JaamWeb::handleTextParameter() {
             LOG.printf("[WEB] Setting broadcast_name: %s\n", valuePtr);
         } else if (name == "ws_server_host") {
             settings->saveString(WS_SERVER_HOST, valuePtr);
-            needReconnectWebsocket = true;
             LOG.printf("[WEB] Setting ws_server_host: %s\n", valuePtr);
         } else if (name == "ws_server_port") {
             settings->saveInt(WS_SERVER_PORT, value.toInt());
-            needReconnectWebsocket = true;
             LOG.printf("[WEB] Setting ws_server_port: %d\n", value.toInt());
         } else if (name == "ntp_host") {
             settings->saveString(NTP_HOST, valuePtr);
@@ -938,40 +805,29 @@ void JaamWeb::handleTextParameter() {
         } else if (name == "main_led_pin") {
             settings->saveInt(MAIN_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting main_led_pin: %s\n", valuePtr);
-            needReconnectMainStrip = true;
         } else if (name == "main_led_count") {
             settings->saveInt(MAIN_LED_COUNT, value.toInt());
             LOG.printf("[WEB] Setting main_led_count: %s\n", valuePtr);
-            needReconnectMainStrip = true;
-            needRecalculateLeds = true;
         } else if (name == "bg_led_pin") {
             settings->saveInt(BG_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting bg_led_pin: %s\n", valuePtr);
-            needReconnectBgStrip = true;
         } else if (name == "bg_led_count") {
             settings->saveInt(BG_LED_COUNT, value.toInt());
             LOG.printf("[WEB] Setting bg_led_count: %s\n", valuePtr);
-            needReconnectBgStrip = true;
-            needToRegenerateBgColorMap = true;
         } else if (name == "service_led_pin") {
             settings->saveInt(SERVICE_LED_PIN, value.toInt());
             LOG.printf("[WEB] Setting service_led_pin: %s\n", valuePtr);
-            needReconnectServiceStrip = true;
         } else if (name == "battery_pin") {
             settings->saveInt(BATTERY_PIN, value.toInt());
-            needUpdateBatteryPin = true;
             LOG.printf("[WEB] Set battery_pin: %d\n", value.toInt());
         } else if (name == "buzzer_pin") {
             settings->saveInt(BUZZER_PIN, value.toInt());
-            needReconfigureSound = true;
             LOG.printf("[WEB] Set buzzer_pin: %d\n", value.toInt());
         } else if (name == "df_rx_pin") {
             settings->saveInt(DF_RX_PIN, value.toInt());
-            needReconfigureSound = true;
             LOG.printf("[WEB] Set df_rx_pin: %d\n", value.toInt());
         } else if (name == "df_tx_pin") {
             settings->saveInt(DF_TX_PIN, value.toInt());
-            needReconfigureSound = true;
             LOG.printf("[WEB] Set df_tx_pin: %d\n", value.toInt());
         } else if (name == "alert_pin") {
             int pin = value.toInt();
@@ -1041,15 +897,12 @@ void JaamWeb::handleTextParameter() {
             LOG.printf("[WEB] Setting api_port: %d\n", apiPort);
         } else if (name == "button_1_pin") {
             settings->saveInt(BUTTON_1_PIN, value.toInt());
-            needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_1_pin: %d\n", value.toInt());
         } else if (name == "button_2_pin") {
             settings->saveInt(BUTTON_2_PIN, value.toInt());
-            needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_2_pin: %d\n", value.toInt());
         } else if (name == "button_3_pin") {
             settings->saveInt(BUTTON_3_PIN, value.toInt());
-            needReconfigureButtons = true;
             LOG.printf("[WEB] Set button_3_pin: %d\n", value.toInt());
         }
 
@@ -1343,8 +1196,6 @@ void JaamWeb::handleSaveMap() {
 
     if (storage->saveCustomMap(customMap)) {
         //generateCustomRegionMap();
-        needRecalculateLeds = true;
-        needAdaptColors = true;
         LOG.printf("[WEB] Custom map saved successfully.\n");
         server.sendHeader("Location", "/map-editor", true);
         server.send(303);
@@ -1469,8 +1320,6 @@ void JaamWeb::handleSaveBgColors() {
     
     if (storage->saveBgLedColors(colors, bgLedCount)) {
         LOG.printf("[WEB] BG LED colors saved successfully and global structure updated.\n");
-        needToRegenerateBgColorMap = true;
-        needAdaptColors = true;
         server.sendHeader("Location", "/bg-color-editor", true);
         server.send(303);
     } else {

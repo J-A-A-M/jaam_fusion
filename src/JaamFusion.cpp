@@ -35,6 +35,32 @@
 
 using namespace websockets;
 
+// --- Forward Declarations ---
+void handleAdaptColors();
+void handleAdaptAnimationColors();
+void handleAdaptAnimationBrightness();
+void handleAdaptAnimationPeriod();
+void handleAdaptAnimationType();
+void handleAdaptStripBrightness();
+void handleRecalculateLeds();
+void handleReconnectStrips(bool main, bool bg, bool service);
+void handleUpdateBatteryPin();
+void handleReconfigureDisplay();
+void handleReconfigureSound();
+void handleReconfigureSensors();
+void handleReconfigureButtons();
+void handleUpdateAnimationsMode();
+void handleAdaptClimate();
+void handleAdaptVolume();
+void handleUpdateHomeAlertBit();
+void handleUpdateTimezone();
+void handleUpdateNtpHost();
+void handleReconnectWebsocket();
+void requestPlayTestMelody(int melodyId);
+void requestPlayTestTrack(int trackId);
+void requestWebsocketReconnect();
+void requestFirmwareUpdate(const char* firmwareId = nullptr);
+
 // --- MAIN Configuration ---
 char                chipID[13];
 
@@ -80,33 +106,6 @@ std::map<uint16_t, uint8_t>     temperatureMap;
 RegionLedMapEntry               customMap[MAX_REGIONS];
 uint32_t                        bgLedColors[MAX_BG_LEDS];
 
-// --- TASKS Configuration ---
-volatile bool needAdaptAnimationColors = false;
-volatile bool needAdaptStripBrightness = false;
-volatile bool needReconnectWebsocket = false;
-volatile bool needAdaptColors = false;
-volatile bool needAdaptAnimationBrightness = false;
-volatile bool needAdaptAnimationPeriod = false;
-volatile bool needAdaptAnimationType = false;
-volatile bool needAdaptClimate = false;
-volatile bool needRecalculateLeds = false;
-volatile bool needReconnectMainStrip = false;
-volatile bool needReconnectBgStrip = false;
-volatile bool needReconnectServiceStrip = false;
-volatile bool needUpdateBatteryPin = false;
-volatile bool needReconfigureDisplay = false;
-volatile bool needReconfigureSound = false;
-volatile bool needReconfigureSensors = false;
-volatile bool needReconfigureButtons = false;
-volatile bool needUpdateAnimationsMode = false;
-volatile bool needToRegenerateBgColorMap = false;
-volatile bool needAdaptVolume = false;
-volatile bool needUpdateHomeAlertBit = false;
-volatile bool needUpdateTimezone = false;
-volatile bool needPlayTestMelody = false;
-volatile bool needPlayTestTrack = false;
-
-
 // --- WIFI Configuration ---
 WiFiManager         wm;
 
@@ -132,8 +131,6 @@ bool                isDisplayOff = false;
 int                 prevMapMode = 1;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
-int                 testMelodyId = -1;
-int                 testTrackId = -1;
 
 // --- CLOCK ---
 bool needDivider = false;
@@ -513,7 +510,7 @@ void handleClick(int event, JaamButton::Action action) {
     case 3:
       isMapOff = !isMapOff;
       display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
-      needAdaptColors = true;
+      handleAdaptColors();
       break;
     // toggle display
     case 4:
@@ -541,7 +538,7 @@ void handleClick(int event, JaamButton::Action action) {
       rebootDevice();
       break;
     case 100:
-      fwUpdate.requestUpdate(fwUpdate.getNewVersion());
+      requestFirmwareUpdate();
       break;
     default:
       // do nothing
@@ -942,7 +939,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (bodyLen == 0 || (bodyLen % RECORD_FW) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
             LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_FW) != 0\n");
-            needReconnectWebsocket = true;
+            requestWebsocketReconnect();
             return;
         }
 
@@ -958,7 +955,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
             LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ) != 0\n");
-            needReconnectWebsocket = true;
+            requestWebsocketReconnect();
             return;
         }
 
@@ -1040,7 +1037,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
             LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ) != 0\n");
-            needReconnectWebsocket = true;
+            requestWebsocketReconnect();
             return;
         }
 
@@ -1052,7 +1049,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (prevHash != alertsHash) {
             // некоректний хеш — пропускаємо і реконнектимось
             LOG.printf("[ERROR] prevHash != alertsHash\n");
-            needReconnectWebsocket = true;
+            requestWebsocketReconnect();
             return;
         }
 
@@ -1297,7 +1294,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         if (bodyLen == 0 || (bodyLen % RECORD_LZ) != 0) {
             // некоректний фрейм — пропускаємо і реконнектимось
             LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_LZ) != 0\n");
-            needReconnectWebsocket = true;
+            requestWebsocketReconnect();
             return;
         }
 
@@ -1321,7 +1318,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
         int homeTemp = decodeTemperature(encodedTemp);
         api.updateHomeDistrictTemp(homeTemp);
-        needAdaptColors = true;
+        handleAdaptColors();
     }
     
     checkFreeHeap("Websockets data processing");
@@ -1682,44 +1679,6 @@ void reconnectStripService() {
     logMemoryUsage("after strip_service reconnection complete");
 }
 
-void reconnectStrips() {
-    LOG.printf("[LED] Reconnecting strips...\n");
-    
-    if (needReconnectMainStrip) {
-        // Перезбираємо список індексів для Main
-        allLedsMain.clear();
-        for (uint32_t i = 0; i < num_leds_main; ++i) {
-            allLedsMain.push_back(i);
-        }
-        reconnectStripMain();
-        needReconnectMainStrip = false;
-    }
-    if (needReconnectBgStrip) {
-        // Перезбираємо список індексів для BG
-        allLedsBg.clear();
-        int bgCount = hardwareConfig.getBgLedsCount();
-        if (bgCount > 0) {
-            for (uint32_t i = 0; i < (uint32_t)bgCount; ++i) {
-                allLedsBg.push_back(i);
-            }
-        }
-        reconnectStripBg();
-        needReconnectBgStrip = false;
-    }
-    if (needReconnectServiceStrip) {
-        reconnectStripService();
-        needReconnectServiceStrip = false;
-    }
-    needAdaptStripBrightness = true;
-    needAdaptColors = true;
-    
-    // Оновлюємо посилання в веб-інтерфейсі
-    web.begin(strip_main, strip_bg, strip_service);
-    
-    LOG.printf("[LED] Strip reconnection completed.\n");
-    logMemoryUsage("after strip reconnection complete");
-}
-
 // --- TIME Functions ---
 
 static TimezoneInfo* getTimezoneInfo(int timezoneId) {
@@ -1926,6 +1885,7 @@ void initSettings() {
     
     // Реєструємо callback для автоматичного broadcast змін налаштувань до API
     settings.setChangeCallback([](Type type, int intValue, const char* strValue) {
+      
         // Повідомляємо mDNS про зміни налаштувань
         mdnsService.onSettingsChange(type, intValue, strValue);
         
@@ -1934,10 +1894,230 @@ void initSettings() {
 
         // Повідомляємо Siren про зміни налаштувань
         siren.onSettingsChange(type, intValue, strValue);
+        
+        // Обробляємо зміни налаштувань локально
+        switch(type) {
+            // Кольори та зовнішній вигляд (адаптація + анімації)
+            case COLOR_CLEAR:
+            case COLOR_ALERT:
+            case COLOR_EXPLOSION:
+            case COLOR_MISSILES:
+            case COLOR_DRONES:
+            case COLOR_RECON_DRONES:
+            case COLOR_KABS:
+            case COLOR_BALLISTIC:
+            case COLOR_HOME_DISTRICT:
+            case COLOR_BG:
+            case COLOR_LAMP:
+            case MAP_MODE:
+            case BG_LED_MODE:
+            case WEATHER_MIN_TEMP:
+            case WEATHER_MAX_TEMP:
+            case ENABLE_KABS:
+            case ENABLE_MISSILES:
+            case ENABLE_DRONES:
+            case ENABLE_RECON_DRONES:
+            case ENABLE_BALLISTIC:
+            case ENABLE_EXPLOSIONS:
+                handleAdaptColors();
+                handleAdaptAnimationColors();
+                break;
+            
+            // Домашній регіон (кольори + анімації + оновлення бітів)
+            case HOME_DISTRICT:
+                handleAdaptColors();
+                handleAdaptAnimationColors();
+                handleUpdateHomeAlertBit();
+                break;
+            
+            // Основна яскравість (загальна адаптація)
+            case BRIGHTNESS:
+            case BRIGHTNESS_DAY:
+            case BRIGHTNESS_NIGHT:
+            case BRIGHTNESS_MODE:
+            case DAY_START:
+            case NIGHT_START:
+            case NIGHT_MODE_LIGHT_THRESHOLD:
+            case BRIGHTNESS_MIN:
+                handleAdaptStripBrightness();
+                break;
+            
+            // Яскравість для анімацій (кольори + яскравість анімацій)
+            case BRIGHTNESS_ALERT:
+            case BRIGHTNESS_CLEAR:
+            case BRIGHTNESS_EXPLOSION:
+            case BRIGHTNESS_MISSILES:
+            case BRIGHTNESS_DRONES:
+            case BRIGHTNESS_RECON_DRONES:
+            case BRIGHTNESS_KABS:
+            case BRIGHTNESS_BALLISTIC:
+            case BRIGHTNESS_HOME_DISTRICT:
+            case BRIGHTNESS_BG:
+            case BRIGHTNESS_ANIMATION_END:
+                handleAdaptColors();
+                handleAdaptAnimationBrightness();
+                break;
+            
+            // Яскравість сервісних LED (тільки кольори)
+            case BRIGHTNESS_LAMP:
+            case BRIGHTNESS_SERVICE:
+                handleAdaptColors();
+                break;
+            
+            // Час анімацій
+            case ANIMATION_ALERT_ON_CYCLE_TIME:
+            case ANIMATION_ALERT_OFF_CYCLE_TIME:
+            case ANIMATION_DRONE_CYCLE_TIME:
+            case ANIMATION_RECON_DRONE_CYCLE_TIME:
+            case ANIMATION_MISSILE_CYCLE_TIME:
+            case ANIMATION_KAB_CYCLE_TIME:
+            case ANIMATION_BALLISTIC_CYCLE_TIME:
+            case ANIMATION_EXPLOSION_CYCLE_TIME:
+                handleAdaptAnimationPeriod();
+                break;
+            
+            // Тип анімацій
+            case ANIMATION_ALERT_ON_TYPE:
+            case ANIMATION_ALERT_OFF_TYPE:
+            case ANIMATION_DRONE_TYPE:
+            case ANIMATION_RECON_DRONE_TYPE:
+            case ANIMATION_MISSILE_TYPE:
+            case ANIMATION_KAB_TYPE:
+            case ANIMATION_BALLISTIC_TYPE:
+            case ANIMATION_EXPLOSION_TYPE:
+                handleAdaptAnimationType();
+                break;
+            
+            // Режим синхронізації анімацій
+            case ENABLE_SYNC_ANIMATIONS:
+                handleUpdateAnimationsMode();
+                break;
+            
+            // LED MAIN конфігурація (формат/частота - тільки reconnect)
+            case MAIN_LED_COLOR_FORMAT:
+            case MAIN_LED_FREQUENCY:
+                handleReconnectStrips(true, false, false);
+                break;
+            
+            // LED MAIN пін/кількість (перерахунок + reconnect)
+            case MAIN_LED_PIN:
+            case MAIN_LED_COUNT:
+                handleRecalculateLeds();
+                handleReconnectStrips(true, false, false);
+                break;
+            
+            // LED BG конфігурація (формат/частота - тільки reconnect)
+            case BG_LED_COLOR_FORMAT:
+            case BG_LED_FREQUENCY:
+                handleReconnectStrips(false, true, false);
+                break;
+            
+            // LED BG пін/кількість (перерахунок + reconnect)
+            case BG_LED_PIN:
+            case BG_LED_COUNT:
+                handleRecalculateLeds();
+                handleReconnectStrips(false, true, false);
+                break;
+            
+            // LED SERVICE конфігурація (формат/частота/пін)
+            case SERVICE_LED_COLOR_FORMAT:
+            case SERVICE_LED_FREQUENCY:
+            case SERVICE_LED_PIN:
+                handleReconnectStrips(false, false, true);
+                break;
+            
+            // Повна апаратна реконфігурація
+            case HARDWARE:
+                handleRecalculateLeds();
+                handleReconnectStrips(true, true, true);
+                handleReconfigureDisplay();
+                handleAdaptStripBrightness();
+                handleReconfigureButtons();
+                handleReconfigureSound();
+                handleReconfigureSensors();
+                break;
+            
+            // Режими районів (перерахунок LED)
+            case DISTRICT_MODE_KYIV:
+            case DISTRICT_MODE_KHARKIV:
+            case DISTRICT_MODE_ZP:
+            case KYIV_LED:
+                handleRecalculateLeds();
+                break;
+            
+            // Налаштування дисплею
+            case DISPLAY_MODEL:
+            case DISPLAY_HEIGHT:
+            case DISPLAY_ROTATION:
+            case INVERT_DISPLAY:
+                handleReconfigureDisplay();
+                break;
+            
+            // Корекція сенсорів клімату
+            case TEMP_CORRECTION:
+            case HUM_CORRECTION:
+            case PRESSURE_CORRECTION:
+                handleAdaptClimate();
+                break;
+            
+            // Звукова конфігурація (джерело + піни)
+            case SOUND_SOURCE:
+            case BUZZER_PIN:
+            case DF_RX_PIN:
+            case DF_TX_PIN:
+                handleReconfigureSound();
+                break;
+            
+            // Гучність мелодій
+            case MELODY_VOLUME_DAY:
+            case MELODY_VOLUME_NIGHT:
+                handleAdaptVolume();
+                break;
+            
+            // Моніторинг батареї
+            case ENABLE_BATTERY_MONITORING:
+            case BATTERY_PIN:
+                handleUpdateBatteryPin();
+                break;
+            
+            // Конфігурація кнопок
+            case USE_TOUCH_BUTTON_1:
+            case USE_TOUCH_BUTTON_2:
+            case USE_TOUCH_BUTTON_3:
+            case BUTTON_1_MODE:
+            case BUTTON_2_MODE:
+            case BUTTON_3_MODE:
+            case BUTTON_1_MODE_LONG:
+            case BUTTON_2_MODE_LONG:
+            case BUTTON_3_MODE_LONG:
+            case BUTTON_1_PIN:
+            case BUTTON_2_PIN:
+            case BUTTON_3_PIN:
+                handleReconfigureButtons();
+                break;
+            
+            // Часовий пояс
+            case TIME_ZONE:
+                handleUpdateTimezone();
+                break;
+            
+            // NTP сервер
+            case NTP_HOST:
+                handleUpdateNtpHost();
+                break;
+            
+            // WebSocket сервер
+            case WS_SERVER_HOST:
+            case WS_SERVER_PORT:
+                handleReconnectWebsocket();
+                break;
+            
+            default:
+                // Інші налаштування не потребують додаткової обробки
+                break;
+        }
     });
 }
-
-
 
 void initDisplay() {
     LOG.printf("[INIT] Init display\n");
@@ -2249,7 +2429,7 @@ void initStrip() {
     initStripMain();
     initStripBg();
     initStripService();   
-    needAdaptStripBrightness = true;
+    handleAdaptStripBrightness();
 
     // Тепер заповнюємо allLedsMain і allLedsBg після ініціалізації стрічок
     allLedsMain.clear();
@@ -2490,9 +2670,9 @@ void checkMinuteOfSilence()
             if (needToPlaySound(MIN_OF_SILINCE)) {
                 clockBeepInterval = async.setInterval(playMinOfSilenceSound, 2000); // every 2 sec
             }
-            // set flags to adapt colors on min of silence start
-            needAdaptColors = true;
-            needAdaptAnimationColors = true;
+            // adapt colors on min of silence start
+            handleAdaptColors();
+            handleAdaptAnimationColors();
         } else {
             // turn off mos beep
             if (clockBeepInterval >= 0) {
@@ -2503,9 +2683,9 @@ void checkMinuteOfSilence()
                 playMelody(MIN_OF_SILINCE_END);
                 uaAnthemPlaying = true;
             } else {
-                // set flags to adapt colors on min of silence end
-                needAdaptColors = true;
-                needAdaptAnimationColors = true;
+                // adapt colors on min of silence end
+                handleAdaptColors();
+                handleAdaptAnimationColors();
             }
         }
     }
@@ -2649,199 +2829,231 @@ void lightSensorProcess() {
   updateLightLevelData();
 }
 
-void mainThreadProcess() {
-    // Ця функція виконується в основному циклі
-    // Вона потрібна для асинхронного менеджера, щоб мати можливість виконувати інші задачі
+// --- Settings Change Handlers ---
 
-    if (needToRegenerateBgColorMap) {
-        LOG.printf("[MAIN] Regenerating BG LED color map\n");
-        generateBgLedColorsMap();
-        needToRegenerateBgColorMap = false;
-    }
+void handleAdaptColors() {
+    adaptColors();
+}
 
-    if (needReconnectMainStrip || needReconnectBgStrip || needReconnectServiceStrip) {
-        LOG.printf("[MAIN] Reconnecting LED strip\n");
-        reconnectStrips();
-    }
+void handleAdaptAnimationColors() {
+    LOG.printf("[SETTINGS] Adjusting animation colors\n");
+    animation.adaptAllAnimationColors();
+}
 
-    if (needReconnectWebsocket && !needReconnectMainStrip) {
-        LOG.printf("[MAIN] Reconnecting WebSocket\n");
-        needReconnectWebsocket = false;
-        websocketConnected = false;
-        socketConnect();
-    }
+void handleAdaptAnimationBrightness() {
+    LOG.printf("[SETTINGS] Adjusting animation brightness\n");
+    animation.adaptAllAnimationBrightness();
+}
 
-    if (needRecalculateLeds) {
-        generateCustomRegionMap(hardwareConfig);
-        LOG.printf("[MAIN] Recalculating LEDs\n");
-        needRecalculateLeds = false;
-        //needReconnectWebsocket = true;
-    }
+void handleAdaptAnimationPeriod() {
+    LOG.printf("[SETTINGS] Adjusting animation period\n");
+    animation.adaptAllAnimationPeriod();
+}
 
-    if (needAdaptColors) {
-        adaptColors();
-        needAdaptColors = false;
-    }
+void handleAdaptAnimationType() {
+    LOG.printf("[SETTINGS] Adjusting animation type\n");
+    animation.adaptAllAnimationType();
+}
 
-    if (needAdaptAnimationColors) {
-        LOG.printf("[WEB] Adjusting animation colors\n");
-        animation.adaptAllAnimationColors();
-        needAdaptAnimationColors = false;
+void handleAdaptStripBrightness() {
+    LOG.printf("[SETTINGS] Adjusting strip brightness\n");
+    if (strip_main != nullptr) {
+        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
+            strip->show();
+        });
     }
-    if (needAdaptAnimationBrightness) {
-        LOG.printf("[WEB] Adjusting animation brightness\n");
-        animation.adaptAllAnimationBrightness();
-        needAdaptAnimationBrightness = false;
+    if (strip_bg != nullptr) {
+        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
+            strip->show();
+        });
     }
-    if (needAdaptAnimationPeriod) {
-        LOG.printf("[WEB] Adjusting animation period\n");
-        animation.adaptAllAnimationPeriod();
-        needAdaptAnimationPeriod = false;
+    if (strip_service != nullptr) {
+        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+            strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
+            strip->show();
+        });
     }
-    if (needAdaptAnimationType) {
-        LOG.printf("[WEB] Adjusting animation type\n");
-        animation.adaptAllAnimationType();
-        needAdaptAnimationType = false;
-    }
-    if (needAdaptStripBrightness) {
-        LOG.printf("[WEB] Adjusting strip brightness\n");
-        needAdaptStripBrightness = false;
-        if (strip_main != nullptr) {
-            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                // for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                //     uint32_t color = animation.ledActualColor(strip, i);
-                //     strip->setPixelColor(i, color);
-                // }
-                strip->show();
-            });
+}
+
+void handleRecalculateLeds() {
+    LOG.printf("[SETTINGS] Recalculating LEDs\n");
+    generateCustomRegionMap(hardwareConfig);
+}
+
+void handleReconnectStrips(bool main = false, bool bg = false, bool service = false) {
+    static bool needReconnectMain = false;
+    static bool needReconnectBg = false;
+    static bool needReconnectService = false;
+    
+    if (main) needReconnectMain = true;
+    if (bg) needReconnectBg = true;
+    if (service) needReconnectService = true;
+    
+    // Виконуємо переподключення, якщо є якісь флаги
+    if (needReconnectMain || needReconnectBg || needReconnectService) {
+        LOG.printf("[SETTINGS] Reconnecting LED strips (main:%d bg:%d svc:%d)\n", 
+                   needReconnectMain, needReconnectBg, needReconnectService);
+        
+        if (needReconnectMain) {
+            // Перезбираємо список індексів для Main
+            allLedsMain.clear();
+            for (uint32_t i = 0; i < num_leds_main; ++i) {
+                allLedsMain.push_back(i);
+            }
+            reconnectStripMain();
+            needReconnectMain = false;
         }
-        if (strip_bg != nullptr) {
-            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                // uint32_t color = animation.stripActualColor(strip);
-                // for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                //     strip->setPixelColor(i, color);
-                // }
-                strip->show();
-            });
+        if (needReconnectBg) {
+            // Перезбираємо список індексів для BG
+            allLedsBg.clear();
+            int bgCount = hardwareConfig.getBgLedsCount();
+            if (bgCount > 0) {
+                for (uint32_t i = 0; i < (uint32_t)bgCount; ++i) {
+                    allLedsBg.push_back(i);
+                }
+            }
+            reconnectStripBg();
+            needReconnectBg = false;
         }
-        if (strip_service != nullptr) {
-            animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-                strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-                // for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                //     uint32_t color = animation.ledActualColor(strip, i);
-                //     strip->setPixelColor(i, color);
-                // }
-                strip->show();
-            });
+        if (needReconnectService) {
+            reconnectStripService();
+            needReconnectService = false;
         }
-        // int ledsIdx[1] = { 0 };
-        // if (!animation.createAnimation(
-        //     6, // SET_BRIGHTNESS
-        //     strip_main,
-        //     MapModes::ALERT,
-        //     ledsIdx,
-        //     1,
-        //     0x000000, // Колір не важливий для SET_BRIGHTNESS
-        //     0x000000, // Початковий колір не важливий
-        //     200,
-        //     1,
-        //     strip_main->getBrightness(),
-        //     settings.getInt(BRIGHTNESS)
-        // )) {
-        //     LOG.printf("[ERROR] Failed to create animation\n");
-        //     return;
-        // }
+        
+        handleAdaptStripBrightness();
+        handleAdaptColors();
+        
+        // Оновлюємо посилання в веб-інтерфейсі
+        web.begin(strip_main, strip_bg, strip_service);
+        
+        LOG.printf("[LED] Strip reconnection completed.\n");
+        logMemoryUsage("after strip reconnection complete");
     }
-    if (needUpdateBatteryPin) {
-        LOG.printf("[MAIN] Updating battery pin state\n");
-        if (settings.getInt(BATTERY_PIN) > 0) {
-            battery.setPin(settings.getInt(BATTERY_PIN));
-        } else {
-            LOG.printf("[MAIN] Battery pin not configured, skipping update\n");
-        }
-        needUpdateBatteryPin = false;
-    }
+}
 
-    if (needReconfigureDisplay) {
-        LOG.printf("[MAIN] Reconfiguring display\n");
-        initDisplay();
-        needReconfigureDisplay = false;
+void handleUpdateBatteryPin() {
+    LOG.printf("[SETTINGS] Updating battery pin state\n");
+    if (settings.getInt(BATTERY_PIN) > 0) {
+        battery.setPin(settings.getInt(BATTERY_PIN));
+    } else {
+        LOG.printf("[SETTINGS] Battery pin not configured, skipping update\n");
     }
+}
 
-    if (needReconfigureSound) {
-        LOG.printf("[MAIN] Reconfiguring sound\n");
-        initSound();
-        needReconfigureSound = false;
-    }
+void handleReconfigureDisplay() {
+    LOG.printf("[SETTINGS] Reconfiguring display\n");
+    initDisplay();
+}
 
-    if (needReconfigureSensors) {
-        LOG.printf("[MAIN] Reconfiguring sensors\n");
-        initSensors();
-        needReconfigureSensors = false;
-    }
+void handleReconfigureSound() {
+    LOG.printf("[SETTINGS] Reconfiguring sound\n");
+    initSound();
+}
 
-    if (needReconfigureButtons) {
-        LOG.printf("[MAIN] Reconfiguring buttons\n");
-        initButtons();
-        needReconfigureButtons = false;
-    }
+void handleReconfigureSensors() {
+    LOG.printf("[SETTINGS] Reconfiguring sensors\n");
+    initSensors();
+}
 
-    if (needUpdateAnimationsMode) {
-        LOG.printf("[MAIN] Animations sync mode %s\n", settings.getInt(ENABLE_SYNC_ANIMATIONS) ? "ENABLED" : "DISABLED");
-        animation.setSynchronizedMode(settings.getInt(ENABLE_SYNC_ANIMATIONS));
-        needUpdateAnimationsMode = false;
-    }
+void handleReconfigureButtons() {
+    LOG.printf("[SETTINGS] Reconfiguring buttons\n");
+    initButtons();
+}
 
-    if (needAdaptClimate) {
-        LOG.printf("[MAIN] Adapting climate settings\n");
-        climateProcess();
-        needAdaptClimate = false;
-    }
+void handleUpdateAnimationsMode() {
+    LOG.printf("[SETTINGS] Animations sync mode %s\n", settings.getBool(ENABLE_SYNC_ANIMATIONS) ? "ENABLED" : "DISABLED");
+    animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
+}
 
-    if (needAdaptVolume) {
-        LOG.printf("[MAIN] Adapting sound settings\n");
-        sound.setVolumeNight(settings.getInt(MELODY_VOLUME_NIGHT));
-        sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
-        needAdaptVolume = false;
-    }
+void handleAdaptClimate() {
+    LOG.printf("[SETTINGS] Adapting climate settings\n");
+    climateProcess();
+}
 
-    if (needUpdateHomeAlertBit) {
-        LOG.printf("[MAIN] Updating home alert bit\n");
-        int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
-        if (localAlertBit != alertBit) {
-            alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
-            updateSirenIfNeeded(localAlertBit);
-        }
-        alertBit = localAlertBit;
-        uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
-        LOG.printf("[MAIN] homeAlertFlags: %u\n", homeAlertFlags);
-        api.updateHomeAlert(homeAlertFlags);
-        uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
-        int homeTemp = decodeTemperature(encodedTemp);
-        api.updateHomeDistrictTemp(homeTemp);
-        needUpdateHomeAlertBit = false;
-    }
+void handleAdaptVolume() {
+    LOG.printf("[SETTINGS] Adapting sound volume\n");
+    sound.setVolumeNight(settings.getInt(MELODY_VOLUME_NIGHT));
+    sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
+}
 
-    if (needUpdateTimezone) {
-        LOG.printf("[MAIN] Updating timezone\n");
-        applyTimezoneSettings(settings.getInt(TIME_ZONE));
-        needUpdateTimezone = false;
+void handleUpdateHomeAlertBit() {
+    LOG.printf("[SETTINGS] Updating home alert bit\n");
+    int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
+    if (localAlertBit != alertBit) {
+        alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+        updateSirenIfNeeded(localAlertBit);
     }
+    alertBit = localAlertBit;
+    uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
+    LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeAlertFlags);
+    api.updateHomeAlert(homeAlertFlags);
+    uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
+    int homeTemp = decodeTemperature(encodedTemp);
+    api.updateHomeDistrictTemp(homeTemp);
+}
 
-    if (needPlayTestMelody) {
-        LOG.printf("[MAIN] Playing test melody\n");
-        playMelody(MELODIES[testMelodyId]);
-        needPlayTestMelody = false;
+void handleUpdateTimezone() {
+    LOG.printf("[SETTINGS] Updating timezone\n");
+    applyTimezoneSettings(settings.getInt(TIME_ZONE));
+}
+
+void handleUpdateNtpHost() {
+    LOG.printf("[SETTINGS] Updating NTP host to: %s\n", settings.getString(NTP_HOST));
+    timeClient.setHost(settings.getString(NTP_HOST));
+    syncTime(3);
+}
+
+void handleReconnectWebsocket() {
+    LOG.printf("[SETTINGS] WebSocket server settings changed, reconnecting...\n");
+    requestWebsocketReconnect();
+}
+
+void handleRegenerateBgColorMap() {
+    LOG.printf("[SETTINGS] Regenerating BG LED color map\n");
+    generateBgLedColorsMap();
+}
+
+// --- Test Melody/Track Functions ---
+
+void requestPlayTestMelody(int melodyId) {
+    LOG.printf("[TEST] Playing test melody %d\n", melodyId);
+    if (melodyId >= 0 && melodyId < (int)(sizeof(MELODIES) / sizeof(MELODIES[0]))) {
+        playMelody(MELODIES[melodyId]);
     }
-    if (fwUpdate.isUpdateRequested()) {
-        LOG.printf("[MAIN] Updating firmware\n");
-        display.showServiceMessage("Виконано", "Запит оновлення:", 3000);
-        animation.clearAllAnimations();
-        fwUpdate.download();
-        fwUpdate.clearUpdateRequest();
+}
+
+void requestPlayTestTrack(int trackId) {
+    LOG.printf("[TEST] Playing test track %d\n", trackId);
+    // TODO: Реалізувати відтворення треків, якщо потрібно
+}
+
+void requestWebsocketReconnect() {
+    LOG.printf("[WEBSOCKET] Reconnection requested\n");
+    websocketConnected = false;
+    socketConnect();
+}
+
+void requestFirmwareUpdate(const char* firmwareId) {
+    const char* versionToUse = firmwareId ? firmwareId : fwUpdate.getNewVersion();
+    
+    if (versionToUse == nullptr || strlen(versionToUse) == 0) {
+        LOG.printf("[FIRMWARE] No firmware version specified\n");
+        return;
     }
+    
+    // Встановлюємо ID прошивки для завантаження
+    if (!fwUpdate.requestUpdate(versionToUse)) {
+        LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", versionToUse);
+        return;
+    }
+    
+    LOG.printf("[FIRMWARE] Update requested for version: %s\n", versionToUse);
+    display.showServiceMessage("Виконано", "Запит оновлення:", 3000);
+    animation.clearAllAnimations();
+    fwUpdate.download();
+    fwUpdate.clearUpdateRequest();
 }
 
 void brightnessProcess() {
@@ -2882,9 +3094,9 @@ void displayProcess()
     // Remove UA Anthem playing flag if anthem stopped
     if (uaAnthemPlaying && (!sound.isBuzzerPlaying() && !sound.isDFPlayerPlaying())) {
         uaAnthemPlaying = false;
-        // set flags to adapt colors on min of silence end
-        needAdaptColors = true;
-        needAdaptAnimationColors = true;
+        // adapt colors on min of silence end
+        handleAdaptColors();
+        handleAdaptAnimationColors();
     }
     // Show Minute of silence mode if activated. (Priority - 0)
     if (minuteOfSilence) {
@@ -3024,7 +3236,6 @@ void setup() {
     async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);;
 #endif
     async.setInterval(timeProcess, TIME_CHECK_INTERVAL);
-    async.setInterval(mainThreadProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(batteryProcess, BATTERY_CHECK_INTERVAL);
     async.setInterval(displayProcess, DISPLAY_CHECK_INTERVAL);
     async.setInterval(climateProcess, CLIMATE_CHECK_INTERVAL);
