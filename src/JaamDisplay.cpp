@@ -29,6 +29,8 @@ static const uint8_t* getClockFont(JaamDisplayHeight height) {
             case 1: return u8g2_font_victor_mono_32;
             case 2: return u8g2_font_mplus_code_32;
             case 3: return u8g2_font_osr21_tn;
+            case 4: return u8g2_font_dseg7_32;
+            case 5: return u8g2_font_bitcount_32;
             default: return u8g2_font_mplus_code_32;
         }
     } else {
@@ -37,6 +39,8 @@ static const uint8_t* getClockFont(JaamDisplayHeight height) {
             case 1: return u8g2_font_victor_mono_64;
             case 2: return u8g2_font_mplus_code_64;
             case 3: return u8g2_font_osr35_tn;
+            case 4: return u8g2_font_dseg7_64;
+            case 5: return u8g2_font_bitcount_64;
             default: return u8g2_font_mplus_code_64;
         }
     }

@@ -519,12 +519,14 @@ static SettingListItem DISPLAY_ROTATIONS[] = {
   {270, "270°"},
 };
 
-constexpr int CLOCK_FONTS_COUNT = 4;
+constexpr int CLOCK_FONTS_COUNT = 6;
 static SettingListItem CLOCK_FONTS[] = {
   {0, "Reddit"},
   {1, "Victor"},
   {2, "M PLUS 1 CODE"},
   {3, "Old Standard"},
+  {4, "DSEG7"},
+  {5, "Bitcount Grid"},
 };
 
 enum HARDWARE {
