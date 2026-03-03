@@ -519,6 +519,14 @@ static SettingListItem DISPLAY_ROTATIONS[] = {
   {270, "270°"},
 };
 
+constexpr int CLOCK_FONTS_COUNT = 4;
+static SettingListItem CLOCK_FONTS[] = {
+  {0, "Reddit"},
+  {1, "Victor"},
+  {2, "M PLUS 1 CODE"},
+  {3, "Old Standard"},
+};
+
 enum HARDWARE {
     JAAM_1_3 = 0,
     ZAKARPATTIA = 1,
@@ -722,6 +730,7 @@ enum Type {
     DISPLAY_HEIGHT,
     DISPLAY_ROTATION,
     DISPLAY_ALERT_MESSAGE_TIME,
+    CLOCK_FONT,
     DAY_START,
     NIGHT_START,
     WS_ALERT_TIME,
