@@ -1,6 +1,10 @@
 #include "JaamDisplay.h"
 #include "JaamLogs.h"
+#include "JaamFonts.h"
+#include "JaamSettings.h"
 #include <Wire.h>
+
+extern JaamSettings settings;
 
 static const unsigned char trident[] PROGMEM = {
     0x20, 0x00, 0x01, 0x08, 0x60, 0x80, 0x03, 0x0c, 0xe0, 0x80, 0x03, 0x0e, 0xe0, 0x81, 0x03, 0x0f,
@@ -14,8 +18,30 @@ static const unsigned char trident[] PROGMEM = {
 };
 #if DISPLAY_ENABLED
 #define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
-#define JAAM_FONT_CLOCK_64 u8g2_font_osr35_tn
-#define JAAM_FONT_CLOCK_32 u8g2_font_osr21_tn
+
+// Helper function to get clock font based on settings and display height
+static const uint8_t* getClockFont(JaamDisplayHeight height) {
+    int fontId = settings.getInt(CLOCK_FONT);
+    
+    if (height == JaamDisplayHeight::HEIGHT_32) {
+        switch (fontId) {
+            case 0: return u8g2_font_reddit_mono_32;
+            case 1: return u8g2_font_victor_mono_32;
+            case 2: return u8g2_font_mplus_code_32;
+            case 3: return u8g2_font_osr21_tn;
+            default: return u8g2_font_mplus_code_32;
+        }
+    } else {
+        switch (fontId) {
+            case 0: return u8g2_font_reddit_mono_64;
+            case 1: return u8g2_font_victor_mono_64;
+            case 2: return u8g2_font_mplus_code_64;
+            case 3: return u8g2_font_osr35_tn;
+            default: return u8g2_font_mplus_code_64;
+        }
+    }
+}
+
 static const uint8_t* JAAM_FONT_SIZES[] = {
     u8g2_font_inr38_t_cyrillic, // 38
     u8g2_font_inr33_t_cyrillic, // 33
@@ -522,13 +548,10 @@ void JaamDisplay::printClock(const String& time, const String& date) {
         titleHeight = _u8g2->getAscent() + 2;
     }
 
-    // Draw time using clock font (always single line)
-    if (_height == JaamDisplayHeight::HEIGHT_32) {
-        _u8g2->setFont(JAAM_FONT_CLOCK_32);
-    } else {
-        // Default to 64 height
-        _u8g2->setFont(JAAM_FONT_CLOCK_64);
-    }
+    // Draw time using clock font (selected from settings)
+    const uint8_t* clockFont = getClockFont(_height);
+    _u8g2->setFont(clockFont);
+    
     int timeWidth = _u8g2->getUTF8Width(time.c_str());
     int timeFontHeight = _u8g2->getAscent();
 

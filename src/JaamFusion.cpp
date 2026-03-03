@@ -64,6 +64,7 @@ void requestFirmwareUpdate(const char* firmwareId = nullptr);
 void requestRecalculateLeds();
 void requestAdaptColors();
 void requestToRegenerateBgColorMap();
+void displayProcess();
 
 // --- MAIN Configuration ---
 char                chipID[13];
@@ -2117,7 +2118,11 @@ void initSettings() {
             case WS_SERVER_PORT:
                 handleReconnectWebsocket();
                 break;
-            
+
+            case CLOCK_FONT:
+                displayProcess();
+                break;
+    
             default:
                 // Інші налаштування не потребують додаткової обробки
                 break;

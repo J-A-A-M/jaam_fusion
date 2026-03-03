@@ -441,6 +441,7 @@ void JaamWeb::handleParameter() {
         {"display_model", DISPLAY_MODEL, TYPE_INT},
         {"display_height", DISPLAY_HEIGHT, TYPE_INT},
         {"display_rotation", DISPLAY_ROTATION, TYPE_INT},
+        {"clock_font", CLOCK_FONT, TYPE_INT},
         {"invert_display", INVERT_DISPLAY, TYPE_BOOL},
         {"display_alert_message_time", DISPLAY_ALERT_MESSAGE_TIME, TYPE_INT},
         {"enable_kabs", ENABLE_KABS, TYPE_BOOL},
@@ -1206,6 +1207,10 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         appendOptionsList(arr, DISPLAY_ROTATIONS, DISPLAY_ROTATION_COUNT);
     }
     {
+        JsonArray arr = dropdownLists["clock_font"].to<JsonArray>();
+        appendOptionsList(arr, CLOCK_FONTS, CLOCK_FONTS_COUNT);
+    }
+    {
         JsonArray arr = dropdownLists["districts"].to<JsonArray>();
         appendOptionsList(arr, DISTRICTS, MAX_REGIONS);
     }
@@ -1440,6 +1445,7 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
     addDropdown("display", "display_height", "Висота дисплея", "display_height", DISPLAY_HEIGHT, exceptJaam1And2And30.c_str());
     addDropdown("display", "display_rotation", "Поворот дисплея", "display_rotation", DISPLAY_ROTATION, exceptJaam1And2And30.c_str());
     addBool("display", "invert_display", "Інвертувати дисплей", INVERT_DISPLAY);
+    addDropdown("display", "clock_font", "Шрифт годинника", "clock_font", CLOCK_FONT);
     addSlider("display", "display_alert_message_time", "Час сповіщень на екрані (секунди)", 1, 60, 1, settings->getInt(DISPLAY_ALERT_MESSAGE_TIME));
 
     // Мережеві налаштування
