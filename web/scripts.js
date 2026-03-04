@@ -378,7 +378,7 @@ function markdownToHtml(markdown) {
     html = html.replace(/^\- (.*?)$/gm, '<li>$1</li>');
     html = html.replace(/^  \* (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
     html = html.replace(/^  \- (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
-    html = html.replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>');
+    html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
     html = html.replace(/<\/li>\s*<ul>/g, '<ul>');
     html = html.replace(/<\/ul>\s*<li>/g, '<li>');
     

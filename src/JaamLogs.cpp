@@ -67,7 +67,7 @@ void LoggingPrint::processLine(const char* line) {
             
             // Extract tag
             size_t tagLen = tagEnd - tagStart;
-            if (tagLen > 0 && tagLen < 15) {  // Reduced to match new size
+            if (tagLen > 0 && tagLen <= 15) {
                 char tag[16];
                 strncpy(tag, tagStart, tagLen);
                 tag[tagLen] = '\0';

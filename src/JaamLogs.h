@@ -77,7 +77,10 @@ public:
     String getLogsJson(int limit = 100);
     
     // Get total number of logs captured
-    int getLogCount() const { return logCount; }
+    int getLogCount() const {
+        std::lock_guard<std::mutex> lock(logMutex);
+        return logCount;
+    }
     
     // Clear all logs
     void clearLogs();
@@ -90,7 +93,7 @@ private:
     LogEntry logBuffer[MAX_LOGS];     // Static circular buffer
     int writeIndex = 0;               // Where next log will be written
     int logCount = 0;                 // Number of logs currently stored (0 to MAX_LOGS)
-    std::mutex logMutex;
+    mutable std::mutex logMutex;
     LoggingPrint* loggingPrint = nullptr;
     
     JaamLogsManager() = default;

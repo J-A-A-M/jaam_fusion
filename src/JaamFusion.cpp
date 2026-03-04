@@ -1783,8 +1783,11 @@ void syncTime(int8_t attempts) {
     if (timeClient.status() == UNIX_OK) {
         time_t ntpTime = timeClient.unixGMT();
         struct timeval tv = {ntpTime, 0};
-        settimeofday(&tv, nullptr);
-        LOG.printf("[TIME] System clock synchronized with NTP\n");
+        if (settimeofday(&tv, nullptr) == 0) {
+            LOG.printf("[TIME] System clock synchronized with NTP\n");
+        } else {
+            LOG.printf("[TIME] Failed to sync system clock\n");
+        }
     }
 }
 

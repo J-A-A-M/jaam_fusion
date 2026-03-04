@@ -723,7 +723,7 @@ h1 {
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .log-entry:nth-child(even) {
@@ -741,7 +741,7 @@ h1 {
 .log-message {
     flex: 1;
     white-space: pre-wrap;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .logs-empty {
