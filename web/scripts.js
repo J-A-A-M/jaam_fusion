@@ -348,6 +348,119 @@ function updateTextParameter(name, value) {
         });
 }
 
+// Simple markdown to HTML converter for GitHub-style markdown
+function markdownToHtml(markdown) {
+    if (!markdown) return '';
+    
+    let html = markdown;
+    
+    // Headers
+    html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+    
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    
+    // Italic
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    
+    // Code blocks with triple backticks
+    html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Unordered lists
+    html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
+    html = html.replace(/^\- (.*?)$/gm, '<li>$1</li>');
+    html = html.replace(/^  \* (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    html = html.replace(/^  \- (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    html = html.replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>');
+    html = html.replace(/<\/li>\s*<ul>/g, '<ul>');
+    html = html.replace(/<\/ul>\s*<li>/g, '<li>');
+    
+    // Line breaks - convert paragraphs
+    const lines = html.split('\n');
+    let result = '';
+    let inBlock = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        if (line.match(/^<(h|ul|pre|ol)/)) {
+            result += line;
+            inBlock = true;
+        } else if (line.match(/^<\/(h|ul|pre|ol)/)) {
+            result += line;
+            inBlock = false;
+        } else if (line.trim() === '') {
+            if (!inBlock) result += '<br>';
+        } else if (line.match(/^<li>/)) {
+            result += line;
+        } else if (!inBlock && line.trim()) {
+            result += '<p>' + line + '</p>';
+        } else {
+            result += line;
+        }
+    }
+    
+    return result;
+}
+
+// Release notes cache to avoid redundant GitHub API calls
+const releaseNotesCache = {};
+
+// Load release notes for a specific firmware version from GitHub
+async function loadReleaseNotes(version, panel) {
+    if (!panel || !version) return;
+    
+    // Check cache first
+    if (releaseNotesCache[version]) {
+        const html = releaseNotesCache[version];
+        panel.innerHTML = '<div class="release-notes-content">' + html + '</div>';
+        panel.scrollTop = 0;
+        return;
+    }
+    
+    panel.innerHTML = '<span class="release-notes-loading">Завантаження...</span>';
+    
+    try {
+        // Fetch release notes from GitHub API
+        const githubApiUrl = 'https://api.github.com/repos/J-A-A-M/jaam_fusion/releases/tags/' + encodeURIComponent(version);
+        const response = await fetch(githubApiUrl, {
+            headers: {
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                panel.innerHTML = '<span class="release-notes-error">Версія ' + version + ' не знайдена на GitHub</span>';
+            } else {
+                panel.innerHTML = '<span class="release-notes-error">Помилка завантаження від GitHub</span>';
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.body) {
+            const html = markdownToHtml(data.body);
+            // Store in cache
+            releaseNotesCache[version] = html;
+            panel.innerHTML = '<div class="release-notes-content">' + html + '</div>';
+            panel.scrollTop = 0;
+        } else {
+            panel.innerHTML = '<span class="release-notes-error">Release notes порожні</span>';
+        }
+    } catch (err) {
+        console.error('Error loading release notes from GitHub:', err);
+        panel.innerHTML = '<span class="release-notes-error">Помилка мережі при завантаженні</span>';
+    }
+}
+
 // Dynamic UI rendering (from /ui-schema)
 async function fetchSchema() {
     const h = window.JAAM_HASHES || {};
@@ -485,6 +598,27 @@ function renderControl(ctrl, lists) {
             sel.appendChild(el);
         }
         
+        // Create release notes panel (for firmware_id only)
+        let releaseNotesPanel = null;
+        
+        // Handle firmware_id specific logic
+        if (name === 'firmware_id') {
+            releaseNotesPanel = document.createElement('div');
+            releaseNotesPanel.className = 'release-notes-panel';
+            releaseNotesPanel.id = 'releaseNotesPanel';
+            releaseNotesPanel.innerHTML = '<span class="release-notes-loading">Завантаження...</span>';
+            releaseNotesPanel.style.marginTop = '12px';
+            releaseNotesPanel.style.marginBottom = '12px';
+            
+            sel.onchange = (e) => {
+                const version = e.target.value;
+                loadReleaseNotes(version, releaseNotesPanel);
+            };
+            
+            // Load initial release notes from selected dropdown value
+            loadReleaseNotes(sel.value, releaseNotesPanel);
+        }
+        
         // Create confirm button
         const confirmBtn = document.createElement('button');
         confirmBtn.type = 'button';
@@ -498,6 +632,9 @@ function renderControl(ctrl, lists) {
         
         div.appendChild(lab);
         div.appendChild(sel);
+        if (releaseNotesPanel) {
+            div.appendChild(releaseNotesPanel);
+        }
         div.appendChild(confirmBtn);
         
         if (visibility && visibility.trim() !== '') {

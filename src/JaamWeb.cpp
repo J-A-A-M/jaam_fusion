@@ -1436,8 +1436,8 @@ void JaamWeb::buildUiSchemaControls(JsonDocument& doc) {
 
     // Firmware update
     addInfo("firmware", "Налаштування оновлення прошивки. Вибір версії потребує підтвердження", "#9c1cf8", "M9,16.2L4.8,12L3.4,13.4L9,19L21,7L19.6,5.6L9,16.2Z");
-    addDropdownConfirm("firmware", "firmware_id", "Вибрати прошивку", "firmware_versions", String(fwUpdate.getUpdateId()));
     addBool("firmware", "new_fw_notification", "Показувати повідомлення про нову прошивку", NEW_FW_NOTIFICATION);
+    addDropdownConfirm("firmware", "firmware_id", "Вибрати прошивку", "firmware_versions", String(fwUpdate.getUpdateId()));
 
     // Display settings
     addInfo("display", "Налаштуйте параметри дисплея та візуального відображення мапи", "#28a745", "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z");
