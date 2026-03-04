@@ -2120,6 +2120,7 @@ void initSettings() {
                 break;
 
             case CLOCK_FONT:
+            case DISPLAY_MODE:
                 displayProcess();
                 break;
     
@@ -3133,6 +3134,66 @@ void batteryProcess() {
     battery.logVoltage();
 }
 
+// --- Display Show Methods ---
+void showWeather() {
+    uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
+    int homeTemp = decodeTemperature(encodedTemp);
+    const char* regionName = getNameById(DISTRICTS, settings.getInt(HOME_DISTRICT), MAX_REGIONS);
+    char weatherInfo[50];
+    snprintf(weatherInfo, sizeof(weatherInfo), "%d°C", homeTemp);
+    display.printMessage(weatherInfo, regionName);
+}
+
+void showTechnicalInfo() {
+    SystemInfo info = getSystemInfo();
+    const char* version = fwUpdate.getCurrentVersion();
+    uint32_t totalMemory = info.usedMemory + info.freeMemory;
+    
+    String versionStr = String("v") + version;
+    String ipAddrStr = wifiConnected ? WiFi.localIP().toString() : "Н/А";
+    
+    char memBuf[30];
+    snprintf(memBuf, sizeof(memBuf), "%u/%u KB", info.usedMemory / 1024, totalMemory / 1024);
+    String memoryStr = String(memBuf);
+    
+    display.printMultilineMessage(versionStr, ipAddrStr, memoryStr, "", "Тех. інформація:");
+}
+
+void showMicroclimate() {
+    if (climate.isAnySensorAvailable()) {
+        float temp = climate.getTemperature();
+        float hum = climate.getHumidity();
+        char climateInfo[50];
+        if (!isnan(temp) && !isnan(hum)) {
+            snprintf(climateInfo, sizeof(climateInfo), "%.1f°С %.1f%%", temp, hum);
+        } else {
+            snprintf(climateInfo, sizeof(climateInfo), "Немає даних");
+        }
+        display.printMessage(climateInfo, "Мікроклімат");
+    } else {
+        showClock();
+    }
+}
+
+void showCombined() {
+    int periodIndex = getCurrentPeriodIndex(2, 3, timeClient.second());
+    
+    switch(periodIndex) {
+        case 0: // Show Clock
+            showClock();
+            break;
+        case 1: // Show Weather
+            showWeather();
+            break;
+        // case 2: // Show Microclimate
+        //     showMicroclimate();
+        //     break;
+        // default:
+            showClock();
+            break;
+    }
+}
+
 // --- Display Process ---
 void displayProcess()
 {
@@ -3148,16 +3209,49 @@ void displayProcess()
         displayMinuteOfSilence();
         return;
     }
-    // Show Glory To Ukraine if athema playing. (Priority - 1)
+    // Show Glory To Ukraine if anthem playing. (Priority - 1)
     if (uaAnthemPlaying) {
         showMinOfSilenceScreen(1);
         return;
     }
+    // Show firmware update notification if available (Priority - 2)
     if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION)) {
         showNewFirmwareNotification();
         return;
     }
-    showClock();
+    
+    // Handle display modes
+    int displayMode = settings.getInt(DISPLAY_MODE);
+    
+    switch(displayMode) {
+        case 0: // Вимкнено (Disabled)
+            display.clear();
+            break;
+        
+        case 1: // Годинник (Clock)
+            showClock();
+            break;
+        
+        case 2: // Погода (Weather)
+            showWeather();
+            break;
+        
+        case 3: // Технічна інформація (Technical Information)
+            showTechnicalInfo();
+            break;
+        
+        case 4: // Мікроклімат (Microclimate)
+            showMicroclimate();
+            break;
+        
+        case 9: // Комбінований (Combined)
+            showCombined();
+            break;
+        
+        default:
+            showClock();
+            break;
+    }
 }
 
 // --- Sound Process ---

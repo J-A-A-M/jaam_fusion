@@ -471,16 +471,16 @@ static TimezoneInfo TIMEZONE_OFFSETS[] = {
   {22, 12, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
 };
 
-constexpr int DISPLAY_MODES_COUNT = 2;
+constexpr int DISPLAY_MODES_COUNT = 6;
 static SettingListItem DISPLAY_MODES[] = {
   {0, "Вимкнено", false},
   {1, "Годинник", false},
   // {5, "Енергосистема", false},
-  // {2, "Погода", false},
+  {2, "Погода", false},
   // {6, "Радіація", false},
-  // {3, "Технічна інформація", false},
-  // {4, "Мікроклімат", false},
-  // {9, "Перемикання", false},
+  {3, "Технічна інформація", false},
+  {4, "Мікроклімат", false},
+  {9, "Комбінований", false},
 };
 
 constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;

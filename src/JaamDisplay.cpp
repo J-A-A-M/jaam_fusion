@@ -377,6 +377,93 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
 #endif
 }
 
+// Print message with 2 lines
+void JaamDisplay::printMultilineMessage(const String& line1, const String& line2, const String& line3, const String& line4, const String& title) {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
+    if (!_u8g2) return;
+    if (_isServiceMessageActive()) {
+        LOG.printf("[DISPLAY] Skipping printMultilineMessage, service message is active\n");
+        return;
+    }
+
+    _u8g2->clearBuffer();
+    uint8_t dispWidth = 128;
+    uint8_t dispHeight = (uint8_t)_height;
+
+    // Draw title if provided
+    uint8_t titleHeight = 0;
+    if (!title.isEmpty()) {
+        _u8g2->setFont(JAAM_FONT_TITLE);
+        _u8g2->setCursor(3, _u8g2->getAscent());
+        _u8g2->print(title);
+        titleHeight = _u8g2->getAscent() + 2;
+    }
+
+    // Count non-empty lines and collect them
+    String lines[4];
+    int lineCount = 0;
+    if (!line1.isEmpty()) lines[lineCount++] = line1;
+    if (!line2.isEmpty()) lines[lineCount++] = line2;
+    if (!line3.isEmpty()) lines[lineCount++] = line3;
+    if (!line4.isEmpty()) lines[lineCount++] = line4;
+
+    if (lineCount == 0) {
+        _u8g2->sendBuffer();
+        return;
+    }
+
+    // Get appropriate font array based on display height
+    const uint8_t** fontArray;
+    uint8_t fontCount;
+    getFontArrayForHeight(_height, fontArray, fontCount);
+
+    // Find font size that fits all lines
+    int fontIdx = 0;
+    bool fits = false;
+    int spacing = 4;
+    for (; fontIdx < fontCount; ++fontIdx) {
+        _u8g2->setFont(fontArray[fontIdx]);
+        int h = _u8g2->getAscent();
+        int totalTextHeight = h * lineCount + spacing * (lineCount - 1);
+        
+        if ((totalTextHeight + titleHeight) > dispHeight) {
+            continue;
+        }
+        
+        bool allFit = true;
+        for (int i = 0; i < lineCount; i++) {
+            int w = _u8g2->getUTF8Width(lines[i].c_str());
+            if (w > dispWidth - 2) {
+                allFit = false;
+                break;
+            }
+        }
+        
+        if (allFit) {
+            fits = true;
+            break;
+        }
+    }
+    if (fontIdx == fontCount) fontIdx = fontCount - 1;
+
+    _u8g2->setFont(fontArray[fontIdx]);
+    int mainFontHeight = _u8g2->getAscent();
+    int totalTextHeight = mainFontHeight * lineCount + spacing * (lineCount - 1);
+    int startY = titleHeight + (dispHeight - titleHeight - totalTextHeight) / 2 + mainFontHeight;
+
+    // Draw all lines
+    for (int i = 0; i < lineCount; i++) {
+        int y = startY + i * (mainFontHeight + spacing);
+        int x = (dispWidth - _u8g2->getUTF8Width(lines[i].c_str())) / 2;
+        _u8g2->setCursor(x > 0 ? x : 0, y);
+        _u8g2->print(lines[i]);
+    }
+
+    _u8g2->sendBuffer();
+#endif
+}
+
 // Draw a monochrome bitmap icon at (x, y) with width w and height h
 void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text) {
     if (!_isConnected) return;

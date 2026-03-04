@@ -50,6 +50,7 @@ public:
     void invertDisplay(bool invert = true);
     void rotateDisplay(JaamDisplayRotation rotation = JaamDisplayRotation::ROTATION_0);
     void printMessage(const String& mainText, const String& title = "");
+    void printMultilineMessage(const String& line1, const String& line2, const String& line3 = "", const String& line4 = "", const String& title = "");
     void printClock(const String& time, const String& date = "");
     void drawIconWithText(JaamDisplayIcon icon, const String& text);
     void showServiceMessage(const String& message, const String& title = "", int duration = 2000);

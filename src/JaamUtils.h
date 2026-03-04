@@ -998,21 +998,6 @@ inline void nextMapMode() {
   saveMapMode(MAP_MODES[newIndex].id);
 }
 
-inline bool saveDisplayMode(int newDisplayMode) {
-  if (newDisplayMode == settings.getInt(DISPLAY_MODE)) return false;
-  settings.saveInt(DISPLAY_MODE, newDisplayMode);
-  //reportSettingsChange("display_mode", newDisplayMode);
-  const char* displayModeName = getNameById(DISPLAY_MODES, newDisplayMode, DISPLAY_MODES_COUNT);
-  display.showServiceMessage(displayModeName, "Режим дисплея:");
-  // update to selected displayMode
-  //displayCycle();
-  return true;
-}
-
-inline bool saveDisplayModeFromHa(int newIndex) {
-  return saveDisplayMode(DISPLAY_MODES[newIndex].id);
-}
-
 inline void nextDisplayMode() {
   int newIndex = getIndexById(DISPLAY_MODES, settings.getInt(DISPLAY_MODE), DISPLAY_MODES_COUNT);
   do {
@@ -1023,7 +1008,7 @@ inline void nextDisplayMode() {
     }
   } while (DISPLAY_MODES[newIndex].ignore);
 
-  saveDisplayMode(DISPLAY_MODES[newIndex].id);
+  settings.saveInt(DISPLAY_MODE, DISPLAY_MODES[newIndex].id);
 }
 
 inline int getCurrentPeriodIndex(int periodLength, int periodCount, long currentSeconds) {
