@@ -90,7 +90,7 @@ void sendCompressedJson(WebServer* server, const String& json) {
     }
     
     float ratio = (1.0f - (float)compressedSize / (float)jsonLen) * 100.0f;
-    LOG.printf("[WEB] Compressed JSON: %d → %d bytes (%.1f%% reduction)\n", jsonLen, compressedSize, ratio);
+    // LOG.printf("[WEB] Compressed JSON: %d → %d bytes (%.1f%% reduction)\n", jsonLen, compressedSize, ratio);
     
     // Send compressed data
     server->sendHeader("Content-Encoding", "gzip");
@@ -774,6 +774,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/system-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/alerts-info", HTTP_GET, [this]() { this->handleAlertsInfo(); });
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/logs-info", HTTP_GET, [this]() { this->handleLogsInfo(); });
+    server.on("/logs-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/models", HTTP_GET, [this]() { this->handleUiSchemaModels(); });
     server.on("/ui-schema/models", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/sections", HTTP_GET, [this]() { this->handleUiSchemaSections(); });
@@ -809,6 +811,24 @@ void JaamWeb::handleSystemInfo() {
 void JaamWeb::handleAlertsInfo() {
     setCrossOrigin();
     String response = getAlertsJson();
+    sendCompressedJson(&server, response);
+    response.clear();
+}
+
+void JaamWeb::handleLogsInfo() {
+    setCrossOrigin();
+    
+    // Get limit from query parameter (default 100)
+    int limit = 100;
+    if (server.hasArg("limit")) {
+        String limitStr = server.arg("limit");
+        int parsed = 0;
+        if (parseStrictInt(limitStr, parsed)) {
+            limit = constrain(parsed, 10, 500);
+        }
+    }
+    
+    String response = logsManager.getLogsJson(limit);
     sendCompressedJson(&server, response);
     response.clear();
 }
@@ -904,6 +924,11 @@ void JaamWeb::handleUiPage() {
                         <path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/>
                     </svg>
                 </button>
+                <button class='control-button' id='logsPanelToggle' onclick='toggleLogsPanel()' title='Показати/сховати логи'>
+                    <svg viewBox='0 0 24 24'>
+                        <path d='M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z'/>
+                    </svg>
+                </button>
                 <button class='control-button theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>
                     <svg viewBox='0 0 24 24'>
                         <path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
@@ -929,6 +954,20 @@ void JaamWeb::handleUiPage() {
                 </span>
             </div>
             <div id='alertsDetailsPanel'></div>
+        </div>
+
+        <!-- Logs panel (content filled by updateLogsInfo) -->
+        <div class='logs-panel' id='logsPanel'>
+            <div class='logs-header'>
+                <h3>Логи пристрою</h3>
+                <div class='logs-buttons'>
+                    <button class='logs-control-btn' id='logsToggleBtn' onclick='toggleLogStream()'>Показати</button>
+                    <button class='logs-control-btn logs-clear-btn' onclick='clearLogs()' title='Очистити логи'>✕</button>
+                </div>
+            </div>
+            <div class='logs-content' id='logsContent'>
+                <div class='logs-empty'>Натисніть "Показати" для отримання логів</div>
+            </div>
         </div>
 
         <!-- Navigation and controls -->
