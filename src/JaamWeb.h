@@ -38,6 +38,7 @@ private:
     void handleTextParameter();
     void handleSystemInfo();
     void handleAlertsInfo();
+    void handleLogsInfo();
     void handleUiSchemaModels();
     void handleUiSchemaSections();
     void handleUiSchemaDropdownLists();

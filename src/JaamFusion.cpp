@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ArduinoWebsockets.h>
-
+#include <sys/time.h>
 
 #include <WiFiManager.h>
 #include <WiFiClientSecure.h>
@@ -1779,6 +1779,16 @@ void syncTime(int8_t attempts) {
         count++;
         printNtpStatus(&timeClient);
     }
+    // Sync system clock after successful NTP sync
+    if (timeClient.status() == UNIX_OK) {
+        time_t ntpTime = timeClient.unixGMT();
+        struct timeval tv = {ntpTime, 0};
+        if (settimeofday(&tv, nullptr) == 0) {
+            LOG.printf("[TIME] System clock synchronized with NTP\n");
+        } else {
+            LOG.printf("[TIME] Failed to sync system clock\n");
+        }
+    }
 }
 
 void adaptColors() {
@@ -3191,6 +3201,7 @@ void beepHourProcess() {
 // --- SETUP ---
 void setup() {
     LOG.begin(115200);
+    logsManager.begin();  // Initialize logs capture system
 
     checkFreeHeap("LOG initialization");
 
