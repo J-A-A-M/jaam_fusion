@@ -1080,6 +1080,9 @@ void JaamWeb::handleMapEditor() {
     html += "<h1>Редактор власної карти LED</h1>";
     html += "<div class='header-buttons'>";
     html += "<button id='saveBtn' onclick='saveMap()' disabled class='control-button' title='Зберегти карту'>Завантаження...</button>";
+    html += "<button id='exportBtn' onclick='exportMap()' class='control-button' title='Експортувати карту в JSON' style='display: none;'>Експорт</button>";
+    html += "<button id='importBtn' onclick='document.getElementById(\"importFileInput\").click()' class='control-button' title='Імпортувати карту з JSON' style='display: none;'>Імпорт</button>";
+    html += "<input type='file' id='importFileInput' accept='.json' style='display: none;' onchange='importMapFromFile(event)'>";
     html += "<button class='control-button theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>";
     html += "<svg viewBox='0 0 24 24'>";
     html += "<path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>";
