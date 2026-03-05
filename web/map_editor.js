@@ -83,7 +83,6 @@ async function exportMap() {
             regions: data.regions.map(region => ({
                 id: region.id,
                 name: region.name,
-                sub: region.sub,
                 leds: region.leds || []
             }))
         };
@@ -118,12 +117,12 @@ async function exportMap() {
     }
 }
 
-function importMapFromFile(event) {
+async function importMapFromFile(event) {
     const file = event.target.files[0];
     if (!file) return;
     
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const importData = JSON.parse(e.target.result);
             
@@ -132,13 +131,32 @@ function importMapFromFile(event) {
                 return;
             }
             
-            // Convert leds array to leds_string format
-            const regions = importData.regions.map(region => ({
-                ...region,
-                leds_string: (region.leds || []).join(', ')
+            // Fetch current region structure from server
+            const response = await fetch('/map-data');
+            const currentData = await response.json();
+            
+            if (!currentData.regions || !Array.isArray(currentData.regions)) {
+                alert('Помилка завантаження поточної структури регіонів.');
+                return;
+            }
+            
+            // Create a map of imported LEDs by region ID for quick lookup
+            const importedLedsMap = new Map();
+            importData.regions.forEach(region => {
+                if (region.id !== undefined && region.leds) {
+                    importedLedsMap.set(region.id, region.leds);
+                }
+            });
+            
+            // Merge: use current structure but replace LEDs from imported file
+            const mergedRegions = currentData.regions.map(region => ({
+                id: region.id,
+                name: region.name,
+                sub: region.sub,
+                leds_string: (importedLedsMap.get(region.id) || []).join(', ')
             }));
             
-            renderMapEditor(regions);
+            renderMapEditor(mergedRegions);
             alert('Карта успішно завантажена з файлу. Натисніть "Зберегти карту" для застосування змін.');
         } catch (err) {
             alert('Помилка при завантаженні файлу: ' + err.message);
