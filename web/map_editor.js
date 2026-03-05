@@ -2,7 +2,12 @@
 
 function loadMapData() {
     fetch('/map-data')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             renderMapEditor(data.regions);
         })
@@ -73,7 +78,126 @@ function saveMap() {
     }
 }
 
+async function exportMap() {
+    try {
+        const response = await fetch('/map-data');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Create a clean export object with only necessary fields
+        const exportData = {
+            regions: data.regions.map(region => ({
+                id: region.id,
+                name: region.name,
+                leds: region.leds || []
+            }))
+        };
+        
+        const json_str = JSON.stringify(exportData, null, 2);
+        const fileName = 'jaam_map_' + new Date().toISOString().slice(0, 10) + '.json';
+        
+        // Try modern File System Access API
+        if ('showSaveFilePicker' in window) {
+            const fileHandle = await window.showSaveFilePicker({
+                suggestedName: fileName,
+                types: [{
+                    description: 'JSON файл',
+                    accept: { 'application/json': ['.json'] }
+                }]
+            });
+            const writable = await fileHandle.createWritable();
+            await writable.write(json_str);
+            await writable.close();
+        } else {
+            // Fallback to traditional download method
+            const blob = new Blob([json_str], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    } catch (err) {
+        console.error('Error exporting map:', err);
+    }
+}
+
+async function importMapFromFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const importData = JSON.parse(e.target.result);
+            
+            if (!importData.regions || !Array.isArray(importData.regions)) {
+                alert('Невірний формат файлу. Очікується структура з полем "regions".');
+                return;
+            }
+            
+            // Fetch current region structure from server
+            const response = await fetch('/map-data');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const currentData = await response.json();
+            
+            if (!currentData.regions || !Array.isArray(currentData.regions)) {
+                alert('Помилка завантаження поточної структури регіонів.');
+                return;
+            }
+            
+            // Create a map of imported LEDs by region ID for quick lookup
+            const importedLedsMap = new Map();
+            importData.regions.forEach(region => {
+                // Validate region ID is a number
+                if (typeof region.id !== 'number') {
+                    return;
+                }
+                
+                // Validate leds is an array
+                if (!Array.isArray(region.leds)) {
+                    return;
+                }
+                
+                // Validate all LED entries are numbers
+                const validLeds = region.leds.filter(led => typeof led === 'number');
+                
+                importedLedsMap.set(region.id, validLeds);
+            });
+            
+            // Merge: use current structure but replace LEDs from imported file
+            const mergedRegions = currentData.regions.map(region => ({
+                id: region.id,
+                name: region.name,
+                sub: region.sub,
+                leds_string: (importedLedsMap.get(region.id) || []).join(', ')
+            }));
+            
+            renderMapEditor(mergedRegions);
+            alert('Карта успішно завантажена з файлу. Натисніть "Зберегти карту" для застосування змін.');
+        } catch (err) {
+            alert('Помилка при завантаженні файлу: ' + err.message);
+            console.error('Error parsing import file:', err);
+        }
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    event.target.value = '';
+}
+
 // Load map data when page loads
 document.addEventListener('DOMContentLoaded', () => {
     loadMapData();
+    
+    // Show import/export buttons once map is loaded
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    if (exportBtn) exportBtn.style.display = 'block';
+    if (importBtn) importBtn.style.display = 'block';
 });
