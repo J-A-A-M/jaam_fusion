@@ -43,6 +43,7 @@ private:
     void handleUiSchemaSections();
     void handleUiSchemaDropdownLists();
     void handleUiSchemaControls();
+    void handleUiSchemaControlsValues();
     void handleUiPage();
     void handleMapData();
     void handleCss();
@@ -54,4 +55,5 @@ private:
     String getMeta();
     void buildUiSchemaDropdownLists(JsonDocument& doc);
     void buildUiSchemaControls(JsonDocument& doc);
+    void buildUiSchemaControlsValues(JsonDocument& doc);
 };
