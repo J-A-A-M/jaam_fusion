@@ -7,8 +7,8 @@
 ## Результати компресії
 
 ### Основні файли
-- **styles.css**: 10,169 bytes → 2,072 bytes (**79.6%** reduction)
-- **scripts.js**: 39,934 bytes → 9,868 bytes (**75.3%** reduction)
+- **styles.css**: 15,048 bytes → 2,839 bytes (**81.1%** reduction)
+- **scripts.js**: 55,817 bytes → 13,867 bytes (**75.2%** reduction)
 
 ### Page-specific файли
 - **map_editor.css**: 1,236 bytes → 490 bytes (**60.4%** reduction)
@@ -19,10 +19,11 @@
 ### UI Schema (JSON)
 - **ui_schema_models.json**: 705 bytes → 207 bytes (**70.6%** reduction)
 - **ui_schema_sections.json**: 789 bytes → 379 bytes (**52.0%** reduction)
+- **controls.json**: 41,752 bytes → 5,221 bytes (**87.5%** reduction)
 
 ### Загальна статистика
-- **Разом**: 62,114 bytes → 16,351 bytes (**73.7%** reduction)
-- **Економія**: 45,763 bytes
+- **Разом**: 123,525 bytes → 26,039 bytes (**78.9%** reduction)
+- **Економія**: 97,486 bytes
 
 **Примітка**: Окрім статичних файлів, всі динамічні JSON та HTML відповіді також стискаються в реальному часі (див. розділ "Динамічне стиснення відповідей").
 
@@ -40,7 +41,8 @@ jaam_fusion/
 │   ├── bg_color_editor.css      # CSS для редактора кольорів
 │   ├── bg_color_editor.js       # JavaScript для редактора кольорів
 │   ├── ui_schema_models.json    # UI моделі (статичні)
-│   └── ui_schema_sections.json  # UI секції (статичні)
+│   ├── ui_schema_sections.json  # UI секції (статичні)
+│   └── controls.json            # UI контроли без значень (статичні)
 ├── tools/
 │   └── compress_assets.py       # PlatformIO pre-build script
 └── src/
@@ -69,6 +71,7 @@ jaam_fusion/
 - `web/bg_color_editor.js` - логіка редактора кольорів
 - `web/ui_schema_models.json` - моделі UI елементів (статичні)
 - `web/ui_schema_sections.json` - секції налаштувань (статичні)
+- `web/controls.json` - структура UI контролів без значень (статичні)
 
 ### Збірка проекту
 
@@ -98,6 +101,28 @@ platformio run -e firmware
 
 Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGMEM`), що економить RAM.
 
+### Розділення статичних контролів і динамічних значень
+
+Для максимальної оптимізації, UI контроли розділено на дві частини:
+
+**Статична частина** (`/ui-schema/controls`):
+- Файл `web/controls.json` містить **тільки структуру** контролів (без поля `current`)
+- Pre-compressed при збірці (87.5% reduction)
+- Кешується браузером через ETag (завантажується один раз)
+- Розмір: 41,752 bytes → 5,221 bytes
+
+**Динамічна частина** (`/ui-schema/controls/values`):
+- Endpoint повертає масив значень `{values: [["name1", value1], ["name2", value2], ...]}`
+- Стискається динамічно при кожному запиті
+- Завантажується щоразу (актуальні значення з пам'яті пристрою)
+- Об'єднується з контролями на клієнті через `mergeControlsWithValues()`
+
+**Переваги**:
+- ✅ **Економія трафіку**: Велика структура (41KB) завантажується тільки один раз
+- ✅ **Швидке оновлення**: Значення (кілька KB) завантажуються швидко
+- ✅ **Кешування**: 304 Not Modified для статичної частини
+- ✅ **Паралельне завантаження**: Обидва запити через `Promise.all()`
+
 ## Динамічне стиснення відповідей
 
 Окрім pre-compressed статичних файлів, сервер також стискає динамічні відповіді в реальному часі:
@@ -107,9 +132,11 @@ Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGME
 Всі JSON API endpoints стискаються через `ESP32-targz` бібліотеку:
 
 - `/ui-schema/dropdown_lists` - списки для dropdown елементів
-- `/ui-schema/controls` - конфігурація UI контролів
+- `/ui-schema/controls` - статична структура UI контролів (pre-compressed)
+- `/ui-schema/controls/values` - динамічні значення для контролів
 - `/system-info` - системна інформація
 - `/alerts-info` - дані про тривоги
+- `/logs-info` - логи системи
 - `/map-data` - дані для редактора мапи
 - `/bg-colors-data` - дані кольорів фону
 
@@ -135,7 +162,7 @@ Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGME
 
 ### Технічні деталі
 
-**Бібліотека**: `tobozo/ESP32-targz@1.2.4`
+**Бібліотека**: `tobozo/ESP32-targz@1.3.1`
 
 **Метод стиснення**: `LZPacker::compress()` - високоефективний gzip компресор
 
@@ -146,6 +173,15 @@ Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGME
 ```
 
 **Управління пам'яттю**: Стиснуті дані автоматично звільняються після відправки через `free(compressedBytes)`.
+
+---
+
+## Додаткові ресурси
+
+- **[CONTROLS_GUIDE.md](CONTROLS_GUIDE.md)** - Детальний довідник з додавання нових UI контролів
+- [Material Design Icons](https://pictogrammers.com/library/mdi/) - Іконки для info контролів
+- `web/ui_schema_models.json` - Визначення типів контролів
+- `web/ui_schema_sections.json` - Секції для групування контролів
 
 ## Порівняння з попередніми підходами
 

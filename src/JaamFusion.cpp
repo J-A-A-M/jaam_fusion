@@ -3051,7 +3051,15 @@ void handleUpdateNtpHost() {
 
 void handleReconnectWebsocket() {
     LOG.printf("[SETTINGS] WebSocket server settings changed, reconnecting...\n");
-    requestWebsocketReconnect();
+    websocketConnected = false;
+    websocketReconnect = true;
+    clearAllAlertsMaps();
+    clearAllWeatherMaps();
+    isFirstDataFetchCompleted = false;
+    alertsHash = 0;
+    if (websocket.available()) {
+        websocket.close();
+    }
 }
 
 void handleRegenerateBgColorMap() {
@@ -3075,15 +3083,7 @@ void requestPlayTestTrack(int trackId) {
 
 void requestWebsocketReconnect() {
     LOG.printf("[WEBSOCKET] Reconnection requested\n");
-    websocketConnected = false;
-    websocketReconnect = true;
-    clearAllAlertsMaps();
-    clearAllWeatherMaps();
-    isFirstDataFetchCompleted = false;
-    alertsHash = 0;
-    if (websocket.available()) {
-        websocket.close();
-    }
+    handleReconnectWebsocket();
 }
 
 void updateFirmware() {

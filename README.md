@@ -22,6 +22,10 @@
 - [ЧАТ ПРОЄКТУ](https://t.me/jaam_discussions)
 - [ПОРТАЛ ДАНИХ](http://jaam.net.ua)
 
+### 📖 Документація для розробників
+- **[CONTROLS_GUIDE.md](CONTROLS_GUIDE.md)** - Детальний довідник з додавання нових UI контролів
+- **[WEB_ASSETS_README.md](WEB_ASSETS_README.md)** - Система компресії веб-ресурсів та кешування
+
 ---
 
 ## 🎯 Що нового в JAAM Fusion 5.x
@@ -595,7 +599,8 @@ jaam_fusion/
 ├── platformio.ini           # Конфігурація PlatformIO
 ├── custom_4MB.csv          # Partition table для ESP32-S3
 ├── README.md               # Цей файл
-├── WEB_ASSETS_README.md    # Документація компресії
+├── WEB_ASSETS_README.md    # Документація компресії веб-ресурсів
+├── CONTROLS_GUIDE.md       # Довідник з додавання UI контролів
 ├── data/                   # Дані для генерації карт
 │   ├── gen_data.py
 │   ├── gen_data.json

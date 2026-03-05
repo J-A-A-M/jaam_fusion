@@ -29,6 +29,7 @@ extern void requestFirmwareUpdate(const char* firmwareId);
 extern void requestRecalculateLeds();
 extern void requestAdaptColors();
 extern void requestToRegenerateBgColorMap();
+extern void requestWebsocketReconnect();
 
 // Допоміжні функції для строгого парсингу
 static bool parseStrictInt(const String& s, int& out) {
@@ -246,9 +247,6 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"district_mode_kharkiv", DISTRICT_MODE_KHARKIV, TYPE_INT},
     {"district_mode_zp", DISTRICT_MODE_ZP, TYPE_INT},
     {"kyiv_led", KYIV_LED, TYPE_BOOL},
-    {"ha_mqtt_user", HA_MQTT_USER, TYPE_STRING},
-    {"ha_mqtt_password", HA_MQTT_PASSWORD, TYPE_STRING},
-    {"ha_broker_address", HA_BROKER_ADDRESS, TYPE_STRING},
 };
 
 void sendLargeJson(WebServer* server, const String& json) {
@@ -1066,6 +1064,7 @@ void JaamWeb::handleSaveMap() {
         server.sendHeader("Location", "/map-editor", true);
         requestRecalculateLeds();
         requestAdaptColors();
+        requestWebsocketReconnect();
         server.send(303);
     } else {
         LOG.printf("[WEB] Custom map saving error.\n");
