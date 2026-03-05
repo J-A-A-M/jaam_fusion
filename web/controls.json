@@ -1,0 +1,1519 @@
+{
+    "controls": [
+        [
+            "info",
+            "Оберіть режим прошивки відповідно до вашої версії пристрою",
+            "#007bff",
+            "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
+            "general",
+            ""
+        ],
+        [
+            "dropdown",
+            "hardware",
+            "Режим прошивки",
+            "hardware",
+            "general",
+            ""
+        ],
+        [
+            "button",
+            "map_editor",
+            "Редактор мапи",
+            "#007bff",
+            "/map-editor",
+            "general",
+            "hardware==5"
+        ],
+        [
+            "dropdown",
+            "home_district",
+            "Домашній регіон",
+            "districts",
+            "general",
+            ""
+        ],
+        [
+            "dropdown",
+            "bg_led_mode",
+            "Режим фонової підствітки",
+            "bg_led_mode",
+            "general",
+            "hardware!=0"
+        ],
+        [
+            "button",
+            "color_editor",
+            "Редактор кольорів",
+            "#28a745",
+            "/bg-color-editor",
+            "general",
+            "bg_led_mode==2"
+        ],
+        [
+            "dropdown",
+            "map_mode",
+            "Режим мапи",
+            "map_mode",
+            "general",
+            ""
+        ],
+        [
+            "bool",
+            "min_of_silence",
+            "Увімкнути режим \"Хвилина мовчання\" о 9:00",
+            "general",
+            ""
+        ],
+        [
+            "dropdown",
+            "time_zone",
+            "Часовий пояс",
+            "timezones",
+            "general",
+            ""
+        ],
+        [
+            "text",
+            "device_name",
+            "Назва пристрою",
+            "JAAM",
+            "general",
+            ""
+        ],
+        [
+            "text",
+            "device_description",
+            "Опис пристрою",
+            "JAAM Informer",
+            "general",
+            ""
+        ],
+        [
+            "info",
+            "Налаштування оновлення прошивки. Вибір версії потребує підтвердження",
+            "#9c1cf8",
+            "M9,16.2L4.8,12L3.4,13.4L9,19L21,7L19.6,5.6L9,16.2Z",
+            "firmware",
+            ""
+        ],
+        [
+            "bool",
+            "new_fw_notification",
+            "Показувати повідомлення про нову прошивку",
+            "firmware",
+            ""
+        ],
+        [
+            "dropdown_confirm",
+            "firmware_id",
+            "Вибрати прошивку",
+            "firmware_versions",
+            "firmware",
+            ""
+        ],
+        [
+            "info",
+            "Налаштуйте параметри дисплея та візуального відображення мапи",
+            "#28a745",
+            "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z",
+            "display",
+            ""
+        ],
+        [
+            "dropdown",
+            "display_model",
+            "Тип дисплея",
+            "display_model",
+            "display",
+            "hardware!=0,hardware!=3,hardware!=4"
+        ],
+        [
+            "dropdown",
+            "display_height",
+            "Висота дисплея",
+            "display_height",
+            "display",
+            "hardware!=0,hardware!=3,hardware!=4"
+        ],
+        [
+            "dropdown",
+            "display_rotation",
+            "Поворот дисплея",
+            "display_rotation",
+            "display",
+            "hardware!=0,hardware!=3,hardware!=4"
+        ],
+        [
+            "bool",
+            "invert_display",
+            "Інвертувати дисплей",
+            "display",
+            ""
+        ],
+        [
+            "dropdown",
+            "clock_font",
+            "Шрифт годинника",
+            "clock_font",
+            "display",
+            ""
+        ],
+        [
+            "slider",
+            "display_alert_message_time",
+            "Час сповіщень на екрані (секунди)",
+            1,
+            60,
+            1,
+            "display",
+            ""
+        ],
+        [
+            "info",
+            "Налаштуйте підключення до серверів та мережевих сервісів",
+            "#17a2b8",
+            "M17,3A2,2 0 0,1 19,5V15A2,2 0 0,1 17,17H13V19H14A1,1 0 0,1 15,20H22V22H15A1,1 0 0,1 14,21H10A1,1 0 0,1 9,22H2V20H9A1,1 0 0,1 10,19H11V17H7C5.89,17 5,16.1 5,15V5A2,2 0 0,1 7,3H17Z",
+            "network",
+            ""
+        ],
+        [
+            "text",
+            "broadcast_name",
+            "Ім'я в мережі",
+            "jaam",
+            "network",
+            ""
+        ],
+        [
+            "text",
+            "ws_server_host",
+            "Сервер WebSocket",
+            "ws.jaam.net.ua",
+            "network",
+            ""
+        ],
+        [
+            "text",
+            "ws_server_port",
+            "Порт WebSocket",
+            "80",
+            "network",
+            ""
+        ],
+        [
+            "text",
+            "ntp_host",
+            "NTP сервер",
+            "time.google.com",
+            "network",
+            ""
+        ],
+        [
+            "label",
+            "Home Assistant",
+            "network",
+            ""
+        ],
+        [
+            "bool",
+            "api_enabled",
+            "Увімкнути API (WebSocket)",
+            "network",
+            ""
+        ],
+        [
+            "text",
+            "api_port",
+            "Порт API (WebSocket)",
+            "81",
+            "network",
+            "api_enabled==1"
+        ],
+        [
+            "info",
+            "Увага: Порт 80 зарезервований для веб-сервера. Використовуйте інший порт (наприклад, 81).",
+            "#ffc107",
+            "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z",
+            "network",
+            "api_enabled==1"
+        ],
+        [
+            "info",
+            "Конфігурація апаратних пінів та параметрів LED стрічок",
+            "#6f42c1",
+            "M9,7H11V17H9V19H15V17H13V7H15V5H9V7M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
+            "hardware",
+            ""
+        ],
+        [
+            "text",
+            "main_led_pin",
+            "Основна стрічка (пін)",
+            "13",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "text",
+            "main_led_count",
+            "Основна стрічка (кількість)",
+            "26",
+            "hardware",
+            "hardware==5"
+        ],
+        [
+            "dropdown",
+            "main_led_color_format",
+            "Основна стрічка (формат кольору)",
+            "led_color_formats",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "main_led_frequency",
+            "Основна стрічка (частота)",
+            "led_frequencies",
+            "hardware",
+            ""
+        ],
+        [
+            "text",
+            "bg_led_pin",
+            "Фонова стрічка (пін)",
+            "-1",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "text",
+            "bg_led_count",
+            "Фонова стрічка (кількість)",
+            "0",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "bg_led_color_format",
+            "Фонова стрічка (формат кольору)",
+            "led_color_formats",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "bg_led_frequency",
+            "Фонова стрічка (частота)",
+            "led_frequencies",
+            "hardware",
+            "hardware!=0"
+        ],
+        [
+            "text",
+            "service_led_pin",
+            "Сервісна стрічка (пін)",
+            "-1",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "service_led_color_format",
+            "Сервісна стрічка (формат кольору)",
+            "led_color_formats",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "service_led_frequency",
+            "Сервісна стрічка (частота)",
+            "led_frequencies",
+            "hardware",
+            "hardware!=0"
+        ],
+        [
+            "info",
+            "Увага: неправильна конфігурація пінів може призвести до пошкодження пристрою!",
+            "#dc3545",
+            "M13,14H11V10H13M13,18H11V16H13M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
+            "hardware",
+            ""
+        ],
+        [
+            "label",
+            "Кнопки",
+            "hardware",
+            ""
+        ],
+        [
+            "text",
+            "button_1_pin",
+            "Пін кнопки 1",
+            "-1",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "bool",
+            "button_1_touch",
+            "Підтримка touch-кнопки TTP223 для кнопки 1",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "button_1_mode",
+            "Режим кнопки 1 (Single Click)",
+            "button_modes_single_click",
+            "hardware",
+            ""
+        ],
+        [
+            "dropdown",
+            "button_1_mode_long",
+            "Режим кнопки 1 (Long Click)",
+            "button_modes_long_click",
+            "hardware",
+            ""
+        ],
+        [
+            "text",
+            "button_2_pin",
+            "Пін кнопки 2",
+            "-1",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "bool",
+            "button_2_touch",
+            "Підтримка touch-кнопки TTP223 для кнопки 2",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "button_2_mode",
+            "Режим кнопки 2 (Single Click)",
+            "button_modes_single_click",
+            "hardware",
+            "hardware!=0"
+        ],
+        [
+            "dropdown",
+            "button_2_mode_long",
+            "Режим кнопки 2 (Long Click)",
+            "button_modes_long_click",
+            "hardware",
+            "hardware!=0"
+        ],
+        [
+            "text",
+            "button_3_pin",
+            "Пін кнопки 3",
+            "-1",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "bool",
+            "button_3_touch",
+            "Підтримка touch-кнопки TTP223 для кнопки 3",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "dropdown",
+            "button_3_mode",
+            "Режим кнопки 3 (Single Click)",
+            "button_modes_single_click",
+            "hardware",
+            "hardware!=0,hardware!=3"
+        ],
+        [
+            "dropdown",
+            "button_3_mode_long",
+            "Режим кнопки 3 (Long Click)",
+            "button_modes_long_click",
+            "hardware",
+            "hardware!=0,hardware!=3"
+        ],
+        [
+            "text",
+            "buzzer_pin",
+            "Буззер (пін)",
+            "-1",
+            "hardware",
+            "hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "text",
+            "df_rx_pin",
+            "DF Player (RX) (пін)",
+            "-1",
+            "hardware",
+            "hardware!=4,hardware!=6"
+        ],
+        [
+            "text",
+            "df_tx_pin",
+            "DF Player (TX) (пін)",
+            "-1",
+            "hardware",
+            "hardware!=4,hardware!=6"
+        ],
+        [
+            "label",
+            "Батарея",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=6"
+        ],
+        [
+            "bool",
+            "enable_battery",
+            "Моніторинг батареї",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=6"
+        ],
+        [
+            "text",
+            "battery_pin",
+            "ADC пін батареї",
+            "-1",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=6"
+        ],
+        [
+            "slider",
+            "brightness_min",
+            "Мінімальна яскравість",
+            0,
+            15,
+            1,
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "info",
+            "Цей рівень вважатиметься нульовим значенням яскравості LED",
+            "#ffc107",
+            "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z",
+            "hardware",
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6"
+        ],
+        [
+            "info",
+            "У цьому розділі можна налаштувати поведінку пінів тривоги та відбою, а також режим і час їх активації. Можна використовувати для підключення сирен, замків, реле або інших пристроїв, які повинні реагувати на тривоги у домашньому регіоні. Заборонено використовувати один і той самий пін для різних пристроїв",
+            "#e83e8c",
+            "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z",
+            "siren",
+            ""
+        ],
+        [
+            "label",
+            "Пристрій 1",
+            "siren",
+            ""
+        ],
+        [
+            "dropdown",
+            "alert_clear_pin_mode",
+            "Режим роботи",
+            "alert_clear_pin_modes",
+            "siren",
+            ""
+        ],
+        [
+            "text",
+            "alert_pin",
+            "Пін тривоги",
+            "-1",
+            "siren",
+            ""
+        ],
+        [
+            "text",
+            "clear_pin",
+            "Пін відбою",
+            "-1",
+            "siren",
+            "alert_clear_pin_mode==1"
+        ],
+        [
+            "slider",
+            "alert_clear_pin_time",
+            "Час активації (мс)",
+            100,
+            10000,
+            100,
+            "siren",
+            "alert_clear_pin_mode==1"
+        ],
+        [
+            "dropdown",
+            "alert_pin_active_level",
+            "Активний рівень",
+            "pin_levels",
+            "siren",
+            ""
+        ],
+        [
+            "info",
+            "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.",
+            "#17a2b8",
+            "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M13,17H11V11H13V17M13,9H11V7H13V9Z",
+            "siren",
+            "alert_clear_pin_mode==0"
+        ],
+        [
+            "info",
+            "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати один і той самий пін на тривогу та на відбій",
+            "#17a2b8",
+            "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M13,17H11V11H13V17M13,9H11V7H13V9Z",
+            "siren",
+            "alert_clear_pin_mode==1"
+        ],
+        [
+            "label",
+            "Пристрій 2",
+            "siren",
+            ""
+        ],
+        [
+            "dropdown",
+            "alert_clear_pin_mode_2",
+            "Режим роботи",
+            "alert_clear_pin_modes",
+            "siren",
+            ""
+        ],
+        [
+            "text",
+            "alert_pin_2",
+            "Пін тривоги",
+            "-1",
+            "siren",
+            ""
+        ],
+        [
+            "text",
+            "clear_pin_2",
+            "Пін відбою",
+            "-1",
+            "siren",
+            "alert_clear_pin_mode_2==1"
+        ],
+        [
+            "slider",
+            "alert_clear_pin_time_2",
+            "Час активації (мс)",
+            100,
+            10000,
+            100,
+            "siren",
+            "alert_clear_pin_mode_2==1"
+        ],
+        [
+            "dropdown",
+            "alert_pin_active_level_2",
+            "Активний рівень",
+            "pin_levels",
+            "siren",
+            ""
+        ],
+        [
+            "info",
+            "Для \"Бістабільного режиму\" пін тривоги буде перемикатись в активний стан під час тривоги у домашньому регіоні.  \"Активний стан\" визначається відповідним налаштуванням.",
+            "#17a2b8",
+            "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M13,17H11V11H13V17M13,9H11V7H13V9Z",
+            "siren",
+            "alert_clear_pin_mode_2==0"
+        ],
+        [
+            "info",
+            "Для \"Імпульсного режиму\", пін тривоги та пін відбою будуть активними протягом вказаного часу після активації. \"Активний стан\" визначається відповідним налаштуванням. Можна використовувати один і той самий пін на тривогу та на відбій",
+            "#17a2b8",
+            "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M13,17H11V11H13V17M13,9H11V7H13V9Z",
+            "siren",
+            "alert_clear_pin_mode_2==1"
+        ],
+        [
+            "info",
+            "Налаштування погодних переметрів та кліматичних сенсорів",
+            "#34f396",
+            "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z",
+            "climate",
+            ""
+        ],
+        [
+            "label",
+            "Налаштування погоди",
+            "climate",
+            ""
+        ],
+        [
+            "slider",
+            "weather_min_temp",
+            "Мінімальна температура (°C)",
+            -40,
+            40,
+            1,
+            "climate",
+            ""
+        ],
+        [
+            "slider",
+            "weather_max_temp",
+            "Максимальна температура (°C)",
+            -40,
+            40,
+            1,
+            "climate",
+            ""
+        ],
+        [
+            "label",
+            "Налаштування температури",
+            "climate",
+            ""
+        ],
+        [
+            "slider",
+            "temp_correction",
+            "Корегування температури (°C)",
+            -10,
+            10,
+            0.1,
+            "climate",
+            ""
+        ],
+        [
+            "slider",
+            "hum_correction",
+            "Корегування вологості (%)",
+            -20,
+            20,
+            0.5,
+            "climate",
+            ""
+        ],
+        [
+            "slider",
+            "pressure_correction",
+            "Корегування атмосферного тиску (мм.рт.ст.)",
+            -50,
+            50,
+            1,
+            "climate",
+            ""
+        ],
+        [
+            "info",
+            "Оберіть типи і налаштування анімацій для різних видів тривог та подій",
+            "#fd7e14",
+            "M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V11H11V17M11,9H13V7H11V9Z",
+            "animations",
+            ""
+        ],
+        [
+            "bool",
+            "enable_sync_animations",
+            "Синхронні анімації",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "alert_on_animation",
+            "Початок тривог",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "alert_off_animation",
+            "Відбій тривог",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "drone_animation",
+            "Загроза ударних БПЛА",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "recon_drone_animation",
+            "Розвідувальні БПЛА",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "missile_animation",
+            "Загроза ракет",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "kab_animation",
+            "Загроза КАБ",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "ballistic_animation",
+            "Загроза балістичних ракет",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "dropdown",
+            "explosion_animation",
+            "Вибухи",
+            "animation_types",
+            "animations",
+            ""
+        ],
+        [
+            "label",
+            "Налаштування таймінгів (в секундах)",
+            "animations",
+            ""
+        ],
+        [
+            "info",
+            "Увага: занадто малі значення таймінгів можуть призвести до частого миготіння",
+            "#ffc107",
+            "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z",
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "alert_on_time",
+            "Початок тривог",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "alert_off_time",
+            "Відбій тривог",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "drone_time",
+            "Загроза ударних БПЛА",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "recon_drone_time",
+            "Розвідувальні БПЛА",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "missile_time",
+            "Загроза ракет",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "kab_time",
+            "Загроза КАБ",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "ballistic_time",
+            "Загроза балістичних ракет",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "explosion_time",
+            "Вибухи",
+            5,
+            600,
+            5,
+            "animations",
+            ""
+        ],
+        [
+            "label",
+            "Налаштування цикла (в мілісекундах)",
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "alert_on_cycle",
+            "Початок тривог",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "alert_off_cycle",
+            "Відбій тривог",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "drone_cycle",
+            "Загроза ударних БПЛА",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "recon_drone_cycle",
+            "Розвідувальні БПЛА",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "missile_cycle",
+            "Загроза ракет",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "kab_cycle",
+            "Загроза КАБ",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "ballistic_cycle",
+            "Загроза балістичних ракет",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "slider",
+            "explosion_cycle",
+            "Вибухи",
+            300,
+            5000,
+            100,
+            "animations",
+            ""
+        ],
+        [
+            "label",
+            "Налаштування кольорів",
+            "animations",
+            ""
+        ],
+        [
+            "info",
+            "Налаштуйте кольорову схему для різних типів тривог та елементів",
+            "#dc3545",
+            "M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M9,11A3,3 0 0,1 12,8A3,3 0 0,1 15,11A3,3 0 0,1 12,14A3,3 0 0,1 9,11M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2Z",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_alert",
+            "Тривога",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_clear",
+            "Відбій",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_explosion",
+            "Вибухи",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_missiles",
+            "Ракети",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_drones",
+            "Ударні БПЛА",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_recon_drones",
+            "Розвідувальні БПЛА",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_kab",
+            "КАБ",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_ballistic",
+            "Балістичні ракети",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_home",
+            "Домашній регіон",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_bg",
+            "Задня підсвітка",
+            "animations",
+            ""
+        ],
+        [
+            "color",
+            "color_lamp",
+            "Режим лампи",
+            "animations",
+            ""
+        ],
+        [
+            "info",
+            "Контроль яскравості LED стрічок для різних режимів та часу доби",
+            "#ffc107",
+            "M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8M12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z",
+            "brightness",
+            ""
+        ],
+        [
+            "dropdown",
+            "brightness_mode",
+            "Режим яскравості",
+            "auto_brightness_modes",
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "day_start",
+            "Початок дня",
+            0,
+            24,
+            1,
+            "brightness",
+            "brightness_mode==1"
+        ],
+        [
+            "slider",
+            "night_start",
+            "Початок ночі",
+            0,
+            24,
+            1,
+            "brightness",
+            "brightness_mode==1"
+        ],
+        [
+            "info",
+            "Поточний рівень освітленості можна побачити у системній панелі",
+            "#17a2b8",
+            "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M13,17H11V11H13V17M13,9H11V7H13V9Z",
+            "brightness",
+            "brightness_mode==2"
+        ],
+        [
+            "slider",
+            "night_mode_light_threshold",
+            "Освітленість переходу в нічний режим (lx)",
+            0,
+            500,
+            5,
+            "brightness",
+            "brightness_mode==2"
+        ],
+        [
+            "slider",
+            "brightness",
+            "Загальна",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_day",
+            "День",
+            0,
+            100,
+            1,
+            "brightness",
+            "brightness_mode!=0"
+        ],
+        [
+            "slider",
+            "brightness_night",
+            "Ніч",
+            0,
+            100,
+            1,
+            "brightness",
+            "brightness_mode!=0"
+        ],
+        [
+            "slider",
+            "brightness_alert",
+            "Тривога",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_clear",
+            "Без тривоги",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_explosion",
+            "Вибухи",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_missiles",
+            "Крилаті та авіаційні ракети",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_drones",
+            "Ударні БПЛА",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_recon_drones",
+            "Розвідувальні БПЛА",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_kabs",
+            "КАБ",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_ballistic",
+            "Балістичні ракети",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_home_district",
+            "Домашній регіон",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_bg",
+            "Фонова стрічка",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_lamp",
+            "Режим лампи",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_service",
+            "Сервісні діоди",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "slider",
+            "brightness_animation_end",
+            "Кінцева яскравість анімацій",
+            0,
+            100,
+            1,
+            "brightness",
+            ""
+        ],
+        [
+            "info",
+            "Увімкніть або вимкніть відображення різних типів тривог",
+            "#6c757d",
+            "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z",
+            "alerts",
+            ""
+        ],
+        [
+            "bool",
+            "enable_kabs",
+            "Загроза КАБ",
+            "alerts",
+            ""
+        ],
+        [
+            "bool",
+            "enable_missiles",
+            "Загроза крилатих та авіаційних ракет",
+            "alerts",
+            ""
+        ],
+        [
+            "bool",
+            "enable_drones",
+            "Загроза ударних БПЛА",
+            "alerts",
+            ""
+        ],
+        [
+            "bool",
+            "enable_recon_drones",
+            "Розвідувальні БПЛА",
+            "alerts",
+            ""
+        ],
+        [
+            "bool",
+            "enable_ballistic",
+            "Загроза балістичних ракет",
+            "alerts",
+            ""
+        ],
+        [
+            "bool",
+            "enable_explosions",
+            "Вибухи",
+            "alerts",
+            ""
+        ],
+        [
+            "info",
+            "Налаштування звуку",
+            "#dc3545",
+            "M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "sound_source",
+            "Джерело звуку",
+            "sound_sources",
+            "sound",
+            ""
+        ],
+        [
+            "slider",
+            "melody_volume_day",
+            "Гучність мелодії вдень",
+            0,
+            100,
+            1,
+            "sound",
+            ""
+        ],
+        [
+            "slider",
+            "melody_volume_night",
+            "Гучність мелодії вночі",
+            0,
+            100,
+            1,
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_alert",
+            "Звукове сповіщення при тривозі у домашньому регіоні",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_alert_end",
+            "Звукове сповіщення при завершенні тривоги у домашньому регіоні",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_explosion",
+            "Звукове сповіщення при вибухах",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_drones",
+            "Звукове сповіщення при загрозі ударних БПЛА",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_recon_drones",
+            "Звукове сповіщення при розвідувальних БПЛА",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_missiles",
+            "Звукове сповіщення при загрозі ракет",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_kabs",
+            "Звукове сповіщення при загрозі КАБ",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_ballistic",
+            "Звукове сповіщення при загрозі балістики",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_every_hour",
+            "Звукове сповіщення щогодини",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_button_click",
+            "Сигнали при натисканні кнопки",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "sound_on_min_of_sl",
+            "Відтворювати звуки під час \"Хвилини мовчання\"",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "mute_sound_on_night",
+            "Вимикати всі звуки у нічний час",
+            "sound",
+            ""
+        ],
+        [
+            "bool",
+            "ignore_mute_on_alert",
+            "Сигнали тривоги навіть у нічний час",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_alert",
+            "Мелодія при тривозі у домашньому регіоні (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_alert_end",
+            "Мелодія при скасуванні тривоги у домашньому регіоні (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_explosion",
+            "Мелодія при вибухах (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_drones",
+            "Мелодія при загрозі ударних БПЛА (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_recon_drones",
+            "Мелодія при розвідувальних БПЛА (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_missiles",
+            "Мелодія при загрозі ракет (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_kabs",
+            "Мелодія при загрозі КАБ (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ],
+        [
+            "dropdown",
+            "melody_on_ballistic",
+            "Мелодія при загрозі балістики (буззер)",
+            "melodies",
+            "sound",
+            ""
+        ]
+    ]
+}

@@ -464,19 +464,61 @@ async function loadReleaseNotes(version, panel) {
 // Dynamic UI rendering (from /ui-schema)
 async function fetchSchema() {
     const h = window.JAAM_HASHES || {};
-    const [models, sections, dropdownLists, controls] = await Promise.all([
+    const [models, sections, dropdownLists, controls, controlsValues] = await Promise.all([
         fetch('/ui-schema/models' + (h.uiModels ? '?v=' + h.uiModels : '')).then(r => r.json()),
         fetch('/ui-schema/sections' + (h.uiSections ? '?v=' + h.uiSections : '')).then(r => r.json()),
         fetch('/ui-schema/dropdown_lists').then(r => r.json()),
-        fetch('/ui-schema/controls').then(r => r.json())
+        fetch('/ui-schema/controls' + (h.uiControls ? '?v=' + h.uiControls : '')).then(r => r.json()),
+        fetch('/ui-schema/controls/values').then(r => r.json())
     ]);
+    
+    // Merge controls with values
+    const mergedControls = mergeControlsWithValues(controls.controls, controlsValues.values, models);
     
     return {
         models: models,
         sections: sections,
         dropdown_lists: dropdownLists.dropdown_lists,
-        controls: controls.controls
+        controls: mergedControls
     };
+}
+
+function mergeControlsWithValues(controls, values, models) {
+    // Create a map of values by name for quick lookup
+    const valueMap = {};
+    for (const [name, value] of values) {
+        valueMap[name] = value;
+    }
+    
+    // Merge values into controls based on control type
+    return controls.map(ctrl => {
+        const type = ctrl[0];
+        const modelDef = models[type];
+        if (!modelDef) return ctrl;
+        
+        // Find the position of 'name' field in the model
+        const nameIndex = modelDef.indexOf('name');
+        if (nameIndex === -1 || nameIndex >= ctrl.length) return ctrl;
+        
+        // Name is at modelIndex, but in ctrl array it's at modelIndex + 1 (due to type at position 0)
+        const name = ctrl[nameIndex + 1];
+        
+        // If we don't have a value for this control, return as is
+        if (!(name in valueMap)) return ctrl;
+        
+        const value = valueMap[name];
+        
+        // Insert the value at the correct position based on model definition
+        const currentIndex = modelDef.indexOf('current');
+        if (currentIndex === -1) return ctrl;
+        
+        // Create a new array with the value inserted at the current position
+        // Model indices don't include 'type' (which is at position 0), so we add 1
+        const mergedCtrl = [...ctrl];
+        mergedCtrl.splice(currentIndex + 1, 0, value);
+        
+        return mergedCtrl;
+    });
 }
 
 function optionEl(id, name, sub) {

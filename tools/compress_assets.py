@@ -31,6 +31,7 @@ ASSETS = {
     "bg_color_editor_js": os.path.join(WEB_DIR, "bg_color_editor.js"),
     "ui_schema_models_json": os.path.join(WEB_DIR, "ui_schema_models.json"),
     "ui_schema_sections_json": os.path.join(WEB_DIR, "ui_schema_sections.json"),
+    "ui_schema_controls_json": os.path.join(WEB_DIR, "controls.json"),
 }
 
 
