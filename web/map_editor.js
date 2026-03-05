@@ -2,7 +2,12 @@
 
 function loadMapData() {
     fetch('/map-data')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             renderMapEditor(data.regions);
         })
@@ -76,6 +81,9 @@ function saveMap() {
 async function exportMap() {
     try {
         const response = await fetch('/map-data');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         
         // Create a clean export object with only necessary fields
@@ -133,6 +141,9 @@ async function importMapFromFile(event) {
             
             // Fetch current region structure from server
             const response = await fetch('/map-data');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const currentData = await response.json();
             
             if (!currentData.regions || !Array.isArray(currentData.regions)) {
@@ -143,9 +154,20 @@ async function importMapFromFile(event) {
             // Create a map of imported LEDs by region ID for quick lookup
             const importedLedsMap = new Map();
             importData.regions.forEach(region => {
-                if (region.id !== undefined && region.leds) {
-                    importedLedsMap.set(region.id, region.leds);
+                // Validate region ID is a number
+                if (typeof region.id !== 'number') {
+                    return;
                 }
+                
+                // Validate leds is an array
+                if (!Array.isArray(region.leds)) {
+                    return;
+                }
+                
+                // Validate all LED entries are numbers
+                const validLeds = region.leds.filter(led => typeof led === 'number');
+                
+                importedLedsMap.set(region.id, validLeds);
             });
             
             // Merge: use current structure but replace LEDs from imported file
