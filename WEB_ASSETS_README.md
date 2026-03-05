@@ -129,18 +129,21 @@ Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGME
 
 ### JSON API Endpoints
 
-Всі JSON API endpoints стискаються через `ESP32-targz` бібліотеку:
+**Більшість JSON API endpoints** стискаються динамічно через `ESP32-targz` бібліотеку:
 
 - `/ui-schema/dropdown_lists` - списки для dropdown елементів
-- `/ui-schema/controls` - статична структура UI контролів (pre-compressed)
-- `/ui-schema/controls/values` - динамічні значення для контролів
+- `/ui-schema/controls/values` - динамічні значення для контролів (стискається ESP32-targz, має anti-cache headers)
 - `/system-info` - системна інформація
 - `/alerts-info` - дані про тривоги
 - `/logs-info` - логи системи
 - `/map-data` - дані для редактора мапи
 - `/bg-colors-data` - дані кольорів фону
 
+**Виняток**: `/ui-schema/controls` - pre-compressed при збірці та завантажується з `web_assets.h` (НЕ використовує ESP32-targz)
+
 **Функція**: `sendCompressedJson()` використовує `LZPacker::compress()` для автоматичного gzip стиснення.
+
+**Anti-caching**: `/ui-schema/controls/values` має заголовки `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` для гарантії актуальних значень.
 
 ### HTML Pages
 

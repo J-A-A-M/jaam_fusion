@@ -1465,6 +1465,12 @@ void JaamWeb::buildUiSchemaControlsValues(JsonDocument& doc) {
 
 void JaamWeb::handleUiSchemaControlsValues() {
     setCrossOrigin();
+    
+    // Prevent caching to ensure fresh values on every request
+    server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    server.sendHeader("Pragma", "no-cache");
+    server.sendHeader("Expires", "0");
+    
     JsonDocument doc;
     buildUiSchemaControlsValues(doc);
     String response;

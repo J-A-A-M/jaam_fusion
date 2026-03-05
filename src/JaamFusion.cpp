@@ -2052,6 +2052,7 @@ void initSettings() {
                 handleReconfigureButtons();
                 handleReconfigureSound();
                 handleReconfigureSensors();
+                handleReconnectWebsocket();
                 break;
             
             // Режими районів (перерахунок LED)
