@@ -27,6 +27,48 @@
     outline-offset: 2px !important;
 }
 
+#exportBtn {
+    background: #0056b3 !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    transition: background 0.3s ease !important;
+    min-width: 100px !important;
+}
+
+#exportBtn:hover {
+    background: #004085 !important;
+}
+
+#exportBtn:focus {
+    outline: 2px solid var(--accent-color, #007bff) !important;
+    outline-offset: 2px !important;
+}
+
+#importBtn {
+    background: #17a2b8 !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    transition: background 0.3s ease !important;
+    min-width: 100px !important;
+}
+
+#importBtn:hover {
+    background: #138496 !important;
+}
+
+#importBtn:focus {
+    outline: 2px solid var(--accent-color, #007bff) !important;
+    outline-offset: 2px !important;
+}
+
 #mapContent {
     max-width: 800px !important;
     margin: 20px auto !important;

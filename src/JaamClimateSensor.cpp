@@ -118,7 +118,7 @@ void JaamClimateSensor::read() {
       localHum = bme280->getRelativeHumidityAsFloat();
     }
 
-    LOG.printf("[CLIMATE] BME280! Temp: %.2f°C  Humidity: %.2f%%  Pressure: %.2fmmHg\n", localTemp, localHum, localPressure);
+    // LOG.printf("[CLIMATE] BME280! Temp: %.2f°C  Humidity: %.2f%%  Pressure: %.2fmmHg\n", localTemp, localHum, localPressure);
     return;
   }
 #endif
@@ -127,7 +127,7 @@ void JaamClimateSensor::read() {
     localTemp = sht3x->getTemperature();
     localHum = sht3x->getHumidity();
 
-    LOG.printf("[CLIMATE] SHT3X! Temp: %.2f°C  Humidity: %.2f%%\n", localTemp, localHum);
+    // LOG.printf("[CLIMATE] SHT3X! Temp: %.2f°C  Humidity: %.2f%%\n", localTemp, localHum);
     return;
   }
 #endif
@@ -136,7 +136,7 @@ void JaamClimateSensor::read() {
     localTemp = sht2x->getTemperature();
     localHum = sht2x->getHumidity();
 
-    LOG.printf("[CLIMATE] SHT2X! Temp: %.2f°C. Humidity: %.2f%%\n", localTemp, localHum);
+    // LOG.printf("[CLIMATE] SHT2X! Temp: %.2f°C. Humidity: %.2f%%\n", localTemp, localHum);
     return;
   }
 #endif
@@ -152,7 +152,7 @@ void JaamClimateSensor::read() {
 
     localTemp = tempReading;
     localHum = humReading;
-    LOG.printf("[CLIMATE] AHT2x/AHT3x! Temp: %.2f°C  Humidity: %.2f%%\n", localTemp, localHum);
+    // LOG.printf("[CLIMATE] AHT2x/AHT3x! Temp: %.2f°C  Humidity: %.2f%%\n", localTemp, localHum);
     return;
   }
 #endif

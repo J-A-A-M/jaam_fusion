@@ -38,10 +38,12 @@ private:
     void handleTextParameter();
     void handleSystemInfo();
     void handleAlertsInfo();
+    void handleLogsInfo();
     void handleUiSchemaModels();
     void handleUiSchemaSections();
     void handleUiSchemaDropdownLists();
     void handleUiSchemaControls();
+    void handleUiSchemaControlsValues();
     void handleUiPage();
     void handleMapData();
     void handleCss();
@@ -53,4 +55,5 @@ private:
     String getMeta();
     void buildUiSchemaDropdownLists(JsonDocument& doc);
     void buildUiSchemaControls(JsonDocument& doc);
+    void buildUiSchemaControlsValues(JsonDocument& doc);
 };

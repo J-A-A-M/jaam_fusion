@@ -348,22 +348,181 @@ function updateTextParameter(name, value) {
         });
 }
 
+// Simple markdown to HTML converter for GitHub-style markdown
+function markdownToHtml(markdown) {
+    if (!markdown) return '';
+    
+    let html = markdown;
+    
+    // Headers
+    html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+    
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    
+    // Italic
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    
+    // Code blocks with triple backticks
+    html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Blockquotes
+    html = html.replace(/^> (.*?)$/gm, '<blockquote>$1</blockquote>');
+    html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+    
+    // Unordered lists
+    html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
+    html = html.replace(/^\- (.*?)$/gm, '<li>$1</li>');
+    html = html.replace(/^  \* (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    html = html.replace(/^  \- (.*?)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
+    html = html.replace(/<\/li>\s*<ul>/g, '<ul>');
+    html = html.replace(/<\/ul>\s*<li>/g, '<li>');
+    
+    // Line breaks - convert paragraphs
+    const lines = html.split('\n');
+    let result = '';
+    let inBlock = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        if (line.match(/^<(h|ul|pre|ol)/)) {
+            result += line;
+            inBlock = true;
+        } else if (line.match(/^<\/(h|ul|pre|ol)/)) {
+            result += line;
+            inBlock = false;
+        } else if (line.trim() === '') {
+            if (!inBlock) result += '<br>';
+        } else if (line.match(/^<li>/)) {
+            result += line;
+        } else if (!inBlock && line.trim()) {
+            result += '<p>' + line + '</p>';
+        } else {
+            result += line;
+        }
+    }
+    
+    return result;
+}
+
+// Release notes cache to avoid redundant GitHub API calls
+const releaseNotesCache = {};
+
+// Load release notes for a specific firmware version from GitHub
+async function loadReleaseNotes(version, panel) {
+    if (!panel || !version) return;
+    
+    // Check cache first
+    if (releaseNotesCache[version]) {
+        const html = releaseNotesCache[version];
+        panel.innerHTML = '<div class="release-notes-content">' + html + '</div>';
+        panel.scrollTop = 0;
+        return;
+    }
+    
+    panel.innerHTML = '<span class="release-notes-loading">Завантаження...</span>';
+    
+    try {
+        // Fetch release notes from GitHub API
+        const githubApiUrl = 'https://api.github.com/repos/J-A-A-M/jaam_fusion/releases/tags/' + encodeURIComponent(version);
+        const response = await fetch(githubApiUrl, {
+            headers: {
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                panel.innerHTML = '<span class="release-notes-error">Версія ' + version + ' не знайдена на GitHub</span>';
+            } else {
+                panel.innerHTML = '<span class="release-notes-error">Помилка завантаження від GitHub</span>';
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.body) {
+            const html = markdownToHtml(data.body);
+            // Store in cache
+            releaseNotesCache[version] = html;
+            panel.innerHTML = '<div class="release-notes-content">' + html + '</div>';
+            panel.scrollTop = 0;
+        } else {
+            panel.innerHTML = '<span class="release-notes-error">Release notes порожні</span>';
+        }
+    } catch (err) {
+        console.error('Error loading release notes from GitHub:', err);
+        panel.innerHTML = '<span class="release-notes-error">Помилка мережі при завантаженні</span>';
+    }
+}
+
 // Dynamic UI rendering (from /ui-schema)
 async function fetchSchema() {
     const h = window.JAAM_HASHES || {};
-    const [models, sections, dropdownLists, controls] = await Promise.all([
+    const [models, sections, dropdownLists, controls, controlsValues] = await Promise.all([
         fetch('/ui-schema/models' + (h.uiModels ? '?v=' + h.uiModels : '')).then(r => r.json()),
         fetch('/ui-schema/sections' + (h.uiSections ? '?v=' + h.uiSections : '')).then(r => r.json()),
         fetch('/ui-schema/dropdown_lists').then(r => r.json()),
-        fetch('/ui-schema/controls').then(r => r.json())
+        fetch('/ui-schema/controls' + (h.uiControls ? '?v=' + h.uiControls : '')).then(r => r.json()),
+        fetch('/ui-schema/controls/values').then(r => r.json())
     ]);
+    
+    // Merge controls with values
+    const mergedControls = mergeControlsWithValues(controls.controls, controlsValues.values, models);
     
     return {
         models: models,
         sections: sections,
         dropdown_lists: dropdownLists.dropdown_lists,
-        controls: controls.controls
+        controls: mergedControls
     };
+}
+
+function mergeControlsWithValues(controls, values, models) {
+    // Create a map of values by name for quick lookup
+    const valueMap = {};
+    for (const [name, value] of values) {
+        valueMap[name] = value;
+    }
+    
+    // Merge values into controls based on control type
+    return controls.map(ctrl => {
+        const type = ctrl[0];
+        const modelDef = models[type];
+        if (!modelDef) return ctrl;
+        
+        // Find the position of 'name' field in the model
+        const nameIndex = modelDef.indexOf('name');
+        if (nameIndex === -1 || nameIndex >= ctrl.length) return ctrl;
+        
+        // Name is at modelIndex, but in ctrl array it's at modelIndex + 1 (due to type at position 0)
+        const name = ctrl[nameIndex + 1];
+        
+        // If we don't have a value for this control, return as is
+        if (!(name in valueMap)) return ctrl;
+        
+        const value = valueMap[name];
+        
+        // Insert the value at the correct position based on model definition
+        const currentIndex = modelDef.indexOf('current');
+        if (currentIndex === -1) return ctrl;
+        
+        // Create a new array with the value inserted at the current position
+        // Model indices don't include 'type' (which is at position 0), so we add 1
+        const mergedCtrl = [...ctrl];
+        mergedCtrl.splice(currentIndex + 1, 0, value);
+        
+        return mergedCtrl;
+    });
 }
 
 function optionEl(id, name, sub) {
@@ -485,6 +644,27 @@ function renderControl(ctrl, lists) {
             sel.appendChild(el);
         }
         
+        // Create release notes panel (for firmware_id only)
+        let releaseNotesPanel = null;
+        
+        // Handle firmware_id specific logic
+        if (name === 'firmware_id') {
+            releaseNotesPanel = document.createElement('div');
+            releaseNotesPanel.className = 'release-notes-panel';
+            releaseNotesPanel.id = 'releaseNotesPanel';
+            releaseNotesPanel.innerHTML = '<span class="release-notes-loading">Завантаження...</span>';
+            releaseNotesPanel.style.marginTop = '12px';
+            releaseNotesPanel.style.marginBottom = '12px';
+            
+            sel.onchange = (e) => {
+                const version = e.target.value;
+                loadReleaseNotes(version, releaseNotesPanel);
+            };
+            
+            // Load initial release notes from selected dropdown value
+            loadReleaseNotes(sel.value, releaseNotesPanel);
+        }
+        
         // Create confirm button
         const confirmBtn = document.createElement('button');
         confirmBtn.type = 'button';
@@ -498,6 +678,9 @@ function renderControl(ctrl, lists) {
         
         div.appendChild(lab);
         div.appendChild(sel);
+        if (releaseNotesPanel) {
+            div.appendChild(releaseNotesPanel);
+        }
         div.appendChild(confirmBtn);
         
         if (visibility && visibility.trim() !== '') {
@@ -828,6 +1011,227 @@ function switchSection(sectionId) {
 // Panel visibility functionality
 let systemPanelVisible = true;
 let alertsPanelVisible = true;
+let logsPanelVisible = true;
+let logsStreamActive = false;
+let logsUpdateInterval = null;
+let logsRequestPending = false;
+
+// Tag color mapping for different log types
+const logTagColors = {
+    'WEB': '#1e88e5',      // Blue
+    'API': '#43a047',      // Green
+    'DISPLAY': '#fb8c00',  // Orange
+    'SOUND': '#e53935',    // Red
+    'STORAGE': '#8e24aa',  // Purple
+    'HARDWARE': '#00897b', // Teal
+    'SETTING': '#5e35b1',  // Deep Purple
+    'BATTERY': '#ffd600',  // Amber
+    'LIGHT': '#ffb300',    // Orange
+    'CLIMATE': '#00bcd4',  // Cyan
+    'ANIMATION': '#e91e63',// Pink
+    'FIRMWARE': '#2196f3', // Blue
+    'ALERT': '#d32f2f',    // Dark Red
+    'BRIGHTNESS': '#f57c00', // Deep Orange
+    'BUTTON': '#7b1fa2',   // Dark Purple
+    'COLOR': '#c2185b',    // Dark Pink
+    'DEBUG': '#455a64',    // Blue Grey
+    'DIFF': '#1565c0',     // Indigo
+    'ERROR': '#b71c1c',    // Dark Red
+    'INIT': '#00695c',     // Dark Teal
+    'LED': '#ff6f00',      // Orange
+    'MAIN': '#0d47a1',     // Dark Blue
+    'MDNS': '#558b2f',     // Dark Green
+    'MEMORY': '#f57f17',   // Dark Amber
+    'REQUEST': '#6a1b9a',  // Dark Purple
+    'SENSORS': '#00838f',  // Cyan
+    'SETTINGS': '#512da8', // Deep Purple
+    'SETUP': '#283593',    // Indigo
+    'SIREN': '#c62828',    // Red
+    'TEST': '#00796b',     // Teal
+    'TIME': '#0277bd',     // Light Blue
+    'UPDATE': '#0097a7',   // Cyan
+    'WEBSOCKET': '#689f38', // Light Green
+    'WIFI': '#388e3c',     // Green
+    'DEFAULT': '#757575'   // Grey
+};
+
+function formatLogTime(unixTimestamp) {
+    // Convert Unix timestamp (seconds) to readable format HH:MM:SS
+    const date = new Date(unixTimestamp * 1000);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+
+function getLogTagColor(tag) {
+    // Try exact match first
+    if (logTagColors[tag]) {
+        return logTagColors[tag];
+    }
+    
+    // Try prefix match
+    const prefix = tag.split('_')[0] || tag;
+    if (logTagColors[prefix]) {
+        return logTagColors[prefix];
+    }
+    
+    return logTagColors['DEFAULT'];
+}
+
+function toggleLogsPanel() {
+    const panel = document.getElementById('logsPanel');
+    const button = document.getElementById('logsPanelToggle');
+    
+    if (!panel || !button) return;
+    
+    logsPanelVisible = !logsPanelVisible;
+    
+    if (logsPanelVisible) {
+        panel.style.display = 'block';
+        button.classList.add('active');
+    } else {
+        panel.style.display = 'none';
+        button.classList.remove('active');
+        // Stop streaming when panel is hidden
+        if (logsStreamActive) {
+            stopLogStream();
+        }
+    }
+    
+    // Save state to localStorage
+    try {
+        localStorage.setItem('jaam-logs-panel-visible', logsPanelVisible);
+    } catch (e) {
+        console.warn('Unable to save logs panel state to localStorage', e);
+    }
+}
+
+function toggleLogStream() {
+    if (logsStreamActive) {
+        stopLogStream();
+    } else {
+        startLogStream();
+    }
+}
+
+function startLogStream() {
+    const btn = document.getElementById('logsToggleBtn');
+    if (!btn) return;
+    
+    logsStreamActive = true;
+    btn.textContent = 'Зупинити';
+    btn.classList.add('active');
+    
+    // Clear previous logs
+    const logsContent = document.getElementById('logsContent');
+    if (logsContent) {
+        logsContent.innerHTML = '';
+    }
+    
+    // Start polling for logs
+    updateLogsInfo();
+    logsUpdateInterval = setInterval(updateLogsInfo, 1000); // Update every second
+}
+
+function stopLogStream() {
+    const btn = document.getElementById('logsToggleBtn');
+    if (!btn) return;
+    
+    logsStreamActive = false;
+    btn.textContent = 'Показати';
+    btn.classList.remove('active');
+    
+    // Stop polling
+    if (logsUpdateInterval) {
+        clearInterval(logsUpdateInterval);
+        logsUpdateInterval = null;
+    }
+    
+    // Reset pending flag
+    logsRequestPending = false;
+}
+
+function updateLogsInfo() {
+    // Skip if previous request is still pending
+    if (logsRequestPending) {
+        return;
+    }
+    
+    const limit = logsStreamActive ? 200 : 100;
+    logsRequestPending = true;
+    
+    fetch(`/logs-info?limit=${limit}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.logs || !Array.isArray(data.logs)) {
+                return;
+            }
+            
+            const logsContent = document.getElementById('logsContent');
+            if (!logsContent) return;
+            
+            // Clear and rebuild from scratch (circular buffer may overwrite old entries)
+            logsContent.innerHTML = '';
+            
+            for (let i = 0; i < data.logs.length; i++) {
+                const log = data.logs[i];
+                
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.setAttribute('data-timestamp', log.timestamp);
+                
+                // Add time element
+                const timeElement = document.createElement('span');
+                timeElement.className = 'log-time';
+                timeElement.textContent = formatLogTime(log.timestamp);
+                timeElement.style.color = '#999';
+                timeElement.style.marginRight = '8px';
+                timeElement.style.fontFamily = 'monospace';
+                timeElement.style.fontSize = '0.85em';
+                
+                const tagColor = getLogTagColor(log.tag);
+                const tagElement = document.createElement('span');
+                tagElement.className = 'log-tag';
+                tagElement.textContent = `[${log.tag}]`;
+                tagElement.style.color = tagColor;
+                tagElement.style.fontWeight = 'bold';
+                
+                const messageElement = document.createElement('span');
+                messageElement.className = 'log-message';
+                messageElement.textContent = log.message;
+                
+                logEntry.appendChild(timeElement);
+                logEntry.appendChild(tagElement);
+                logEntry.appendChild(document.createTextNode(' '));
+                logEntry.appendChild(messageElement);
+                
+                logsContent.appendChild(logEntry);
+            }
+            
+            // Auto-scroll to bottom when streaming
+            if (logsStreamActive) {
+                logsContent.scrollTop = logsContent.scrollHeight;
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching logs:', err);
+            const logsContent = document.getElementById('logsContent');
+            if (logsContent) {
+                logsContent.innerHTML = '<div class="logs-error">Помилка при завантаженні логів</div>';
+            }
+        })
+        .finally(() => {
+            logsRequestPending = false;
+        });
+}
+
+function clearLogs() {
+    const logsContent = document.getElementById('logsContent');
+    if (logsContent) {
+        logsContent.innerHTML = '<div class="logs-empty">Логи очищені</div>';
+    }
+}
 
 function toggleSystemPanel() {
     const panel = document.getElementById('systemPanel');
@@ -894,6 +1298,12 @@ function loadPanelStates() {
         if (alertsState !== null) {
             alertsPanelVisible = alertsState === 'true';
         }
+        
+        // Load logs panel state
+        const logsState = localStorage.getItem('jaam-logs-panel-visible');
+        if (logsState !== null) {
+            logsPanelVisible = logsState === 'true';
+        }
     } catch (e) {
         console.warn('Unable to load panel states from localStorage', e);
     }
@@ -904,6 +1314,8 @@ function applyPanelStates() {
     const systemButton = document.getElementById('systemPanelToggle');
     const alertsPanel = document.getElementById('alertsPanel');
     const alertsButton = document.getElementById('alertsPanelToggle');
+    const logsPanel = document.getElementById('logsPanel');
+    const logsButton = document.getElementById('logsPanelToggle');
     
     // Apply system panel state
     if (systemPanel && systemButton) {
@@ -924,6 +1336,17 @@ function applyPanelStates() {
         } else {
             alertsPanel.style.display = 'none';
             alertsButton.classList.remove('active');
+        }
+    }
+    
+    // Apply logs panel state
+    if (logsPanel && logsButton) {
+        if (logsPanelVisible) {
+            logsPanel.style.display = 'block';
+            logsButton.classList.add('active');
+        } else {
+            logsPanel.style.display = 'none';
+            logsButton.classList.remove('active');
         }
     }
 }

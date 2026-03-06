@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ArduinoWebsockets.h>
-
+#include <sys/time.h>
 
 #include <WiFiManager.h>
 #include <WiFiClientSecure.h>
@@ -1779,6 +1779,16 @@ void syncTime(int8_t attempts) {
         count++;
         printNtpStatus(&timeClient);
     }
+    // Sync system clock after successful NTP sync
+    if (timeClient.status() == UNIX_OK) {
+        time_t ntpTime = timeClient.unixGMT();
+        struct timeval tv = {ntpTime, 0};
+        if (settimeofday(&tv, nullptr) == 0) {
+            LOG.printf("[TIME] System clock synchronized with NTP\n");
+        } else {
+            LOG.printf("[TIME] Failed to sync system clock\n");
+        }
+    }
 }
 
 void adaptColors() {
@@ -2042,6 +2052,7 @@ void initSettings() {
                 handleReconfigureButtons();
                 handleReconfigureSound();
                 handleReconfigureSensors();
+                handleReconnectWebsocket();
                 break;
             
             // Режими районів (перерахунок LED)
@@ -3042,7 +3053,15 @@ void handleUpdateNtpHost() {
 
 void handleReconnectWebsocket() {
     LOG.printf("[SETTINGS] WebSocket server settings changed, reconnecting...\n");
-    requestWebsocketReconnect();
+    websocketConnected = false;
+    websocketReconnect = true;
+    clearAllAlertsMaps();
+    clearAllWeatherMaps();
+    isFirstDataFetchCompleted = false;
+    alertsHash = 0;
+    if (websocket.available()) {
+        websocket.close();
+    }
 }
 
 void handleRegenerateBgColorMap() {
@@ -3066,15 +3085,7 @@ void requestPlayTestTrack(int trackId) {
 
 void requestWebsocketReconnect() {
     LOG.printf("[WEBSOCKET] Reconnection requested\n");
-    websocketConnected = false;
-    websocketReconnect = true;
-    clearAllAlertsMaps();
-    clearAllWeatherMaps();
-    isFirstDataFetchCompleted = false;
-    alertsHash = 0;
-    if (websocket.available()) {
-        websocket.close();
-    }
+    handleReconnectWebsocket();
 }
 
 void updateFirmware() {
@@ -3285,6 +3296,7 @@ void beepHourProcess() {
 // --- SETUP ---
 void setup() {
     LOG.begin(115200);
+    logsManager.begin();  // Initialize logs capture system
 
     checkFreeHeap("LOG initialization");
 
