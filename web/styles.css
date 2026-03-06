@@ -617,6 +617,15 @@ h1 {
     margin: 4px 0;
 }
 
+.release-notes-content blockquote {
+    margin: 8px 0;
+    padding: 8px 12px;
+    border-left: 4px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--secondary-text);
+    font-style: italic;
+}
+
 .release-notes-content a {
     color: #007bff;
     text-decoration: none;

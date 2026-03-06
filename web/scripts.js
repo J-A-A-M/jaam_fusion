@@ -373,6 +373,10 @@ function markdownToHtml(markdown) {
     // Inline code
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
     
+    // Blockquotes
+    html = html.replace(/^> (.*?)$/gm, '<blockquote>$1</blockquote>');
+    html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+    
     // Unordered lists
     html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>');
     html = html.replace(/^\- (.*?)$/gm, '<li>$1</li>');
