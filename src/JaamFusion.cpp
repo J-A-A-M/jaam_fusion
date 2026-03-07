@@ -3187,7 +3187,7 @@ void showMicroclimate() {
 }
 
 void showCombined() {
-    int periodIndex = getCurrentPeriodIndex(2, 3, timeClient.second());
+    int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), 2, timeClient.second());
     
     switch(periodIndex) {
         case 0: // Show Clock
@@ -3196,10 +3196,7 @@ void showCombined() {
         case 1: // Show Weather
             showWeather();
             break;
-        // case 2: // Show Microclimate
-        //     showMicroclimate();
-        //     break;
-        // default:
+        default:
             showClock();
             break;
     }
@@ -3236,7 +3233,9 @@ void displayProcess()
     
     switch(displayMode) {
         case 0: // Вимкнено (Disabled)
+        if (!display.isServiceMessageActive()) {
             display.clear();
+        }
             break;
         
         case 1: // Годинник (Clock)

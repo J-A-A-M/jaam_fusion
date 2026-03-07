@@ -54,6 +54,7 @@ public:
     void printClock(const String& time, const String& date = "");
     void drawIconWithText(JaamDisplayIcon icon, const String& text);
     void showServiceMessage(const String& message, const String& title = "", int duration = 2000);
+    bool isServiceMessageActive();
 
 private:
     JaamDisplayType _type = JaamDisplayType::SSD1306;
@@ -67,7 +68,6 @@ private:
     long _serviceMessageEndTime = 0;
 
     void _setupU8g2();
-    bool _isServiceMessageActive();
     bool _checkI2CConnection();
     uint8_t _drawTitle(const String& title);
 

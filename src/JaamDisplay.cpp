@@ -64,6 +64,7 @@ static const uint8_t JAAM_FONT_SIZES_64_COUNT = 11;
 
 // Alternative font sizes for 32-height displays (max font height: 20px)
 static const uint8_t* JAAM_FONT_SIZES_32[] = {
+    u8g2_font_inter_19_ua,  // 19
     u8g2_font_inter_17_ua,  // 17
     u8g2_font_inter_15_ua,  // 15
     u8g2_font_inter_12_ua,  // 12
@@ -71,7 +72,7 @@ static const uint8_t* JAAM_FONT_SIZES_32[] = {
 };
 
 #endif
-static const uint8_t JAAM_FONT_SIZES_32_COUNT = 4;
+static const uint8_t JAAM_FONT_SIZES_32_COUNT = 5;
 
 // Helper function to get appropriate font array and count based on display height
 static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fontArray, uint8_t& fontCount) {
@@ -283,7 +284,7 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
     if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
-    if (_isServiceMessageActive()) {
+    if (isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printMessage, service message is active\n");
         return;
     }
@@ -379,7 +380,7 @@ void JaamDisplay::printMultilineMessage(const String& line1, const String& line2
     if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
-    if (_isServiceMessageActive()) {
+    if (isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printMultilineMessage, service message is active\n");
         return;
     }
@@ -460,7 +461,7 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
     if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
-    if (_isServiceMessageActive()) {
+    if (isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping drawIconWithText, service message is active\n");
         return;
     }
@@ -612,7 +613,7 @@ void JaamDisplay::printClock(const String& time, const String& date) {
     if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
-    if (_isServiceMessageActive()) {
+    if (isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printClock, service message is active\n");
         return;
     }
@@ -664,7 +665,7 @@ void JaamDisplay::showServiceMessage(const String& message, const String& title,
     _serviceMessageEndTime = millis() + duration;
 }
 
-bool JaamDisplay::_isServiceMessageActive() {
+bool JaamDisplay::isServiceMessageActive() {
     return millis() < _serviceMessageEndTime;
 }
 
