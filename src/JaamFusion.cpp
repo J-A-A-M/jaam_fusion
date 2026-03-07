@@ -1052,7 +1052,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         uint16_t prevHash = (static_cast<uint16_t>(data[3]) << 8) | data[4];
         LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n", alertsHash, prevHash, actualHash);
 
-        if (prevHash != alertsHash) {
+        if (prevHash != alertsHash && isFirstDataFetchCompleted) {
             // некоректний хеш — пропускаємо і реконнектимось
             LOG.printf("[ERROR] prevHash != alertsHash\n");
             requestWebsocketReconnect();
