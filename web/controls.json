@@ -153,6 +153,14 @@
         ],
         [
             "dropdown",
+            "display_mode",
+            "Режим дисплея",
+            "display_mode",
+            "display",
+            ""
+        ],
+        [
+            "dropdown",
             "clock_font",
             "Шрифт годинника",
             "clock_font",

@@ -17,7 +17,7 @@ static const unsigned char trident[] PROGMEM = {
     0x00, 0xe0, 0x0f, 0x00, 0x00, 0xc0, 0x07, 0x00, 0x00, 0x80, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00
 };
 #if DISPLAY_ENABLED
-#define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
+#define JAAM_FONT_TITLE u8g2_font_inter_10_ua
 
 // Helper function to get clock font based on settings and display height
 static const uint8_t* getClockFont(JaamDisplayHeight height) {
@@ -46,29 +46,32 @@ static const uint8_t* getClockFont(JaamDisplayHeight height) {
     }
 }
 
-static const uint8_t* JAAM_FONT_SIZES[] = {
-    u8g2_font_inr38_t_cyrillic, // 38
-    u8g2_font_inr33_t_cyrillic, // 33
-    u8g2_font_inr30_t_cyrillic, // 30
-    u8g2_font_inr27_t_cyrillic, // 27
-    u8g2_font_inr24_t_cyrillic, // 24
-    u8g2_font_10x20_t_cyrillic, // 20
-    u8g2_font_9x15_t_cyrillic,  // 15
-    u8g2_font_6x13_t_cyrillic,  // 13
-    u8g2_font_6x12_t_cyrillic,  // 12
+static const uint8_t* JAAM_FONT_SIZES_64[] = {
+    u8g2_font_inter_37_ua, // 37
+    u8g2_font_inter_31_ua, // 31
+    u8g2_font_inter_29_ua, // 29
+    u8g2_font_inter_25_ua, // 25
+    u8g2_font_inter_23_ua, // 23
+    u8g2_font_inter_21_ua, // 21
+    u8g2_font_inter_19_ua, // 19
+    u8g2_font_inter_17_ua, // 17
+    u8g2_font_inter_15_ua,  // 15
+    u8g2_font_inter_12_ua,  // 12
+    u8g2_font_inter_10_ua,  // 10
 };
-static const uint8_t JAAM_FONT_SIZES_COUNT = 9;
+
+static const uint8_t JAAM_FONT_SIZES_64_COUNT = 11;
 
 // Alternative font sizes for 32-height displays (max font height: 20px)
 static const uint8_t* JAAM_FONT_SIZES_32[] = {
-    u8g2_font_10x20_t_cyrillic, // 20
-    u8g2_font_9x15_t_cyrillic,  // 15
-    u8g2_font_6x13_t_cyrillic,  // 13
-    u8g2_font_6x12_t_cyrillic,  // 12
-    u8g2_font_5x8_t_cyrillic,   // 8
+    u8g2_font_inter_17_ua,  // 17
+    u8g2_font_inter_15_ua,  // 15
+    u8g2_font_inter_12_ua,  // 12
+    u8g2_font_inter_10_ua,  // 10
 };
+
 #endif
-static const uint8_t JAAM_FONT_SIZES_32_COUNT = 5;
+static const uint8_t JAAM_FONT_SIZES_32_COUNT = 4;
 
 // Helper function to get appropriate font array and count based on display height
 static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fontArray, uint8_t& fontCount) {
@@ -77,8 +80,8 @@ static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fon
         fontArray = JAAM_FONT_SIZES_32;
         fontCount = JAAM_FONT_SIZES_32_COUNT;
     } else {
-        fontArray = JAAM_FONT_SIZES;
-        fontCount = JAAM_FONT_SIZES_COUNT;
+        fontArray = JAAM_FONT_SIZES_64;
+        fontCount = JAAM_FONT_SIZES_64_COUNT;
     }
 #endif
 }
@@ -290,13 +293,7 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
     uint8_t dispHeight = (uint8_t)_height;
 
     // Draw title if provided
-    uint8_t titleHeight = 0;
-    if (!title.isEmpty()) {
-        _u8g2->setFont(JAAM_FONT_TITLE);
-        _u8g2->setCursor(3, _u8g2->getAscent());
-        _u8g2->print(title);
-        titleHeight = _u8g2->getAscent() + 2;
-    }
+    uint8_t titleHeight = _drawTitle(title);
 
     // Prepare main text
     String line1 = mainText;
@@ -392,13 +389,7 @@ void JaamDisplay::printMultilineMessage(const String& line1, const String& line2
     uint8_t dispHeight = (uint8_t)_height;
 
     // Draw title if provided
-    uint8_t titleHeight = 0;
-    if (!title.isEmpty()) {
-        _u8g2->setFont(JAAM_FONT_TITLE);
-        _u8g2->setCursor(3, _u8g2->getAscent());
-        _u8g2->print(title);
-        titleHeight = _u8g2->getAscent() + 2;
-    }
+    uint8_t titleHeight = _drawTitle(title);
 
     // Count non-empty lines and collect them
     String lines[4];
@@ -694,4 +685,62 @@ bool JaamDisplay::_checkI2CConnection() {
     
     LOG.printf("[DISPLAY] No display detected at common I2C addresses (0x3C, 0x3D)\n");
     return false;
+}
+
+uint8_t JaamDisplay::_drawTitle(const String& title) {
+#if DISPLAY_ENABLED
+    if (!_u8g2 || title.isEmpty()) return 0;
+    
+    _u8g2->setFont(JAAM_FONT_TITLE);
+    
+    // Calculate available width (display width minus margins)
+    const uint8_t leftMargin = 2;
+    const uint8_t rightMargin = 2;
+    const uint8_t maxWidth = 128 - leftMargin - rightMargin;
+    
+    int textWidth = _u8g2->getUTF8Width(title.c_str());
+    
+    // Check if text fits
+    if (textWidth <= maxWidth) {
+        _u8g2->setCursor(leftMargin, _u8g2->getAscent());
+        _u8g2->print(title);
+        return _u8g2->getAscent() + 2;
+    }
+    
+    // Text doesn't fit - truncate with "..."
+    int ellipsisWidth = _u8g2->getUTF8Width("...");
+    
+    // Find the maximum number of bytes that fit with ellipsis
+    // We need to be careful with UTF-8 multi-byte characters (cyrillic text)
+    int len = title.length();
+    while (len > 0) {
+        len--;
+        
+        // Skip UTF-8 continuation bytes (10xxxxxx pattern: 0x80-0xBF)
+        // to avoid cutting in the middle of a multi-byte character
+        while (len > 0 && (title[len] & 0xC0) == 0x80) {
+            len--;
+        }
+        
+        if (len == 0) break;
+        
+        String testText = title.substring(0, len);
+        int testWidth = _u8g2->getUTF8Width(testText.c_str()) + ellipsisWidth;
+        
+        if (testWidth <= maxWidth) {
+            // Print the truncated text
+            _u8g2->setCursor(leftMargin, _u8g2->getAscent());
+            _u8g2->print(testText);
+            _u8g2->print("...");
+            return _u8g2->getAscent() + 2;
+        }
+    }
+    
+    // Fallback: just print "..." if nothing fits
+    _u8g2->setCursor(leftMargin, _u8g2->getAscent());
+    _u8g2->print("...");
+    return _u8g2->getAscent() + 2;
+#else
+    return 0;
+#endif
 }

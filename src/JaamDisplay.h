@@ -69,5 +69,6 @@ private:
     void _setupU8g2();
     bool _isServiceMessageActive();
     bool _checkI2CConnection();
+    uint8_t _drawTitle(const String& title);
 
 };

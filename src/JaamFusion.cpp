@@ -3151,7 +3151,7 @@ void showWeather() {
     int homeTemp = decodeTemperature(encodedTemp);
     const char* regionName = getNameById(DISTRICTS, settings.getInt(HOME_DISTRICT), MAX_REGIONS);
     char weatherInfo[50];
-    snprintf(weatherInfo, sizeof(weatherInfo), "%d°C", homeTemp);
+    snprintf(weatherInfo, sizeof(weatherInfo), "%d℃", homeTemp);
     display.printMessage(weatherInfo, regionName);
 }
 
@@ -3176,7 +3176,7 @@ void showMicroclimate() {
         float hum = climate.getHumidity();
         char climateInfo[50];
         if (!isnan(temp) && !isnan(hum)) {
-            snprintf(climateInfo, sizeof(climateInfo), "%.1f°С %.1f%%", temp, hum);
+            snprintf(climateInfo, sizeof(climateInfo), "%.1f℃ %.1f%%", temp, hum);
         } else {
             snprintf(climateInfo, sizeof(climateInfo), "Немає даних");
         }
