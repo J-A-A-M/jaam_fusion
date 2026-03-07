@@ -331,11 +331,11 @@ static SettingListItem LED_FREQUENCIES[] = {
     {NEO_KHZ800, "800 КГц (рекомендовано)"}
 };
 
-constexpr int SINGLE_CLICKS_COUNT = 3;
+constexpr int SINGLE_CLICKS_COUNT = 4;
 static SettingListItem SINGLE_CLICKS[] = {
   {0, "Вимкнено"},
   {1, "Перемикання режимів мапи"},
-  // {2, "Перемикання режимів дисплея"},
+  {2, "Перемикання режимів дисплея"},
   {3, "Увімк./Вимк. мапу"},
   // {4, "Увімк./Вимк. дисплей"},
   // {5, "Увімк./Вимк. мапу та дисплей"},
@@ -343,11 +343,11 @@ static SettingListItem SINGLE_CLICKS[] = {
   // {7, "Увімк./Вимк. режим лампи", false},
 };
 
-constexpr int LONG_CLICKS_COUNT = 4;
+constexpr int LONG_CLICKS_COUNT = 5;
 static SettingListItem LONG_CLICKS[] = {
   {0, "Вимкнено"},
   {1, "Перемикання режимів мапи"},
-  // {2, "Перемикання режимів дисплея"},
+  {2, "Перемикання режимів дисплея"},
   {3, "Увімк./Вимк. мапу"},
   // {4, "Увімк./Вимк. дисплей"},
   // {5, "Увімк./Вимк. мапу та дисплей"},
