@@ -3148,11 +3148,18 @@ void batteryProcess() {
 
 // --- Display Show Methods ---
 void showWeather() {
-    uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
-    int homeTemp = decodeTemperature(encodedTemp);
-    const char* regionName = getNameById(DISTRICTS, settings.getInt(HOME_DISTRICT), MAX_REGIONS);
+    int homeDistrict = settings.getInt(HOME_DISTRICT);
+    auto it = temperatureMap.find(homeDistrict);
+    const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
     char weatherInfo[50];
-    snprintf(weatherInfo, sizeof(weatherInfo), "%d℃", homeTemp);
+    
+    if (it != temperatureMap.end()) {
+        int homeTemp = decodeTemperature(it->second);
+        snprintf(weatherInfo, sizeof(weatherInfo), "%d℃", homeTemp);
+    } else {
+        snprintf(weatherInfo, sizeof(weatherInfo), "--℃");
+    }
+    
     display.printMessage(weatherInfo, regionName);
 }
 
@@ -3172,19 +3179,24 @@ void showTechnicalInfo() {
 }
 
 void showMicroclimate() {
-    if (climate.isAnySensorAvailable()) {
-        float temp = climate.getTemperature();
-        float hum = climate.getHumidity();
-        char climateInfo[50];
-        if (!isnan(temp) && !isnan(hum)) {
-            snprintf(climateInfo, sizeof(climateInfo), "%.1f℃ %.1f%%", temp, hum);
-        } else {
-            snprintf(climateInfo, sizeof(climateInfo), "Немає даних");
-        }
-        display.printMessage(climateInfo, "Мікроклімат");
+    float temp = climate.getTemperature();
+    float hum = climate.getHumidity();
+    char climateInfo[50];
+    
+    bool hasTemp = !isnan(temp);
+    bool hasHum = !isnan(hum);
+    
+    if (hasTemp && hasHum) {
+        snprintf(climateInfo, sizeof(climateInfo), "%.1f℃ %.1f%%", temp, hum);
+    } else if (hasTemp) {
+        snprintf(climateInfo, sizeof(climateInfo), "%.1f℃", temp);
+    } else if (hasHum) {
+        snprintf(climateInfo, sizeof(climateInfo), "%.1f%%", hum);
     } else {
-        showClock();
+        snprintf(climateInfo, sizeof(climateInfo), "Немає даних");
     }
+    
+    display.printMessage(climateInfo, "Мікроклімат");
 }
 
 void showCombined() {
@@ -3215,10 +3227,8 @@ void displayProcess()
     }
 
     // Turn off display at night if setting enabled (Priority - highest)
-    if (settings.getBool(DISPLAY_OFF_AT_NIGHT) && isItNightNow()) {
-        if (!display.isServiceMessageActive()) {
-            display.clear();
-        }
+    if (settings.getBool(DISPLAY_OFF_AT_NIGHT) && isItNightNow() && !display.isServiceMessageActive()) {
+        display.clear();
         return;
     }
 
@@ -3235,6 +3245,12 @@ void displayProcess()
     // Show firmware update notification if available (Priority - 2)
     if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION)) {
         showNewFirmwareNotification();
+        return;
+    }
+    
+    // Check if display is manually turned off
+    if (isDisplayOff && !display.isServiceMessageActive()) {
+        display.clear();
         return;
     }
     

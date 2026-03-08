@@ -666,7 +666,7 @@ void JaamDisplay::showServiceMessage(const String& message, const String& title,
 }
 
 bool JaamDisplay::isServiceMessageActive() {
-    return millis() < _serviceMessageEndTime;
+    return (int32_t)(millis() - _serviceMessageEndTime) < 0;
 }
 
 bool JaamDisplay::_checkI2CConnection() {
