@@ -975,13 +975,22 @@ inline bool saveMapMode(int newMapMode) {
   if (newMapMode == 5) {
     prevMapMode = settings.getInt(MAP_MODE);
   }
-  settings.saveInt(MAP_MODE, newMapMode);
-  // Callback автоматично викличе handleAdaptColors()
-  //reportSettingsChange("map_mode", newMapMode);
   const char* mapModeName = getNameById(MAP_MODES, newMapMode, MAP_MODES_COUNT);
   display.showServiceMessage(mapModeName, "Режим мапи:");
-  // update to selected mapMode
-  //mapCycle();
+
+  settings.saveInt(MAP_MODE, newMapMode);
+
+  return true;
+}
+
+inline bool saveDisplayMode(int newDisplayMode) {
+  if (newDisplayMode == settings.getInt(DISPLAY_MODE)) return false;
+
+  const char* displayModeName = getNameById(DISPLAY_MODES, newDisplayMode, DISPLAY_MODES_COUNT);
+  display.showServiceMessage(displayModeName, "Режим дисплею:");
+
+  settings.saveInt(DISPLAY_MODE, newDisplayMode);
+  
   return true;
 }
 
@@ -1008,7 +1017,7 @@ inline void nextDisplayMode() {
     }
   } while (DISPLAY_MODES[newIndex].ignore);
 
-  settings.saveInt(DISPLAY_MODE, DISPLAY_MODES[newIndex].id);
+  saveDisplayMode(DISPLAY_MODES[newIndex].id);
 }
 
 inline int getCurrentPeriodIndex(int periodLength, int periodCount, long currentSeconds) {
