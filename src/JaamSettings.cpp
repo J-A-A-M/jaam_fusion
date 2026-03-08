@@ -167,6 +167,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {MAP_MODE, {"mapmode", 1}},
     {DISPLAY_MODE, {"dm", 2}},
     {DISPLAY_MODE_TIME, {"dmt", 5}},
+    {DISPLAY_OFF_AT_NIGHT, {"doan", 0}},
     {TOGGLE_MODE_WEATHER, {"tmw", 1}},
     {TOGGLE_MODE_RADIATION, {"tmr", 1}},
     {TOGGLE_MODE_ENERGY, {"tme", 1}},

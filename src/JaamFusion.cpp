@@ -2132,6 +2132,7 @@ void initSettings() {
 
             case CLOCK_FONT:
             case DISPLAY_MODE:
+            case DISPLAY_OFF_AT_NIGHT:
                 displayProcess();
                 break;
     
@@ -3212,6 +3213,15 @@ void displayProcess()
         handleAdaptColors();
         handleAdaptAnimationColors();
     }
+
+    // Turn off display at night if setting enabled (Priority - highest)
+    if (settings.getBool(DISPLAY_OFF_AT_NIGHT) && isItNightNow()) {
+        if (!display.isServiceMessageActive()) {
+            display.clear();
+        }
+        return;
+    }
+
     // Show Minute of silence mode if activated. (Priority - 0)
     if (minuteOfSilence) {
         displayMinuteOfSilence();

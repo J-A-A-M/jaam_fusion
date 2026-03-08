@@ -89,6 +89,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"invert_display", INVERT_DISPLAY, TYPE_BOOL},
     {"display_mode", DISPLAY_MODE, TYPE_INT},
     {"display_mode_time", DISPLAY_MODE_TIME, TYPE_INT},
+    {"display_off_at_night", DISPLAY_OFF_AT_NIGHT, TYPE_BOOL},
     {"clock_font", CLOCK_FONT, TYPE_INT},
     {"display_alert_message_time", DISPLAY_ALERT_MESSAGE_TIME, TYPE_INT},
     
@@ -276,7 +277,7 @@ void sendCompressedJson(WebServer* server, const String& json) {
     }
     
     float ratio = (1.0f - (float)compressedSize / (float)jsonLen) * 100.0f;
-    // LOG.printf("[WEB] Compressed JSON: %d → %d bytes (%.1f%% reduction)\n", jsonLen, compressedSize, ratio);
+    // LOG.printf("[WEB] Compressed JSON: %d -> %d bytes (%.1f%% reduction)\n", jsonLen, compressedSize, ratio);
     
     // Send compressed data
     server->sendHeader("Content-Encoding", "gzip");
@@ -307,7 +308,7 @@ void sendCompressedHtml(WebServer* server, const String& html) {
     }
     
     float ratio = (1.0f - (float)compressedSize / (float)htmlLen) * 100.0f;
-    LOG.printf("[WEB] Compressed HTML: %d → %d bytes (%.1f%% reduction)\n", htmlLen, compressedSize, ratio);
+    // LOG.printf("[WEB] Compressed HTML: %d -> %d bytes (%.1f%% reduction)\n", htmlLen, compressedSize, ratio);
     
     // Send compressed data
     server->sendHeader("Content-Encoding", "gzip");
