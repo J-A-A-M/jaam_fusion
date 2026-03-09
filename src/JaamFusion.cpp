@@ -3334,7 +3334,6 @@ void setup() {
     checkFreeHeap("chipID initialization");
 
     initSettings();
-    loggingStream.setLogsEnabled(settings.getBool(LOGS_ENABLED));
     checkFreeHeap("settings initialization");
 
     fwUpdate.setDisplay(&display);
@@ -3429,6 +3428,7 @@ void setup() {
     
     LOG.printf("[SETUP] Initialization complete\n");
     checkFreeHeap("full setup");
+    loggingStream.setLogsEnabled(settings.getBool(LOGS_ENABLED));
 }
 
 void loop() {

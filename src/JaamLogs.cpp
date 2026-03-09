@@ -12,6 +12,7 @@ LoggingPrint loggingStream(_LOG_BASE);
 // LoggingPrint::write implementation - intercept all output
 size_t LoggingPrint::write(const uint8_t* buffer, size_t size) {
     if (!logsEnabled) {
+        linePos = 0;
         return size;
     }
 
