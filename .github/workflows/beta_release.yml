@@ -20,7 +20,7 @@ jobs:
       full_version: ${{ steps.build_number.outputs.full_version }}
       tag_name: ${{ steps.build_number.outputs.tag_name }}
       build_num: ${{ steps.build_number.outputs.build_num }}
-    
+
     steps:
     - name: Validate version format
       run: |
@@ -29,19 +29,19 @@ jobs:
           exit 1
         fi
         echo "✅ Формат версії валідний: ${{ inputs.version }}"
-    
+
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
-    
+
     - name: Calculate build number
       id: build_number
       run: |
         VERSION="${{ inputs.version }}"
-        
+
         # Отримуємо всі теги що відповідають патерну {VERSION}-b*
         EXISTING_TAGS=$(git tag -l "${VERSION}-b*" | sort -V)
-        
+
         if [ -z "$EXISTING_TAGS" ]; then
           BUILD_NUM=1
           echo "📦 Це перший beta build для версії ${VERSION}"
@@ -52,42 +52,42 @@ jobs:
           BUILD_NUM=$((LAST_BUILD + 1))
           echo "📦 Останній beta build: ${LAST_TAG}"
         fi
-        
+
         FULL_VERSION="${VERSION}-b${BUILD_NUM}"
         TAG_NAME="${FULL_VERSION}"
-        
+
         echo "build_num=${BUILD_NUM}" >> $GITHUB_OUTPUT
         echo "full_version=${FULL_VERSION}" >> $GITHUB_OUTPUT
         echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
-        
+
         echo "🔖 Нова версія: ${FULL_VERSION}"
         echo "🏷️  Новий тег: ${TAG_NAME}"
-    
+
     - name: Update version in platformio.ini
       run: |
         FULL_VERSION="${{ steps.build_number.outputs.full_version }}"
-        
+
         echo "📝 Оновлюємо VERSION у platformio.ini на ${FULL_VERSION}"
-        
+
         # Перевіряємо чи файл існує
         if [ ! -f platformio.ini ]; then
           echo "❌ ПОМИЛКА: platformio.ini не знайдено!"
           ls -la
           exit 1
         fi
-        
+
         # Показуємо поточну версію
         echo "📄 Поточна VERSION у platformio.ini:"
         grep 'VERSION=' platformio.ini || echo "VERSION не знайдено!"
-        
+
         # Замінюємо VERSION=\"...\" на нову версію (escaped лапки)
         echo "🔧 Виконуємо заміну VERSION на ${FULL_VERSION}"
         sed -i 's/VERSION=\\"[^\\"]*\\"/VERSION=\\"'"${FULL_VERSION}"'\\"/g' platformio.ini
-        
+
         # Показуємо результат
         echo "📄 Нова VERSION у platformio.ini:"
         grep 'VERSION=' platformio.ini
-        
+
         # Перевіряємо чи заміна відбулась
         if grep -q 'VERSION=\\"'"${FULL_VERSION}"'\\"' platformio.ini; then
           echo "✅ Версію успішно оновлено на ${FULL_VERSION}"
@@ -95,7 +95,7 @@ jobs:
           echo "❌ ПОМИЛКА: Версію не вдалося оновити!"
           exit 1
         fi
-    
+
     - name: Upload updated platformio.ini
       uses: actions/upload-artifact@v4
       with:
@@ -120,26 +120,26 @@ jobs:
           - environment: firmware_esp32c3
             chip: esp32c3
             bin_name: JAAM_c3
-    
+
     steps:
     - uses: actions/checkout@v6
-    
+
     - name: Download updated platformio.ini
       uses: actions/download-artifact@v4
       with:
         name: platformio-config
-    
+
     - name: Verify version in platformio.ini
       run: |
         EXPECTED_VERSION="${{ needs.prepare.outputs.full_version }}"
-        
+
         echo "🔍 Перевіряємо версію в platformio.ini"
         echo "Очікується: VERSION=\"${EXPECTED_VERSION}\""
-        
+
         # Показуємо що є в файлі
         echo "📄 Вміст VERSION у platformio.ini:"
         grep 'VERSION=' platformio.ini || echo "VERSION не знайдено!"
-        
+
         # Перевіряємо чи версія правильна
         if grep -q "VERSION=\\\\\"${EXPECTED_VERSION}\\\\\"" platformio.ini; then
           echo "✅ Версія правильна: ${EXPECTED_VERSION}"
@@ -150,22 +150,22 @@ jobs:
           grep 'VERSION=' platformio.ini
           exit 1
         fi
-    
+
     - name: Setup PlatformIO
       uses: ./.github/actions/setup-platformio
-    
+
     - name: Build ${{ matrix.environment }}
       run: |
         echo "🔨 Збираємо firmware для ${{ matrix.chip }}..."
         platformio run -e ${{ matrix.environment }}
-    
+
     - name: Prepare binary
       run: |
         mkdir -p release
         cp .pio/build/${{ matrix.environment }}/firmware.bin release/${{ matrix.bin_name }}_${{ needs.prepare.outputs.full_version }}.bin
         echo "📦 Розмір бінарника:"
         ls -lh release/*.bin
-    
+
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4
       with:
@@ -177,24 +177,24 @@ jobs:
     name: 🚀 Release ${{ needs.prepare.outputs.full_version }}
     needs: [prepare, build]
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
-    
+
     - name: Download all firmware binaries
       uses: actions/download-artifact@v4
       with:
         pattern: firmware-*
         path: release
         merge-multiple: true
-    
+
     - name: Show downloaded binaries
       run: |
         echo "📦 Завантажені бінарники:"
         ls -lh release/
-    
+
     - name: Generate changelog with AI
       id: changelog
       env:
@@ -202,52 +202,51 @@ jobs:
       run: |
         TAG_NAME="${{ needs.prepare.outputs.tag_name }}"
         FULL_VERSION="${{ needs.prepare.outputs.full_version }}"
-        
+
         # Отримуємо попередній тег (останній beta або release)
         PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-        
+
         if [ -z "$PREVIOUS_TAG" ]; then
           COMMITS=$(git log --pretty=format:"- %s (%an, %h)" HEAD | head -30)
         else
           COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${PREVIOUS_TAG}..HEAD)
         fi
-        
+
         echo "📝 Генеруємо changelog за допомогою AI..."
-        
+
         # Викликаємо Gemini API
         if [ -n "$GEMINI_API_KEY" ]; then
           # Створюємо промпт для AI
           PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
-        
+
           Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
-          
+
           ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
           - Зміни в GitHub Actions (.github/workflows)
           - Зміни конфігурації білда (якщо вони не додають нові функції користувачам)
           - Оновлення документації проекту
           - Зміни в CI/CD
           - Рефакторинг без нових функцій
-          
+
           Включай тільки зміни, які впливають на роботу пристрою або додають нові можливості користувачам.
-          
+
           Коміти:
           ${COMMITS}
-          
+
           Створи changelog з такою структурою:
-          
+
           # 🧪 Beta Реліз ${FULL_VERSION}
-          
-          > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
-          
+
+          > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції. Увага, цей changelog містить зміни відносно попередньої бета-версії, при оновленні з JAAM версій 4.x рекомендуємо додатково означомитись з [Changelog для JAAM5](https://github.com/J-A-A-M/jaam_fusion/releases/tag/5.0-b1)
           ## Що нового
-          
+
           [Згрупуй зміни за категоріями. Використовуй емоджі:]
           - 🚀 Нові можливості
           - 🐛 Виправлення помилок
           - 🔧 Технічні покращення
           - ⚡ Оптимізація
           - 🎨 UI/UX покращення
-          
+
           Вимоги:
           - Будь стислим та зрозумілим для кінцевих користувачів
           - Опиши зміни простою мовою, уникай технічного жаргону де можливо
@@ -255,7 +254,7 @@ jobs:
           - Групуй схожі зміни разом
           - Підкресли найважливіші зміни
           - НЕ додавай секції про завантаження або встановлення"
-            
+
             # Створюємо JSON payload
             JSON_PAYLOAD=$(jq -n \
               --arg prompt "$PROMPT" \
@@ -270,11 +269,11 @@ jobs:
                   "maxOutputTokens": 2048
                 }
               }')
-            
+
             RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}" \
               -H "Content-Type: application/json" \
               -d "$JSON_PAYLOAD")
-            
+
             # Перевіряємо чи є помилка в відповіді
             ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
             if [ -n "$ERROR" ]; then
@@ -282,18 +281,18 @@ jobs:
               echo "📄 Повна відповідь:"
               echo "$RESPONSE" | jq .
             fi
-            
+
             # Витягуємо текст з відповіді
             CHANGELOG=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
-            
+
             if [ -z "$CHANGELOG" ]; then
               echo "⚠️ AI не згенерував changelog, використовуємо fallback"
               CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
-          
-              > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
-              
+
+              > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції. Увага, цей changelog містить зміни відносно попередньої бета-версії, при оновленні з JAAM версій 4.x рекомендуємо додатково означомитись з [Changelog для JAAM5](https://github.com/J-A-A-M/jaam_fusion/releases/tag/5.0-b1)
+
               ## Що нового
-              
+
               ${COMMITS}"
             else
               echo "✅ AI згенерував changelog"
@@ -301,18 +300,18 @@ jobs:
         else
           echo "⚠️ GEMINI_API_KEY не знайдено, використовуємо стандартний changelog"
           CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
-        
-          > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
-          
+
+          > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції. Увага, цей changelog містить зміни відносно попередньої бета-версії, при оновленні з JAAM версій 4.x рекомендуємо додатково означомитись з [Changelog для JAAM5](https://github.com/J-A-A-M/jaam_fusion/releases/tag/5.0-b1)
+
           ## Що нового
-          
+
           ${COMMITS}"
         fi
-        
+
         # Зберігаємо changelog
         echo "$CHANGELOG" > CHANGELOG.md
         cat CHANGELOG.md
-    
+
     - name: Create Git Tag
       run: |
         TAG_NAME="${{ needs.prepare.outputs.tag_name }}"
@@ -320,7 +319,7 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git tag -a "${TAG_NAME}" -m "Beta Release ${TAG_NAME}"
         git push origin "${TAG_NAME}"
-    
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
@@ -333,7 +332,7 @@ jobs:
           release/*.bin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+
     - name: Summary
       run: |
         echo "### ✅ Beta Реліз Створено!" >> $GITHUB_STEP_SUMMARY
