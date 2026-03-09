@@ -156,6 +156,9 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     // Режим мапи
     doc["map_mode_id"] = settings->getInt(MAP_MODE);
     
+    // Режим дисплею
+    doc["display_mode_id"] = settings->getInt(DISPLAY_MODE);
+    
     // Домашній регіон
     doc["home_region"] = settings->getInt(HOME_DISTRICT);
     
@@ -232,10 +235,23 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
             int newMode = doc["mode_id"].as<int>();
 
             if (newMode >= 0 && newMode <= 4) {
-                settings->saveInt(MAP_MODE, newMode);
+                saveMapMode(newMode);
                 LOG.printf("[API] Map mode changed to: %d\n", newMode);
             } else {
                 LOG.printf("[API] Invalid map mode: %d\n", newMode);
+            }
+        }
+    }
+    // Обробляємо команду set_display_mode
+    else if (type == "set_display_mode") {
+        if (!doc["mode_id"].isNull()) {
+            int newMode = doc["mode_id"].as<int>();
+
+            if (newMode >= 0 && newMode <= 9) {
+                saveDisplayMode(newMode);
+                LOG.printf("[API] Display mode changed to: %d\n", newMode);
+            } else {
+                LOG.printf("[API] Invalid display mode: %d\n", newMode);
             }
         }
     }
@@ -371,6 +387,18 @@ void JaamApi::broadcastMapModeChange(int newMode) {
     broadcastWebSocket(data);
     
     LOG.printf("[API] Broadcast map mode change: %d\n", newMode);
+}
+
+void JaamApi::broadcastDisplayModeChange(int newMode) {
+    JsonDocument doc;
+    doc["type"] = "display_mode_change";
+    doc["display_mode_id"] = newMode;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast display mode change: %d\n", newMode);
 }
 
 void JaamApi::broadcastLampChange(const char* color, int brightness) {
@@ -625,6 +653,11 @@ void JaamApi::onSettingsChange(Type type, int intValue, float fltValue, const ch
     if (!settings) {
         return;
     }
+
+    if (type != API_ENABLED && !isRunning) {
+        // Якщо API не запущено, немає сенсу обробляти зміни налаштувань для broadcast
+        return;
+    }
     
     // Відстежуємо зміни критичних налаштувань і broadcast-имо їх
     switch (type) {
@@ -636,6 +669,10 @@ void JaamApi::onSettingsChange(Type type, int intValue, float fltValue, const ch
             
         case MAP_MODE:
             broadcastMapModeChange(intValue);
+            break;
+            
+        case DISPLAY_MODE:
+            broadcastDisplayModeChange(intValue);
             break;
             
         case BRIGHTNESS_LAMP:

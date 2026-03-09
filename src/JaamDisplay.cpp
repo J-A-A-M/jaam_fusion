@@ -17,7 +17,7 @@ static const unsigned char trident[] PROGMEM = {
     0x00, 0xe0, 0x0f, 0x00, 0x00, 0xc0, 0x07, 0x00, 0x00, 0x80, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00
 };
 #if DISPLAY_ENABLED
-#define JAAM_FONT_TITLE u8g2_font_6x12_t_cyrillic
+#define JAAM_FONT_TITLE u8g2_font_inter_10_ua
 
 // Helper function to get clock font based on settings and display height
 static const uint8_t* getClockFont(JaamDisplayHeight height) {
@@ -46,27 +46,31 @@ static const uint8_t* getClockFont(JaamDisplayHeight height) {
     }
 }
 
-static const uint8_t* JAAM_FONT_SIZES[] = {
-    u8g2_font_inr38_t_cyrillic, // 38
-    u8g2_font_inr33_t_cyrillic, // 33
-    u8g2_font_inr30_t_cyrillic, // 30
-    u8g2_font_inr27_t_cyrillic, // 27
-    u8g2_font_inr24_t_cyrillic, // 24
-    u8g2_font_10x20_t_cyrillic, // 20
-    u8g2_font_9x15_t_cyrillic,  // 15
-    u8g2_font_6x13_t_cyrillic,  // 13
-    u8g2_font_6x12_t_cyrillic,  // 12
+static const uint8_t* JAAM_FONT_SIZES_64[] = {
+    u8g2_font_inter_37_ua, // 37
+    u8g2_font_inter_31_ua, // 31
+    u8g2_font_inter_29_ua, // 29
+    u8g2_font_inter_25_ua, // 25
+    u8g2_font_inter_23_ua, // 23
+    u8g2_font_inter_21_ua, // 21
+    u8g2_font_inter_19_ua, // 19
+    u8g2_font_inter_17_ua, // 17
+    u8g2_font_inter_15_ua,  // 15
+    u8g2_font_inter_12_ua,  // 12
+    u8g2_font_inter_10_ua,  // 10
 };
-static const uint8_t JAAM_FONT_SIZES_COUNT = 9;
+
+static const uint8_t JAAM_FONT_SIZES_64_COUNT = 11;
 
 // Alternative font sizes for 32-height displays (max font height: 20px)
 static const uint8_t* JAAM_FONT_SIZES_32[] = {
-    u8g2_font_10x20_t_cyrillic, // 20
-    u8g2_font_9x15_t_cyrillic,  // 15
-    u8g2_font_6x13_t_cyrillic,  // 13
-    u8g2_font_6x12_t_cyrillic,  // 12
-    u8g2_font_5x8_t_cyrillic,   // 8
+    u8g2_font_inter_19_ua,  // 19
+    u8g2_font_inter_17_ua,  // 17
+    u8g2_font_inter_15_ua,  // 15
+    u8g2_font_inter_12_ua,  // 12
+    u8g2_font_inter_10_ua,  // 10
 };
+
 #endif
 static const uint8_t JAAM_FONT_SIZES_32_COUNT = 5;
 
@@ -77,8 +81,8 @@ static void getFontArrayForHeight(JaamDisplayHeight height, const uint8_t**& fon
         fontArray = JAAM_FONT_SIZES_32;
         fontCount = JAAM_FONT_SIZES_32_COUNT;
     } else {
-        fontArray = JAAM_FONT_SIZES;
-        fontCount = JAAM_FONT_SIZES_COUNT;
+        fontArray = JAAM_FONT_SIZES_64;
+        fontCount = JAAM_FONT_SIZES_64_COUNT;
     }
 #endif
 }
@@ -280,7 +284,7 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
     if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
-    if (_isServiceMessageActive()) {
+    if (isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printMessage, service message is active\n");
         return;
     }
@@ -290,13 +294,7 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
     uint8_t dispHeight = (uint8_t)_height;
 
     // Draw title if provided
-    uint8_t titleHeight = 0;
-    if (!title.isEmpty()) {
-        _u8g2->setFont(JAAM_FONT_TITLE);
-        _u8g2->setCursor(3, _u8g2->getAscent());
-        _u8g2->print(title);
-        titleHeight = _u8g2->getAscent() + 2;
-    }
+    uint8_t titleHeight = _drawTitle(title);
 
     // Prepare main text
     String line1 = mainText;
@@ -377,12 +375,93 @@ void JaamDisplay::printMessage(const String& mainText, const String& title) {
 #endif
 }
 
+// Print message with 2 lines
+void JaamDisplay::printMultilineMessage(const String& line1, const String& line2, const String& line3, const String& line4, const String& title) {
+    if (!_isConnected) return;
+#if DISPLAY_ENABLED
+    if (!_u8g2) return;
+    if (isServiceMessageActive()) {
+        LOG.printf("[DISPLAY] Skipping printMultilineMessage, service message is active\n");
+        return;
+    }
+
+    _u8g2->clearBuffer();
+    uint8_t dispWidth = 128;
+    uint8_t dispHeight = (uint8_t)_height;
+
+    // Draw title if provided
+    uint8_t titleHeight = _drawTitle(title);
+
+    // Count non-empty lines and collect them
+    String lines[4];
+    int lineCount = 0;
+    if (!line1.isEmpty()) lines[lineCount++] = line1;
+    if (!line2.isEmpty()) lines[lineCount++] = line2;
+    if (!line3.isEmpty()) lines[lineCount++] = line3;
+    if (!line4.isEmpty()) lines[lineCount++] = line4;
+
+    if (lineCount == 0) {
+        _u8g2->sendBuffer();
+        return;
+    }
+
+    // Get appropriate font array based on display height
+    const uint8_t** fontArray;
+    uint8_t fontCount;
+    getFontArrayForHeight(_height, fontArray, fontCount);
+
+    // Find font size that fits all lines
+    int fontIdx = 0;
+    bool fits = false;
+    int spacing = 4;
+    for (; fontIdx < fontCount; ++fontIdx) {
+        _u8g2->setFont(fontArray[fontIdx]);
+        int h = _u8g2->getAscent();
+        int totalTextHeight = h * lineCount + spacing * (lineCount - 1);
+        
+        if ((totalTextHeight + titleHeight) > dispHeight) {
+            continue;
+        }
+        
+        bool allFit = true;
+        for (int i = 0; i < lineCount; i++) {
+            int w = _u8g2->getUTF8Width(lines[i].c_str());
+            if (w > dispWidth - 2) {
+                allFit = false;
+                break;
+            }
+        }
+        
+        if (allFit) {
+            fits = true;
+            break;
+        }
+    }
+    if (fontIdx == fontCount) fontIdx = fontCount - 1;
+
+    _u8g2->setFont(fontArray[fontIdx]);
+    int mainFontHeight = _u8g2->getAscent();
+    int totalTextHeight = mainFontHeight * lineCount + spacing * (lineCount - 1);
+    int startY = titleHeight + (dispHeight - titleHeight - totalTextHeight) / 2 + mainFontHeight;
+
+    // Draw all lines
+    for (int i = 0; i < lineCount; i++) {
+        int y = startY + i * (mainFontHeight + spacing);
+        int x = (dispWidth - _u8g2->getUTF8Width(lines[i].c_str())) / 2;
+        _u8g2->setCursor(x > 0 ? x : 0, y);
+        _u8g2->print(lines[i]);
+    }
+
+    _u8g2->sendBuffer();
+#endif
+}
+
 // Draw a monochrome bitmap icon at (x, y) with width w and height h
 void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text) {
     if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
-    if (_isServiceMessageActive()) {
+    if (isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping drawIconWithText, service message is active\n");
         return;
     }
@@ -534,7 +613,7 @@ void JaamDisplay::printClock(const String& time, const String& date) {
     if (!_isConnected) return;
 #if DISPLAY_ENABLED
     if (!_u8g2) return;
-    if (_isServiceMessageActive()) {
+    if (isServiceMessageActive()) {
         LOG.printf("[DISPLAY] Skipping printClock, service message is active\n");
         return;
     }
@@ -586,8 +665,8 @@ void JaamDisplay::showServiceMessage(const String& message, const String& title,
     _serviceMessageEndTime = millis() + duration;
 }
 
-bool JaamDisplay::_isServiceMessageActive() {
-    return millis() < _serviceMessageEndTime;
+bool JaamDisplay::isServiceMessageActive() {
+    return (int32_t)(millis() - _serviceMessageEndTime) < 0;
 }
 
 bool JaamDisplay::_checkI2CConnection() {
@@ -607,4 +686,62 @@ bool JaamDisplay::_checkI2CConnection() {
     
     LOG.printf("[DISPLAY] No display detected at common I2C addresses (0x3C, 0x3D)\n");
     return false;
+}
+
+uint8_t JaamDisplay::_drawTitle(const String& title) {
+#if DISPLAY_ENABLED
+    if (!_u8g2 || title.isEmpty()) return 0;
+    
+    _u8g2->setFont(JAAM_FONT_TITLE);
+    
+    // Calculate available width (display width minus margins)
+    const uint8_t leftMargin = 2;
+    const uint8_t rightMargin = 2;
+    const uint8_t maxWidth = 128 - leftMargin - rightMargin;
+    
+    int textWidth = _u8g2->getUTF8Width(title.c_str());
+    
+    // Check if text fits
+    if (textWidth <= maxWidth) {
+        _u8g2->setCursor(leftMargin, _u8g2->getAscent());
+        _u8g2->print(title);
+        return _u8g2->getAscent() + 2;
+    }
+    
+    // Text doesn't fit - truncate with "..."
+    int ellipsisWidth = _u8g2->getUTF8Width("...");
+    
+    // Find the maximum number of bytes that fit with ellipsis
+    // We need to be careful with UTF-8 multi-byte characters (cyrillic text)
+    int len = title.length();
+    while (len > 0) {
+        len--;
+        
+        // Skip UTF-8 continuation bytes (10xxxxxx pattern: 0x80-0xBF)
+        // to avoid cutting in the middle of a multi-byte character
+        while (len > 0 && (title[len] & 0xC0) == 0x80) {
+            len--;
+        }
+        
+        if (len == 0) break;
+        
+        String testText = title.substring(0, len);
+        int testWidth = _u8g2->getUTF8Width(testText.c_str()) + ellipsisWidth;
+        
+        if (testWidth <= maxWidth) {
+            // Print the truncated text
+            _u8g2->setCursor(leftMargin, _u8g2->getAscent());
+            _u8g2->print(testText);
+            _u8g2->print("...");
+            return _u8g2->getAscent() + 2;
+        }
+    }
+    
+    // Fallback: just print "..." if nothing fits
+    _u8g2->setCursor(leftMargin, _u8g2->getAscent());
+    _u8g2->print("...");
+    return _u8g2->getAscent() + 2;
+#else
+    return 0;
+#endif
 }

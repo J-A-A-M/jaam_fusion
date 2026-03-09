@@ -2131,6 +2131,8 @@ void initSettings() {
                 break;
 
             case CLOCK_FONT:
+            case DISPLAY_MODE:
+            case DISPLAY_OFF_AT_NIGHT:
                 displayProcess();
                 break;
     
@@ -3144,6 +3146,75 @@ void batteryProcess() {
     battery.logVoltage();
 }
 
+// --- Display Show Methods ---
+void showWeather() {
+    int homeDistrict = settings.getInt(HOME_DISTRICT);
+    auto it = temperatureMap.find(homeDistrict);
+    const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
+    char weatherInfo[50];
+    
+    if (it != temperatureMap.end()) {
+        int homeTemp = decodeTemperature(it->second);
+        snprintf(weatherInfo, sizeof(weatherInfo), "%d℃", homeTemp);
+    } else {
+        snprintf(weatherInfo, sizeof(weatherInfo), "--℃");
+    }
+    
+    display.printMessage(weatherInfo, regionName);
+}
+
+void showTechnicalInfo() {
+    SystemInfo info = getSystemInfo();
+    const char* version = fwUpdate.getCurrentVersion();
+    uint32_t totalMemory = info.usedMemory + info.freeMemory;
+    
+    String versionStr = String("v") + version;
+    String ipAddrStr = wifiConnected ? WiFi.localIP().toString() : "Н/А";
+    
+    char memBuf[30];
+    snprintf(memBuf, sizeof(memBuf), "%u/%u KB", info.usedMemory / 1024, totalMemory / 1024);
+    String memoryStr = String(memBuf);
+    
+    display.printMultilineMessage(versionStr, ipAddrStr, memoryStr, "", "Тех. інформація:");
+}
+
+void showMicroclimate() {
+    float temp = climate.getTemperature();
+    float hum = climate.getHumidity();
+    char climateInfo[50];
+    
+    bool hasTemp = !isnan(temp);
+    bool hasHum = !isnan(hum);
+    
+    if (hasTemp && hasHum) {
+        snprintf(climateInfo, sizeof(climateInfo), "%.1f℃ %.1f%%", temp, hum);
+    } else if (hasTemp) {
+        snprintf(climateInfo, sizeof(climateInfo), "%.1f℃", temp);
+    } else if (hasHum) {
+        snprintf(climateInfo, sizeof(climateInfo), "%.1f%%", hum);
+    } else {
+        snprintf(climateInfo, sizeof(climateInfo), "Немає даних");
+    }
+    
+    display.printMessage(climateInfo, "Мікроклімат");
+}
+
+void showCombined() {
+    int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), 2, timeClient.second());
+    
+    switch(periodIndex) {
+        case 0: // Show Clock
+            showClock();
+            break;
+        case 1: // Show Weather
+            showWeather();
+            break;
+        default:
+            showClock();
+            break;
+    }
+}
+
 // --- Display Process ---
 void displayProcess()
 {
@@ -3154,21 +3225,69 @@ void displayProcess()
         handleAdaptColors();
         handleAdaptAnimationColors();
     }
+
+    // Turn off display at night if setting enabled (Priority - highest)
+    if (settings.getBool(DISPLAY_OFF_AT_NIGHT) && isItNightNow() && !display.isServiceMessageActive()) {
+        display.clear();
+        return;
+    }
+
     // Show Minute of silence mode if activated. (Priority - 0)
     if (minuteOfSilence) {
         displayMinuteOfSilence();
         return;
     }
-    // Show Glory To Ukraine if athema playing. (Priority - 1)
+    // Show Glory To Ukraine if anthem playing. (Priority - 1)
     if (uaAnthemPlaying) {
         showMinOfSilenceScreen(1);
         return;
     }
+    // Show firmware update notification if available (Priority - 2)
     if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION)) {
         showNewFirmwareNotification();
         return;
     }
-    showClock();
+    
+    // Check if display is manually turned off
+    if (isDisplayOff && !display.isServiceMessageActive()) {
+        display.clear();
+        return;
+    }
+    
+    // Handle display modes
+    int displayMode = settings.getInt(DISPLAY_MODE);
+    
+    switch(displayMode) {
+        case 0: // Вимкнено (Disabled)
+        if (!display.isServiceMessageActive()) {
+            display.clear();
+        }
+            break;
+        
+        case 1: // Годинник (Clock)
+            showClock();
+            break;
+        
+        case 2: // Погода (Weather)
+            showWeather();
+            break;
+        
+        case 3: // Технічна інформація (Technical Information)
+            showTechnicalInfo();
+            break;
+        
+        case 4: // Мікроклімат (Microclimate)
+            showMicroclimate();
+            break;
+        
+        case 9: // Комбінований (Combined)
+            showCombined();
+            break;
+        
+        default:
+            showClock();
+            break;
+    }
 }
 
 // --- Sound Process ---

@@ -23,6 +23,7 @@ public:
     
     // Broadcast події до всіх підключених WebSocket клієнтів
     void broadcastMapModeChange(int newMode);
+    void broadcastDisplayModeChange(int newMode);
     void broadcastLampChange(const char* color, int brightness);
     void broadcastHomeRegionChange(int regionId);
     void broadcastAlertChange(int regionId, int alertType);

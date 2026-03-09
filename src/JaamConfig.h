@@ -331,11 +331,11 @@ static SettingListItem LED_FREQUENCIES[] = {
     {NEO_KHZ800, "800 КГц (рекомендовано)"}
 };
 
-constexpr int SINGLE_CLICKS_COUNT = 3;
+constexpr int SINGLE_CLICKS_COUNT = 4;
 static SettingListItem SINGLE_CLICKS[] = {
   {0, "Вимкнено"},
   {1, "Перемикання режимів мапи"},
-  // {2, "Перемикання режимів дисплея"},
+  {2, "Перемикання режимів дисплея"},
   {3, "Увімк./Вимк. мапу"},
   // {4, "Увімк./Вимк. дисплей"},
   // {5, "Увімк./Вимк. мапу та дисплей"},
@@ -343,11 +343,11 @@ static SettingListItem SINGLE_CLICKS[] = {
   // {7, "Увімк./Вимк. режим лампи", false},
 };
 
-constexpr int LONG_CLICKS_COUNT = 4;
+constexpr int LONG_CLICKS_COUNT = 5;
 static SettingListItem LONG_CLICKS[] = {
   {0, "Вимкнено"},
   {1, "Перемикання режимів мапи"},
-  // {2, "Перемикання режимів дисплея"},
+  {2, "Перемикання режимів дисплея"},
   {3, "Увімк./Вимк. мапу"},
   // {4, "Увімк./Вимк. дисплей"},
   // {5, "Увімк./Вимк. мапу та дисплей"},
@@ -471,16 +471,16 @@ static TimezoneInfo TIMEZONE_OFFSETS[] = {
   {22, 12, 0, false, {0, 0, 0, 0}, {0, 0, 0, 0}},
 };
 
-constexpr int DISPLAY_MODES_COUNT = 2;
+constexpr int DISPLAY_MODES_COUNT = 6;
 static SettingListItem DISPLAY_MODES[] = {
   {0, "Вимкнено", false},
   {1, "Годинник", false},
   // {5, "Енергосистема", false},
-  // {2, "Погода", false},
+  {2, "Погода", false},
   // {6, "Радіація", false},
-  // {3, "Технічна інформація", false},
-  // {4, "Мікроклімат", false},
-  // {9, "Перемикання", false},
+  {3, "Технічна інформація", false},
+  {4, "Мікроклімат", false},
+  {9, "Комбінований", false},
 };
 
 constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
@@ -707,6 +707,7 @@ enum Type {
     MAP_MODE,
     DISPLAY_MODE,
     DISPLAY_MODE_TIME,
+    DISPLAY_OFF_AT_NIGHT,
     TOGGLE_MODE_WEATHER,
     TOGGLE_MODE_ENERGY,
     TOGGLE_MODE_RADIATION,
