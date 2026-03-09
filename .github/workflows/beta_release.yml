@@ -218,7 +218,7 @@ jobs:
         if [ -n "$GEMINI_API_KEY" ]; then
           # Створюємо промпт для AI
           PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
-        
+
           Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
           
           ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
@@ -254,7 +254,9 @@ jobs:
           - Якщо коміт технічний (refactor, cleanup) - опиши користувацьку вигоду
           - Групуй схожі зміни разом
           - Підкресли найважливіші зміни
-          - НЕ додавай секції про завантаження або встановлення"
+          - НЕ додавай секції про завантаження або встановлення
+          
+          ⚠️ КРИТИЧНО: Це генерація для автоматичної публікації релізу. Виводи ТІЛЬКИ Markdown текст changelog без жодних додаткових текстів, коментарів чи пояснень!\"
             
             # Створюємо JSON payload
             JSON_PAYLOAD=$(jq -n \
@@ -271,7 +273,7 @@ jobs:
                 }
               }')
             
-            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}" \
+            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}" \
               -H "Content-Type: application/json" \
               -d "$JSON_PAYLOAD")
             
