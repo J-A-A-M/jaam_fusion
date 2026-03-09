@@ -11,11 +11,14 @@ LoggingPrint loggingStream(_LOG_BASE);
 
 // LoggingPrint::write implementation - intercept all output
 size_t LoggingPrint::write(const uint8_t* buffer, size_t size) {
-    // Write to base stream
+    if (!logsEnabled) {
+        return size;
+    }
+
     if (baseStream) {
         baseStream->write(buffer, size);
     }
-    
+
     // Process characters for log buffer
     for (size_t i = 0; i < size; i++) {
         uint8_t c = buffer[i];

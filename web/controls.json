@@ -92,6 +92,13 @@
             ""
         ],
         [
+            "bool",
+            "logs_enabled",
+            "Виводити логи в Serial/Web",
+            "general",
+            ""
+        ],
+        [
             "dropdown",
             "time_zone",
             "Часовий пояс",

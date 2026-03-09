@@ -2119,6 +2119,11 @@ void initSettings() {
                 handleUpdateTimezone();
                 break;
             
+            // Вивід логів у Serial/Telnet
+            case LOGS_ENABLED:
+                loggingStream.setLogsEnabled(intValue == 1);
+                break;
+
             // NTP сервер
             case NTP_HOST:
                 handleUpdateNtpHost();
@@ -3329,6 +3334,7 @@ void setup() {
     checkFreeHeap("chipID initialization");
 
     initSettings();
+    loggingStream.setLogsEnabled(settings.getBool(LOGS_ENABLED));
     checkFreeHeap("settings initialization");
 
     fwUpdate.setDisplay(&display);

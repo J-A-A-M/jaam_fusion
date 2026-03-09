@@ -195,6 +195,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {WS_ALERT_TIME, {"wsat", 180000}},
     {WS_REBOOT_TIME, {"wsrt", 300000}},
     {MIN_OF_SILENCE, {"mos", 1}},
+    {LOGS_ENABLED, {"le", 0}},
     {FW_UPDATE_CHANNEL, {"fwuc", 0}},
     {ALERT_ON_TIME, {"aonte", 300}},
     {ALERT_OFF_TIME, {"aofte", 5}},
