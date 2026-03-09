@@ -216,78 +216,79 @@ jobs:
 
         # Викликаємо Gemini API
         if [ -n "$GEMINI_API_KEY" ]; then
-          # Створюємо промпт для AI
-          PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
 
-          Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
+        # Створюємо промпт для AI
+        PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
 
-          ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
-          - Зміни в GitHub Actions (.github/workflows)
-          - Зміни конфігурації білда (якщо вони не додають нові функції користувачам)
-          - Оновлення документації проекту
-          - Зміни в CI/CD
-          - Рефакторинг без нових функцій
+        Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
 
-          Включай тільки зміни, які впливають на роботу пристрою або додають нові можливості користувачам.
+        ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
+        - Зміни в GitHub Actions (.github/workflows)
+        - Зміни конфігурації білда (якщо вони не додають нові функції користувачам)
+        - Оновлення документації проекту
+        - Зміни в CI/CD
+        - Рефакторинг без нових функцій
 
-          Коміти:
-          ${COMMITS}
+        Включай тільки зміни, які впливають на роботу пристрою або додають нові можливості користувачам.
 
-          Створи changelog з такою структурою:
+        Коміти:
+        ${COMMITS}
 
-          # 🧪 Beta Реліз ${FULL_VERSION}
+        Створи changelog з такою структурою:
 
-          > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції. Увага, цей changelog містить зміни відносно попередньої бета-версії, при оновленні з JAAM версій 4.x рекомендуємо додатково ознайомитись з [Changelog для JAAM5](https://github.com/${{ github.repository }}/releases/tag/5.0-b1)
-          ## Що нового
+        # 🧪 Beta Реліз ${FULL_VERSION}
 
-          [Згрупуй зміни за категоріями. Використовуй емоджі:]
-          - 🚀 Нові можливості
-          - 🐛 Виправлення помилок
-          - 🔧 Технічні покращення
-          - ⚡ Оптимізація
-          - 🎨 UI/UX покращення
+        > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції. Увага, цей changelog містить зміни відносно попередньої бета-версії, при оновленні з JAAM версій 4.x рекомендуємо додатково ознайомитись з [Changelog для JAAM5](https://github.com/${{ github.repository }}/releases/tag/5.0-b1)
+        ## Що нового
 
-          Вимоги:
-          - Будь стислим та зрозумілим для кінцевих користувачів
-          - Опиши зміни простою мовою, уникай технічного жаргону де можливо
-          - Якщо коміт технічний (refactor, cleanup) - опиши користувацьку вигоду
-          - Групуй схожі зміни разом
-          - Підкресли найважливіші зміни
-          - НЕ додавай секції про завантаження або встановлення"
+        [Згрупуй зміни за категоріями. Використовуй емоджі:]
+        - 🚀 Нові можливості
+        - 🐛 Виправлення помилок
+        - 🔧 Технічні покращення
+        - ⚡ Оптимізація
+        - 🎨 UI/UX покращення
 
-            # Створюємо JSON payload
-            JSON_PAYLOAD=$(jq -n \
-              --arg prompt "$PROMPT" \
-              '{
-                "contents": [{
-                  "parts": [{
-                    "text": $prompt
-                  }]
-                }],
-                "generationConfig": {
-                  "temperature": 0.7,
-                  "maxOutputTokens": 2048
-                }
-              }')
+        Вимоги:
+        - Будь стислим та зрозумілим для кінцевих користувачів
+        - Опиши зміни простою мовою, уникай технічного жаргону де можливо
+        - Якщо коміт технічний (refactor, cleanup) - опиши користувацьку вигоду
+        - Групуй схожі зміни разом
+        - Підкресли найважливіші зміни
+        - НЕ додавай секції про завантаження або встановлення"
 
-            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d "$JSON_PAYLOAD")
+          # Створюємо JSON payload
+          JSON_PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            '{
+              "contents": [{
+                "parts": [{
+                  "text": $prompt
+                }]
+              }],
+              "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 2048
+              }
+            }')
 
-            # Перевіряємо чи є помилка в відповіді
-            ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
-            if [ -n "$ERROR" ]; then
-              echo "⚠️ Помилка API: $ERROR"
-              echo "📄 Повна відповідь:"
-              echo "$RESPONSE" | jq .
-            fi
+          RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD")
 
-            # Витягуємо текст з відповіді
-            CHANGELOG=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+          # Перевіряємо чи є помилка в відповіді
+          ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR" ]; then
+            echo "⚠️ Помилка API: $ERROR"
+            echo "📄 Повна відповідь:"
+            echo "$RESPONSE" | jq .
+          fi
 
-            if [ -z "$CHANGELOG" ]; then
-              echo "⚠️ AI не згенерував changelog, використовуємо fallback"
-              CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
+          # Витягуємо текст з відповіді
+          CHANGELOG=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+
+          if [ -z "$CHANGELOG" ]; then
+            echo "⚠️ AI не згенерував changelog, використовуємо fallback"
+            CHANGELOG="# 🧪 Beta Реліз ${FULL_VERSION}
 
         > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції. Увага, цей changelog містить зміни відносно попередньої бета-версії, при оновленні з JAAM версій 4.x рекомендуємо додатково ознайомитись з [Changelog для JAAM5](https://github.com/${{ github.repository }}/releases/tag/5.0-b1)
 
