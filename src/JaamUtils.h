@@ -687,7 +687,7 @@ static JsonDocument parseJson(const char* payload) {
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payload);
     if (error) {
-        LOG.printf("[ERROR] Deserialization error: $s\n", error.f_str());
+        LOG.printf("[ERROR] Deserialization error: %s\n", error.f_str());
         return doc;
     } else {
         return doc;
