@@ -3364,8 +3364,6 @@ void setup() {
     adaptColors();
     checkFreeHeap("colors adaptation");
 
-    
-
     initSiren();
     checkFreeHeap("siren initialization");
 
