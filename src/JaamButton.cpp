@@ -1,5 +1,5 @@
-#include "JaamButton.h"
 #include <OneButton.h>
+#include "JaamButton.h"
 
 typedef void (*duringLongClickCallback)(JaamButton::Action action);
 

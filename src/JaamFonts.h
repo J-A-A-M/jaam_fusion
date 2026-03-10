@@ -1,7 +1,7 @@
 #pragma once
 
 #if DISPLAY_ENABLED
-#include "U8g2lib.h"
+#include <U8g2lib.h>
 
 static const uint8_t u8g2_font_reddit_mono_64[775] U8G2_FONT_SECTION("u8g2_font_reddit_mono_64") PROGMEM = 
   "\17\1\5\5\5\6\1\4\6\30,\0\371 \366&\370\0\0\0\0\2\352 \14\231\35\371\7\377\377\377"

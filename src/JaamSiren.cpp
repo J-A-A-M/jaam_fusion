@@ -1,7 +1,7 @@
+#include <async.h>
 #include "JaamSiren.h"
 #include "JaamConfig.h"
 #include "JaamLogs.h"
-#include <async.h>
 
 extern Async async;
 

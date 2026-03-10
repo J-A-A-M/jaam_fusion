@@ -1,6 +1,6 @@
+#include <string>
 #include "JaamFirmwareUpdate.h"
 #include "JaamLogs.h"
-#include <string>
 
 void JaamFirmwareUpdate::setDisplay(JaamDisplay* display) {
     _display = display;

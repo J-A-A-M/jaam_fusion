@@ -1,7 +1,7 @@
 #pragma once
+#include <Arduino.h>
 #include "JaamSettings.h"
 #include "JaamLogs.h"
-#include <Arduino.h>
 
 class JaamBattery {
 public:
