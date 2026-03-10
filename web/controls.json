@@ -140,7 +140,7 @@
         ],
         [
             "info",
-            "Налаштуйте параметри дисплея та візуального відображення мапи",
+            "Налаштуйте параметри дисплею",
             "#28a745",
             "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H10V20H8V22H16V20H14V18H20Z",
             "display",
@@ -149,7 +149,7 @@
         [
             "dropdown",
             "display_model",
-            "Тип дисплея",
+            "Тип дисплею",
             "display_model",
             "display",
             "hardware!=0,hardware!=3,hardware!=4"
@@ -157,7 +157,7 @@
         [
             "dropdown",
             "display_height",
-            "Висота дисплея",
+            "Висота дисплею",
             "display_height",
             "display",
             "hardware!=0,hardware!=3,hardware!=4"
@@ -165,7 +165,7 @@
         [
             "dropdown",
             "display_rotation",
-            "Поворот дисплея",
+            "Поворот дисплею",
             "display_rotation",
             "display",
             "hardware!=0,hardware!=3,hardware!=4"
@@ -180,7 +180,7 @@
         [
             "dropdown",
             "display_mode",
-            "Режим дисплея",
+            "Режим дисплею",
             "display_mode",
             "display",
             ""
