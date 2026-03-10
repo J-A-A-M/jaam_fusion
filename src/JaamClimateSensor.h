@@ -52,7 +52,7 @@ class JaamClimateSensor {
         bool sht2xInitialized = false;
         bool sht3xInitialized = false;
         bool ahtxxInitialized = false;
-        float localTemp = -273.0f;
-        float localHum = -1.0f;
-        float localPressure = -1.0f;
+        float localTemp = NAN;
+        float localHum = NAN;
+        float localPressure = NAN;
 };
