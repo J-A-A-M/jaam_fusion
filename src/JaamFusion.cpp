@@ -1852,7 +1852,9 @@ uint8_t getCurrentBrightnes() {
         float lightLevel = lightSensor.getLightLevel();
         int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
         // Визначаємо день/ніч за рівнем освітлення
-        return lightLevel < threshold ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+        if (!isnan(lightLevel)) {
+            return lightLevel < threshold ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+        }
     }
     return settings.getInt(BRIGHTNESS);
 }

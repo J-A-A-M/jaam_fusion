@@ -4,6 +4,7 @@
 #include <BH1750_WE.h>
 #endif
 #include <Arduino.h>
+#include <cmath>
 
 class JaamLightSensor {
 public:
