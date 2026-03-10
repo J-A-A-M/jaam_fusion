@@ -1,5 +1,5 @@
-#include "JaamLogs.h"
 #include <ArduinoJson.h>
+#include "JaamLogs.h"
 
 #if TELNET_ENABLED
 TelnetSpy SerialAndTelnet;

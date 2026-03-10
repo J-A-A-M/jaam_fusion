@@ -1,6 +1,5 @@
 #pragma once
 #include <cmath>
-#include "JaamConfig.h"
 #if BUZZER_ENABLED
 #include <melody_player.h>
 #include <melody_factory.h>
@@ -9,6 +8,7 @@
 #include <DFRobot_DF1201S.h>
 #include <HardwareSerial.h>
 #endif
+#include "JaamConfig.h"
 
 
 class JaamSound {

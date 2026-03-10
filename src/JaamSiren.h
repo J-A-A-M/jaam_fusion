@@ -1,7 +1,7 @@
 #pragma once
 
-#include "JaamSettings.h"
 #include <Arduino.h>
+#include "JaamSettings.h"
 
 class JaamSiren {
 public:

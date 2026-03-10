@@ -1,8 +1,8 @@
+#include <Wire.h>
 #include "JaamDisplay.h"
 #include "JaamLogs.h"
 #include "JaamFonts.h"
 #include "JaamSettings.h"
-#include <Wire.h>
 
 extern JaamSettings settings;
 

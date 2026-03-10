@@ -1,5 +1,5 @@
-#include "JaamLightSensor.h"
 #include <Arduino.h>
+#include "JaamLightSensor.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
 

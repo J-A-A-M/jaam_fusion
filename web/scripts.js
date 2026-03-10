@@ -848,10 +848,52 @@ function updateElementVisibility(element) {
     if (!visibility) return;
     
     const conditions = visibility.split(',').map(c => c.trim());
+    
+    // Group conditions by field name and operator
+    const conditionGroups = {};
+    for (const condition of conditions) {
+        const match = condition.match(/(\w+)(!=|==)(\d+)/);
+        if (match) {
+            const [_, field, operator] = match;
+            const key = `${field}_${operator}`;
+            if (!conditionGroups[key]) {
+                conditionGroups[key] = [];
+            }
+            conditionGroups[key].push(condition);
+        }
+    }
+    
+    // For == operator: OR logic (any condition in group must be true)
+    // For != operator: AND logic (all conditions in group must be true)
+    // Groups are combined with AND logic
     let shouldShow = true;
     
-    for (const condition of conditions) {
-        if (!evaluateCondition(condition)) {
+    for (const key in conditionGroups) {
+        const group = conditionGroups[key];
+        const isEqualityOperator = key.endsWith('_==');
+        let groupSatisfied;
+        
+        if (isEqualityOperator) {
+            // OR logic for == : at least one must be true
+            groupSatisfied = false;
+            for (const condition of group) {
+                if (evaluateCondition(condition)) {
+                    groupSatisfied = true;
+                    break;
+                }
+            }
+        } else {
+            // AND logic for != : all must be true
+            groupSatisfied = true;
+            for (const condition of group) {
+                if (!evaluateCondition(condition)) {
+                    groupSatisfied = false;
+                    break;
+                }
+            }
+        }
+        
+        if (!groupSatisfied) {
             shouldShow = false;
             break;
         }

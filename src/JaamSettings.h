@@ -1,8 +1,8 @@
 #pragma once
 #include <Print.h>
-#include <JaamConfig.h>
 #include <Preferences.h>
 #include <functional>
+#include "JaamConfig.h"
 
 // Callback для повідомлення про зміни налаштувань
 typedef std::function<void(Type type, int intValue, float fltValue, const char* strValue)> SettingsChangeCallback;

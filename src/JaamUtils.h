@@ -1,4 +1,13 @@
 #pragma once
+#include <math.h>
+#include <string>
+#include <map>
+#include <set>
+#include <utility> 
+#include <vector>
+#include <ArduinoJson.h>
+#include <WiFi.h>
+#include <SPIFFS.h>
 #include "JaamLogs.h"
 #include "JaamSettings.h"
 #include "JaamBattery.h"
@@ -9,15 +18,6 @@
 #include "JaamHardware.h"
 #include "JaamApi.h"
 #include "JaamFirmwareUpdate.h"
-#include <math.h>
-#include <string>
-#include <map>
-#include <set>
-#include <utility> 
-#include <vector>
-#include <ArduinoJson.h>
-#include <WiFi.h>
-#include <SPIFFS.h>
 
 
 static const char* CUSTOM_MAP_PATH = "/custom_map.json";
@@ -687,7 +687,7 @@ static JsonDocument parseJson(const char* payload) {
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payload);
     if (error) {
-        LOG.printf("[ERROR] Deserialization error: $s\n", error.f_str());
+        LOG.printf("[ERROR] Deserialization error: %s\n", error.f_str());
         return doc;
     } else {
         return doc;

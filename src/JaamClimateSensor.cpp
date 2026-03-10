@@ -1,5 +1,5 @@
-#include "JaamClimateSensor.h"
 #include <Arduino.h>
+#include "JaamClimateSensor.h"
 #include "JaamLogs.h"
 
 JaamClimateSensor::JaamClimateSensor() {

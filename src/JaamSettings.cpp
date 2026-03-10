@@ -1,8 +1,8 @@
-#include "JaamSettings.h"
 #include <Preferences.h>
 #include <ArduinoJson.h>
-#include <JaamUtils.h>
 #include <Adafruit_NeoPixel.h>
+#include "JaamSettings.h"
+#include "JaamUtils.h"
 
 JaamSettings::JaamSettings() : changeCallback(nullptr) {
 }
