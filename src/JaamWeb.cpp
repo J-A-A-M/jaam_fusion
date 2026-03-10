@@ -74,6 +74,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"bg_led_mode", BG_LED_MODE, TYPE_INT},
     {"map_mode", MAP_MODE, TYPE_INT},
     {"min_of_silence", MIN_OF_SILENCE, TYPE_BOOL},
+    {"logs_enabled", LOGS_ENABLED, TYPE_BOOL},
     {"time_zone", TIME_ZONE, TYPE_INT},
     {"device_name", DEVICE_NAME, TYPE_STRING},
     {"device_description", DEVICE_DESCRIPTION, TYPE_STRING},

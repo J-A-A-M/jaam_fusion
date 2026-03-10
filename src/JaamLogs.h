@@ -28,13 +28,21 @@ class JaamLogsManager;
 class LoggingPrint : public Print {
 public:
     LoggingPrint(Print* baseStream) : baseStream(baseStream), logsManager(nullptr) {}
-    
+
     void setLogsManager(JaamLogsManager* manager) {
         logsManager = manager;
     }
-    
+
+    void setLogsEnabled(bool enabled) {
+        logsEnabled = enabled;
+    }
+
+    bool isLogsEnabled() const {
+        return logsEnabled;
+    }
+
     virtual size_t write(uint8_t c) override {
-        if (baseStream) {
+        if (baseStream && logsEnabled) {
             baseStream->write(c);
         }
         return 1;
@@ -54,6 +62,7 @@ public:
 private:
     Print* baseStream;
     JaamLogsManager* logsManager;
+    bool logsEnabled = true;
     char lineBuffer[512];
     size_t linePos = 0;
     
