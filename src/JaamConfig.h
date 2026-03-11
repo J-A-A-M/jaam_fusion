@@ -563,14 +563,14 @@ static SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
 
 constexpr int ANIMATION_TYPES_COUNT = 8;
 static SettingListItem ANIMATION_TYPES[] = {
-  {AnimationTypes::OFF, "Статичний колір"},
   {AnimationTypes::FADE, "Циклічне затухання"},
   {AnimationTypes::BLINK, "Мерехтіння"},
   {AnimationTypes::BLEND_FADE, "Перехід між кольорами"},
   {AnimationTypes::PULSE, "Пульсація"},
   {AnimationTypes::ONE_WAY_BLEND_FADE, "Односторонній перехід між кольорами"},
   {AnimationTypes::RUNNING_LIGHT, "RUNNING_LIGHT", true},
-  {AnimationTypes::SET_BRIGHTNESS, "SET_BRIGHTNESS", true}
+  {AnimationTypes::SET_BRIGHTNESS, "SET_BRIGHTNESS", true},
+  {AnimationTypes::OFF, "Статичний колір"}
 };
 
 enum Type {
