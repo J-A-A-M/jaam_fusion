@@ -917,8 +917,16 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
     } 
     if (strip == strip_service) {
         LOG.printf("[COLOR] service strip color\n");
-        color = DefaultColors::SERVICE_STRIP;
-        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
+        switch (getCurrentMapMode()) {
+            case MapModes::OFF: 
+                color = DefaultColors::OFF;
+                brightness = 0;
+                break;
+            default:
+                color = DefaultColors::SERVICE_STRIP;
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
+                break;
+        }
     }
     if (adapted) {
         color = adaptColorBrightness(color, brightness);
@@ -1127,8 +1135,16 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         }
     } 
     if (strip == strip_service) {
-        color = getServicePinColor(position);
-        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
+        switch (getCurrentMapMode()) {
+            case MapModes::OFF: 
+                color = DefaultColors::OFF;
+                brightness = 0;
+                break;
+            default:
+                color = getServicePinColor(position);
+                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
+                break;
+        }
     }
 
     if (adapted) {

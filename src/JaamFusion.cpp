@@ -684,7 +684,7 @@ void button3DuringLongClick(JaamButton::Action action) {
 
 void servicePin(ServiceLed type) {
     if (strip_service != nullptr) {
-        uint32_t color = getServicePinColor(type);
+        uint32_t color = animation.ledActualColor(strip_service, type);
         animation.safeStripOperation(strip_service, [type, color](Adafruit_NeoPixel* strip) {
             strip->setPixelColor(type, color);
             strip->show();
@@ -1625,6 +1625,7 @@ void initStripService() {
     } else {
         LOG.printf("[LED] SKIP: strip_service (pin <= 0)\n");
     }
+    servicePin(POWER);
     // if (strip_service != nullptr) {
     //     // Спочатку встановлюємо LEDs з мінімальною яскравістю
     //     // animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
@@ -2449,7 +2450,6 @@ void initWebsocket() {
 
 void initStrip() {
     // Створюємо м'ютекс для захисту доступу до стрічок
-    servicePin(POWER);
     stripMutex = xSemaphoreCreateMutex();
     if (stripMutex == NULL) {
         LOG.printf("[ERROR] Failed to create stripMutex semaphore\n");
