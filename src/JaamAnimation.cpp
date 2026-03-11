@@ -63,15 +63,15 @@ uint32_t AnimationManager::blendColors(uint32_t color1, uint32_t color2, float f
     uint8_t r1 = (color1 >> 16) & 0xFF;
     uint8_t g1 = (color1 >> 8) & 0xFF;
     uint8_t b1 = color1 & 0xFF;
-    
+
     uint8_t r2 = (color2 >> 16) & 0xFF;
     uint8_t g2 = (color2 >> 8) & 0xFF;
     uint8_t b2 = color2 & 0xFF;
-    
+
     uint8_t r = r1 + (r2 - r1) * factor;
     uint8_t g = g1 + (g2 - g1) * factor;
     uint8_t b = b1 + (b2 - b1) * factor;
-    
+
     return (r << 16) | (g << 8) | b;
 }
 
@@ -87,31 +87,29 @@ const char* AnimationManager::getStripName(Adafruit_NeoPixel* strip) {
     return "unknown";
 }
 
-AnimationManager::AnimationManager() : activeCount(0), activeAnimationsCount(0), settings(nullptr), synchronizedMode(false) {
+AnimationManager::AnimationManager() : settings(nullptr), synchronizedMode(false) {
     animMutex = xSemaphoreCreateMutex();
     globalTimesMutex = xSemaphoreCreateMutex();
-    for (int i = 0; i < MAX_ANIMATIONS; i++) {
-        animations[i] = nullptr;
-        activeAnimations[i].strip = nullptr;
-        activeAnimations[i].ledIndex = -1;
-        activeAnimations[i].animationIndex = -1;
-    }
+    memset(mainStates,    0, sizeof(mainStates));
+    memset(serviceStates, 0, sizeof(serviceStates));
+    memset(&bgState,       0, sizeof(bgState));
+    memset(&mainOverride,  0, sizeof(mainOverride));
 }
 
 void AnimationManager::setSettings(JaamSettings* settings) {
     this->settings = settings;
 }
 
+// ──────────────────────────────────────────────────────
 // Методи синхронізації анімацій
+// ──────────────────────────────────────────────────────
+
 void AnimationManager::setSynchronizedMode(bool enabled) {
     bool wasEnabled = synchronizedMode;
     synchronizedMode = enabled;
-    
-    // Якщо синхронізацію вмикають - скидаємо всі глобальні часи
     if (enabled && !wasEnabled) {
         resetAllGlobalTimes();
     }
-    
     LOG.printf("[ANIMATION] Synchronized mode %s\n", enabled ? "enabled" : "disabled");
 }
 
@@ -132,51 +130,54 @@ void AnimationManager::resetAllGlobalTimes() {
 
 uint32_t AnimationManager::getStartTime(uint16_t animationType) {
     uint32_t currentTime = millis();
-    
+
     if (synchronizedMode) {
         if (animationType >= ANIMATION_TYPES_COUNT) {
-            LOG.printf("[ANIMATION] Invalid animation type %d, returning current time\n", animationType);
             return currentTime;
         }
-        
+
         if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
             if (!globalTimesInitialized[animationType]) {
                 globalStartTimes[animationType] = currentTime;
                 globalTimesInitialized[animationType] = true;
-                LOG.printf("[ANIMATION] Initialized global time for type %d (%s): %u\n", 
-                          animationType, 
+                LOG.printf("[ANIMATION] Initialized global time for type %d (%s): %u\n",
+                          animationType,
                           ANIMATION_TYPES[animationType].name,
                           globalStartTimes[animationType]);
             }
-            
             uint32_t returnTime = globalStartTimes[animationType];
             xSemaphoreGive(globalTimesMutex);
             return returnTime;
         }
     }
-    // Асинхронний режим або якщо не вдалося захопити мютекс - повертаємо поточний час
     return currentTime;
 }
 
+// Викликається всередині animMutex — ітерує масиви без захоплення animMutex
 void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
     if (!synchronizedMode || animationType >= ANIMATION_TYPES_COUNT) return;
-    
-    // Перевіряємо чи є активні анімації цього типу
-    bool hasActiveAnimations = false;
-    for (int i = 0; i < MAX_ANIMATIONS; i++) {
-        if (animations[i] != nullptr && animations[i]->isActive && animations[i]->type == animationType) {
-            hasActiveAnimations = true;
-            break;
-        }
+
+    bool hasActive = false;
+
+    int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : MAX_LEDS_MAIN;
+    for (int i = 0; i < numMain && !hasActive; i++) {
+        if (mainStates[i].active && mainStates[i].animType == animationType) hasActive = true;
     }
-    
-    // Якщо немає активних анімацій цього типу - скидаємо глобальний час
-    if (!hasActiveAnimations) {
+
+    int numSvc = strip_service ? min((int)strip_service->numPixels(), MAX_LEDS_SERVICE) : MAX_LEDS_SERVICE;
+    for (int i = 0; i < numSvc && !hasActive; i++) {
+        if (serviceStates[i].active && serviceStates[i].animType == animationType) hasActive = true;
+    }
+
+    if (!hasActive && bgState.active     && bgState.animType     == animationType) hasActive = true;
+    if (!hasActive && mainOverride.active && mainOverride.animType == animationType) hasActive = true;
+
+    if (!hasActive) {
         if (xSemaphoreTake(globalTimesMutex, portMAX_DELAY) == pdTRUE) {
             if (globalTimesInitialized[animationType]) {
                 globalTimesInitialized[animationType] = false;
                 globalStartTimes[animationType] = 0;
-                LOG.printf("[ANIMATION] Reset global time for type %d (%s)\n", 
+                LOG.printf("[ANIMATION] Reset global time for type %d (%s)\n",
                           animationType, ANIMATION_TYPES[animationType].name);
             }
             xSemaphoreGive(globalTimesMutex);
@@ -184,470 +185,549 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
     }
 }
 
-bool AnimationManager::createAnimation(uint16_t type, 
-                                    Adafruit_NeoPixel* strip,
-                                    uint8_t map_mode,
-                                    int* positions, 
-                                    int posCount,
-                                    uint32_t color,
-                                    uint32_t initialColor,
-                                    uint32_t period,
-                                    uint32_t cycles,
-                                    uint8_t startBrightness,
-                                    uint8_t endBrightness,
-                                    uint16_t region_id,
-                                    int bit)
+// ──────────────────────────────────────────────────────
+// createAnimation — публічний API, сигнатура незмінна
+// ──────────────────────────────────────────────────────
+
+bool AnimationManager::createAnimation(uint16_t type,
+                                       Adafruit_NeoPixel* strip,
+                                       uint8_t map_mode,
+                                       int* positions,
+                                       int posCount,
+                                       uint32_t color,
+                                       uint32_t initialColor,
+                                       uint32_t period,
+                                       uint32_t cycles,
+                                       uint8_t startBrightness,
+                                       uint8_t endBrightness,
+                                       uint16_t region_id,
+                                       int bit)
 {
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] ERROR: Strip is nullptr\n");
         return false;
     }
-    
+
     // Отримуємо startTime до захоплення animMutex щоб уникнути deadlock
     uint32_t startTime = getStartTime(type);
-    
+    uint32_t now = millis();
+
+    const char* stripName = getStripName(strip);
+    const char* typeName  = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
+
+    // ── RUNNING_LIGHT / SET_BRIGHTNESS — strip-level override ──
+    if (type == AnimationTypes::RUNNING_LIGHT || type == AnimationTypes::SET_BRIGHTNESS) {
+        if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+            mainOverride.strip      = strip;
+            mainOverride.color      = color;
+            mainOverride.initColor  = initialColor;
+            mainOverride.startTime  = startTime;
+            mainOverride.localStart = now;
+            mainOverride.period     = period;
+            mainOverride.cycles     = cycles;
+            mainOverride.animType   = type;
+            mainOverride.startBr    = startBrightness;
+            mainOverride.endBr      = endBrightness;
+            mainOverride.bit        = (int8_t)bit;
+            mainOverride.mapMode    = map_mode;
+            mainOverride.active     = true;
+            xSemaphoreGive(animMutex);
+        }
+        LOG.printf("[ANIMATION] START strip=%s, type=%s, period=%u, cycles=%u\n",
+                   stripName, typeName, period, cycles);
+        return true;
+    }
+
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        // Для кожного LED перевіряємо пріоритет існуючих анімацій
-        for (int posIdx = 0; posIdx < posCount; ++posIdx) {
-            int ledPos = positions[posIdx];
-            for (int i = 0; i < activeAnimationsCount; ++i) {
-                if (activeAnimations[i].strip == strip &&
-                    activeAnimations[i].ledIndex == ledPos) {
-                    int animIdx = activeAnimations[i].animationIndex;
-                    if (animations[animIdx] != nullptr) {
-                        int existingBit = animations[animIdx]->bit;
-                        const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
-                        const char* stripName = getStripName(strip);
 
-                        // Перевіряємо пріоритет: якщо існуюча анімація має вищий або рівний пріоритет або це відбій тривоги
-                        if (!hasHigherPriority(bit, existingBit) && bit!= -1) {
-                            
-                            LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d, led=%d: existing animation has higher priority (bit %d vs %d)\n", 
-                                      stripName, typeName, region_id, ledPos, existingBit, bit);
-                            xSemaphoreGive(animMutex);
-                            return false;
-                        } else {
-                            LOG.printf("[ANIMATION] REPLACING strip=%s, type=%s, region=%d, led=%d: existing animation bit %d replaced with %d\n", 
-                                      stripName, typeName, region_id, ledPos, existingBit, bit);
-                        }
-
-                        // Нова анімація має вищий пріоритет - видаляємо стару
-                        removeLedFromAnimation(animations[animIdx], ledPos, animIdx);
-                        // Після видалення масив зсувається, тому треба зменшити i
-                        i--;
-                    }
+        // ── strip_bg — один стан на всю стрічку ──
+        if (strip == strip_bg) {
+            if (!hasHigherPriority(bit, bgState.bit) && bit != -1 && bgState.active) {
+                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d: existing bit %d vs %d\n",
+                           stripName, typeName, region_id, bgState.bit, bit);
+                xSemaphoreGive(animMutex);
+                return false;
+            }
+            uint32_t initColor = initialColor;
+            if (initColor == 0 && strip->numPixels() > 0) {
+                if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                    initColor = strip->getPixelColor(0);
+                    xSemaphoreGive(stripMutex);
                 }
             }
+            bgState.strip      = strip;
+            bgState.color      = color;
+            bgState.initColor  = initColor;
+            bgState.startTime  = startTime;
+            bgState.localStart = now;
+            bgState.period     = period;
+            bgState.cycles     = cycles;
+            bgState.animType   = type;
+            bgState.startBr    = startBrightness;
+            bgState.endBr      = endBrightness;
+            bgState.bit        = (int8_t)bit;
+            bgState.mapMode    = map_mode;
+            bgState.active     = true;
+            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, period=%u, cycles=%u, bit=%d\n",
+                       stripName, typeName, region_id, period, cycles, bit);
+            xSemaphoreGive(animMutex);
+            return true;
         }
 
-        if (activeCount >= MAX_ANIMATIONS) {
-            LOG.printf("[ANIMATION] ERROR: Maximum animations reached (%d)\n", MAX_ANIMATIONS);
+        // ── strip_main / strip_service — per-LED стани ──
+        LedState* stateArr = nullptr;
+        int maxLeds = 0;
+        if (strip == strip_main) {
+            stateArr = mainStates;
+            maxLeds  = MAX_LEDS_MAIN;
+        } else if (strip == strip_service) {
+            stateArr = serviceStates;
+            maxLeds  = MAX_LEDS_SERVICE;
+        } else {
+            LOG.printf("[ANIMATION] ERROR: Unknown strip\n");
             xSemaphoreGive(animMutex);
             return false;
         }
 
-        int slot = -1;
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] == nullptr) {
-                slot = i;
-                break;
-            }
-        }
+        bool anyCreated = false;
+        for (int posIdx = 0; posIdx < posCount; posIdx++) {
+            int ledPos = positions[posIdx];
+            if (ledPos < 0 || ledPos >= maxLeds) continue;
 
-        if (slot != -1) {
-            animations[slot] = new(std::nothrow) AnimationParams;
-            if (animations[slot] == nullptr) {
-                LOG.printf("[ANIMATION] ERROR: Failed to allocate memory for animation\n");
-                xSemaphoreGive(animMutex);
-                return false;
-            }
-            
-            animations[slot]->positions = new(std::nothrow) int[posCount];
-            if (animations[slot]->positions == nullptr) {
-                LOG.printf("[ANIMATION] ERROR: Failed to allocate memory for positions array\n");
-                delete animations[slot];
-                animations[slot] = nullptr;
-                xSemaphoreGive(animMutex);
-                return false;
-            }
-            
-            animations[slot]->type = type;
-            animations[slot]->strip = strip;
-            animations[slot]->mapMode = map_mode;                   // Зберігаємо режим
-            animations[slot]->posCount = posCount;
-            animations[slot]->color = color;
-            animations[slot]->initialColor = initialColor;
-            animations[slot]->period = period;
-            animations[slot]->cycles = cycles;
-            animations[slot]->startBrightness = startBrightness;
-            animations[slot]->endBrightness = endBrightness;
-            animations[slot]->isActive = true;
-            animations[slot]->startTime = startTime;                 // Використовуємо заздалегідь отриманий час
-            animations[slot]->localStartTime = millis();             // Локальний час для тривалості
-            animations[slot]->region_id = region_id;
-            animations[slot]->bit = bit;
-            
-            memcpy(animations[slot]->positions, positions, posCount * sizeof(int));
+            LedState& s = stateArr[ledPos];
 
-            // LOG: Початок анімації
-            const char* typeName = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
-            const char* stripName = getStripName(strip);
-            
-            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, leds=", stripName, typeName, region_id);
-            for (int i = 0; i < posCount; ++i) {
-                LOG.printf("%d ", positions[i]);
-            }
-            LOG.printf(" period=%u, cycles=%u, startBrightness=%u, endBrightness=%u, bit=%d\n", period, cycles, startBrightness, endBrightness, bit);
-
-            // Зберігаємо початковий колір для першого LED
-            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-                if (animations[slot]->initialColor == 0x000000) {
-                    animations[slot]->initialColor = strip->getPixelColor(positions[0]);
-                }
-                xSemaphoreGive(stripMutex);
+            if (s.active && !hasHigherPriority(bit, (int)s.bit) && bit != -1) {
+                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d, led=%d: existing bit %d vs %d\n",
+                           stripName, typeName, region_id, ledPos, s.bit, bit);
+                continue;
             }
 
-            // Додаємо в список активних анімацій для кожного LED
-            for (int posIdx = 0; posIdx < posCount; ++posIdx) {
-                if (activeAnimationsCount < MAX_ANIMATIONS) {
-                    activeAnimations[activeAnimationsCount].strip = strip;
-                    activeAnimations[activeAnimationsCount].ledIndex = positions[posIdx];
-                    activeAnimations[activeAnimationsCount].animationIndex = slot;
-                    activeAnimationsCount++;
-                } else {
-                    LOG.printf("[ANIMATION] WARNING: activeAnimations array full\n");
-                    break;
+            if (s.active) {
+                LOG.printf("[ANIMATION] REPLACING strip=%s, type=%s, region=%d, led=%d: bit %d -> %d\n",
+                           stripName, typeName, region_id, ledPos, s.bit, bit);
+            }
+
+            uint32_t initColor = initialColor;
+            if (initColor == 0) {
+                if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                    initColor = strip->getPixelColor(ledPos);
+                    xSemaphoreGive(stripMutex);
                 }
             }
 
-            activeCount++;
-            xSemaphoreGive(animMutex);
-            return true;
+            s.color      = color;
+            s.initColor  = initColor;
+            s.startTime  = startTime;
+            s.localStart = now;
+            s.period     = period;
+            s.cycles     = cycles;
+            s.animType   = (uint8_t)type;
+            s.startBr    = startBrightness;
+            s.endBr      = endBrightness;
+            s.bit        = (int8_t)bit;
+            s.mapMode    = map_mode;
+            s.active     = true;
+            anyCreated   = true;
+
+            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, led=%d, period=%u, cycles=%u, bit=%d\n",
+                       stripName, typeName, region_id, ledPos, period, cycles, bit);
         }
+
         xSemaphoreGive(animMutex);
+        return anyCreated;
     }
     return false;
 }
 
-void AnimationManager::update() {
-    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr && animations[i]->isActive) {
-                updateAnimation(animations[i], i);
-            }
+// ──────────────────────────────────────────────────────
+// Обчислення кольору анімації (без звернень до стрічок)
+// ──────────────────────────────────────────────────────
+
+uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
+    float phase = elapsed - floorf(elapsed); // 0.0 .. 1.0
+
+    switch (s.animType) {
+        case AnimationTypes::FADE: {
+            float factor = 1.0f - (0.5f * (1.0f - cosf(2.0f * PI * phase)));
+            float scale = s.startBr + (s.endBr - s.startBr) * factor;
+            uint32_t c = s.color;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
         }
-        xSemaphoreGive(animMutex);
+        case AnimationTypes::BLINK: {
+            uint8_t br = (phase < 0.5f) ? s.endBr : s.startBr;
+            uint32_t c = s.color;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
+        }
+        case AnimationTypes::BLEND_FADE: {
+            float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
+            return blendColors(s.color, s.initColor, factor);
+        }
+        case AnimationTypes::PULSE: {
+            float factor;
+            if (phase < 0.2f) {
+                factor = sinf(phase * 5.0f * PI);
+            } else if (phase < 0.3f) {
+                factor = 1.0f - (phase - 0.2f) * 5.0f;
+            } else if (phase < 0.4f) {
+                factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
+            } else {
+                factor = 1.0f - (phase - 0.4f) * 1.67f;
+            }
+            if (factor < 0.0f) factor = 0.0f;
+            if (factor > 1.0f) factor = 1.0f;
+            float scale = s.startBr + (s.endBr - s.startBr) * factor;
+            uint32_t c = s.color;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
+        }
+        case AnimationTypes::ONE_WAY_BLEND_FADE: {
+            return blendColors(s.initColor, s.color, phase);
+        }
+        default:
+            return s.color;
     }
-    showAllStrips();
+}
+
+// Та сама математика, але для StripState (strip_bg)
+uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed) {
+    float phase = elapsed - floorf(elapsed);
+
+    switch (s.animType) {
+        case AnimationTypes::FADE: {
+            float factor = 1.0f - (0.5f * (1.0f - cosf(2.0f * PI * phase)));
+            float scale = s.startBr + (s.endBr - s.startBr) * factor;
+            uint32_t c = s.color;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
+        }
+        case AnimationTypes::BLINK: {
+            uint8_t br = (phase < 0.5f) ? s.endBr : s.startBr;
+            uint32_t c = s.color;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
+        }
+        case AnimationTypes::BLEND_FADE: {
+            float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
+            return blendColors(s.color, s.initColor, factor);
+        }
+        case AnimationTypes::PULSE: {
+            float factor;
+            if (phase < 0.2f) {
+                factor = sinf(phase * 5.0f * PI);
+            } else if (phase < 0.3f) {
+                factor = 1.0f - (phase - 0.2f) * 5.0f;
+            } else if (phase < 0.4f) {
+                factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
+            } else {
+                factor = 1.0f - (phase - 0.4f) * 1.67f;
+            }
+            if (factor < 0.0f) factor = 0.0f;
+            if (factor > 1.0f) factor = 1.0f;
+            float scale = s.startBr + (s.endBr - s.startBr) * factor;
+            uint32_t c = s.color;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
+        }
+        case AnimationTypes::ONE_WAY_BLEND_FADE: {
+            return blendColors(s.initColor, s.color, phase);
+        }
+        default:
+            return s.color;
+    }
+}
+
+// Рендер RUNNING_LIGHT по всій стрічці (викликати тримаючи stripMutex)
+void AnimationManager::renderRunningLight(const StripState& s, float elapsed) {
+    if (s.strip == nullptr) return;
+    int totalLeds = s.strip->numPixels();
+    if (totalLeds == 0) return;
+
+    const int windowSize = 9;
+    int windowStart = (int)((elapsed - floorf(elapsed)) * totalLeds);
+
+    // Базовий колір для всіх LED
+    for (int i = 0; i < totalLeds; i++) {
+        s.strip->setPixelColor(i, s.initColor);
+    }
+
+    // Анімаційне вікно
+    for (int w = 0; w < windowSize; w++) {
+        int idx = (windowStart + w) % totalLeds;
+        uint32_t ledColor;
+        if (w == 0) {
+            ledColor = s.initColor;
+        } else if (w <= 4) {
+            float factor = (float)(w - 1) / 3.0f;
+            ledColor = blendColors(s.initColor, s.color, factor);
+        } else {
+            float factor = (float)(w - 5) / 3.0f;
+            ledColor = blendColors(s.color, s.initColor, factor);
+        }
+        uint8_t br = s.endBr;
+        uint8_t r = ((ledColor >> 16) & 0xFF) * br / 255;
+        uint8_t g = ((ledColor >>  8) & 0xFF) * br / 255;
+        uint8_t b = ( ledColor        & 0xFF) * br / 255;
+        s.strip->setPixelColor(idx, r, g, b);
+    }
+}
+
+// ──────────────────────────────────────────────────────
+// Головний цикл оновлення
+// ──────────────────────────────────────────────────────
+
+void AnimationManager::update() {
+    uint32_t now    = millis();
+    bool     isOff  = isMapOff;
+    int      mapMode = getCurrentMapMode();
+
+    bool mainDirty    = false;
+    bool bgDirty      = false;
+    bool serviceDirty = false;
+
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) != pdTRUE) return;
+
+    // ── RUNNING_LIGHT / SET_BRIGHTNESS override на strip_main ──
+    if (mainOverride.active && mainOverride.strip != nullptr) {
+        float localElapsed = (now - mainOverride.localStart) / float(mainOverride.period);
+        if (localElapsed >= mainOverride.cycles) {
+            mainOverride.active = false;
+            checkAndResetGlobalTime(mainOverride.animType);
+            // Відновлюємо idle-кольори
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                Adafruit_NeoPixel* s = mainOverride.strip;
+                for (uint16_t i = 0; i < s->numPixels(); i++) {
+                    s->setPixelColor(i, ledActualColor(s, i));
+                }
+                xSemaphoreGive(stripMutex);
+            }
+            mainDirty = true;
+        } else if (!isOff && mainOverride.mapMode == mapMode) {
+            float elapsed = synchronizedMode
+                ? (now - mainOverride.startTime) / float(mainOverride.period)
+                : localElapsed;
+            if (mainOverride.animType == AnimationTypes::SET_BRIGHTNESS) {
+                float phase = elapsed - floorf(elapsed);
+                uint8_t br = mainOverride.startBr + (mainOverride.endBr - mainOverride.startBr) * phase;
+                if (phase > 0.9f || (mainOverride.cycles - elapsed) < 0.001f) br = mainOverride.endBr;
+                if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                    Adafruit_NeoPixel* s = mainOverride.strip;
+                    s->setBrightness(led.brightnessMapped(br));
+                    for (uint16_t i = 0; i < s->numPixels(); i++) {
+                        s->setPixelColor(i, ledActualColor(s, i));
+                    }
+                    xSemaphoreGive(stripMutex);
+                }
+            } else {
+                if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                    renderRunningLight(mainOverride, elapsed);
+                    xSemaphoreGive(stripMutex);
+                }
+            }
+            mainDirty = true;
+        }
+    }
+
+    // ── Per-LED strip_main ──
+    if (strip_main != nullptr && !mainOverride.active) {
+        int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_MAIN);
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            for (int i = 0; i < numLeds; i++) {
+                LedState& s = mainStates[i];
+                if (!s.active) continue;
+
+                float localElapsed = (now - s.localStart) / float(s.period);
+                if (localElapsed >= s.cycles) {
+                    s.active = false;
+                    checkAndResetGlobalTime(s.animType);
+                    strip_main->setPixelColor(i, ledActualColor(strip_main, i));
+                    mainDirty = true;
+                    continue;
+                }
+                if (isOff || s.mapMode != mapMode) continue;
+
+                float elapsed = synchronizedMode
+                    ? (now - s.startTime) / float(s.period)
+                    : localElapsed;
+                strip_main->setPixelColor(i, computeColor(s, elapsed));
+                mainDirty = true;
+            }
+            xSemaphoreGive(stripMutex);
+        }
+    }
+
+    // ── strip_bg ──
+    if (strip_bg != nullptr && bgState.active) {
+        float localElapsed = (now - bgState.localStart) / float(bgState.period);
+        if (localElapsed >= bgState.cycles) {
+            bgState.active = false;
+            checkAndResetGlobalTime(bgState.animType);
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                uint32_t idleColor = stripActualColor(strip_bg);
+                for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                    strip_bg->setPixelColor(i, idleColor);
+                }
+                xSemaphoreGive(stripMutex);
+            }
+            bgDirty = true;
+        } else if (!isOff && bgState.mapMode == mapMode) {
+            float elapsed = synchronizedMode
+                ? (now - bgState.startTime) / float(bgState.period)
+                : localElapsed;
+            uint32_t c = computeStripColor(bgState, elapsed);
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                    strip_bg->setPixelColor(i, c);
+                }
+                xSemaphoreGive(stripMutex);
+            }
+            bgDirty = true;
+        }
+    }
+
+    // ── strip_service per-LED ──
+    if (strip_service != nullptr) {
+        int numLeds = min((int)strip_service->numPixels(), MAX_LEDS_SERVICE);
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            for (int i = 0; i < numLeds; i++) {
+                LedState& s = serviceStates[i];
+                if (!s.active) continue;
+
+                float localElapsed = (now - s.localStart) / float(s.period);
+                if (localElapsed >= s.cycles) {
+                    s.active = false;
+                    checkAndResetGlobalTime(s.animType);
+                    strip_service->setPixelColor(i, ledActualColor(strip_service, i));
+                    serviceDirty = true;
+                    continue;
+                }
+                if (isOff || s.mapMode != mapMode) continue;
+
+                float elapsed = synchronizedMode
+                    ? (now - s.startTime) / float(s.period)
+                    : localElapsed;
+                strip_service->setPixelColor(i, computeColor(s, elapsed));
+                serviceDirty = true;
+            }
+            xSemaphoreGive(stripMutex);
+        }
+    }
+
+    xSemaphoreGive(animMutex);
+
+    // Відправляємо на стрічки тільки ті що були змінені
+    if (mainDirty && strip_main != nullptr) {
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            strip_main->show();
+            xSemaphoreGive(stripMutex);
+        }
+    }
+    if (bgDirty && strip_bg != nullptr) {
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            strip_bg->show();
+            xSemaphoreGive(stripMutex);
+        }
+    }
+    if (serviceDirty && strip_service != nullptr) {
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            strip_service->show();
+            xSemaphoreGive(stripMutex);
+        }
+    }
 }
 
 void AnimationManager::showAllStrips() {
-    // Викликаємо show() лише один раз для кожної стрічки
-    std::set<Adafruit_NeoPixel*> updatedStrips;
-    for (int i = 0; i < MAX_ANIMATIONS; i++) {
-        if (animations[i] != nullptr && animations[i]->isActive) {
-            Adafruit_NeoPixel* strip = animations[i]->strip;
-            if (strip && updatedStrips.find(strip) == updatedStrips.end()) {
-                if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-                    strip->show();
-                    xSemaphoreGive(stripMutex);
-                }
-                updatedStrips.insert(strip);
-            }
+    bool showMain    = mainOverride.active;
+    bool showBg      = bgState.active;
+    bool showService = false;
+
+    if (!showMain && strip_main != nullptr) {
+        int n = min((int)strip_main->numPixels(), MAX_LEDS_MAIN);
+        for (int i = 0; i < n && !showMain; i++) {
+            if (mainStates[i].active) showMain = true;
+        }
+    }
+    if (strip_service != nullptr) {
+        int n = min((int)strip_service->numPixels(), MAX_LEDS_SERVICE);
+        for (int i = 0; i < n && !showService; i++) {
+            if (serviceStates[i].active) showService = true;
+        }
+    }
+
+    if (showMain && strip_main != nullptr) {
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            strip_main->show();
+            xSemaphoreGive(stripMutex);
+        }
+    }
+    if (showBg && strip_bg != nullptr) {
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            strip_bg->show();
+            xSemaphoreGive(stripMutex);
+        }
+    }
+    if (showService && strip_service != nullptr) {
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            strip_service->show();
+            xSemaphoreGive(stripMutex);
         }
     }
 }
 
 void AnimationManager::clearAllAnimations() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr) {
-                cleanupAnimation(animations[i], i);
-            }
-        }
-        activeCount = 0;
-        activeAnimationsCount = 0;
+        memset(mainStates,    0, sizeof(mainStates));
+        memset(serviceStates, 0, sizeof(serviceStates));
+        bgState.active       = false;
+        mainOverride.active  = false;
         xSemaphoreGive(animMutex);
     }
-    
-    // Скидаємо всі глобальні часи після очищення всіх анімацій
     resetAllGlobalTimes();
 }
 
 void AnimationManager::logActiveAnimations() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        LOG.printf("[ANIMATION] Active animations count: %d\n", activeCount);
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr && animations[i]->isActive) {
-                AnimationParams* anim = animations[i];
-                const char* stripName = getStripName(anim->strip);
+        int count = 0;
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+        for (int i = 0; i < numMain; i++) if (mainStates[i].active) count++;
+        int numSvc = strip_service ? min((int)strip_service->numPixels(), MAX_LEDS_SERVICE) : 0;
+        for (int i = 0; i < numSvc; i++) if (serviceStates[i].active) count++;
+        if (bgState.active)      count++;
+        if (mainOverride.active) count++;
 
-                if (strcmp(stripName, "unknown") == 0) {
-                    LOG.printf("[DEBUG] Animation %d: strip is nullptr\n", i);
-                    continue;
-                }
+        LOG.printf("[ANIMATION] Active animations count: %d\n", count);
 
-                const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
-
-                LOG.printf("[DEBUG] Animation %d: strip=%s, LED=%d, region=%d, type=%s, startBrightness=%d, endBrightness=%d, period=%u, cycles=%u\n",
-                         i, stripName, anim->positions, anim->region_id, typeName, anim->startBrightness, anim->endBrightness, anim->period, anim->cycles);
-            }
+        for (int i = 0; i < numMain; i++) {
+            if (!mainStates[i].active) continue;
+            const LedState& s = mainStates[i];
+            const char* typeName = (s.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[s.animType].name : "unknown";
+            LOG.printf("[DEBUG] main LED %d: type=%s, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
+                       i, typeName, s.bit, s.period, s.cycles, s.startBr, s.endBr);
+        }
+        if (bgState.active) {
+            const char* typeName = (bgState.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[bgState.animType].name : "unknown";
+            LOG.printf("[DEBUG] bg: type=%s, bit=%d, period=%u, cycles=%u\n",
+                       typeName, bgState.bit, bgState.period, bgState.cycles);
+        }
+        if (mainOverride.active) {
+            const char* typeName = (mainOverride.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[mainOverride.animType].name : "unknown";
+            LOG.printf("[DEBUG] mainOverride: type=%s, period=%u, cycles=%u\n",
+                       typeName, mainOverride.period, mainOverride.cycles);
         }
         xSemaphoreGive(animMutex);
     }
 }
 
-void AnimationManager::updateAnimation(AnimationParams* anim, int index) {
-    uint32_t currentTime = millis();
-    
-    // Розраховуємо тривалість анімації від локального часу початку
-    float localElapsed = (currentTime - anim->localStartTime) / float(anim->period);
-    
-    // Для синхронного режиму розраховуємо фазу від глобального часу
-    float elapsed;
-    if (synchronizedMode) {
-        elapsed = (currentTime - anim->startTime) / float(anim->period);
-    } else {
-        elapsed = localElapsed;
-    }
-
-    // Логування раз на секунду
-    // if (currentTime - anim->lastLogTime >= 1000) {
-    //     LOG.printf("[ANIMATION PROGRESS] type=%s, region=%d, period=%u, cycles=%u, elapsed=%d\n", typeName, anim->region_id, anim->period, anim->cycles, (int)elapsed);
-    //     anim->lastLogTime = currentTime;
-    // }
-
-    // Перевіряємо завершення анімації за локальним часом
-    if (localElapsed >= anim->cycles) {
-        anim->isActive = false;
-        // LOG: Кінець анімації
-        uint32_t duration = millis() - anim->localStartTime;
-        const char* typeName = (anim->type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[anim->type].name : "unknown";
-        const char* stripName = getStripName(anim->strip);
-        
-        LOG.printf("[ANIMATION] END strip=%s, type=%s, region=%d, leds=", stripName, typeName, anim->region_id);
-        for (int i = 0; i < anim->posCount; ++i) {
-            LOG.printf("%d ", anim->positions[i]);
-        }
-        LOG.printf(" period=%u, cycles=%u, duration=%u ms, localElapsed=%.2f\n", anim->period, anim->cycles, duration, localElapsed);
-        cleanupAnimation(anim, index);
-        return;
-    }
-    if (isMapOff) {
-        return;
-    }
-    if (anim->mapMode != getCurrentMapMode()) {
-        return;
-    }
-
-    switch (anim->type) {
-        case 0:
-            updateFadeAnimation(anim, elapsed);
-            break;
-        case 1:
-            updateBlinkAnimation(anim, elapsed);
-            break;
-        case 2:
-            updateBlendFadeAnimation(anim, elapsed);
-            break;
-        case 3:
-            updatePulseAnimation(anim, elapsed);
-            break;
-        case 4:
-            updateOneWayBlendAnimation(anim, elapsed);
-            break;
-        case 5:
-            updateRunningLightAnimation(anim, elapsed);
-            break;
-        case 6:
-            updateSetBrightnessAnimation(anim, elapsed);
-            break;
-    }
-}
-
-void AnimationManager::updateSetBrightnessAnimation(AnimationParams* anim, float elapsed) {
-    float phase = elapsed - floor(elapsed); // 0.0 to 1.0
-    uint8_t currentBrightness = anim->startBrightness + 
-                (anim->endBrightness - anim->startBrightness) * phase;
-
-    // Якщо це останній цикл або майже кінець фази — явно ставимо endBrightness
-    if (phase > 0.9f || (anim->cycles - elapsed) < 0.001f) {
-        currentBrightness = anim->endBrightness;
-    }
-
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        LOG.printf("[ANIMATION] updateSetBrightnessAnimation: %d\n", led.brightnessMapped(currentBrightness));
-        anim->strip->setBrightness(led.brightnessMapped(currentBrightness));
-        for (uint16_t i = 0; i < anim->strip->numPixels(); i++) {
-            uint32_t color = ledActualColor(anim->strip, i);
-            anim->strip->setPixelColor(i, color);
-        }
-        xSemaphoreGive(stripMutex);
-    }
-}
-
-void AnimationManager::updateFadeAnimation(AnimationParams* anim, float elapsed) {
-    float phase = elapsed - floor(elapsed);
-    float factor = 1.0f - (0.5 * (1 - cos(2 * PI * phase)));
-    
-    uint8_t scale = anim->startBrightness + 
-                (anim->endBrightness - anim->startBrightness) * factor;
-
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < anim->posCount; ++i) {
-            int idx = anim->positions[i];
-            uint32_t c = anim->color;
-            uint8_t r = ((c >> 16) & 0xFF) * scale / 255;
-            uint8_t g = ((c >>  8) & 0xFF) * scale / 255;
-            uint8_t b = ( c        & 0xFF) * scale / 255;
-            anim->strip->setPixelColor(idx, r, g, b);
-        }
-        xSemaphoreGive(stripMutex);
-    }
-}
-
-void AnimationManager::updateBlinkAnimation(AnimationParams* anim, float elapsed) {
-    float phase = elapsed - floor(elapsed);
-    uint8_t brightness = (phase < 0.5) ? anim->endBrightness : anim->startBrightness;
-
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < anim->posCount; ++i) {
-            int idx = anim->positions[i];
-            uint32_t c = anim->color;
-            uint8_t r = ((c >> 16) & 0xFF) * brightness / 255;
-            uint8_t g = ((c >>  8) & 0xFF) * brightness / 255;
-            uint8_t b = ( c        & 0xFF) * brightness / 255;
-            anim->strip->setPixelColor(idx, r, g, b);
-        }
-        xSemaphoreGive(stripMutex);
-    }
-}
-
-void AnimationManager::updateBlendFadeAnimation(AnimationParams* anim, float elapsed) {
-    float phase = elapsed - floor(elapsed);
-    // Використовуємо синусоїду для плавного переходу
-    //float factor = 0.5 * (1 + sin(2 * PI * phase));
-    float factor = 0.5 * (1 - cos(2 * PI * phase));
-    
-    
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < anim->posCount; ++i) {
-            int idx = anim->positions[i];
-            // Змішуємо початковий колір з кольором анімації
-            uint32_t blendedColor = blendColors(anim->color, anim->initialColor, factor);
-            anim->strip->setPixelColor(idx, blendedColor);
-        }
-        xSemaphoreGive(stripMutex);
-    }
-}
-
-void AnimationManager::updateOneWayBlendAnimation(AnimationParams* anim, float elapsed) {
-    float phase = elapsed - floor(elapsed);
-    float factor = phase;
-
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < anim->posCount; ++i) {
-            int idx = anim->positions[i];
-            // Змішуємо початковий колір з кольором анімації в одному напрямку
-            uint32_t blendedColor = blendColors(anim->initialColor, anim->color, factor);
-            anim->strip->setPixelColor(idx, blendedColor);
-        }
-        xSemaphoreGive(stripMutex);
-    }
-}
-
-void AnimationManager::updatePulseAnimation(AnimationParams* anim, float elapsed) {
-    float phase = elapsed - floor(elapsed);
-    float factor;
-    
-    // Розділяємо цикл на 4 фази:
-    // 0.0-0.2: підйом до максимуму
-    // 0.2-0.3: спуск до середини
-    // 0.3-0.4: підйом до максимуму
-    // 0.4-1.0: спуск до мінімуму
-    if (phase < 0.2) {
-        // Підйом до максимуму (0.0 -> 1.0)
-        factor = sin(phase * 5 * PI);
-    } else if (phase < 0.3) {
-        // Спуск до середини (1.0 -> 0.5)
-        factor = 1.0 - (phase - 0.2) * 5;
-    } else if (phase < 0.4) {
-        // Підйом до максимуму (0.5 -> 1.0)
-        factor = 0.5 + sin((phase - 0.3) * 5 * PI) * 0.5;
-    } else {
-        // Спуск до мінімуму (1.0 -> 0.0)
-        factor = 1.0 - (phase - 0.4) * 1.67;
-    }
-    
-    uint8_t scale = anim->startBrightness + 
-                (anim->endBrightness - anim->startBrightness) * factor;
-
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < anim->posCount; ++i) {
-            int idx = anim->positions[i];
-            uint32_t c = anim->color;
-            uint8_t r = ((c >> 16) & 0xFF) * scale / 255;
-            uint8_t g = ((c >>  8) & 0xFF) * scale / 255;
-            uint8_t b = ( c        & 0xFF) * scale / 255;
-            anim->strip->setPixelColor(idx, r, g, b);
-        }
-        xSemaphoreGive(stripMutex);
-    }
-}
-
-void AnimationManager::updateRunningLightAnimation(AnimationParams* anim, float elapsed) {
-    // elapsed: 0.0 ... 1.0 ... cycles
-    int totalLeds = anim->strip->numPixels();
-    if (totalLeds == 0) return;
-
-    // Розмір анімаційного вікна (9 ледів)
-    const int windowSize = 9;
-    
-    // Поточна позиція початку вікна анімації
-    int windowStart = int((elapsed - floor(elapsed)) * totalLeds);
-    
-    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        // Спочатку встановлюємо всі леди в дефолтний колір
-        for (int i = 0; i < totalLeds; ++i) {
-            anim->strip->setPixelColor(i, anim->initialColor);
-        }
-        
-        // Тепер застосовуємо анімаційне вікно
-        for (int windowPos = 0; windowPos < windowSize; ++windowPos) {
-            int ledIndex = (windowStart + windowPos) % totalLeds;
-            
-            uint32_t ledColor;
-            uint8_t brightness = anim->endBrightness;
-            
-            if (windowPos == 0) {
-                // LED 1: initialColor
-                ledColor = anim->initialColor;
-            } else if (windowPos >= 1 && windowPos <= 4) {
-                // LEDs 2-5: поступовий перехід від initialColor до color
-                float factor = (float)(windowPos - 1) / 3.0f; // 0.0 to 1.0
-                ledColor = blendColors(anim->initialColor, anim->color, factor);
-            } else if (windowPos == 4) {
-                // LED 5: повністю color
-                ledColor = anim->color;
-            } else if (windowPos >= 5 && windowPos <= 8) {
-                // LEDs 6-9: поступовий перехід від color до initialColor
-                float factor = (float)(windowPos - 5) / 3.0f; // 0.0 to 1.0
-                ledColor = blendColors(anim->color, anim->initialColor, factor);
-            }
-            
-            // Застосовуємо яскравість
-            uint8_t r = ((ledColor >> 16) & 0xFF) * brightness / 255;
-            uint8_t g = ((ledColor >> 8) & 0xFF) * brightness / 255;
-            uint8_t b = (ledColor & 0xFF) * brightness / 255;
-            
-            anim->strip->setPixelColor(ledIndex, r, g, b);
-        }
-        
-        xSemaphoreGive(stripMutex);
-    }
-}
-
-
+// ──────────────────────────────────────────────────────
+// Адаптація параметрів активних анімацій
+// ──────────────────────────────────────────────────────
 
 uint32_t AnimationManager::adaptColorBrightness(uint32_t color, uint8_t brightness) {
     uint8_t r = ((color >> 16)  & 0xFF) * brightness / 255;
@@ -658,20 +738,15 @@ uint32_t AnimationManager::adaptColorBrightness(uint32_t color, uint8_t brightne
 }
 
 void AnimationManager::adaptAllAnimationColors() {
-    // Захист від багатопотокового доступу, якщо потрібно
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        LOG.printf("[ANIMATION] Active animations count: %d\n", activeCount);
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr && animations[i]->isActive) {
-                LOG.printf("[DEBUG] enter animation %d\n", i);
-                AnimationParams* anim = animations[i];
-                for (int k = 0; k < anim->posCount; ++k) {
-                    int ledIdx = anim->positions[k];
-                    // Адаптуємо колір для кожного LED
-                    LOG.printf("[DEBUG] changed color for led %d\n", ledIdx);
-                    anim->color = ledActualColor(anim->strip, ledIdx, false, anim->bit);
-                }
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+        for (int i = 0; i < numMain; i++) {
+            if (mainStates[i].active) {
+                mainStates[i].color = ledActualColor(strip_main, i, false, mainStates[i].bit);
             }
+        }
+        if (bgState.active) {
+            bgState.color = ledActualColor(strip_bg, 0, false, bgState.bit);
         }
         xSemaphoreGive(animMutex);
     }
@@ -680,23 +755,30 @@ void AnimationManager::adaptAllAnimationColors() {
 void AnimationManager::adaptAllAnimationBrightness() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         uint8_t globalEnd = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ANIMATION_END));
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr && animations[i]->isActive) {
-                AnimationParams* anim = animations[i];
-                int bit = anim->bit; // може бути -1 (clear)
-                if (bit >= -1) {
-                    std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(bit);
-                    uint8_t newStart = result.second;
-                    if (newStart != anim->startBrightness) {
-                        LOG.printf("[ANIMATION] Adapt startBrightness anim %d: bit=%d %u->%u\n", i, bit, anim->startBrightness, newStart);
-                        anim->startBrightness = newStart;
-                    }
-                }
-                if (anim->endBrightness != globalEnd) {
-                    LOG.printf("[ANIMATION] Adapt endBrightness anim %d: %u->%u\n", i, anim->endBrightness, globalEnd);
-                    anim->endBrightness = globalEnd;
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+
+        for (int i = 0; i < numMain; i++) {
+            LedState& s = mainStates[i];
+            if (!s.active) continue;
+            if (s.bit >= -1) {
+                std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(s.bit);
+                uint8_t newStart = result.second;
+                if (newStart != s.startBr) {
+                    LOG.printf("[ANIMATION] Adapt startBrightness led %d: bit=%d %u->%u\n", i, s.bit, s.startBr, newStart);
+                    s.startBr = newStart;
                 }
             }
+            if (s.endBr != globalEnd) {
+                LOG.printf("[ANIMATION] Adapt endBrightness led %d: %u->%u\n", i, s.endBr, globalEnd);
+                s.endBr = globalEnd;
+            }
+        }
+        if (bgState.active) {
+            if (bgState.bit >= -1) {
+                std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(bgState.bit);
+                bgState.startBr = result.second;
+            }
+            bgState.endBr = globalEnd;
         }
         xSemaphoreGive(animMutex);
     }
@@ -704,65 +786,37 @@ void AnimationManager::adaptAllAnimationBrightness() {
 
 void AnimationManager::adaptAllAnimationPeriod() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr && animations[i]->isActive) {
-                AnimationParams* anim = animations[i];
-                int bit = anim->bit; // може бути -1 (clear)
-                uint32_t newPeriod = anim->period; // default keep
-                uint32_t newCycles = anim->cycles;  // default keep
-                uint32_t totalTimeMs = 0;           // базовий час для перерахунку циклів
-                switch (bit) {
-                    case -1: // clear / alert off
-                        newPeriod = settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(ALERT_OFF_TIME) * 1000UL;
-                        break;
-                    case 0:
-                        newPeriod = settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(ALERT_ON_TIME) * 1000UL;
-                        break;
-                    case 5:
-                        newPeriod = settings->getInt(ANIMATION_DRONE_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(DRONE_TIME) * 1000UL;
-                        break;
-                    case 6:
-                        newPeriod = settings->getInt(ANIMATION_MISSILE_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(MISSILE_TIME) * 1000UL;
-                        break;
-                    case 7:
-                        newPeriod = settings->getInt(ANIMATION_KAB_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(KAB_TIME) * 1000UL;
-                        break;
-                    case 8:
-                        newPeriod = settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(BALLISTIC_TIME) * 1000UL;
-                        break;
-                    case 9:
-                        newPeriod = settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(EXPLOSION_TIME) * 1000UL;
-                        break;
-                    case 10:
-                        newPeriod = settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);
-                        totalTimeMs = settings->getInt(RECON_DRONE_TIME) * 1000UL;
-                        break;
-                    default:
-                        break; // leave unchanged for unknown bit
-                }
-                if (newPeriod > 0 && totalTimeMs > 0) {
-                    uint32_t recomputed = totalTimeMs / newPeriod;
-                    if (recomputed == 0) {
-                        recomputed = 1; // мінімум один цикл
-                    }
-                    newCycles = recomputed;
-                }
-                if (newPeriod != anim->period) {
-                    LOG.printf("[ANIMATION] Adapt period anim %d: bit=%d %u->%u\n", i, bit, anim->period, newPeriod);
-                    anim->period = newPeriod;
-                }
-                if (newCycles != anim->cycles) {
-                    LOG.printf("[ANIMATION] Adapt cycles anim %d: bit=%d %u->%u (period=%u)\n", i, bit, anim->cycles, newCycles, anim->period);
-                    anim->cycles = newCycles;
-                }
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+
+        auto recalc = [&](int8_t bit, uint32_t& period, uint32_t& cycles) {
+            uint32_t newPeriod   = period;
+            uint32_t totalTimeMs = 0;
+            switch (bit) {
+                case -1: newPeriod = settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);  totalTimeMs = settings->getInt(ALERT_OFF_TIME)      * 1000UL; break;
+                case  0: newPeriod = settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME);   totalTimeMs = settings->getInt(ALERT_ON_TIME)        * 1000UL; break;
+                case  5: newPeriod = settings->getInt(ANIMATION_DRONE_CYCLE_TIME);      totalTimeMs = settings->getInt(DRONE_TIME)           * 1000UL; break;
+                case  6: newPeriod = settings->getInt(ANIMATION_MISSILE_CYCLE_TIME);    totalTimeMs = settings->getInt(MISSILE_TIME)         * 1000UL; break;
+                case  7: newPeriod = settings->getInt(ANIMATION_KAB_CYCLE_TIME);        totalTimeMs = settings->getInt(KAB_TIME)             * 1000UL; break;
+                case  8: newPeriod = settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME);  totalTimeMs = settings->getInt(BALLISTIC_TIME)       * 1000UL; break;
+                case  9: newPeriod = settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME);  totalTimeMs = settings->getInt(EXPLOSION_TIME)       * 1000UL; break;
+                case 10: newPeriod = settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);totalTimeMs = settings->getInt(RECON_DRONE_TIME)     * 1000UL; break;
+                default: break;
             }
+            if (newPeriod > 0 && totalTimeMs > 0) {
+                uint32_t newCycles = totalTimeMs / newPeriod;
+                if (newCycles == 0) newCycles = 1;
+                if (newPeriod != period) { period = newPeriod; }
+                if (newCycles != cycles) { cycles = newCycles; }
+            }
+        };
+
+        for (int i = 0; i < numMain; i++) {
+            if (mainStates[i].active) {
+                recalc(mainStates[i].bit, mainStates[i].period, mainStates[i].cycles);
+            }
+        }
+        if (bgState.active) {
+            recalc(bgState.bit, bgState.period, bgState.cycles);
         }
         xSemaphoreGive(animMutex);
     }
@@ -770,45 +824,56 @@ void AnimationManager::adaptAllAnimationPeriod() {
 
 void AnimationManager::adaptAllAnimationType() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr && animations[i]->isActive) {
-                AnimationParams* anim = animations[i];
-                int bit = anim->bit; // може бути -1
-                uint16_t newType = anim->type; // keep by default
-                switch (bit) {
-                    case -1: newType = settings->getInt(ANIMATION_ALERT_OFF_TYPE); break;
-                    case 0:  newType = settings->getInt(ANIMATION_ALERT_ON_TYPE); break;
-                    case 5:  newType = settings->getInt(ANIMATION_DRONE_TYPE); break;
-                    case 6:  newType = settings->getInt(ANIMATION_MISSILE_TYPE); break;
-                    case 7:  newType = settings->getInt(ANIMATION_KAB_TYPE); break;
-                    case 8:  newType = settings->getInt(ANIMATION_BALLISTIC_TYPE); break;
-                    case 9:  newType = settings->getInt(ANIMATION_EXPLOSION_TYPE); break;
-                    case 10: newType = settings->getInt(ANIMATION_RECON_DRONE_TYPE); break;
-                    default: break;
-                }
-                if (newType != anim->type) {
-                    LOG.printf("[ANIMATION] Adapt type anim %d: bit=%d %u->%u\n", i, bit, anim->type, newType);
-                    anim->type = newType;
-                }
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+
+        auto newType = [&](int8_t bit) -> uint16_t {
+            switch (bit) {
+                case -1: return settings->getInt(ANIMATION_ALERT_OFF_TYPE);
+                case  0: return settings->getInt(ANIMATION_ALERT_ON_TYPE);
+                case  5: return settings->getInt(ANIMATION_DRONE_TYPE);
+                case  6: return settings->getInt(ANIMATION_MISSILE_TYPE);
+                case  7: return settings->getInt(ANIMATION_KAB_TYPE);
+                case  8: return settings->getInt(ANIMATION_BALLISTIC_TYPE);
+                case  9: return settings->getInt(ANIMATION_EXPLOSION_TYPE);
+                case 10: return settings->getInt(ANIMATION_RECON_DRONE_TYPE);
+                default: return 0xFF; // sentinel: no change
+            }
+        };
+
+        for (int i = 0; i < numMain; i++) {
+            LedState& s = mainStates[i];
+            if (!s.active) continue;
+            uint16_t t = newType(s.bit);
+            if (t != 0xFF && t != s.animType) {
+                LOG.printf("[ANIMATION] Adapt type led %d: bit=%d %u->%u\n", i, s.bit, s.animType, t);
+                s.animType = (uint8_t)t;
+            }
+        }
+        if (bgState.active) {
+            uint16_t t = newType(bgState.bit);
+            if (t != 0xFF && t != bgState.animType) {
+                bgState.animType = (uint16_t)t;
             }
         }
         xSemaphoreGive(animMutex);
     }
 }
 
+// ──────────────────────────────────────────────────────
+// Допоміжні методи для кольорів (незмінні)
+// ──────────────────────────────────────────────────────
+
 std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int highest_bit) {
     uint32_t color = 0;
     uint8_t brightness = 0;
-    
-    // Перебираємо біти від найвищого до найнижчого
+
     for (int bit = highest_bit; bit >= -1; bit--) {
         bool is_enabled = false;
-        
-        // Перевіряємо чи дозволено показувати цей тип тривоги
+
         if (bit == -1) {
-            is_enabled = true; // Відбій завжди показуємо
+            is_enabled = true;
         } else if (bit == 0) {
-            is_enabled = true; // Alert завжди показуємо
+            is_enabled = true;
         } else if (bit == 5) {
             is_enabled = settings->getBool(ENABLE_DRONES);
         } else if (bit == 6) {
@@ -823,7 +888,6 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
             is_enabled = settings->getBool(ENABLE_RECON_DRONES);
         }
 
-        // Якщо тип тривоги дозволено показувати - встановлюємо колір
         if (is_enabled) {
             if (bit == -1) {
                 color = colorFromHex(settings->getString(COLOR_CLEAR));
@@ -850,7 +914,7 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
                 color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_RECON_DRONES));
             }
-            break; // Зупиняємося на першому дозволеному біті
+            break;
         }
     }
     return std::make_pair(color, brightness);
@@ -871,16 +935,15 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
             } else {
                 int currentMapMode = getCurrentMapMode();
                 switch (currentMapMode) {
-                    case MapModes::OFF: 
+                    case MapModes::OFF:
                         color = DefaultColors::OFF;
                         brightness = 0;
                         break;
-                    case MapModes::ALERT: 
+                    case MapModes::ALERT:
                         color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
                     case MapModes::WEATHER: {
-                        // Use home district temperature for background strip
                         uint16_t home = settings->getInt(HOME_DISTRICT);
                         auto it = temperatureMap.find(home);
                         if (it != temperatureMap.end()) {
@@ -894,18 +957,14 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
-                    case MapModes::FLAG: {
-                        // Ukrainian flag for background: use blue as it represents the whole country
+                    case MapModes::FLAG:
                         color = DefaultColors::FLAG_BLUE;
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
-                    }
-                    case MapModes::LAMP: {
-                        // Lamp mode: light up with configured color and brightness
+                    case MapModes::LAMP:
                         color = colorFromHex(settings->getString(COLOR_LAMP));
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
                         break;
-                    }
                 }
             }
             LOG.printf("[COLOR] bg strip color HOME_DISTRICT\n");
@@ -914,7 +973,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
             color = colorFromHex(settings->getString(COLOR_BG));
             brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
         }
-    } 
+    }
     if (strip == strip_service) {
         LOG.printf("[COLOR] service strip color\n");
         switch (getCurrentMapMode()) {
@@ -936,16 +995,9 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
 
 uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     uint32_t color;
-    bool alert = false;
-    bool drones = false;
-    bool missiles = false;
-    bool kab = false;
-    bool ballistic = false;
-    bool explosion = false;
-
     uint8_t brightness = 0;
     int highest_bit = findHighestBitForRegionDirect(region_id);
-    
+
     if (highest_bit != -1) {
         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
         color = result.first;
@@ -974,13 +1026,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
             brightness = 0;
         } else {
             switch (getCurrentMapMode()) {
-                case MapModes::OFF: 
+                case MapModes::OFF:
                     color = DefaultColors::OFF;
                     brightness = 0;
                     break;
-                case MapModes::ALERT: { 
+                case MapModes::ALERT: {
                     int highest_bit = -1;
-
                     if (bit != -1) {
                         highest_bit = bit;
                     } else {
@@ -994,8 +1045,6 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         auto regions = getRegionsForLed(position);
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
-                        
-                        // Якщо немає тривог, перевіряємо чи є домашній район
                         for (uint16_t region_id : regions) {
                             if (region_id == settings->getInt(HOME_DISTRICT)) {
                                 color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
@@ -1007,7 +1056,6 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     break;
                 }
                 case MapModes::WEATHER: {
-                    // Compute average temperature of all regions mapped to this LED
                     auto regions = getRegionsForLed(position);
                     long sum = 0;
                     int cnt = 0;
@@ -1025,76 +1073,57 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         int maxT = settings->getInt(WEATHER_MAX_TEMP);
                         color = colorFromTemperature(avg, minT, maxT);
                     } else {
-                        // No temperature data for this LED
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
                     }
                     brightness = 255;
                     break;
                 }
                 case MapModes::FLAG: {
-                    // Ukrainian flag: blue (#0057B7) for northern regions, yellow (#FFD700) for southern
-                    // Get all regions mapped to this LED and determine predominant color
                     auto regions = getRegionsForLed(position);
-                    
                     if (regions.empty()) {
-                        // No region mapping - use blue as default
                         color = DefaultColors::FLAG_BLUE;
                     } else {
-                        // Count votes for each color based on regions
-                        int blueVotes = 0;
-                        int yellowVotes = 0;
-                        
+                        int blueVotes = 0, yellowVotes = 0;
                         for (uint16_t region_id : regions) {
                             uint32_t flagColor = getFlagColorForRegion(region_id);
-                            if (flagColor == DefaultColors::FLAG_BLUE) {
-                                blueVotes++;
-                            } else {
-                                yellowVotes++;
-                            }
+                            if (flagColor == DefaultColors::FLAG_BLUE) blueVotes++;
+                            else yellowVotes++;
                         }
-                        
-                        // Use the color with more votes, prefer blue on tie
                         color = (yellowVotes > blueVotes) ? DefaultColors::FLAG_YELLOW : DefaultColors::FLAG_BLUE;
                     }
-                    
                     brightness = 255;
                     break;
                 }
                 case MapModes::LAMP: {
-                    // Lamp mode: light up with configured color and brightness
                     color = colorFromHex(settings->getString(COLOR_LAMP));
                     brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
                     break;
                 }
             }
         }
-    } 
+    }
     if (strip == strip_bg) {
         if (isMapOff) {
             color = DefaultColors::OFF;
             brightness = 0;
         } else {
             if (settings->getInt(BG_LED_MODE) == BgLedModes::COLOR_MAP) {
-                // Пер-LED кольори для бекграунду
                 color = getBgLedColor(position);
                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
             } else {
                 switch (getCurrentMapMode()) {
-                    case MapModes::OFF: 
+                    case MapModes::OFF:
                         color = DefaultColors::OFF;
                         brightness = 0;
                         break;
-                    case MapModes::ALERT: { 
+                    case MapModes::ALERT: {
                         int highest_bit = -1;
-
                         if (bit != -1) {
                             highest_bit = bit;
                         } else {
                             highest_bit = findHighestBitForRegionDirect(settings->getInt(HOME_DISTRICT));
                         }
-                        
                         if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
-                            // Якщо є тривога й режим HOME_REGION — застосовуємо колір тривоги для домашнього району
                             std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                             color = result.first;
                         } else {
@@ -1104,7 +1133,6 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         break;
                     }
                     case MapModes::WEATHER: {
-                        // Use home district temperature for background strip
                         uint16_t home = settings->getInt(HOME_DISTRICT);
                         auto it = temperatureMap.find(home);
                         if (it != temperatureMap.end()) {
@@ -1118,22 +1146,18 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
-                    case MapModes::FLAG: {
-                        // Ukrainian flag for background: use blue as it represents the whole country
-                        color = DefaultColors::FLAG_BLUE; // Blue color of Ukrainian flag
+                    case MapModes::FLAG:
+                        color = DefaultColors::FLAG_BLUE;
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
                         break;
-                    }
-                    case MapModes::LAMP: {
-                        // Lamp mode: light up with configured color and brightness
+                    case MapModes::LAMP:
                         color = colorFromHex(settings->getString(COLOR_LAMP));
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
                         break;
-                    }
                 }
             }
         }
-    } 
+    }
     if (strip == strip_service) {
         switch (getCurrentMapMode()) {
             case MapModes::OFF: 
@@ -1153,131 +1177,57 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     return color;
 }
 
+// ──────────────────────────────────────────────────────
+// Утиліти (незмінні)
+// ──────────────────────────────────────────────────────
+
 bool AnimationManager::safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation) {
-            if (strip == nullptr) {
-                return false;
-            }
-            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-                operation(strip);
-                xSemaphoreGive(stripMutex);
-                return true;
-            }
-            return false;
-        }
-
-void AnimationManager::removeLedFromAnimation(AnimationParams* anim, int ledIdx, int animIndex) {
-    // Видаляємо ledIdx з positions
-    int newCount = 0;
-    for (int i = 0; i < anim->posCount; ++i) {
-        if (anim->positions[i] != ledIdx) {
-            anim->positions[newCount++] = anim->positions[i];
-        }
+    if (strip == nullptr) {
+        return false;
     }
-    anim->posCount = newCount;
-
-    // Видаляємо з activeAnimations
-    for (int i = 0; i < activeAnimationsCount; ++i) {
-        if (activeAnimations[i].animationIndex == animIndex &&
-            activeAnimations[i].ledIndex == ledIdx) {
-            for (int j = i; j < activeAnimationsCount - 1; ++j) {
-                activeAnimations[j] = activeAnimations[j + 1];
-            }
-            activeAnimationsCount--;
-            break;
-        }
-    }
-
-    // Якщо не залишилось LED — видалити всю анімацію
-    if (anim->posCount == 0) {
-        cleanupAnimation(anim, animIndex);
-    }
-}
-
-void AnimationManager::cleanupAnimation(AnimationParams* anim, int index) {
-    if (anim == nullptr) return;
-    String positionsStr = "";
-    uint16_t animationType = anim->type;
     if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < anim->posCount; ++i) {
-            // Визначаємо дефолтний колір для стрічки
-            uint32_t color = ledActualColor(anim->strip, anim->positions[i]);
-            anim->strip->setPixelColor(anim->positions[i], color);
-            positionsStr += String(anim->positions[i]);
-            if (i < anim->posCount - 1) positionsStr += " ";
-        }
-        anim->strip->show();
+        operation(strip);
         xSemaphoreGive(stripMutex);
+        return true;
     }
-
-    // Видаляємо з списку активних анімацій
-    for (int i = 0; i < activeAnimationsCount; i++) {
-        if (activeAnimations[i].animationIndex == index) {
-            // Зміщуємо всі елементи після видаленого
-            for (int j = i; j < activeAnimationsCount - 1; j++) {
-                activeAnimations[j] = activeAnimations[j + 1];
-            }
-            activeAnimationsCount--;
-            i--; // Decrement i to check the shifted element
-        }
-    }
-
-    // Proper memory cleanup
-    if (anim->positions != nullptr) {
-        delete[] anim->positions;
-        anim->positions = nullptr;
-    }
-    
-    delete anim;
-    animations[index] = nullptr;
-    activeCount--;
-    
-    // Перевіряємо чи потрібно скинути глобальний час для цього типу
-    checkAndResetGlobalTime(animationType);
-    
-    const char* stripName = getStripName(anim->strip);
-
-    LOG.printf("[ANIMATION] Cleaned up animation slot %d, strip=%s, leds=%s, active count: %d\n", index, stripName, positionsStr, activeCount);
+    return false;
 }
 
 std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds) {
-    std::vector<FreeLedInfo> freeLedsResult;
-    std::set<int> animatedLeds;
+    std::vector<FreeLedInfo> result;
 
     if (strip == nullptr) {
         LOG.printf("[LED] ERROR: Strip is nullptr in getFreeLeds\n");
-        return freeLedsResult;
+        return result;
     }
-    
+
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        for (int i = 0; i < MAX_ANIMATIONS; i++) {
-            if (animations[i] != nullptr && animations[i]->isActive && animations[i]->strip == strip) {
-                AnimationParams* anim = animations[i];
-                for (int k = 0; k < anim->posCount; ++k) {
-                    animatedLeds.insert(anim->positions[k]);
-                }
+        if (strip == strip_main) {
+            int n = min((int)num_leds, MAX_LEDS_MAIN);
+            for (int i = 0; i < n; i++) {
+                if (!mainStates[i].active) result.push_back({i});
             }
+        } else if (strip == strip_service) {
+            int n = min((int)num_leds, MAX_LEDS_SERVICE);
+            for (int i = 0; i < n; i++) {
+                if (!serviceStates[i].active) result.push_back({i});
+            }
+        } else {
+            // Unknown strip — all LEDs are free
+            for (uint32_t i = 0; i < num_leds; i++) result.push_back({(int)i});
         }
         xSemaphoreGive(animMutex);
     }
 
-    for (uint32_t j = 0; j < num_leds; ++j) {
-        if (animatedLeds.find(j) == animatedLeds.end()) {
-            freeLedsResult.push_back({(int)j});
-        }
-    }
-
-    return freeLedsResult;
+    return result;
 }
 
 bool AnimationManager::isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx) {
-    for (int i = 0; i < MAX_ANIMATIONS; ++i) {
-        if (animations[i] && animations[i]->isActive && animations[i]->strip == strip) {
-            for (int j = 0; j < animations[i]->posCount; ++j) {
-                if (animations[i]->positions[j] == ledIdx) {
-                    return true;
-                }
-            }
-        }
+    if (strip == strip_main && ledIdx >= 0 && ledIdx < MAX_LEDS_MAIN) {
+        return mainStates[ledIdx].active;
+    }
+    if (strip == strip_service && ledIdx >= 0 && ledIdx < MAX_LEDS_SERVICE) {
+        return serviceStates[ledIdx].active;
     }
     return false;
 }
