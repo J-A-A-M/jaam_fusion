@@ -199,24 +199,63 @@ jobs:
       id: changelog
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG_NAME="${{ needs.prepare.outputs.tag_name }}"
         FULL_VERSION="${{ needs.prepare.outputs.full_version }}"
+        VERSION="${{ inputs.version }}"
         
-        # Отримуємо попередній тег (останній beta або release)
-        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        # Витягуємо версію (без -bX)
+        BASE_VERSION="${VERSION}"
         
-        if [ -z "$PREVIOUS_TAG" ]; then
-          COMMITS=$(git log --pretty=format:"- %s (%an, %h)" HEAD | head -30)
+        echo "📋 Аналізуємо release notes з GitHub API..."
+        echo "   Поточна версія: ${FULL_VERSION}"
+        echo "   Base версія: ${BASE_VERSION}"
+        
+        # 1️⃣ Отримуємо всі releases з GitHub API (сортовані за датою, новіші спочатку)
+        RELEASES=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100&sort=created&direction=desc")
+        
+        # 2️⃣ Знаходимо останній pre-release beta для поточної версії
+        PREVIOUS_BETA_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.prerelease == true and .tag_name | startswith(\"${BASE_VERSION}-b\")) | .tag_name" | head -1)
+        
+        # 3️⃣ Знаходимо останній stable або попередній beta (не поточної версії)
+        LAST_STABLE_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.tag_name != \"${TAG_NAME}\" and (.prerelease == false or .tag_name | startswith(\"${BASE_VERSION}-b\") | not)) | .tag_name" | head -1)
+        
+        echo "   Попередній beta: ${PREVIOUS_BETA_TAG:-'(відсутній - це перший beta)'}"
+        echo "   Останній stable/попередній: ${LAST_STABLE_TAG:-'(відсутній - перша версія)'}"
+        
+        # Витягуємо два набори комітів
+        NEW_COMMITS=""
+        PREVIOUS_COMMITS=""
+        
+        # Перший розділ: нові коміти від попереднього beta поточної версії
+        if [ -n "$PREVIOUS_BETA_TAG" ]; then
+          echo "   📝 Витягуємо нові коміти від ${PREVIOUS_BETA_TAG}..."
+          NEW_COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${PREVIOUS_BETA_TAG}..HEAD 2>/dev/null)
         else
-          COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${PREVIOUS_TAG}..HEAD)
+          echo "   📝 Це перший beta білд, витягуємо від попереднього релізу..."
+          if [ -n "$LAST_STABLE_TAG" ]; then
+            NEW_COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${LAST_STABLE_TAG}..HEAD 2>/dev/null)
+          else
+            NEW_COMMITS=$(git log --pretty=format:"- %s (%an, %h)" HEAD | head -50)
+          fi
         fi
+        
+        # Другий розділ: коміти від попереднього stable до попереднього beta поточної версії
+        if [ -n "$PREVIOUS_BETA_TAG" ] && [ -n "$LAST_STABLE_TAG" ]; then
+          echo "   📝 Витягуємо попередні коміти від ${LAST_STABLE_TAG} до ${PREVIOUS_BETA_TAG}..."
+          PREVIOUS_COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${LAST_STABLE_TAG}..${PREVIOUS_BETA_TAG} 2>/dev/null)
+        fi
+        
+        echo ""
+        echo "✅ Аналіз releases та комітів завершено"
         
         echo "📝 Генеруємо changelog за допомогою AI..."
         
         # Викликаємо Gemini API
         if [ -n "$GEMINI_API_KEY" ]; then
-          # Створюємо промпт для AI
+          # Створюємо промпт для AI з двома розділами
           PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
 
           Проаналізуй наступні коміти та створи професійний changelog українською мовою у форматі Markdown для beta релізу.
@@ -230,8 +269,11 @@ jobs:
           
           Включай тільки зміни, які впливають на роботу пристрою або додають нові можливості користувачам.
           
-          Коміти:
-          ${COMMITS}
+          НОВІ КОМІТИ (від попереднього beta до поточного):
+          ${NEW_COMMITS}
+          
+          ПОПЕРЕДНІ КОМІТИ (від попереднього stable до попереднього beta, вже опубліковані раніше):
+          ${PREVIOUS_COMMITS}
           
           Створи changelog з такою структурою:
           
@@ -239,22 +281,34 @@ jobs:
           
           > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
           
-          ## Що нового
+          ## 🆕 Що нового у версії ${FULL_VERSION}
           
-          [Згрупуй зміни за категоріями. Використовуй емоджі:]
+          [Витягни зміни з НОВИХ КОМІТІВ. Згрупуй за категоріями:]
           - 🚀 Нові можливості
           - 🐛 Виправлення помилок
           - 🔧 Технічні покращення
           - ⚡ Оптимізація
           - 🎨 UI/UX покращення
           
-          Вимоги:
+          ## 📋 Зміни з попередніх beta версій (відносно версії ${LAST_STABLE_TAG})
+          
+          [Якщо ПОПЕРЕДНІ КОМІТИ пусті - пропусти цей розділ. Інакше витягни ТІЛЬКИ КЛЮЧОВІ зміни з ПОПЕРЕДНІХ КОМІТІВ, щоб розділ був менш деталізованим. Згрупуй їх за категоріями:]
+          - 🚀 Нові можливості
+          - 🐛 Виправлення помилок
+          - 🔧 Технічні покращення
+          - ⚡ Оптимізація
+          - 🎨 UI/UX покращення
+          
+          Вимоги до обох розділів:
           - Будь стислим та зрозумілим для кінцевих користувачів
           - Опиши зміни простою мовою, уникай технічного жаргону де можливо
           - Якщо коміт технічний (refactor, cleanup) - опиши користувацьку вигоду
           - Групуй схожі зміни разом
           - Підкресли найважливіші зміни
           - НЕ додавай секції про завантаження або встановлення
+          - ⚠️ ВАЖЛИВО: Обмеження на довжину release notes становить 125 000 символів! Якщо текст близько до ліміту, скорочуй менш важливі деталі.
+          
+          ⚠️ ВАЖЛИВО про другий розділ: Робимо його менш деталізованим, ніж перший. Включай ТІЛЬКИ найважливіші та найпомітніші зміни, пропускай дрібниці та технічні деталі.
           
           ⚠️ КРИТИЧНО: Це генерація для автоматичної публікації релізу. Виводи ТІЛЬКИ Markdown текст changelog без жодних додаткових текстів, коментарів чи пояснень!\"
             
@@ -294,9 +348,13 @@ jobs:
           
               > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
               
-              ## Що нового
+              ## 🆕 Що нового у версії ${FULL_VERSION}
               
-              ${COMMITS}"
+              ${NEW_COMMITS}
+              
+              ## 📋 Зміни з попередніх beta версій (відносно версії ${LAST_STABLE_TAG})
+              
+              ${PREVIOUS_COMMITS}"
             else
               echo "✅ AI згенерував changelog"
             fi
@@ -306,9 +364,13 @@ jobs:
         
           > ⚠️ **Увага**: Це бета-версія для тестування. Може містити нестабільні функції.
           
-          ## Що нового
+          ## 🆕 Що нового у версії ${FULL_VERSION}
           
-          ${COMMITS}"
+          ${NEW_COMMITS}
+          
+          ## 📋 Зміни з попередніх beta версій (відносно версії ${LAST_STABLE_TAG})
+          
+          ${PREVIOUS_COMMITS}"
         fi
         
         # Зберігаємо changelog
