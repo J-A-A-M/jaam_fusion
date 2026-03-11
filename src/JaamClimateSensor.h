@@ -30,9 +30,9 @@ class JaamClimateSensor {
         bool isSHT2XAvailable();
         bool isSHT3XAvailable();
         bool isAHTxxAvailable();
-        float getTemperature(float tempCorrection = 0.0);
-        float getHumidity(float humCorrection = 0.0);
-        float getPressure(float pressCorrection = 0.0);
+        float getTemperature();
+        float getHumidity();
+        float getPressure();
         String getSensorModel();
 
     private:

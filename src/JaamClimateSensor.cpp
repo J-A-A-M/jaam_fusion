@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "JaamClimateSensor.h"
 #include "JaamLogs.h"
+#include "JaamSettings.h"
+
+extern JaamSettings settings;
 
 JaamClimateSensor::JaamClimateSensor() {
 }
@@ -170,16 +173,16 @@ bool JaamClimateSensor::isPressureAvailable() {
   return (bme280Initialized || bmp280Initialized) && localPressure >= 0;
 }
 
-float JaamClimateSensor::getTemperature(float tempCorrection) {
-  return localTemp + tempCorrection;
+float JaamClimateSensor::getTemperature() {
+  return localTemp + settings.getFloat(TEMP_CORRECTION);
 }
 
-float JaamClimateSensor::getHumidity(float humCorrection) {
-  return localHum + humCorrection;
+float JaamClimateSensor::getHumidity() {
+  return localHum + settings.getFloat(HUM_CORRECTION);
 }
 
-float JaamClimateSensor::getPressure(float pressCorrection) {
-  return localPressure + pressCorrection;
+float JaamClimateSensor::getPressure() {
+  return localPressure + settings.getFloat(PRESSURE_CORRECTION);
 }
 
 String JaamClimateSensor::getSensorModel() {
