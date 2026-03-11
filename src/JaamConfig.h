@@ -64,6 +64,7 @@ namespace AnimationTypes {
     static const int ONE_WAY_BLEND_FADE = 4;
     static const int RUNNING_LIGHT = 5;
     static const int SET_BRIGHTNESS = 6;
+    static const int OFF = 7;
 }
 
 // --- WiFi Configuration ---
@@ -560,13 +561,14 @@ static SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
   {HARDWARE::CUSTOM_MAPPING, "Власна карта LED"},
 };
 
-constexpr int ANIMATION_TYPES_COUNT = 7;
+constexpr int ANIMATION_TYPES_COUNT = 8;
 static SettingListItem ANIMATION_TYPES[] = {
-  {AnimationTypes::FADE, "FADE"},
-  {AnimationTypes::BLINK, "BLINK"},
-  {AnimationTypes::BLEND_FADE, "BLEND_FADE"},
-  {AnimationTypes::PULSE, "PULSE"},
-  {AnimationTypes::ONE_WAY_BLEND_FADE, "ONE_WAY_BLEND_FADE"},
+  {AnimationTypes::OFF, "Статичний колір"},
+  {AnimationTypes::FADE, "Циклічне затухання"},
+  {AnimationTypes::BLINK, "Мерехтіння"},
+  {AnimationTypes::BLEND_FADE, "Перехід між кольорами"},
+  {AnimationTypes::PULSE, "Пульсація"},
+  {AnimationTypes::ONE_WAY_BLEND_FADE, "Односторонній перехід між кольорами"},
   {AnimationTypes::RUNNING_LIGHT, "RUNNING_LIGHT", true},
   {AnimationTypes::SET_BRIGHTNESS, "SET_BRIGHTNESS", true}
 };

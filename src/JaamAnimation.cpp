@@ -388,6 +388,13 @@ uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
             return blendColors(s.initColor, s.color, phase);
         }
+        case AnimationTypes::OFF: {
+            uint32_t c = s.color;
+            float br = (float)s.startBr;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
+        }
         default:
             return s.color;
     }
@@ -438,6 +445,13 @@ uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed)
         }
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
             return blendColors(s.initColor, s.color, phase);
+        }
+        case AnimationTypes::OFF: {
+            uint32_t c = s.color;
+            float br = (float)s.startBr;
+            return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
+                 | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
+                 | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
         }
         default:
             return s.color;
