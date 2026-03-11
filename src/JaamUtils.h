@@ -838,7 +838,7 @@ inline String getSystemInfoJson() {
             item.add("Температура");
             item.add("°C");
             item.add(ICON_TEMPERATURE);
-            item.add(roundToDecimal(climate.getTemperature(settings.getFloat(TEMP_CORRECTION)), 0));
+            item.add(roundToDecimal(climate.getTemperature(), 0));
         }
     }
     {   
@@ -849,7 +849,7 @@ inline String getSystemInfoJson() {
             item.add("Вологість");
             item.add("%");
             item.add(ICON_HUMIDITY);
-            item.add(roundToDecimal(climate.getHumidity(settings.getFloat(HUM_CORRECTION)), 0));
+            item.add(roundToDecimal(climate.getHumidity(), 0));
         }
     }
     {
@@ -860,7 +860,7 @@ inline String getSystemInfoJson() {
             item.add("Тиск");
             item.add("mmHg");
             item.add(ICON_PRESSURE);
-            item.add(roundToDecimal(climate.getPressure(settings.getFloat(PRESSURE_CORRECTION)), 0));
+            item.add(roundToDecimal(climate.getPressure(), 0));
         }
     }
 
