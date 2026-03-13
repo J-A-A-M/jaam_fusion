@@ -49,9 +49,6 @@ struct FreeLedInfo {
 
 class AnimationManager {
     private:
-        static const int MAX_LEDS_MAIN    = 500;
-        static const int MAX_LEDS_SERVICE = 5;
-
         SemaphoreHandle_t animMutex;
         SemaphoreHandle_t globalTimesMutex;
         JaamSettings* settings;
@@ -66,8 +63,8 @@ class AnimationManager {
         void checkAndResetGlobalTime(uint16_t animationType);
 
         // Стани LED-ів
-        LedState   mainStates[MAX_LEDS_MAIN];
-        LedState   serviceStates[MAX_LEDS_SERVICE];
+        LedState   mainStates[MAX_LEDS_STRIP_MAIN];
+        LedState   serviceStates[MAX_LEDS_STRIP_SERVICE];
 
         // Стани стрічок-в-цілому
         StripState bgState;

@@ -105,6 +105,7 @@ static constexpr size_t   HASH_SZ           = 4;            // 2B actual + 2B pr
 
 // --- Region to LED mapping (fixed, задається один раз) ---
 constexpr int MAX_REGIONS = 169;                            // Кількість регіонів
+constexpr int MAX_LEDS_STRIP_MAIN = 500;                    // Максимальна кількість LED на strip_main
 constexpr int MAX_LEDS_PER_REGION = 25;                      // Максимум LED на регіон
 
 struct RegionLedMapEntry {
@@ -114,7 +115,11 @@ struct RegionLedMapEntry {
 };
 
 // --- Background LED color mapping ---
-constexpr int MAX_BG_LEDS = 300;                            // Максимум задніх LED
+constexpr int MAX_LEDS_STRIP_BG = 300;                            // Максимум задніх LED
+
+
+// --- Service LED mapping ---
+constexpr int MAX_LEDS_STRIP_SERVICE = 5;                    // Максимальна кількість LED на strip_service
 
 struct BgLedColorEntry {
     uint16_t led_index;

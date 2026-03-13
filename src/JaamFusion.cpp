@@ -105,11 +105,18 @@ std::vector<int>    allLedsBg;
 AnimationManager        animation;
 uint16_t                animType;
 
-// --- MAP Configuration ---
-std::map<uint16_t, uint16_t>    alertsMap;
+// --- MAP Configuration ---                       // старий обробник (TYPE_RADIATION_BATCH)
 std::map<uint16_t, uint8_t>     temperatureMap;
 RegionLedMapEntry               customMap[MAX_REGIONS];
-uint32_t                        bgLedColors[MAX_BG_LEDS];
+uint32_t                        bgLedColors[MAX_LEDS_STRIP_BG];
+
+// --- Alerts flat storage (новий обробник TYPE_ALERTS_BATCH) ---
+// ~340 B BSS: region_id → flags16 (0 = немає тривоги)
+uint16_t alertsFlat[MAX_REGIONS + 1] = {};
+// ~500 B BSS: led_pos → поточний найвищий alert-bit (-1 = немає тривоги)
+int8_t   ledBitCache[MAX_LEDS_STRIP_MAIN];
+// ~63 B BSS: бітсет — які LED змінились у поточному пакеті
+static uint8_t s_ledDirty[(MAX_LEDS_STRIP_MAIN + 7) / 8];
 
 // --- WIFI Configuration ---
 WiFiManager         wm;
@@ -173,30 +180,18 @@ SystemInfo getSystemInfo() {
 
 
 void clearAllAlertsMaps() {
-    // Логування стану пам'яті перед очищенням
     size_t memBefore = ESP.getFreeHeap();
     LOG.printf("[MEMORY] Free heap before clearing alert maps: %u bytes\n", memBefore);
-    
-    // Очищаємо всі map'и
-    alertsMap.clear();
-    
-    // Додаткове очищення пам'яті після clear()
-    // Для std::map викликаємо shrink_to_fit через swap з пустими контейнерами
-    std::map<uint16_t, uint16_t>().swap(alertsMap);
 
-    // Принудове очищення пам'яті
-    forceMemoryCleanup("after alert maps clearing");
-    
-    // Дефрагментація пам'яті
-    defragmentMemory("after alert maps clearing");
-    
-    // Логування результату
+    // Новий flat-сторедж
+    memset(alertsFlat,   0,  sizeof(alertsFlat));
+    memset(ledBitCache, -1,  sizeof(ledBitCache));
+    memset(s_ledDirty,   0,  sizeof(s_ledDirty));
+
     size_t memAfter = ESP.getFreeHeap();
-    int memReclaimed = (int)(memAfter - memBefore);
-    
-    LOG.printf("[MAIN] Clearing all alert alerts maps completed\n");
-    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n", 
-               memReclaimed, memBefore, memAfter);
+    LOG.printf("[MAIN] Clearing all alert maps completed\n");
+    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n",
+               (int)(memAfter - memBefore), memBefore, memAfter);
 }
 
 void clearAllWeatherMaps() {
@@ -952,321 +947,179 @@ void onMessageCallback(WebsocketsMessage msg) {
         fwUpdate.processBatch(data + HEADER_SZ, bodyLen);
         return;
     }
-
-    if(type == TYPE_NOTIFICATIONS_BATCH) {
+    // ─── Новий обробник нотифікацій: без heap, без персистентності ───────────────
+    if (type == TYPE_NOTIFICATIONS_BATCH) {
         LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH received\n");
-        bodyLen = len - HEADER_SZ;
 
-        // payloadLen має ділитися на RECORD_SZ
+        bodyLen = len - HEADER_SZ;
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
-            // некоректний фрейм — пропускаємо і реконнектимось
-            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ) != 0\n");
+            LOG.printf("[ERROR] TYPE_NOTIFICATIONS_BATCH: bad bodyLen %u\n", (unsigned)bodyLen);
             requestWebsocketReconnect();
             return;
         }
 
-        // Обчислюємо кількість записів
         size_t count = bodyLen / RECORD_SZ;
-
-        // Розбираємо count записів по RECORD_SZ
         const uint8_t* ptr = data + HEADER_SZ;
 
         LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH data processing\n");
 
-        bool needToAnimateBgHomeRegion = false;
-        int homeRegionBit = 0;
-
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
             ptr += RECORD_SZ;
 
-            const int* leds = getLedsForRegion(region_id, ledCount);
-            if (leds == nullptr) {
-                // Якщо такого регіону немає — пропускаємо цей запис
-                LOG.printf("[WEBSOCKET] notification region %d:\t\t%d skipped - no leds associated\n", region_id, flags16);
+            const RegionLedMapEntry* entry = getRegionEntry(region_id);
+            if (!entry) {
+                LOG.printf("[WEBSOCKET] notification region %d:\t\t0x%04X skipped - not in map\n", region_id, flags16);
                 continue;
-            } else {
-                LOG.printf("[WEBSOCKET] notification region %d:\t\t%d\n", region_id, flags16);
+            }
+            LOG.printf("[WEBSOCKET] notification region %d:\t\t0x%04X\n", region_id, flags16);
+
+            // Знаходимо поточний найвищий alert-bit для LEDs цього регіону з кешу
+            // (без heap — ledBitCache вже містить актуальний стан після ALERTS_BATCH)
+            int highestBitRegion = -1;
+            for (uint8_t j = 0; j < entry->led_count; ++j) {
+                int led = entry->led_positions[j];
+                if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
+                int8_t bit = ledBitCache[led];
+                if (bit != -1 && (highestBitRegion == -1 || hasHigherPriority((int)bit, highestBitRegion))) {
+                    highestBitRegion = (int)bit;
+                }
             }
 
-            int highestBitRegion = -1;
-            LOG.printf("[WEBSOCKET]   highest bit from regions: ");
-            for (uint8_t i = 0; i < ledCount; ++i) {
-                int led_position = leds[i];
-                //LOG.printf("[WEBSOCKET] LED %d: ", led_position);
-                // Шукаємо всі регіони для цього LED
-                const std::vector<uint16_t>& regions = getRegionsForLed(led_position);
-                for (uint16_t rid : regions) {
-                    // Шукаємо найвищий біт для регіону в alertsMap
-                    auto alerts_it = alertsMap.find(rid);
-                    if (alerts_it != alertsMap.end()) {
-                        int highestBitSearch = findHighestBit16(alerts_it->second);
-                        LOG.printf("%d:%d ", rid, highestBitSearch);
-
-                        if (hasHigherPriority(highestBitSearch, highestBitRegion)) {
-                            highestBitRegion = highestBitSearch;
-                        }
-                    }
-                }
-            }  
-            LOG.printf("\n");
-
-            // Тепер highestBitRegion містить найвищий пріоритет серед усіх регіонів, пов'язаних з цим LED
+            // Notification bit — false: не вимагати наявності bit 0 (air alert)
             int actualBitDiff = findHighestBit16(flags16, false);
-
             LOG.printf("[WEBSOCKET]   highestBitRegion %d, actualBitDiff %d\n", highestBitRegion, actualBitDiff);
 
-            if (hasHigherPriority(actualBitDiff,highestBitRegion)) {
-                for (int i = 0; i < ledCount; ++i) {
-                    animateLed(strip_main, MapModes::ALERT, leds[i], actualBitDiff, region_id, true);
-                    if (isLedInHomeRegion(leds[i])) {
-                        needToAnimateBgHomeRegion = true;
-                        homeRegionBit = actualBitDiff;
-                    }
+            // Анімуємо тільки якщо нотифікація має вищий пріоритет, ніж поточна тривога
+            if (hasHigherPriority(actualBitDiff, highestBitRegion)) {
+                for (uint8_t j = 0; j < entry->led_count; ++j) {
+                    int led = entry->led_positions[j];
+                    if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
+                    animateLed(strip_main, MapModes::ALERT, led, actualBitDiff, region_id, true);
                 }
             }
-            if (region_id == settings.getInt(HOME_DISTRICT)) {
-                LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", settings.getInt(HOME_DISTRICT), homeRegionBit);
-                animateLed(strip_bg, MapModes::ALERT, 0, homeRegionBit, settings.getInt(HOME_DISTRICT), true);
-                alertAction(actualBitDiff, settings.getInt(HOME_DISTRICT));
+
+            // Домашній регіон — окрема анімація strip_bg
+            if ((uint16_t)settings.getInt(HOME_DISTRICT) == region_id) {
+                LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
+                animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, region_id, true);
+                alertAction(actualBitDiff, region_id);
             }
         }
     }
 
-    if(type == TYPE_ALERTS_BATCH) {
-        LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH received\n");
-        // Обчислюємо довжину payload після заголовка
-        bodyLen = len - HEADER_SZ - HASH_SZ;
 
-        // payloadLen має ділитися на RECORD_SZ
+    // ─── Новий обробник тривог: без heap-алокацій ──────────────────────────────
+    if (type == TYPE_ALERTS_BATCH) {
+        LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH received\n");
+
+        bodyLen = len - HEADER_SZ - HASH_SZ;
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
-            // некоректний фрейм — пропускаємо і реконнектимось
-            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen % RECORD_SZ) != 0\n");
+            LOG.printf("[ERROR] TYPE_ALERTS_BATCH: bad bodyLen %u\n", (unsigned)bodyLen);
             requestWebsocketReconnect();
             return;
         }
 
-        // Перевіряємо  хеш
         uint16_t actualHash = (static_cast<uint16_t>(data[1]) << 8) | data[2];
-        uint16_t prevHash = (static_cast<uint16_t>(data[3]) << 8) | data[4];
-        LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n", alertsHash, prevHash, actualHash);
+        uint16_t prevHash   = (static_cast<uint16_t>(data[3]) << 8) | data[4];
+        LOG.printf("[WEBSOCKET] hash check, local: [0x%04X] prev: [0x%04X], actual: [0x%04X]\n",
+                   alertsHash, prevHash, actualHash);
 
         if (prevHash != alertsHash && isFirstDataFetchCompleted) {
-            // некоректний хеш — пропускаємо і реконнектимось
-            LOG.printf("[ERROR] prevHash != alertsHash\n");
+            LOG.printf("[ERROR] TYPE_ALERTS_BATCH: prevHash != alertsHash\n");
             requestWebsocketReconnect();
             return;
         }
 
-        // Обчислюємо кількість записів
         size_t count = bodyLen / RECORD_SZ;
-
-        // Розбираємо count записів по RECORD_SZ
         const uint8_t* ptr = data + HEADER_SZ + HASH_SZ;
 
-        LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH data processing\n");
-
-        std::vector<AlertDiff> diffs;
-        // Створюємо тимчасову мапу для нових значень
-        std::map<uint16_t, uint16_t> alertsMapActual;
-
+        // ── Фаза 1: оновити alertsFlat, позначити dirty LED ──────────────────
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
             ptr += RECORD_SZ;
 
-            const int* leds = getLedsForRegion(region_id, ledCount);
-            if (leds == nullptr) {
-                // Якщо такого регіону немає — пропускаємо цей запис
-                LOG.printf("[WEBSOCKET] alert region %d:\t\t%d skipped - no leds associated\n", region_id, flags16);
+            // getRegionEntry перевіряє наявність у customMap (region_id — довільний ID, не індекс)
+            const RegionLedMapEntry* entry = getRegionEntry(region_id);
+            if (!entry) {
+                LOG.printf("[WEBSOCKET] alert region %d:\t\t0x%04X skipped - not in map\n", region_id, flags16);
                 continue;
-            } else {
-                LOG.printf("[WEBSOCKET] alert region %d:\t\t%d\n", region_id, flags16);
+            }
+            int flat_idx = (int)(entry - customMap); // позиція в customMap (0..MAX_REGIONS-1)
+
+            if (alertsFlat[flat_idx] == flags16) {
+                continue; // нічого не змінилось
+            }
+            LOG.printf("[WEBSOCKET] alert region %d:\t\t0x%04X -> 0x%04X\n",
+                       region_id, alertsFlat[flat_idx], flags16);
+
+            // Позначаємо dirty LED (бітсет: 1 bit на LED, без зайвого масиву s_ledOldBit)
+            // ledBitCache[led] ще не змінюється до фази 2 — тому він є "старим" значенням
+            for (uint8_t j = 0; j < entry->led_count; ++j) {
+                int led = entry->led_positions[j];
+                if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
+                s_ledDirty[led >> 3] |= (1u << (led & 7));
             }
 
-            // Отримуємо попередній стан
-            uint16_t previous_flags = alertsMap[region_id];
-            
-            // Розраховуємо diff
-            AlertDiff diff = calculateAlertDiff(region_id, previous_flags, flags16);
-            if (diff.has_changes) {
-                diffs.push_back(diff);
-            }
-            
-            // зберігаємо нові значення в alertsMapActual для подальшого мержу після перевірки на зміни
-            alertsMapActual[region_id] = flags16;
-        }
-        
-        std::map<int, LedBit> led_bits_actual;
-        std::map<int, LedBit> led_bits_old;
-
-        LOG.printf("[WEBSOCKET] processing %d diffs\n", (int)diffs.size());
-
-        // Проходимо по всіх змінах
-        bool needToAnimateBgHomeRegion = false;
-        bool homeRegionIncrease = false;
-        int homeRegionBit = 0;
-        for (const auto& diff : diffs) {
-            //Показуємо зміни для цього регіону
-            LOG.printf("[DIFF] Region %d: flags changed from 0x%04X to 0x%04X\n", 
-                diff.region_id, diff.previous_flags, diff.current_flags);
-            
-            //Показуємо які біти змінилися
-            for (int bit = 0; bit < ALERT_TYPES_COUNT; bit++) {
-                bool prev_state = diff.previous_flags & (1 << bit);
-                bool curr_state = diff.current_flags & (1 << bit);
-                
-                if (prev_state != curr_state) {
-                    LOG.printf("[DIFF]   Bit %d (%s): %s -> %s\n", 
-                        bit,
-                        ALERT_TYPES[bit],
-                        prev_state ? "ON" : "OFF",
-                        curr_state ? "ON" : "OFF"
-                    );
-                }
-            }
-
-            // Знаходимо найвищий біт для цього регіону
-            int highest_bit_current = findHighestBit16(diff.current_flags);
-            LOG.printf("[DIFF]   Highest bit for region %d: %d\n", 
-                diff.region_id, highest_bit_current);
-
-            // Шукаємо LED для цього регіону
-            const RegionLedMapEntry* entry = getRegionEntry(diff.region_id);
-            if (entry) {
-                
-                for (uint8_t i = 0; i < entry->led_count; ++i) {
-                    int led_position = entry->led_positions[i];
-                    //LOG.printf("[DIFF]   LED for region %d: %d\n", diff.region_id, led_position);
-
-                    led_bits_old[led_position] = {findHighestBitForLed(led_position), diff.region_id};
-                    //led_bits_actual[led_position] = {highest_bit_current, diff.region_id};
-                    // Оновлюємо найвищий біт для LED
-                    // if (hasHigherPriority(findHighestBitForLed(led_position), highest_bit_current)) {
-                    //     led_bits_actual[led_position] = {findHighestBitForLed(led_position), diff.region_id};
-                    // }
-                    //LOG.printf("[DIFF] LED %d highest bit actual: %d\n", led_position, led_bits_actual[led_position].highest_bit);
-                    //LOG.printf("[DIFF]   LED %d highest bit alerts: %d\n", led_position, led_bits_old[led_position].highest_bit);
-                }
-                // Шукаємо всі леди для цього регіону
-                // int highest_bit_region = -1;
-                // for (uint8_t i = 0; i < entry->led_count; ++i) {
-                //     int led_position = entry->led_positions[i];
-                //     LOG.printf("[DIFF] LED %d regions: ", led_position);
-
-                //     // Шукаємо всі регіони для цього LED
-                //     const std::vector<uint16_t>& regions = getRegionsForLed(led_position);
-                //     for (uint16_t region_id : regions) {
-                //         LOG.printf("%d ", region_id);
-
-                //         // Шукаємо найвищий біт для регіону в alertsMap
-                //         int highest_bit_region = findHighestBit16(alertsMap[region_id]);
-                //         if (diff.region_id == region_id) {
-                //             int highest_bit_region_diff = findHighestBit16(diff.current_flags);
-                //             if (hasHigherPriority(highest_bit_region, highest_bit_region_diff)) {
-                //                 highest_bit_region = highest_bit_region_diff;
-                //                 //led_bits_actual[led_position] = {highest_bit_region, region_id};
-                //                 LOG.printf("!");
-                //             }
-                //         } 
-                //         LOG.printf("[%d] ", highest_bit_region);
-                //         // Оновлюємо найвищий біт для LED
-                //         // led_bits_actual[led_position] = {highest_bit_region, region_id};
-                //         // if (hasHigherPriority(highest_bit_current, highest_bit_region)) {
-                //         //     LOG.printf("! ", highest_bit_region);
-                //         //     led_bits_actual[led_position] = {highest_bit_current, region_id};
-                //         // }
-                //         LOG.printf(", ");
-                //     }
-                //     LOG.printf("\n");
-                //     // LOG.printf("[DIFF] LED %d highest bit actual: %d\n", led_position, led_bits_actual[led_position].highest_bit);
-                //     // LOG.printf("[DIFF] LED %d highest bit alerts: %d\n", led_position, led_bits_old[led_position].highest_bit);
-                // }  
-            } else {
-                LOG.printf("[DIFF]   No LEDs found for region %d\n", diff.region_id);
-            }
+            alertsFlat[flat_idx] = flags16; // оновлюємо одразу
         }
 
-        // Виводимо фінальний список бітів для LED
-        // LOG.printf("[DIFF] LED bits summary:\n");
-        // for (const auto& led : led_bits_actual) {
-        //     LOG.printf("[DIFF] LED diff %d: highest_bit=%d, region_id=%d\n",
-        //         led.first,
-        //         led.second.highest_bit,
-        //         led.second.region_id
-        //     );
-        // }
-        // for (const auto& led : led_bits_old) {
-        //     LOG.printf("[DIFF] LED alerts %d: highest_bit=%d, region_id=%d\n",
-        //         led.first,
-        //         led.second.highest_bit,
-        //         led.second.region_id
-        //     );
-        // }
-
-        // вмерджуємо alertsMapActual в основний alertsMap
-        for (const auto& pair : alertsMapActual) {
-            alertsMap[pair.first] = pair.second;
-        }
-
+        // ── Фаза 2: обчислити нові біти і запустити анімації ─────────────────
         if (isFirstDataFetchCompleted) {
-            // Виводимо фінальний список бітів для LED
-            for (const auto& led : led_bits_old) {
-                // Порівнюємо з led_bits_old
-                
-                int diff_bit = findHighestBitForLed(led.first);
-                int alerts_bit = led.second.highest_bit;
+            for (int led = 0; led < MAX_LEDS_STRIP_MAIN; ++led) {
+                if (!(s_ledDirty[led >> 3] & (1u << (led & 7)))) continue;
+                s_ledDirty[led >> 3] &= ~(1u << (led & 7)); // скидаємо прапор
 
-                // LOG.printf("[WEBSOCKET] LED %d: region %d actual bit %d\n",
-                //     led.first, led.second.region_id, diff_bit);
+                int8_t oldBit = ledBitCache[led]; // не змінювався в фазі 1
+                uint16_t new_region = 0;
+                int8_t newBit = (int8_t)findHighestBitForLedFlat(led, &new_region);
 
-                // LOG.printf("[WEBSOCKET] LED %d: region %d old bit %d\n",
-                //     led.first, led.second.region_id, alerts_bit);
+                if (newBit == oldBit) continue; // bit не змінився
 
-                if (diff_bit == alerts_bit) {
-                    // LOG.printf("[WEBSOCKET] LED %d: region %d no changes in bit %d\n",
-                    //     led.first, led.second.region_id, diff_bit);
-                    continue; // Немає змін, пропускаємо
-                }
+                bool increase = hasHigherPriority((int)newBit, (int)oldBit);
+                LOG.printf("[WEBSOCKET] LED %d: bit %d -> %d (%s), region %d\n",
+                           led, oldBit, newBit, increase ? "increase" : "decrease", new_region);
+                animateLed(strip_main, MapModes::ALERT, led, (int)newBit, new_region, increase);
 
-                if (hasHigherPriority(diff_bit, alerts_bit)) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d increasing bit from %d to %d\n", led.first, led.second.region_id, alerts_bit, diff_bit);
-                    animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, true);
-                } 
-                if (hasHigherPriority(alerts_bit, diff_bit)) {
-                    LOG.printf("[WEBSOCKET] LED %d: region %d decreasing bit from %d to %d\n", led.first, led.second.region_id, alerts_bit, diff_bit);
-                    animateLed(strip_main, MapModes::ALERT, led.first, diff_bit, led.second.region_id, false);
-                }
+                ledBitCache[led] = newBit;
             }
-            int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
-            if (localAlertBit != alertBit){
-                if (hasHigherPriority(localAlertBit, alertBit)) {
-                    LOG.printf("[WEBSOCKET] Animating home district LEDs: region %d, bit %d, increase\n",settings.getInt(HOME_DISTRICT), localAlertBit);
-                    homeRegionIncrease = true;
+
+            // Домашній регіон (strip_bg + siren + API)
+            int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
+            if (localAlertBit != alertBit) {
+                bool homeIncrease = hasHigherPriority(localAlertBit, alertBit);
+                if (homeIncrease) {
+                    LOG.printf("[WEBSOCKET] Home district: region %d bit %d increase\n",
+                               settings.getInt(HOME_DISTRICT), localAlertBit);
                     alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                } else {
+                    LOG.printf("[WEBSOCKET] Home district: region %d bit %d decrease\n",
+                               settings.getInt(HOME_DISTRICT), localAlertBit);
+                    if (localAlertBit == -1) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
                 }
-                if (hasHigherPriority(alertBit, localAlertBit)) {
-                    LOG.printf("[WEBSOCKET] Animating home district LEDs: region %d, bit %d, decrease\n",settings.getInt(HOME_DISTRICT), localAlertBit);
-                    homeRegionIncrease = false;
-                    if (localAlertBit == -1) {
-                        alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
-                    }
-                }
-                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, settings.getInt(HOME_DISTRICT), homeRegionIncrease);
+                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit,
+                           settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
             }
             alertBit = localAlertBit;
-            uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
-            api.updateHomeAlert(homeAlertFlags);
+            int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
+            uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
+            api.updateHomeAlert(homeFlags);
         }
+
+        // ── Init-fetch: перший пакет після підключення ────────────────────────
         if (!isFirstDataFetchCompleted) {
-            LOG.printf("[WEBSOCKET] init processing\n");
+            LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH init processing\n");
+
+            // Заповнюємо кеш після першого повного стану
+            rebuildLedBitCache();
+
             if (strip_main != nullptr) {
                 animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
+                    for (uint16_t i = 0; i < strip->numPixels(); i++) {
+                        strip->setPixelColor(i, animation.ledActualColor(strip, i));
                     }
                     strip->show();
                 });
@@ -1274,22 +1127,26 @@ void onMessageCallback(WebsocketsMessage msg) {
             if (strip_bg != nullptr && settings.getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
                 animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
                     uint32_t color = animation.stripActualColor(strip);
-                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                    for (uint16_t i = 0; i < strip->numPixels(); i++) {
                         strip->setPixelColor(i, color);
                     }
                     strip->show();
                 });
-            }   
-            alertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
-            uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
-            api.setHomeAlert(homeAlertFlags);
+            }
+            alertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
+            int homeInitIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
+            uint16_t homeFlags = (homeInitIdx >= 0) ? alertsFlat[homeInitIdx] : 0;
+            api.setHomeAlert(homeFlags);
             uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
-            int homeTemp = decodeTemperature(encodedTemp);
-            api.setHomeDistrictTemp(homeTemp);
+            api.setHomeDistrictTemp(decodeTemperature(encodedTemp));
             updateSirenIfNeeded(alertBit);
+
+            // скидаємо dirty-прапори (могли бути встановлені в фазі 1)
+            memset(s_ledDirty, 0, sizeof(s_ledDirty));
         }
+
         isFirstDataFetchCompleted = true;
-        startup = false;
+        startup    = false;
         alertsHash = actualHash;
     }
 
@@ -3034,13 +2891,14 @@ void handleAdaptVolume() {
 
 void handleUpdateHomeAlertBit() {
     LOG.printf("[SETTINGS] Updating home alert bit\n");
-    int localAlertBit = findHighestBitForRegionDirect(settings.getInt(HOME_DISTRICT));
+    int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
     if (localAlertBit != alertBit) {
         alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         updateSirenIfNeeded(localAlertBit);
     }
     alertBit = localAlertBit;
-    uint16_t homeAlertFlags = alertsMap[settings.getInt(HOME_DISTRICT)];
+    int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
+    uint16_t homeAlertFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
     LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeAlertFlags);
     api.updateHomeAlert(homeAlertFlags);
     uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
@@ -3327,6 +3185,9 @@ void beepHourProcess() {
 
 // --- SETUP ---
 void setup() {
+    memset(ledBitCache, -1, sizeof(ledBitCache));
+    memset(s_ledDirty,   0, sizeof(s_ledDirty));
+
     LOG.begin(115200);
     logsManager.begin();  // Initialize logs capture system
 

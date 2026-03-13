@@ -19,7 +19,7 @@ uint8_t temprature_sens_read();
 #endif
 
 extern RegionLedMapEntry                customMap[MAX_REGIONS];
-extern uint32_t                         bgLedColors[MAX_BG_LEDS];
+extern uint32_t                         bgLedColors[MAX_LEDS_STRIP_BG];
 extern JaamFirmwareUpdate               fwUpdate;
 
 // Функції для тестового відтворення та оновлення прошивки

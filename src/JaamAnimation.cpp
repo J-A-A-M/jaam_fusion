@@ -159,12 +159,12 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
 
     bool hasActive = false;
 
-    int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : MAX_LEDS_MAIN;
+    int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : MAX_LEDS_STRIP_MAIN;
     for (int i = 0; i < numMain && !hasActive; i++) {
         if (mainStates[i].active && mainStates[i].animType == animationType) hasActive = true;
     }
 
-    int numSvc = strip_service ? min((int)strip_service->numPixels(), MAX_LEDS_SERVICE) : MAX_LEDS_SERVICE;
+    int numSvc = strip_service ? min((int)strip_service->numPixels(), MAX_LEDS_STRIP_SERVICE) : MAX_LEDS_STRIP_SERVICE;
     for (int i = 0; i < numSvc && !hasActive; i++) {
         if (serviceStates[i].active && serviceStates[i].animType == animationType) hasActive = true;
     }
@@ -279,10 +279,10 @@ bool AnimationManager::createAnimation(uint16_t type,
         int maxLeds = 0;
         if (strip == strip_main) {
             stateArr = mainStates;
-            maxLeds  = MAX_LEDS_MAIN;
+            maxLeds  = MAX_LEDS_STRIP_MAIN;
         } else if (strip == strip_service) {
             stateArr = serviceStates;
-            maxLeds  = MAX_LEDS_SERVICE;
+            maxLeds  = MAX_LEDS_STRIP_SERVICE;
         } else {
             LOG.printf("[ANIMATION] ERROR: Unknown strip\n");
             xSemaphoreGive(animMutex);
@@ -551,7 +551,7 @@ void AnimationManager::update() {
 
     // ── Per-LED strip_main ──
     if (strip_main != nullptr && !mainOverride.active) {
-        int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_MAIN);
+        int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             for (int i = 0; i < numLeds; i++) {
                 LedState& s = mainStates[i];
@@ -608,7 +608,7 @@ void AnimationManager::update() {
 
     // ── strip_service per-LED ──
     if (strip_service != nullptr) {
-        int numLeds = min((int)strip_service->numPixels(), MAX_LEDS_SERVICE);
+        int numLeds = min((int)strip_service->numPixels(), MAX_LEDS_STRIP_SERVICE);
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             for (int i = 0; i < numLeds; i++) {
                 LedState& s = serviceStates[i];
@@ -663,13 +663,13 @@ void AnimationManager::showAllStrips() {
     bool showService = false;
 
     if (!showMain && strip_main != nullptr) {
-        int n = min((int)strip_main->numPixels(), MAX_LEDS_MAIN);
+        int n = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
         for (int i = 0; i < n && !showMain; i++) {
             if (mainStates[i].active) showMain = true;
         }
     }
     if (strip_service != nullptr) {
-        int n = min((int)strip_service->numPixels(), MAX_LEDS_SERVICE);
+        int n = min((int)strip_service->numPixels(), MAX_LEDS_STRIP_SERVICE);
         for (int i = 0; i < n && !showService; i++) {
             if (serviceStates[i].active) showService = true;
         }
@@ -709,9 +709,9 @@ void AnimationManager::clearAllAnimations() {
 void AnimationManager::logActiveAnimations() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         int count = 0;
-        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
         for (int i = 0; i < numMain; i++) if (mainStates[i].active) count++;
-        int numSvc = strip_service ? min((int)strip_service->numPixels(), MAX_LEDS_SERVICE) : 0;
+        int numSvc = strip_service ? min((int)strip_service->numPixels(), MAX_LEDS_STRIP_SERVICE) : 0;
         for (int i = 0; i < numSvc; i++) if (serviceStates[i].active) count++;
         if (bgState.active)      count++;
         if (mainOverride.active) count++;
@@ -753,7 +753,7 @@ uint32_t AnimationManager::adaptColorBrightness(uint32_t color, uint8_t brightne
 
 void AnimationManager::adaptAllAnimationColors() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
         for (int i = 0; i < numMain; i++) {
             if (mainStates[i].active) {
                 mainStates[i].color = ledActualColor(strip_main, i, false, mainStates[i].bit);
@@ -769,7 +769,7 @@ void AnimationManager::adaptAllAnimationColors() {
 void AnimationManager::adaptAllAnimationBrightness() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         uint8_t globalEnd = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ANIMATION_END));
-        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
 
         for (int i = 0; i < numMain; i++) {
             LedState& s = mainStates[i];
@@ -800,7 +800,7 @@ void AnimationManager::adaptAllAnimationBrightness() {
 
 void AnimationManager::adaptAllAnimationPeriod() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
 
         auto recalc = [&](int8_t bit, uint32_t& period, uint32_t& cycles) {
             uint32_t newPeriod   = period;
@@ -838,7 +838,7 @@ void AnimationManager::adaptAllAnimationPeriod() {
 
 void AnimationManager::adaptAllAnimationType() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_MAIN) : 0;
+        int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
 
         auto newType = [&](int8_t bit) -> uint16_t {
             switch (bit) {
@@ -1010,7 +1010,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
 uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     uint32_t color;
     uint8_t brightness = 0;
-    int highest_bit = findHighestBitForRegionDirect(region_id);
+    int highest_bit = findHighestBitForRegionFlat(region_id);
 
     if (highest_bit != -1) {
         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
@@ -1049,18 +1049,23 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     if (bit != -1) {
                         highest_bit = bit;
                     } else {
-                        highest_bit = findHighestBitForLed(position);
+                        // ledBitCache відображає поточний стан alertsFlat (O(1), без heap)
+                        highest_bit = (position < MAX_LEDS_STRIP_MAIN)
+                                      ? (int)ledBitCache[position]
+                                      : findHighestBitForLedFlat(position);
                     }
                     if (highest_bit != -1) {
                         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                         color = result.first;
                         brightness = result.second;
                     } else {
-                        auto regions = getRegionsForLed(position);
+                        // Немає тривоги — перевіряємо домашній регіон (без heap)
+                        uint16_t region_buf[16];
+                        int region_count = getRegionsForLedStatic(position, region_buf, 16);
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
                         brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
-                        for (uint16_t region_id : regions) {
-                            if (region_id == settings->getInt(HOME_DISTRICT)) {
+                        for (int r = 0; r < region_count; ++r) {
+                            if (region_buf[r] == (uint16_t)settings->getInt(HOME_DISTRICT)) {
                                 color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
                                 brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                                 break;
@@ -1135,7 +1140,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         if (bit != -1) {
                             highest_bit = bit;
                         } else {
-                            highest_bit = findHighestBitForRegionDirect(settings->getInt(HOME_DISTRICT));
+                            highest_bit = findHighestBitForRegionFlat(settings->getInt(HOME_DISTRICT));
                         }
                         if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
                             std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
@@ -1217,12 +1222,12 @@ std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip,
 
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         if (strip == strip_main) {
-            int n = min((int)num_leds, MAX_LEDS_MAIN);
+            int n = min((int)num_leds, MAX_LEDS_STRIP_MAIN);
             for (int i = 0; i < n; i++) {
                 if (!mainStates[i].active) result.push_back({i});
             }
         } else if (strip == strip_service) {
-            int n = min((int)num_leds, MAX_LEDS_SERVICE);
+            int n = min((int)num_leds, MAX_LEDS_STRIP_SERVICE);
             for (int i = 0; i < n; i++) {
                 if (!serviceStates[i].active) result.push_back({i});
             }
@@ -1237,10 +1242,10 @@ std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip,
 }
 
 bool AnimationManager::isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx) {
-    if (strip == strip_main && ledIdx >= 0 && ledIdx < MAX_LEDS_MAIN) {
+    if (strip == strip_main && ledIdx >= 0 && ledIdx < MAX_LEDS_STRIP_MAIN) {
         return mainStates[ledIdx].active;
     }
-    if (strip == strip_service && ledIdx >= 0 && ledIdx < MAX_LEDS_SERVICE) {
+    if (strip == strip_service && ledIdx >= 0 && ledIdx < MAX_LEDS_STRIP_SERVICE) {
         return serviceStates[ledIdx].active;
     }
     return false;
