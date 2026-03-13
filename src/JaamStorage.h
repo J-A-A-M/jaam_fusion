@@ -14,8 +14,9 @@ class JaamStorage {
 public:
     JaamStorage();
     bool begin();
-    bool saveCustomMap(const RegionLedMapEntry* map);
-    bool loadCustomMap(RegionLedMapEntry* map);
+    // Flat array methods for currentMap
+    bool saveCurrentMap(const RegionLedMapMeta* meta, const uint16_t* leds, size_t metaCount);
+    bool loadCurrentMap(RegionLedMapMeta*& meta, uint16_t*& leds, size_t& metaCount, size_t& totalLeds);
     bool saveBgLedColors(const uint32_t* colors, int count);
     bool loadBgLedColors(uint32_t* colors, int maxCount, int& actualCount);
     void getStorageInfo();

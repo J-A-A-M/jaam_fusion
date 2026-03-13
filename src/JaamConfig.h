@@ -115,13 +115,6 @@ struct RegionLedMapMeta {
     uint8_t led_count;       // Кількість LED для цього регіону
 };
 
-// Стара структура (залишена для backward compatibility з storage)
-struct RegionLedMapEntry {
-    uint16_t region_id;
-    int led_positions[MAX_LEDS_PER_REGION];
-    uint8_t led_count;
-};
-
 // --- Background LED color mapping ---
 constexpr int MAX_LEDS_STRIP_BG = 300;                            // Максимум задніх LED
 

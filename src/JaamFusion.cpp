@@ -107,7 +107,8 @@ uint16_t                animType;
 
 // --- MAP Configuration ---                       // старий обробник (TYPE_RADIATION_BATCH)
 std::map<uint16_t, uint8_t>     temperatureMap;
-RegionLedMapEntry               customMap[MAX_REGIONS];
+// Current region map (flat array format) - dynamically allocated
+CurrentRegionMap                currentMap;
 uint32_t                        bgLedColors[MAX_LEDS_STRIP_BG];
 
 // --- Alerts flat storage (новий обробник TYPE_ALERTS_BATCH) ---
@@ -968,8 +969,8 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
             ptr += RECORD_SZ;
 
-            const RegionLedMapEntry* entry = getRegionEntry(region_id);
-            if (!entry) {
+            const RegionLedMapMeta* meta = getRegionEntry(region_id);
+            if (!meta) {
                 LOG.printf("[WEBSOCKET] notification region %d:\t\t0x%04X skipped - not in map\n", region_id, flags16);
                 continue;
             }
@@ -978,8 +979,9 @@ void onMessageCallback(WebsocketsMessage msg) {
             // Знаходимо поточний найвищий alert-bit для LEDs цього регіону з кешу
             // (без heap — ledBitCache вже містить актуальний стан після ALERTS_BATCH)
             int highestBitRegion = -1;
-            for (uint8_t j = 0; j < entry->led_count; ++j) {
-                int led = entry->led_positions[j];
+            const uint16_t* leds = getRegionLeds(meta);
+            for (uint8_t j = 0; j < meta->led_count; ++j) {
+                int led = (int)leds[j];
                 if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
                 int8_t bit = ledBitCache[led];
                 if (bit != -1 && (highestBitRegion == -1 || hasHigherPriority((int)bit, highestBitRegion))) {
@@ -993,8 +995,8 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             // Анімуємо тільки якщо нотифікація має вищий пріоритет, ніж поточна тривога
             if (hasHigherPriority(actualBitDiff, highestBitRegion)) {
-                for (uint8_t j = 0; j < entry->led_count; ++j) {
-                    int led = entry->led_positions[j];
+                for (uint8_t j = 0; j < meta->led_count; ++j) {
+                    int led = (int)leds[j];
                     if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
                     animateLed(strip_main, MapModes::ALERT, led, actualBitDiff, region_id, true);
                 }
@@ -1041,13 +1043,13 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
             ptr += RECORD_SZ;
 
-            // getRegionEntry перевіряє наявність у customMap (region_id — довільний ID, не індекс)
-            const RegionLedMapEntry* entry = getRegionEntry(region_id);
-            if (!entry) {
+            // getRegionEntry перевіряє наявність у currentMap (region_id — довільний ID, не індекс)
+            const RegionLedMapMeta* meta = getRegionEntry(region_id);
+            if (!meta) {
                 LOG.printf("[WEBSOCKET] alert region %d:\t\t0x%04X skipped - not in map\n", region_id, flags16);
                 continue;
             }
-            int flat_idx = (int)(entry - customMap); // позиція в customMap (0..MAX_REGIONS-1)
+            int flat_idx = getRegionFlatIdx(region_id);  // позиція в currentMap.meta (0..currentMap.size-1)
 
             if (alertsFlat[flat_idx] == flags16) {
                 continue; // нічого не змінилось
@@ -1057,8 +1059,9 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             // Позначаємо dirty LED (бітсет: 1 bit на LED, без зайвого масиву s_ledOldBit)
             // ledBitCache[led] ще не змінюється до фази 2 — тому він є "старим" значенням
-            for (uint8_t j = 0; j < entry->led_count; ++j) {
-                int led = entry->led_positions[j];
+            const uint16_t* leds = getRegionLeds(meta);
+            for (uint8_t j = 0; j < meta->led_count; ++j) {
+                int led = (int)leds[j];
                 if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
                 s_ledDirty[led >> 3] |= (1u << (led & 7));
             }
@@ -2090,7 +2093,7 @@ void initSound() {
 void initMapping() {
     LOG.printf("[INIT] Init mapping\n");
     // Ініціалізуємо мапінг регіонів
-    generateCustomRegionMap(hardwareConfig);
+    generateCurrentRegionMap(hardwareConfig);
     // Ініціалізуємо кольори задніх LED
     generateBgLedColorsMap();
 }
@@ -2791,7 +2794,7 @@ void handleAdaptStripBrightness() {
 
 void handleRecalculateLeds() {
     LOG.printf("[SETTINGS] Recalculating LEDs\n");
-    generateCustomRegionMap(hardwareConfig);
+    generateCurrentRegionMap(hardwareConfig);
 }
 
 void handleReconnectStrips(bool main = false, bool bg = false, bool service = false) {
