@@ -1005,7 +1005,7 @@ void JaamWeb::handleUiPage() {
 }
 
 // Helper to push dropdown options to a JsonArray as compact lists: [id, name, sub]
-static void appendOptionsList(JsonArray arr, SettingListItem items[], int itemCount) {
+static void appendOptionsList(JsonArray arr, const SettingListItem items[], int itemCount) {
     for (int i = 0; i < itemCount; ++i) {
         if (items[i].ignore) continue;
         JsonArray opt = arr.add<JsonArray>();

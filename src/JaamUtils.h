@@ -862,7 +862,7 @@ inline String getAlertsJson() {
     return response;
 }
 
-inline const char* getNameById(SettingListItem list[], int id, int size) {
+inline const char* getNameById(const SettingListItem list[], int id, int size) {
   for (int i = 0; i < size; i++) {
     if (list[i].id == id) {
       return list[i].name;

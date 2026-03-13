@@ -803,7 +803,7 @@ enum Type {
     API_PORT,
 };
 
-static SettingListItem DISTRICTS[MAX_REGIONS] = {
+static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     // АР Крим
     {9999, "АР Крим", false, false},
     
