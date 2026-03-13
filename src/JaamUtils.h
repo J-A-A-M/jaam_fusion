@@ -200,17 +200,6 @@ inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
     return nullptr;
 }
 
-// Отримати список LED для region_id
-inline const int* getLedsForRegion(uint16_t region_id, uint8_t& count) {
-    const RegionLedMapEntry* entry = getRegionEntry(region_id);
-    if (entry) {
-        count = entry->led_count;
-        return entry->led_positions;
-    }
-    count = 0;
-    return nullptr;
-}
-
 // Пошук усіх region_id по led_position
 inline std::vector<uint16_t> getRegionsForLed(int led_position) {
     std::vector<uint16_t> regions;
