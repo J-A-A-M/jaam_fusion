@@ -81,6 +81,47 @@ struct LedBit {
     uint16_t region_id;
 };
 
+// ==============================================================================
+// Helper функції для роботи з flat array maps
+// ==============================================================================
+
+// Конвертує flat array (RegionLedMapMeta + positions) в legacy RegionLedMapEntry[]
+// Використовується для завантаження preset maps в customMap
+inline void convertFlatToLegacy(
+    const RegionLedMapMeta* meta, 
+    const uint16_t* positions, 
+    size_t metaCount,
+    RegionLedMapEntry* outLegacy,
+    size_t maxLegacySize = MAX_REGIONS
+) {
+    memset(outLegacy, 0, sizeof(RegionLedMapEntry) * maxLegacySize);
+    
+    for (size_t i = 0; i < metaCount && i < maxLegacySize; i++) {
+        outLegacy[i].region_id = meta[i].region_id;
+        outLegacy[i].led_count = meta[i].led_count;
+        
+        // Копіюємо LED позиції
+        const uint16_t* srcLeds = &positions[meta[i].start_index];
+        for (uint8_t j = 0; j < meta[i].led_count && j < MAX_LEDS_PER_REGION; j++) {
+            outLegacy[i].led_positions[j] = (int)srcLeds[j];
+        }
+    }
+}
+
+// Швидкий пошук регіону в flat array по region_id
+inline const RegionLedMapMeta* findRegionInFlat(
+    uint16_t regionId, 
+    const RegionLedMapMeta* meta,
+    size_t metaCount
+) {
+    for (size_t i = 0; i < metaCount; i++) {
+        if (meta[i].region_id == regionId) {
+            return &meta[i];
+        }
+    }
+    return nullptr;
+}
+
 enum ServiceLed {
     POWER,
     WIFI,
@@ -123,26 +164,69 @@ inline void generateCustomRegionMap(JaamHardware& hardwareConfig) {
     // Очистити customMap перед копіюванням нового mapping
     memset(customMap, 0, sizeof(customMap));
 
-    const RegionLedMapEntry* base = nullptr;
     int hardware = settings.getInt(HARDWARE);
-    //int kyiv_led_position;
-    // int kharkiv_led_position;
-    // int zp_led_position;
 
     if (hardware == HARDWARE::CUSTOM_MAPPING) {
         if (!storage.loadCustomMap(customMap)) {
-            // Якщо файл не знайдено, завантажити карту за замовчуванням
-            base = STATE_MAP_LED_ODESA_WITH_KYIV;
-            memcpy(customMap, base, sizeof(customMap));
+            // Якщо файл не знайдено, завантажити карту за замовчуванням (ODESA_WITH_KYIV)
+            convertFlatToLegacy(
+                REGION_MAP_META_ODESA_WITH_KYIV,
+                REGION_MAP_LEDS_ODESA_WITH_KYIV,
+                STATE_MAP_LED_ODESA_WITH_KYIV_SIZE,
+                customMap,
+                MAX_REGIONS
+            );
         }
         return;
     }
 
-    base = hardwareConfig.getRegionMap();
-
-    if (!base) return;
-
-    memcpy(customMap, base, sizeof(customMap));
+    // Отримуємо flat array дані для вибраного hardware
+    const RegionLedMapMeta* meta = nullptr;
+    const uint16_t* positions = nullptr;
+    size_t metaCount = 0;
+    
+    switch (hardware) {
+        case HARDWARE::JAAM_3_0:
+            meta = REGION_MAP_META_JAAM_3_0;
+            positions = REGION_MAP_LEDS_JAAM_3_0;
+            metaCount = REGION_MAP_JAAM_3_0_SIZE;
+            break;
+        case HARDWARE::JAAM_3_2:
+            meta = REGION_MAP_META_JAAM_3_2;
+            positions = REGION_MAP_LEDS_JAAM_3_2;
+            metaCount = REGION_MAP_JAAM_3_2_SIZE;
+            break;
+        case HARDWARE::ODESA_KYIV:
+        case HARDWARE::JAAM_1_3:
+        case HARDWARE::JAAM_2_1:
+            meta = REGION_MAP_META_ODESA_WITH_KYIV;
+            positions = REGION_MAP_LEDS_ODESA_WITH_KYIV;
+            metaCount = STATE_MAP_LED_ODESA_WITH_KYIV_SIZE;
+            break;
+        case HARDWARE::ODESA:
+            meta = REGION_MAP_META_ODESA_WITHOUT_KYIV;
+            positions = REGION_MAP_LEDS_ODESA_WITHOUT_KYIV;
+            metaCount = STATE_MAP_LED_ODESA_WITHOUT_KYIV_SIZE;
+            break;
+        case HARDWARE::ZAKARPATTIA_KYIV:
+            meta = REGION_MAP_META_TRANSCARPATHIA_WITH_KYIV;
+            positions = REGION_MAP_LEDS_TRANSCARPATHIA_WITH_KYIV;
+            metaCount = STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV_SIZE;
+            break;
+        case HARDWARE::ZAKARPATTIA:
+            meta = REGION_MAP_META_TRANSCARPATHIA_WITHOUT_KYIV;
+            positions = REGION_MAP_LEDS_TRANSCARPATHIA_WITHOUT_KYIV;
+            metaCount = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV_SIZE;
+            break;
+        default:
+            meta = REGION_MAP_META_ODESA_WITH_KYIV;
+            positions = REGION_MAP_LEDS_ODESA_WITH_KYIV;
+            metaCount = STATE_MAP_LED_ODESA_WITH_KYIV_SIZE;
+            break;
+    }
+    
+    // Конвертуємо flat array в customMap (виконується один раз при ініціалізації)
+    convertFlatToLegacy(meta, positions, metaCount, customMap, MAX_REGIONS);
 }
 
 // Генерація bgLedColors (викликається при ініціалізації)
