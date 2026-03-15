@@ -100,6 +100,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {BRIGHTNESS_ANIMATION_END, {"baend", 20}},
     {BRIGHTNESS_MIN, {"brmin", 0}},
     {BRIGHTNESS_MAX, {"brmax", 0}},
+    {BRIGHTNESS_MAX_ACCEPT, {"brmxa", 0}},
     {NIGHT_MODE_LIGHT_THRESHOLD, {"nmlt", 30}},
     {WEATHER_MIN_TEMP, {"mintemp", -10}},
     {WEATHER_MAX_TEMP, {"maxtemp", 30}},
