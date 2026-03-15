@@ -269,8 +269,23 @@ uint8_t JaamHardware::getMaxBrightness() {
             return JaamHardwareLed::BRIGHTNESS_JAAM_2_1_MAX;
         case HARDWARE::JAAM_1_3:
             return JaamHardwareLed::BRIGHTNESS_JAAM_1_3_MAX;
-        default:
+        default: {
+            int customMaxPct = settings.getInt(BRIGHTNESS_MAX);
+            if (customMaxPct > 0) {
+                // Convert user scale (0-100) to raw brightness: raw = pct * ABSOLUTE_MAX / 100
+                int customMax = customMaxPct * JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX / 100;
+                // Defensive clamping as safety net: even if validation is bypassed
+                // (e.g. direct preferences edit, backup restore), hardware limits are enforced
+                if (customMax > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX) {
+                    customMax = JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX;
+                }
+                if (customMax < JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX) {
+                    customMax = JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX;
+                }
+                return static_cast<uint8_t>(customMax);
+            }
             return JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX;
+        }
     }
 }
 

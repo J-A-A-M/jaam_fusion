@@ -132,6 +132,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"enable_battery", ENABLE_BATTERY_MONITORING, TYPE_BOOL},
     {"battery_pin", BATTERY_PIN, TYPE_INT},
     {"brightness_min", BRIGHTNESS_MIN, TYPE_INT},
+    {"brightness_max", BRIGHTNESS_MAX, TYPE_INT},
     
     // Siren
     {"alert_clear_pin_mode", ALERT_CLEAR_PIN_MODE, TYPE_INT},
@@ -890,6 +891,13 @@ void JaamWeb::handleMapData() {
             region["leds_string"] = "";
         }
     }
+
+    // Include hardware type and max brightness info for the map editor
+    int hwType = settings->getInt(HARDWARE);
+    doc["hardware"] = hwType;
+    doc["brightness_max"] = settings->getInt(BRIGHTNESS_MAX);
+    doc["brightness_default_pct"] = JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT;
+    doc["brightness_absolute_pct"] = JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT;
     
     // Серіалізуємо JSON у компактному форматі
     String response;
@@ -1194,6 +1202,9 @@ void JaamWeb::handleMapEditor() {
     html += "<div id='mapContent'>";
     html += "<div style='text-align: center; padding: 20px; color: var(--secondary-text);'>Завантаження даних карти...</div>";
     html += "</div>";
+    
+    // Container for max brightness configuration (rendered by JS, hidden by default)
+    html += "<div id='brightnessSection' style='display: none;'></div>";
     
     html += "</div></body></html>";
     sendCompressedHtml(&server, html);
