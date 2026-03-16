@@ -1005,14 +1005,13 @@ void onMessageCallback(WebsocketsMessage msg) {
                     if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
                     animateLed(strip_main, MapModes::ALERT, led, actualBitDiff, region_id, true);
                 }
-            }
-
-            // Домашній регіон — окрема анімація strip_bg
-            if ((uint16_t)settings.getInt(HOME_DISTRICT) == region_id) {
-                LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
-                animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, region_id, true);
-                alertAction(actualBitDiff, region_id);
-            }
+                // Домашній регіон — окрема анімація strip_bg
+                if ((uint16_t)settings.getInt(HOME_DISTRICT) == region_id) {
+                    LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
+                    animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, region_id, true);
+                    alertAction(actualBitDiff, region_id);
+                }
+            }   
         }
     }
 
@@ -1060,6 +1059,11 @@ void onMessageCallback(WebsocketsMessage msg) {
                 continue;
             }
             int flat_idx = getRegionFlatIdx(region_id);  // позиція в currentMap.meta (0..currentMap.size-1)
+            if (flat_idx < 0 || flat_idx >= (int)(MAX_REGIONS + 1)) {
+                LOG.printf("[WEBSOCKET] alert region %d:\t\t0x%04X skipped - invalid flat_idx %d\n",
+                        region_id, flags16, flat_idx);
+                continue;
+            }
 
             if (alertsFlat[flat_idx] == flags16) {
                 continue; // нічого не змінилось

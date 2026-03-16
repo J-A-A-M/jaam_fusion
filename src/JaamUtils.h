@@ -237,7 +237,6 @@ inline void generateCurrentRegionMap(JaamHardware& hardwareConfig) {
     const RegionLedMapMeta* meta = nullptr;
     const uint16_t* positions = nullptr;
     size_t metaCount = 0;
-    bool isCustom = false;
     
     if (hardware == HARDWARE::CUSTOM_MAPPING) {
         // Спробувати завантажити custom map з storage

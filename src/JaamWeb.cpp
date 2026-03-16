@@ -871,8 +871,12 @@ void JaamWeb::handleMapData() {
         
         // Find LED positions for this region in currentMap
         const RegionLedMapMeta* meta = findRegionMeta(DISTRICTS[i].id);
-        if (meta) {
+        if (meta && meta->led_count > 0) {
             const uint16_t* leds = getRegionLeds(meta);
+            if (!leds) {
+                region["leds_string"] = "";
+                continue;
+            }
             JsonArray ledsArray = region["leds"].to<JsonArray>();
             String leds_str = "";
             
