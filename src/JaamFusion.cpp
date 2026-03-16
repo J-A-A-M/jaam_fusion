@@ -952,6 +952,11 @@ void onMessageCallback(WebsocketsMessage msg) {
     if (type == TYPE_NOTIFICATIONS_BATCH) {
         LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH received\n");
 
+        if (len < HEADER_SZ) {
+            LOG.printf("[ERROR] TYPE_NOTIFICATIONS_BATCH: frame too short (%u)\n", (unsigned)len);
+            requestWebsocketReconnect();
+            return;
+        }
         bodyLen = len - HEADER_SZ;
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             LOG.printf("[ERROR] TYPE_NOTIFICATIONS_BATCH: bad bodyLen %u\n", (unsigned)bodyLen);
@@ -1016,6 +1021,11 @@ void onMessageCallback(WebsocketsMessage msg) {
     if (type == TYPE_ALERTS_BATCH) {
         LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH received\n");
 
+        if (len < HEADER_SZ + HASH_SZ) {
+            LOG.printf("[ERROR] TYPE_ALERTS_BATCH: frame too short (%u)\n", (unsigned)len);
+            requestWebsocketReconnect();
+            return;
+        }
         bodyLen = len - HEADER_SZ - HASH_SZ;
         if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
             LOG.printf("[ERROR] TYPE_ALERTS_BATCH: bad bodyLen %u\n", (unsigned)bodyLen);

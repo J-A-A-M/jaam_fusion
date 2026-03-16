@@ -657,44 +657,6 @@ void AnimationManager::update() {
     }
 }
 
-void AnimationManager::showAllStrips() {
-    bool showMain    = mainOverride.active;
-    bool showBg      = bgState.active;
-    bool showService = false;
-
-    if (!showMain && strip_main != nullptr) {
-        int n = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
-        for (int i = 0; i < n && !showMain; i++) {
-            if (mainStates[i].active) showMain = true;
-        }
-    }
-    if (strip_service != nullptr) {
-        int n = min((int)strip_service->numPixels(), MAX_LEDS_STRIP_SERVICE);
-        for (int i = 0; i < n && !showService; i++) {
-            if (serviceStates[i].active) showService = true;
-        }
-    }
-
-    if (showMain && strip_main != nullptr) {
-        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-            strip_main->show();
-            xSemaphoreGive(stripMutex);
-        }
-    }
-    if (showBg && strip_bg != nullptr) {
-        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-            strip_bg->show();
-            xSemaphoreGive(stripMutex);
-        }
-    }
-    if (showService && strip_service != nullptr) {
-        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-            strip_service->show();
-            xSemaphoreGive(stripMutex);
-        }
-    }
-}
-
 void AnimationManager::clearAllAnimations() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         memset(mainStates,    0, sizeof(mainStates));
@@ -1239,16 +1201,6 @@ std::vector<FreeLedInfo> AnimationManager::getFreeLeds(Adafruit_NeoPixel* strip,
     }
 
     return result;
-}
-
-bool AnimationManager::isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx) {
-    if (strip == strip_main && ledIdx >= 0 && ledIdx < MAX_LEDS_STRIP_MAIN) {
-        return mainStates[ledIdx].active;
-    }
-    if (strip == strip_service && ledIdx >= 0 && ledIdx < MAX_LEDS_STRIP_SERVICE) {
-        return serviceStates[ledIdx].active;
-    }
-    return false;
 }
 
 void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {

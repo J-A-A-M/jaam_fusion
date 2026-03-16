@@ -102,7 +102,6 @@ class AnimationManager {
         void logActiveAnimations();
         std::vector<FreeLedInfo> getFreeLeds(Adafruit_NeoPixel* strip, uint32_t num_leds);
         bool safeStripOperation(Adafruit_NeoPixel* strip, std::function<void(Adafruit_NeoPixel*)> operation);
-        bool isLedAnimated(Adafruit_NeoPixel* strip, int ledIdx);
         void paintStripDefault(Adafruit_NeoPixel* strip);
         void adaptAllAnimationColors();
         void adaptAllAnimationBrightness();
@@ -113,7 +112,6 @@ class AnimationManager {
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = -1);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
         uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
-        void showAllStrips();
 
         // Методи синхронізації
         void setSynchronizedMode(bool enabled);
