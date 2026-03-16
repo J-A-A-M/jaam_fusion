@@ -151,7 +151,7 @@ int JaamHardware::getButton1Pin() {
         case HARDWARE::JAAM_3_0:
             return JaamHardwarePins::BUTTON_1_PIN_JAAM_3;
         case HARDWARE::JAAM_2_1:
-            return JaamHardwarePins::BUTTON_1_PIN_JAAM_2; 
+            return JaamHardwarePins::BUTTON_1_PIN_JAAM_2;
         case HARDWARE::JAAM_1_3:
             return JaamHardwarePins::BUTTON_1_PIN_JAAM_1;
         default:
@@ -269,7 +269,11 @@ uint8_t JaamHardware::getMaxBrightness() {
             return JaamHardwareLed::BRIGHTNESS_JAAM_2_1_MAX;
         case HARDWARE::JAAM_1_3:
             return JaamHardwareLed::BRIGHTNESS_JAAM_1_3_MAX;
-        default: {
+        case HARDWARE::CUSTOM_MAPPING:
+        case HARDWARE::ZAKARPATTIA:
+        case HARDWARE::ODESA:
+        case HARDWARE::ZAKARPATTIA_KYIV:
+        case HARDWARE::ODESA_KYIV: {
             int customMaxPct = settings.getInt(BRIGHTNESS_MAX);
             if (customMaxPct > 0) {
                 // Convert user scale (0-100) to raw brightness: raw = pct * ABSOLUTE_MAX / 100
@@ -286,6 +290,8 @@ uint8_t JaamHardware::getMaxBrightness() {
             }
             return JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX;
         }
+        default:
+            return JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX;
     }
 }
 
