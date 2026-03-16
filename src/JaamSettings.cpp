@@ -327,7 +327,7 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
         LOG.printf("[SETTINGS] API_PORT cannot be 80 (reserved for web server)\n");
         return false;
     }
-
+    
     // Перевірка BRIGHTNESS_MAX: 0 (default) or percentage in [DEFAULT_MAX_PCT, ABSOLUTE_MAX_PCT]
     if (type == BRIGHTNESS_MAX) {
         if (value != 0) {
@@ -341,7 +341,7 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
             }
         }
     }
-
+    
     // Для JAAM2: піни сирени не можуть бути BH1750_POWER_PIN (керуючий пін живлення для сенсора освітлення)
     if (getInt(HARDWARE) == HARDWARE::JAAM_2_1) { // JAAM2
         if ((type == ALERT_PIN || type == CLEAR_PIN || type == ALERT_PIN_2 || type == CLEAR_PIN_2) && value == BH1750_POWER_PIN) {
@@ -349,7 +349,7 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
             return false;
         }
     }
-
+    
     // Перевірка перетину пінів першого та другого пристрою сирени
     if ((type == ALERT_PIN || type == CLEAR_PIN) && value > 0) {
         int alertPin2 = getInt(ALERT_PIN_2);
@@ -359,7 +359,7 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
             return false;
         }
     }
-
+    
     if ((type == ALERT_PIN_2 || type == CLEAR_PIN_2) && value > 0) {
         int alertPin = getInt(ALERT_PIN);
         int clearPin = getInt(CLEAR_PIN);
@@ -368,7 +368,7 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
             return false;
         }
     }
-
+    
     return true;
 }
 
@@ -378,7 +378,7 @@ bool JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         if (!validateIntSetting(type, value)) {
             return false;
         }
-
+        
         SettingItemInt setting = intSettings[type];
         if (saveToPrefs) {
             preferences.begin(PREFS_NAME, false);
@@ -388,7 +388,7 @@ bool JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         setting.value = value;
         intSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: %d (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
-
+        
         // Якщо змінюємо HARDWARE на JAAM2, скидаємо піни сирени що дорівнюють BH1750_POWER_PIN
         if (type == HARDWARE && value == HARDWARE::JAAM_2_1) {
             if (getInt(ALERT_PIN) == BH1750_POWER_PIN) {
@@ -413,7 +413,7 @@ bool JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         if (changeCallback) {
             changeCallback(type, value, 0.0f, nullptr);
         }
-
+        
         return true;
     }
     LOG.printf("[SETTINGS] Unknown int setting type\n");
@@ -439,12 +439,12 @@ bool JaamSettings::saveString(Type type, const char* value, bool saveToPrefs) {
         setting.value = value;
         stringSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: '%s' (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
-
+        
         // Викликаємо callback якщо зареєстрований
         if (changeCallback) {
             changeCallback(type, 0, 0.0f, value);
         }
-
+        
         return true;
     }
     LOG.printf("[SETTINGS] Unknown stringsetting type\n");
@@ -470,12 +470,12 @@ bool JaamSettings::saveFloat(Type type, float value, bool saveToPrefs) {
         setting.value = value;
         floatSettings[type] = setting;
         LOG.printf("[SETTINGS] Saved setting %s: %.1f (to prefs - %s)\n", setting.key, value, saveToPrefs ? "true" : "false");
-
+        
         // Викликаємо callback якщо зареєстрований
         if (changeCallback) {
             changeCallback(type, 0, value, nullptr);
         }
-
+          
         return true;
     }
     LOG.printf("[SETTINGS] Unknown floatsetting type\n");
