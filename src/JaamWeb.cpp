@@ -1033,7 +1033,13 @@ void JaamWeb::handleSaveMap() {
     for (int i = 0; i < server.args(); ++i) {
         String argName = server.argName(i);
         if (argName.startsWith("region_")) {
-            uint16_t region_id = argName.substring(7).toInt();
+            int parsedRegionId = 0;
+            if (!parseStrictInt(argName.substring(7), parsedRegionId) ||
+                parsedRegionId < 0 || parsedRegionId > 65535) {
+                server.send(400, "text/plain", "Invalid region id");
+                return;
+            }
+            uint16_t region_id = static_cast<uint16_t>(parsedRegionId);
             String value = server.arg(i);
             value.trim();
 
@@ -1048,7 +1054,17 @@ void JaamWeb::handleSaveMap() {
                         String num_str = value.substring(lastComma + 1, k);
                         num_str.trim();
                         if (num_str.length() > 0) {
-                            tempRegion.leds.push_back(num_str.toInt());
+                            int parsedLed = 0;
+                            if (!parseStrictInt(num_str, parsedLed) ||
+                                parsedLed < 0 || parsedLed >= MAX_LEDS_STRIP_MAIN) {
+                                server.send(400, "text/plain", "Invalid LED index");
+                                return;
+                            }
+                            if (tempRegion.leds.size() >= MAX_LEDS_PER_REGION) {
+                                server.send(400, "text/plain", "Too many LEDs in region");
+                                return;
+                            }
+                            tempRegion.leds.push_back(static_cast<uint16_t>(parsedLed));
                         }
                         lastComma = k;
                     }
@@ -1057,7 +1073,17 @@ void JaamWeb::handleSaveMap() {
                 String num_str = value.substring(lastComma + 1);
                 num_str.trim();
                 if (num_str.length() > 0) {
-                    tempRegion.leds.push_back(num_str.toInt());
+                    int parsedLed = 0;
+                    if (!parseStrictInt(num_str, parsedLed) ||
+                        parsedLed < 0 || parsedLed >= MAX_LEDS_STRIP_MAIN) {
+                        server.send(400, "text/plain", "Invalid LED index");
+                        return;
+                    }
+                    if (tempRegion.leds.size() >= MAX_LEDS_PER_REGION) {
+                        server.send(400, "text/plain", "Too many LEDs in region");
+                        return;
+                    }
+                    tempRegion.leds.push_back(static_cast<uint16_t>(parsedLed));
                 }
                 
                 if (tempRegion.leds.size() > 0) {
