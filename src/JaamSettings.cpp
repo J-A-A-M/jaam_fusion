@@ -328,17 +328,24 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
         return false;
     }
     
-    // Перевірка BRIGHTNESS_MAX: 0 (default) or percentage in [DEFAULT_MAX_PCT, ABSOLUTE_MAX_PCT]
+    // Перевірка BRIGHTNESS_MAX: 0 (default) або відсоток в діапазоні [0..ABSOLUTE_MAX_PCT]
+    // Значення 1..(DEFAULT_MAX_PCT-1), що можуть надходити з UI, вважаються допустимими
+    // і можуть інтерпретуватися як "використовувати значення за замовчуванням" під час застосування налаштувань.
     if (type == BRIGHTNESS_MAX) {
-        if (value != 0) {
-            if (value > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT) {
-                LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% exceeds absolute max %d%%\n", value, JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT);
-                return false;
-            }
-            if (value < JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT) {
-                LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% below default max %d%%\n", value, JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT);
-                return false;
-            }
+        // негативні значення яскравості завжди некоректні
+        if (value < 0) {
+            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% is negative and invalid\n", value);
+            return false;
+        }
+        // перевищення абсолютного максимуму залишається помилкою
+        if (value > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT) {
+            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% exceeds absolute max %d%%\n", value, JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT);
+            return false;
+        }
+        // значення 0 або 1..DEFAULT_MAX_PCT-1 не відхиляємо, щоб не ламати збереження налаштувань з UI
+        if (value != 0 && value < JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT) {
+            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% below default max %d%%; value accepted but will be treated as default max at runtime\n",
+                       value, JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT);
         }
     }
     

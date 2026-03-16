@@ -73,7 +73,8 @@ namespace JaamHardwareLed {
     constexpr uint8_t BRIGHTNESS_ABSOLUTE_MAX = 180;
 
     // User-facing 0-100 scale constants (raw = user_value * ABSOLUTE_MAX / 100)
-    constexpr uint8_t BRIGHTNESS_DEFAULT_MAX_PCT = 28;   // BRIGHTNESS_DEFAULT_MAX * 100 / BRIGHTNESS_ABSOLUTE_MAX
+    constexpr uint8_t BRIGHTNESS_DEFAULT_MAX_PCT =
+        static_cast<uint8_t>((BRIGHTNESS_DEFAULT_MAX * 100u + BRIGHTNESS_ABSOLUTE_MAX / 2u) / BRIGHTNESS_ABSOLUTE_MAX); // rounded BRIGHTNESS_DEFAULT_MAX * 100 / BRIGHTNESS_ABSOLUTE_MAX
     constexpr uint8_t BRIGHTNESS_ABSOLUTE_MAX_PCT = 100; // maps to BRIGHTNESS_ABSOLUTE_MAX
 }
 
