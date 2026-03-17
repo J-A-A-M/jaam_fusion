@@ -286,9 +286,6 @@ uint8_t JaamHardware::getMaxBrightness() {
                     if (customMax > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX) {
                         customMax = JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX;
                     }
-                    if (customMax < JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX) {
-                        customMax = JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX;
-                    }
                     return static_cast<uint8_t>(customMax);
                 }
             }
