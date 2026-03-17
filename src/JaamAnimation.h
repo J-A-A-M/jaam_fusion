@@ -69,6 +69,13 @@ class AnimationManager {
         // Стани стрічок-в-цілому
         StripState bgState;
         StripState mainOverride;   // RUNNING_LIGHT / SET_BRIGHTNESS
+        StripState previewState;   // Попередній перегляд анімацій (main strip)
+        StripState previewStateBg; // Попередній перегляд анімацій (bg strip)
+
+        // Попередній перегляд анімацій
+        bool previewActive;
+        uint32_t previewEndTime;
+        int8_t previewEventType;
 
         // Обчислення кольору за elapsed для per-LED анімацій
         uint32_t computeColor(const LedState& s, float elapsed);
@@ -117,4 +124,9 @@ class AnimationManager {
         void setSynchronizedMode(bool enabled);
         bool isSynchronizedMode() const;
         void resetAllGlobalTimes();
+
+        // Методи попереднього перегляду
+        void startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness);
+        void stopPreview();
+        bool isPreviewActive() const;
 };

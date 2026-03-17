@@ -793,6 +793,13 @@
             ""
         ],
         [
+            "bool",
+            "enable_animation_preview",
+            "Попередній перегляд анімацій",
+            "animations",
+            ""
+        ],
+        [
             "dropdown",
             "alert_on_animation",
             "Початок тривог",
