@@ -87,12 +87,22 @@ const char* AnimationManager::getStripName(Adafruit_NeoPixel* strip) {
     return "unknown";
 }
 
-AnimationManager::AnimationManager() : settings(nullptr), synchronizedMode(false) {
+// Перевірка чи preview активний для поточного map mode
+bool AnimationManager::isPreviewActiveForMode(const StripState& previewState, uint8_t mapMode) const {
+    return previewActive                  // Preview глобально увімкнений
+        && previewState.active            // Стан preview стрічки активний
+        && previewState.period > 0        // Період валідний (захист від ділення на нуль)
+        && previewState.mapMode == mapMode; // Preview для поточного режиму мапи
+}
+
+AnimationManager::AnimationManager() : settings(nullptr), synchronizedMode(false), previewActive(false), previewEndTime(0), previewEventType(-1) {
     animMutex = xSemaphoreCreateMutex();
     globalTimesMutex = xSemaphoreCreateMutex();
     memset(mainStates,    0, sizeof(mainStates));
     memset(serviceStates, 0, sizeof(serviceStates));
     memset(&bgState,       0, sizeof(bgState));
+    memset(&previewState,  0, sizeof(previewState));
+    memset(&previewStateBg, 0, sizeof(previewStateBg));
     memset(&mainOverride,  0, sizeof(mainOverride));
 }
 
@@ -550,7 +560,7 @@ void AnimationManager::update() {
     }
 
     // ── Per-LED strip_main ──
-    if (strip_main != nullptr && !mainOverride.active) {
+    if (strip_main != nullptr && !mainOverride.active && !isPreviewActiveForMode(previewState, mapMode)) {
         int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             for (int i = 0; i < numLeds; i++) {
@@ -572,13 +582,33 @@ void AnimationManager::update() {
                     : localElapsed;
                 strip_main->setPixelColor(i, computeColor(s, elapsed));
                 mainDirty = true;
+            }  
+            xSemaphoreGive(stripMutex);
+        }
+    }
+
+
+    // ── Preview має вищий пріоритет і перезаписує кольори mainStates ──
+    if (strip_main != nullptr && isPreviewActiveForMode(previewState, mapMode)) {
+        int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            float localElapsed = (now - previewState.localStart) / float(previewState.period);
+            if (localElapsed < previewState.cycles && !isOff) {
+                float elapsed = synchronizedMode
+                                    ? (now - previewState.startTime) / float(previewState.period)
+                                    : localElapsed;
+                uint32_t previewColor = computeStripColor(previewState, elapsed);
+                for (int i = 0; i < numLeds; i++) {
+                    strip_main->setPixelColor(i, previewColor);
+                }
+                mainDirty = true;
             }
             xSemaphoreGive(stripMutex);
         }
     }
 
     // ── strip_bg ──
-    if (strip_bg != nullptr && bgState.active) {
+    if (strip_bg != nullptr && bgState.active && !isPreviewActiveForMode(previewStateBg, mapMode)) {
         float localElapsed = (now - bgState.localStart) / float(bgState.period);
         if (localElapsed >= bgState.cycles) {
             bgState.active = false;
@@ -599,6 +629,25 @@ void AnimationManager::update() {
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
                     strip_bg->setPixelColor(i, c);
+                }
+                xSemaphoreGive(stripMutex);
+            }
+            bgDirty = true;
+        }
+    }
+    
+    // ── Preview для strip_bg має вищий пріоритет і перезаписує кольори bgState ──
+    if (strip_bg != nullptr && isPreviewActiveForMode(previewStateBg, mapMode)) {
+        int numLeds = min((int)strip_bg->numPixels(), MAX_LEDS_STRIP_BG);
+        float localElapsed = (now - previewStateBg.localStart) / float(previewStateBg.period);
+        if (localElapsed < previewStateBg.cycles && !isOff) {
+            float elapsed = synchronizedMode
+                ? (now - previewStateBg.startTime) / float(previewStateBg.period)
+                : localElapsed;
+            uint32_t previewColor = computeStripColor(previewStateBg, elapsed);
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                    strip_bg->setPixelColor(i, previewColor);
                 }
                 xSemaphoreGive(stripMutex);
             }
@@ -636,6 +685,11 @@ void AnimationManager::update() {
 
     xSemaphoreGive(animMutex);
 
+    // Перевірка завершення попереднього перегляду (після звільнення animMutex!)
+    if (previewActive && now >= previewEndTime) {
+        stopPreview();
+    }
+
     // Відправляємо на стрічки тільки ті що були змінені
     if (mainDirty && strip_main != nullptr) {
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
@@ -663,6 +717,11 @@ void AnimationManager::clearAllAnimations() {
         memset(serviceStates, 0, sizeof(serviceStates));
         bgState.active       = false;
         mainOverride.active  = false;
+        previewState.active  = false;
+        previewStateBg.active = false;
+        previewActive        = false;
+        previewEndTime       = 0;
+        previewEventType     = -1;
         xSemaphoreGive(animMutex);
     }
     resetAllGlobalTimes();
@@ -1214,4 +1273,143 @@ void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {
         strip->show();
         xSemaphoreGive(stripMutex);
     }
+}
+
+// ──────────────────────────────────────────────────────
+// Попередній перегляд анімацій
+// ──────────────────────────────────────────────────────
+
+void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness) {
+    if (!settings) return;
+    
+    // Перевірка чи увімкнено попередній перегляд
+    if (!settings->getBool(ENABLE_ANIMATION_PREVIEW)) {
+        return;
+    }
+    
+    if (strip_main == nullptr) {
+        LOG.printf("[PREVIEW] strip_main is null, skipping preview\n");
+        return;
+    }
+    
+    LOG.printf("[PREVIEW] Starting preview: eventType=%d, animType=%d, color=0x%06X, period=%u, brightness=%u\n", 
+               eventType, animType, color, period, brightness);
+    
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        // Якщо вже є активний preview - просто оновлюємо параметри без відновлення кольорів
+        // Це запобігає "моргання" map mode при швидкій зміні параметрів
+        
+        // Захист від ділення на нуль
+        if (period == 0) {
+            period = 1;
+            LOG.printf("[PREVIEW] WARNING: period was 0, using default 1\n");
+        }
+        
+        // Налаштування попереднього перегляду
+        previewActive = true;
+        previewEndTime = millis() + 5000;  // 5 секунд
+        previewEventType = eventType;
+        
+        // Створюємо анімацію на всій стрічці
+        uint32_t now = millis();
+        uint32_t cycles = (5000 + period - 1) / period;  // Кількість циклів за 5 секунд
+        uint8_t globalStart = led.brightnessAbsolute(brightness);
+        uint8_t globalEnd = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ANIMATION_END));
+        uint8_t mapMode = getCurrentMapMode();
+        
+        // Початковий колір залежить від типу події:
+        // - Для ALERT: перехід від clear до alert
+        // - Для NO_ALERT: перехід від alert назад до clear  
+        // - Для інших загроз: перехід від alert до більш небезпечного стану
+        uint32_t initialColor;
+        if (eventType == AlertModes::ALERT) {
+            initialColor = colorFromHex(settings->getString(COLOR_CLEAR));
+        } else {
+            // NO_ALERT та інші загрози починаються з alert кольору
+            initialColor = colorFromHex(settings->getString(COLOR_ALERT));
+        }
+        
+        // Отримуємо поточний час старту для синхронізації
+        uint32_t startTime = synchronizedMode ? getStartTime(animType) : now;
+        
+        previewState.strip = strip_main;
+        previewState.color = color;
+        previewState.initColor = initialColor;
+        previewState.startTime = startTime;
+        previewState.localStart = now;
+        previewState.period = period;
+        previewState.cycles = cycles;
+        previewState.animType = animType;
+        previewState.startBr = globalStart;
+        previewState.endBr = globalEnd;
+        previewState.bit = 100;  // Високий пріоритет для попереднього перегляду
+        previewState.mapMode = mapMode;
+        previewState.active = true;
+        
+        // Налаштовуємо preview для bg стрічки, якщо вона є
+        if (strip_bg != nullptr) {
+            previewStateBg.strip = strip_bg;
+            previewStateBg.color = color;
+            previewStateBg.initColor = initialColor;
+            previewStateBg.startTime = startTime;
+            previewStateBg.localStart = now;
+            previewStateBg.period = period;
+            previewStateBg.cycles = cycles;
+            previewStateBg.animType = animType;
+            previewStateBg.startBr = globalStart;
+            previewStateBg.endBr = globalEnd;
+            previewStateBg.bit = 100;
+            previewStateBg.mapMode = mapMode;
+            previewStateBg.active = true;
+        }
+        
+        xSemaphoreGive(animMutex);
+        
+        LOG.printf("[PREVIEW] Preview started on all LEDs for 5 seconds\n");
+    }
+}
+
+void AnimationManager::stopPreview() {
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        // Перевіряємо previewActive вже після захоплення мутексу
+        if (!previewActive) {
+            xSemaphoreGive(animMutex);
+            return;
+        }
+        
+        LOG.printf("[PREVIEW] Stopping preview\n");
+        
+        previewActive = false;
+        previewEndTime = 0;
+        previewEventType = -1;
+        previewState.active = false;
+        previewStateBg.active = false;
+        
+        xSemaphoreGive(animMutex);
+    }
+    
+    // Відновлюємо кольори (захоплюємо stripMutex лише один раз)
+    if (strip_main && xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
+        for (int i = 0; i < numLeds; i++) {
+            strip_main->setPixelColor(i, ledActualColor(strip_main, i));
+        }
+        strip_main->show();
+        xSemaphoreGive(stripMutex);
+    }
+    
+    // Відновлюємо кольори для bg стрічки, якщо вона є
+    // Використовуємо ledActualColor для кожного пікселя, щоб коректно відновити
+    // per-pixel кольори для BgLedModes::COLOR_MAP
+    if (strip_bg && xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+            strip_bg->setPixelColor(i, ledActualColor(strip_bg, i));
+        }
+        strip_bg->show();
+        xSemaphoreGive(stripMutex);
+    }
+}
+
+bool AnimationManager::isPreviewActive() const {
+    return previewActive;
 }
