@@ -132,6 +132,8 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"enable_battery", ENABLE_BATTERY_MONITORING, TYPE_BOOL},
     {"battery_pin", BATTERY_PIN, TYPE_INT},
     {"brightness_min", BRIGHTNESS_MIN, TYPE_INT},
+    {"brightness_max", BRIGHTNESS_MAX, TYPE_INT},
+    {"brightness_max_accept", BRIGHTNESS_MAX_ACCEPT, TYPE_BOOL},
     
     // Siren
     {"alert_clear_pin_mode", ALERT_CLEAR_PIN_MODE, TYPE_INT},
@@ -890,7 +892,7 @@ void JaamWeb::handleMapData() {
             region["leds_string"] = "";
         }
     }
-    
+
     // Серіалізуємо JSON у компактному форматі
     String response;
     serializeJson(doc, response);
