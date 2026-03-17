@@ -100,6 +100,8 @@ std::map<Type, SettingItemInt> intSettings = {
     {BRIGHTNESS_SERVICE, {"bs", 50}},
     {BRIGHTNESS_ANIMATION_END, {"baend", 20}},
     {BRIGHTNESS_MIN, {"brmin", 0}},
+    {BRIGHTNESS_MAX, {"brmax", 0}},
+    {BRIGHTNESS_MAX_ACCEPT, {"brmxa", 0}},
     {NIGHT_MODE_LIGHT_THRESHOLD, {"nmlt", 30}},
     {WEATHER_MIN_TEMP, {"mintemp", -10}},
     {WEATHER_MAX_TEMP, {"maxtemp", 30}},
@@ -327,6 +329,27 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
         return false;
     }
     
+    // Перевірка BRIGHTNESS_MAX: 0 (default) або відсоток в діапазоні [0..ABSOLUTE_MAX_PCT]
+    // Значення 1..(DEFAULT_MAX_PCT-1), що можуть надходити з UI, вважаються допустимими
+    // і можуть інтерпретуватися як "використовувати значення за замовчуванням" під час застосування налаштувань.
+    if (type == BRIGHTNESS_MAX) {
+        // негативні значення яскравості завжди некоректні
+        if (value < 0) {
+            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% is negative and invalid\n", value);
+            return false;
+        }
+        // перевищення абсолютного максимуму залишається помилкою
+        if (value > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT) {
+            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% exceeds absolute max %d%%\n", value, JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT);
+            return false;
+        }
+        // значення 0 або 1..DEFAULT_MAX_PCT-1 не відхиляємо, щоб не ламати збереження налаштувань з UI
+        if (value != 0 && value < JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT) {
+            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% below default max %d%%; value accepted but will be treated as default max at runtime\n",
+                       value, JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT);
+        }
+    }
+    
     // Для JAAM2: піни сирени не можуть бути BH1750_POWER_PIN (керуючий пін живлення для сенсора освітлення)
     if (getInt(HARDWARE) == HARDWARE::JAAM_2_1) { // JAAM2
         if ((type == ALERT_PIN || type == CLEAR_PIN || type == ALERT_PIN_2 || type == CLEAR_PIN_2) && value == BH1750_POWER_PIN) {
@@ -460,7 +483,7 @@ bool JaamSettings::saveFloat(Type type, float value, bool saveToPrefs) {
         if (changeCallback) {
             changeCallback(type, 0, value, nullptr);
         }
-        
+          
         return true;
     }
     LOG.printf("[SETTINGS] Unknown floatsetting type\n");

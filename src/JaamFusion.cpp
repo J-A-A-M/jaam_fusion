@@ -1829,6 +1829,7 @@ void initSettings() {
             case NIGHT_START:
             case NIGHT_MODE_LIGHT_THRESHOLD:
             case BRIGHTNESS_MIN:
+            case BRIGHTNESS_MAX:
                 handleAdaptStripBrightness();
                 break;
             
