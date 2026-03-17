@@ -2017,6 +2017,14 @@ void initSettings() {
             case DISPLAY_OFF_AT_NIGHT:
                 displayProcess();
                 break;
+            
+            // Увімкнення/вимкнення попереднього перегляду
+            case ENABLE_ANIMATION_PREVIEW:
+                if (intValue == 0) {
+                    // Зупиняємо попередній перегляд при вимкненні
+                    animation.stopPreview();
+                }
+                break;
     
             default:
                 // Інші налаштування не потребують додаткової обробки

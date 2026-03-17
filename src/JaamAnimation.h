@@ -87,6 +87,14 @@ class AnimationManager {
         uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         std::pair<uint32_t, uint8_t> getActualColorAndBrightness(int highest_bit);
         const char* getStripName(Adafruit_NeoPixel* strip);
+        
+        // Перевірка чи preview активний для поточного map mode
+        // Повертає true якщо preview:
+        // - глобально активний (previewActive == true)
+        // - має активний стан стрічки (previewState.active == true)
+        // - має валідний період (previewState.period > 0, захист від ділення на нуль)
+        // - призначений для поточного режиму мапи (previewState.mapMode == mapMode)
+        bool isPreviewActiveForMode(const StripState& previewState, uint8_t mapMode) const;
 
     public:
         AnimationManager();

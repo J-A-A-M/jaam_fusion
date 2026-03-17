@@ -87,6 +87,14 @@ const char* AnimationManager::getStripName(Adafruit_NeoPixel* strip) {
     return "unknown";
 }
 
+// Перевірка чи preview активний для поточного map mode
+bool AnimationManager::isPreviewActiveForMode(const StripState& previewState, uint8_t mapMode) const {
+    return previewActive                  // Preview глобально увімкнений
+        && previewState.active            // Стан preview стрічки активний
+        && previewState.period > 0        // Період валідний (захист від ділення на нуль)
+        && previewState.mapMode == mapMode; // Preview для поточного режиму мапи
+}
+
 AnimationManager::AnimationManager() : settings(nullptr), synchronizedMode(false), previewActive(false), previewEndTime(0), previewEventType(-1) {
     animMutex = xSemaphoreCreateMutex();
     globalTimesMutex = xSemaphoreCreateMutex();
@@ -552,7 +560,7 @@ void AnimationManager::update() {
     }
 
     // ── Per-LED strip_main ──
-    if (strip_main != nullptr && !mainOverride.active && (!previewActive || !previewState.active)) {
+    if (strip_main != nullptr && !mainOverride.active && !isPreviewActiveForMode(previewState, mapMode)) {
         int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             for (int i = 0; i < numLeds; i++) {
@@ -581,11 +589,11 @@ void AnimationManager::update() {
 
 
     // ── Preview має вищий пріоритет і перезаписує кольори mainStates ──
-    if (strip_main != nullptr && previewActive && previewState.active) {
+    if (strip_main != nullptr && isPreviewActiveForMode(previewState, mapMode)) {
         int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             float localElapsed = (now - previewState.localStart) / float(previewState.period);
-            if (localElapsed < previewState.cycles && !isOff && previewState.mapMode == mapMode) {
+            if (localElapsed < previewState.cycles && !isOff) {
                 float elapsed = synchronizedMode
                                     ? (now - previewState.startTime) / float(previewState.period)
                                     : localElapsed;
@@ -600,7 +608,7 @@ void AnimationManager::update() {
     }
 
     // ── strip_bg ──
-    if (strip_bg != nullptr && bgState.active && (!previewActive || !previewStateBg.active)) {
+    if (strip_bg != nullptr && bgState.active && !isPreviewActiveForMode(previewStateBg, mapMode)) {
         float localElapsed = (now - bgState.localStart) / float(bgState.period);
         if (localElapsed >= bgState.cycles) {
             bgState.active = false;
@@ -629,10 +637,10 @@ void AnimationManager::update() {
     }
     
     // ── Preview для strip_bg має вищий пріоритет і перезаписує кольори bgState ──
-    if (strip_bg != nullptr && previewActive && previewStateBg.active) {
+    if (strip_bg != nullptr && isPreviewActiveForMode(previewStateBg, mapMode)) {
         int numLeds = min((int)strip_bg->numPixels(), MAX_LEDS_STRIP_BG);
         float localElapsed = (now - previewStateBg.localStart) / float(previewStateBg.period);
-        if (localElapsed < previewStateBg.cycles && !isOff && previewStateBg.mapMode == mapMode) {
+        if (localElapsed < previewStateBg.cycles && !isOff) {
             float elapsed = synchronizedMode
                 ? (now - previewStateBg.startTime) / float(previewStateBg.period)
                 : localElapsed;
@@ -1290,6 +1298,12 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         // Якщо вже є активний preview - просто оновлюємо параметри без відновлення кольорів
         // Це запобігає "моргання" map mode при швидкій зміні параметрів
+        
+        // Захист від ділення на нуль
+        if (period == 0) {
+            period = 1;
+            LOG.printf("[PREVIEW] WARNING: period was 0, using default 1\n");
+        }
         
         // Налаштування попереднього перегляду
         previewActive = true;
