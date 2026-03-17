@@ -718,35 +718,30 @@ void alertAction(int bit, int districtId) {
     // }
     const char* districtName = getNameById(DISTRICTS, districtId, MAX_REGIONS);
     LOG.printf("[ALERT] Home district %s status changed from %d to %d\n", districtName, alertBit, bit);
+    
+    // Звукові сповіщення (якщо увімкнено)
     if (settings.getBool(SOUND_ON_ALERT)) {
         switch (bit){
             case AlertModes::ALERT:
                 if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
-                display.showServiceMessage("ТРИВОГА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
                 break;
             case AlertModes::DRONES:
                 if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
-                display.showServiceMessage("БПЛА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
                 break;
             case AlertModes::MISSILES:
                 if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
-                display.showServiceMessage("РАКЕТИ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
                 break;
             case AlertModes::KABS:
                 if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
-                display.showServiceMessage("КАБ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
                 break;
             case AlertModes::BALLISTIC:
                 if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
-                display.showServiceMessage("БАЛЛІСТИКА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
                 break;
             case AlertModes::EXPLOSION:
                 if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
-                display.showServiceMessage("ВИБУХИ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
                 break;
             case AlertModes::RECON_DRONES:
                 if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
-                display.showServiceMessage("РОЗВІДКА БПЛА", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
                 break;
             default:
                 break;
@@ -754,8 +749,10 @@ void alertAction(int bit, int districtId) {
     }
     if (settings.getBool(SOUND_ON_ALERT_END) && bit == AlertModes::NO_ALERT) {
         if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
-        display.showServiceMessage("ВІДБІЙ", districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
     }
+    
+    // Показуємо повідомлення на дисплеї для будь-якого типу події
+    display.showServiceMessage(getEventTypeName(bit), districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
@@ -2152,6 +2149,8 @@ void initSettings() {
             
             // Запуск попереднього перегляду
             if (isAnimationParam) {
+                // Показуємо повідомлення на дисплеї
+                display.showServiceMessage(getEventTypeName(eventType), "Анімація:", 5000);
                 animation.startPreview(eventType, animType, color, period, brightness);
             }
         }

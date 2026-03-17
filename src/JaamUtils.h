@@ -18,6 +18,7 @@
 #include "JaamHardware.h"
 #include "JaamApi.h"
 #include "JaamFirmwareUpdate.h"
+#include "JaamConfig.h"
 
 
 static const char* CUSTOM_MAP_PATH = "/custom_map.json";
@@ -55,6 +56,30 @@ static const char ICON_PRESSURE[] PROGMEM = "<svg class='metric-icon' viewBox='0
 static const char ICON_LIGHT[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M9,21H15V19H9V21M12,2A7,7 0 0,0 5,9C5,11.38 6.19,13.47 8,14.74V17H16V14.74C17.81,13.47 19,11.38 19,9A7,7 0 0,0 12,2Z' /></svg>";
 static const char ICON_USERS[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z' /></svg>";
 static const char ICON_VERSION[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M18,18H6V6H18M18,4H6A2,2 0 0,0 4,6V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18V6A2,2 0 0,0 18,4M8,8H10V10H8M8,12H10V14H8M8,16H10V18H8M16,8V10H12V8M16,12V14H12V12M16,16V18H12V16Z' /></svg>";
+
+// Utility function: get event type name for display
+inline const char* getEventTypeName(int8_t eventType) {
+    switch (eventType) {
+        case AlertModes::NO_ALERT:
+            return "ВІДБІЙ";
+        case AlertModes::ALERT:
+            return "ТРИВОГА";
+        case AlertModes::DRONES:
+            return "БПЛА";
+        case AlertModes::MISSILES:
+            return "РАКЕТИ";
+        case AlertModes::KABS:
+            return "КАБ";
+        case AlertModes::BALLISTIC:
+            return "БАЛЛІСТИКА";
+        case AlertModes::EXPLOSION:
+            return "ВИБУХИ";
+        case AlertModes::RECON_DRONES:
+            return "РОЗВІДКА БПЛА";
+        default:
+            return "НЕВІДОМО";
+    }
+}
 
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;

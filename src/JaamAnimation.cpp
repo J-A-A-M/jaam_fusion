@@ -1399,10 +1399,11 @@ void AnimationManager::stopPreview() {
     }
     
     // Відновлюємо кольори для bg стрічки, якщо вона є
+    // Використовуємо ledActualColor для кожного пікселя, щоб коректно відновити
+    // per-pixel кольори для BgLedModes::COLOR_MAP
     if (strip_bg && xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        uint32_t idleColor = stripActualColor(strip_bg);
         for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
-            strip_bg->setPixelColor(i, idleColor);
+            strip_bg->setPixelColor(i, ledActualColor(strip_bg, i));
         }
         strip_bg->show();
         xSemaphoreGive(stripMutex);
