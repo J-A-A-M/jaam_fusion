@@ -87,7 +87,6 @@ public:
     static int getDisplayModel();
     static int getDisplayHeight();
     static int getDisplayRotation();
-    static const RegionLedMapEntry* getRegionMap();
     static int getMainLedColorFormat();
     static int getBgLedColorFormat();
     static int getServiceLedColorFormat();

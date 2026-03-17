@@ -1,6 +1,7 @@
 #include "JaamHardware.h"
 #include "JaamSettings.h"
 #include "JaamDisplay.h"
+#include "JaamUtils.h"
 
 extern JaamSettings settings;
 
@@ -254,28 +255,6 @@ int JaamHardware::getDisplayRotation() {
             return static_cast<int>(JaamDisplayRotation::ROTATION_0);
         default:
             return settings.getInt(DISPLAY_ROTATION);
-    }
-}
-
-const RegionLedMapEntry* JaamHardware::getRegionMap() {
-    uint8_t hwType = getCurrentHardwareType();
-    switch (hwType) {
-        case HARDWARE::JAAM_3_0:
-            return REGION_MAP_JAAM_3_0;
-        case HARDWARE::JAAM_3_2:
-            return REGION_MAP_JAAM_3_2;
-        case HARDWARE::ODESA_KYIV:
-        case HARDWARE::JAAM_1_3:
-        case HARDWARE::JAAM_2_1:
-            return STATE_MAP_LED_ODESA_WITH_KYIV;
-        case HARDWARE::ODESA:
-            return STATE_MAP_LED_ODESA_WITHOUT_KYIV;
-        case HARDWARE::ZAKARPATTIA_KYIV:
-            return STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV;
-        case HARDWARE::ZAKARPATTIA:
-            return STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV;
-        default:
-            return STATE_MAP_LED_ODESA_WITH_KYIV;
     }
 }
 

@@ -18,8 +18,8 @@ uint8_t temprature_sens_read();
 }
 #endif
 
-extern RegionLedMapEntry                customMap[MAX_REGIONS];
-extern uint32_t                         bgLedColors[MAX_BG_LEDS];
+extern CurrentRegionMap                 currentMap;
+extern uint32_t                         bgLedColors[MAX_LEDS_STRIP_BG];
 extern JaamFirmwareUpdate               fwUpdate;
 
 // Функції для тестового відтворення та оновлення прошивки
@@ -858,9 +858,7 @@ void JaamWeb::handleMapData() {
     JsonDocument doc;
     JsonArray regions = doc["regions"].to<JsonArray>();
     
-    // Load current custom map
-    storage->loadCustomMap(customMap);
-    
+    // Use already loaded currentMap
     for (int i = 0; i < MAX_REGIONS; ++i) {
         if ((DISTRICTS[i].id == 0 && i > 0)) {
             continue;
@@ -871,20 +869,26 @@ void JaamWeb::handleMapData() {
         region["name"] = DISTRICTS[i].name;
         region["sub"] = DISTRICTS[i].sub;
         
-        // Find LED positions for this region
-        String leds_str = "";
-        for (int j = 0; j < MAX_REGIONS; ++j) {
-            if (customMap[j].region_id == DISTRICTS[i].id) {
-                JsonArray leds = region["leds"].to<JsonArray>();
-                for (int k = 0; k < customMap[j].led_count; ++k) {
-                    leds.add(customMap[j].led_positions[k]);
-                    if (k > 0) leds_str += ", ";
-                    leds_str += String(customMap[j].led_positions[k]);
-                }
-                break;
+        // Find LED positions for this region in currentMap
+        const RegionLedMapMeta* meta = findRegionMeta(DISTRICTS[i].id);
+        if (meta && meta->led_count > 0) {
+            const uint16_t* leds = getRegionLeds(meta);
+            if (!leds) {
+                region["leds_string"] = "";
+                continue;
             }
+            JsonArray ledsArray = region["leds"].to<JsonArray>();
+            String leds_str = "";
+            
+            for (uint8_t k = 0; k < meta->led_count; ++k) {
+                ledsArray.add(leds[k]);
+                if (k > 0) leds_str += ", ";
+                leds_str += String(leds[k]);
+            }
+            region["leds_string"] = leds_str;
+        } else {
+            region["leds_string"] = "";
         }
-        region["leds_string"] = leds_str;
     }
     
     // Серіалізуємо JSON у компактному форматі
@@ -1005,7 +1009,7 @@ void JaamWeb::handleUiPage() {
 }
 
 // Helper to push dropdown options to a JsonArray as compact lists: [id, name, sub]
-static void appendOptionsList(JsonArray arr, SettingListItem items[], int itemCount) {
+static void appendOptionsList(JsonArray arr, const SettingListItem items[], int itemCount) {
     for (int i = 0; i < itemCount; ++i) {
         if (items[i].ignore) continue;
         JsonArray opt = arr.add<JsonArray>();
@@ -1022,48 +1026,122 @@ void JaamWeb::handleSaveMap() {
         return;
     }
 
+    // Спочатку збираємо дані у тимчасові структури
+    struct TempRegion {
+        uint16_t region_id;
+        std::vector<uint16_t> leds;
+    };
+    std::vector<TempRegion> tempRegions;
+
+    // Парсимо параметри з форми
     for (int i = 0; i < server.args(); ++i) {
         String argName = server.argName(i);
         if (argName.startsWith("region_")) {
-            uint16_t region_id = argName.substring(7).toInt();
+            int parsedRegionId = 0;
+            if (!parseStrictInt(argName.substring(7), parsedRegionId) ||
+                parsedRegionId < 0 || parsedRegionId > 65535) {
+                server.send(400, "text/plain", "Invalid region id");
+                return;
+            }
+            uint16_t region_id = static_cast<uint16_t>(parsedRegionId);
             String value = server.arg(i);
             value.trim();
 
-            int map_idx = -1;
-            for(int j = 0; j < MAX_REGIONS; ++j) {
-                if (DISTRICTS[j].id == region_id) {
-                    map_idx = j;
-                    break;
-                }
-            }
-
-            if (map_idx != -1) {
-                customMap[map_idx].region_id = region_id;
-                uint8_t count = 0;
+            if (value.length() > 0) {
+                TempRegion tempRegion;
+                tempRegion.region_id = region_id;
                 
-                int last_comma = -1;
+                // Парсимо LED позиції (comma-separated)
+                int lastComma = -1;
                 for (int k = 0; k < value.length(); ++k) {
                     if (value.charAt(k) == ',') {
-                        String num_str = value.substring(last_comma + 1, k);
+                        String num_str = value.substring(lastComma + 1, k);
                         num_str.trim();
-                        if (num_str.length() > 0 && count < MAX_LEDS_PER_REGION) {
-                            customMap[map_idx].led_positions[count++] = num_str.toInt();
+                        if (num_str.length() > 0) {
+                            int parsedLed = 0;
+                            if (!parseStrictInt(num_str, parsedLed) ||
+                                parsedLed < 0 || parsedLed >= MAX_LEDS_STRIP_MAIN) {
+                                server.send(400, "text/plain", "Invalid LED index");
+                                return;
+                            }
+                            if (tempRegion.leds.size() >= MAX_LEDS_PER_REGION) {
+                                server.send(400, "text/plain", "Too many LEDs in region");
+                                return;
+                            }
+                            tempRegion.leds.push_back(static_cast<uint16_t>(parsedLed));
                         }
-                        last_comma = k;
+                        lastComma = k;
                     }
                 }
-                String num_str = value.substring(last_comma + 1);
+                // Останнє число після останньої коми
+                String num_str = value.substring(lastComma + 1);
                 num_str.trim();
-                if (num_str.length() > 0 && count < MAX_LEDS_PER_REGION) {
-                    customMap[map_idx].led_positions[count++] = num_str.toInt();
+                if (num_str.length() > 0) {
+                    int parsedLed = 0;
+                    if (!parseStrictInt(num_str, parsedLed) ||
+                        parsedLed < 0 || parsedLed >= MAX_LEDS_STRIP_MAIN) {
+                        server.send(400, "text/plain", "Invalid LED index");
+                        return;
+                    }
+                    if (tempRegion.leds.size() >= MAX_LEDS_PER_REGION) {
+                        server.send(400, "text/plain", "Too many LEDs in region");
+                        return;
+                    }
+                    tempRegion.leds.push_back(static_cast<uint16_t>(parsedLed));
                 }
-                customMap[map_idx].led_count = count;
+                
+                if (tempRegion.leds.size() > 0) {
+                    tempRegions.push_back(tempRegion);
+                }
             }
         }
     }
 
-    if (storage->saveCustomMap(customMap)) {
-        //generateCustomRegionMap();
+    if (tempRegions.empty()) {
+        LOG.printf("[WEB] No regions to save\n");
+        server.send(400, "text/plain", "No regions to save");
+        return;
+    }
+
+    // Підраховуємо загальну кількість LED
+    size_t totalLeds = 0;
+    for (const auto& region : tempRegions) {
+        totalLeds += region.leds.size();
+    }
+
+    LOG.printf("[WEB] Saving custom map: %zu regions, %zu LEDs\n", tempRegions.size(), totalLeds);
+
+    // Створюємо flat array структури
+    RegionLedMapMeta* meta = new (std::nothrow) RegionLedMapMeta[tempRegions.size()];
+    uint16_t* leds = new (std::nothrow) uint16_t[totalLeds];
+
+    if (!meta || !leds) {
+        LOG.printf("[WEB] Failed to allocate memory for custom map\n");
+        if (meta) delete[] meta;
+        if (leds) delete[] leds;
+        server.send(500, "text/plain", "Memory allocation failed");
+        return;
+    }
+
+    // Заповнюємо дані
+    size_t currentLedIndex = 0;
+    for (size_t i = 0; i < tempRegions.size(); ++i) {
+        meta[i].region_id = tempRegions[i].region_id;
+        meta[i].start_index = currentLedIndex;
+        meta[i].led_count = tempRegions[i].leds.size();
+
+        for (size_t j = 0; j < tempRegions[i].leds.size(); ++j) {
+            leds[currentLedIndex++] = tempRegions[i].leds[j];
+        }
+    }
+
+    // Зберігаємо
+    bool success = storage->saveCurrentMap(meta, leds, tempRegions.size());
+    
+    delete[] meta;
+    delete[] leds;
+
+    if (success) {
         LOG.printf("[WEB] Custom map saved successfully.\n");
         server.sendHeader("Location", "/map-editor", true);
         requestRecalculateLeds();
@@ -1072,7 +1150,7 @@ void JaamWeb::handleSaveMap() {
         server.send(303);
     } else {
         LOG.printf("[WEB] Custom map saving error.\n");
-        server.send(500, "text/plain", "Custom map error");
+        server.send(500, "text/plain", "Failed to save custom map");
     }
 }
 

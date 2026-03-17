@@ -59,8 +59,9 @@ static const char ICON_VERSION[] PROGMEM = "<svg class='metric-icon' viewBox='0 
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
 extern time_t                         lastWifiConnectTime;
-extern std::map<uint16_t, uint16_t>     alertsMap;
 extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
+extern uint16_t                         alertsFlat[MAX_REGIONS + 1];
+extern int8_t                           ledBitCache[MAX_LEDS_STRIP_MAIN];
 extern JaamSettings                     settings;
 extern JaamFirmwareUpdate               fwUpdate;
 extern JaamBattery                      battery;
@@ -69,8 +70,17 @@ extern JaamDisplay                      display;
 extern bool                             wifiConnected;
 extern bool                             websocketConnected;
 extern JaamApi                          api;
-extern RegionLedMapEntry                customMap[MAX_REGIONS];
-extern uint32_t                         bgLedColors[MAX_BG_LEDS];
+
+// Current region map (flat array format)
+struct CurrentRegionMap {
+    RegionLedMapMeta* meta = nullptr;
+    uint16_t* leds = nullptr;
+    size_t size = 0;
+    size_t ledsTotal = 0;
+};
+extern CurrentRegionMap                 currentMap;
+
+extern uint32_t                         bgLedColors[MAX_LEDS_STRIP_BG];
 extern JaamClimateSensor                climate;
 extern JaamLightSensor                  lightSensor;
 extern int                              prevMapMode;
@@ -79,6 +89,107 @@ struct LedBit {
     int highest_bit;
     uint16_t region_id;
 };
+
+// ==============================================================================
+// Helper функції для роботи з flat array maps (currentMap)
+// ==============================================================================
+
+// Звільнити пам'ять currentMap
+inline void freeCurrentMap() {
+    if (currentMap.meta) {
+        delete[] currentMap.meta;
+        currentMap.meta = nullptr;
+    }
+    if (currentMap.leds) {
+        delete[] currentMap.leds;
+        currentMap.leds = nullptr;
+    }
+    currentMap.size = 0;
+    currentMap.ledsTotal = 0;
+}
+
+// Виділити пам'ять для currentMap
+inline bool allocCurrentMap(size_t metaCount, size_t ledsTotal) {
+    freeCurrentMap();
+    
+    if (metaCount == 0 || ledsTotal == 0) {
+        return false;
+    }
+    
+    currentMap.meta = new (std::nothrow) RegionLedMapMeta[metaCount];
+    currentMap.leds = new (std::nothrow) uint16_t[ledsTotal];
+    
+    if (!currentMap.meta || !currentMap.leds) {
+        freeCurrentMap();
+        LOG.println("[ERROR] Failed to allocate memory for currentMap");
+        return false;
+    }
+    
+    currentMap.size = metaCount;
+    currentMap.ledsTotal = ledsTotal;
+    return true;
+}
+
+// Скопіювати дані в currentMap
+inline void copyToCurrentMap(
+    const RegionLedMapMeta* srcMeta, 
+    const uint16_t* srcLeds,
+    size_t metaCount
+) {
+    if (!currentMap.meta || !currentMap.leds || !srcMeta || !srcLeds) {
+        return;
+    }
+    
+    // Копіюємо метадані
+    memcpy(currentMap.meta, srcMeta, metaCount * sizeof(RegionLedMapMeta));
+    
+    // Підраховуємо загальну кількість LED і копіюємо
+    size_t totalLeds = 0;
+    for (size_t i = 0; i < metaCount; i++) {
+        totalLeds += srcMeta[i].led_count;
+    }
+    
+    if (totalLeds <= currentMap.ledsTotal) {
+        memcpy(currentMap.leds, srcLeds, totalLeds * sizeof(uint16_t));
+    }
+}
+
+// Знайти метадані регіону по region_id
+inline const RegionLedMapMeta* findRegionMeta(uint16_t regionId) {
+    for (size_t i = 0; i < currentMap.size; i++) {
+        if (currentMap.meta[i].region_id == regionId) {
+            return &currentMap.meta[i];
+        }
+    }
+    return nullptr;
+}
+
+// Отримати масив LED позицій для region meta entry
+inline const uint16_t* getRegionLeds(const RegionLedMapMeta* meta) {
+    if (!meta || !currentMap.leds) {
+        return nullptr;
+    }
+    return &currentMap.leds[meta->start_index];
+}
+
+// Отримати кількість LED для регіону
+inline uint8_t getRegionLedCount(const RegionLedMapMeta* meta) {
+    return meta ? meta->led_count : 0;
+}
+
+// Швидкий пошук регіону в flat array по region_id
+inline const RegionLedMapMeta* findRegionInFlat(
+    uint16_t regionId, 
+    const RegionLedMapMeta* meta,
+    size_t metaCount
+) {
+    for (size_t i = 0; i < metaCount; i++) {
+        if (meta[i].region_id == regionId) {
+            return &meta[i];
+        }
+    }
+    return nullptr;
+}
 
 enum ServiceLed {
     POWER,
@@ -118,30 +229,93 @@ static float roundToDecimal(float value, int decimals) {
 }
 
 // Генерація customMap (викликається окремо при зміні налаштувань)
-inline void generateCustomRegionMap(JaamHardware& hardwareConfig) {
-    // Очистити customMap перед копіюванням нового mapping
-    memset(customMap, 0, sizeof(customMap));
-
-    const RegionLedMapEntry* base = nullptr;
+// Генерація currentMap (викликається окремо при зміні налаштувань)
+inline void generateCurrentRegionMap(JaamHardware& hardwareConfig) {
     int hardware = settings.getInt(HARDWARE);
-    //int kyiv_led_position;
-    // int kharkiv_led_position;
-    // int zp_led_position;
 
+    // Отримуємо flat array дані для вибраного hardware
+    const RegionLedMapMeta* meta = nullptr;
+    const uint16_t* positions = nullptr;
+    size_t metaCount = 0;
+    
     if (hardware == HARDWARE::CUSTOM_MAPPING) {
-        if (!storage.loadCustomMap(customMap)) {
-            // Якщо файл не знайдено, завантажити карту за замовчуванням
-            base = STATE_MAP_LED_ODESA_WITH_KYIV;
-            memcpy(customMap, base, sizeof(customMap));
+        // Спробувати завантажити custom map з storage
+        RegionLedMapMeta* customMeta = nullptr;
+        uint16_t* customLeds = nullptr;
+        size_t customCount = 0;
+        size_t customTotal = 0;
+        
+        if (storage.loadCurrentMap(customMeta, customLeds, customCount, customTotal)) {
+            // Успішно завантажили custom map
+            freeCurrentMap();
+            currentMap.meta = customMeta;
+            currentMap.leds = customLeds;
+            currentMap.size = customCount;
+            currentMap.ledsTotal = customTotal;
+            LOG.printf("[INIT] Loaded custom map: %zu regions, %zu LEDs total\n", currentMap.size, customTotal);
+            return;
+        } else {
+            // Не вдалось завантажити, використовуємо за замовчуванням
+            LOG.printf("[INIT] Failed to load custom map, using default ODESA_WITH_KYIV\n");
+            meta = REGION_MAP_META_ODESA_WITH_KYIV;
+            positions = REGION_MAP_LEDS_ODESA_WITH_KYIV;
+            metaCount = STATE_MAP_LED_ODESA_WITH_KYIV_SIZE;
         }
-        return;
+    } else {
+        switch (hardware) {
+            case HARDWARE::JAAM_3_0:
+                meta = REGION_MAP_META_JAAM_3_0;
+                positions = REGION_MAP_LEDS_JAAM_3_0;
+                metaCount = REGION_MAP_JAAM_3_0_SIZE;
+                break;
+            case HARDWARE::JAAM_3_2:
+                meta = REGION_MAP_META_JAAM_3_2;
+                positions = REGION_MAP_LEDS_JAAM_3_2;
+                metaCount = REGION_MAP_JAAM_3_2_SIZE;
+                break;
+            case HARDWARE::ODESA_KYIV:
+            case HARDWARE::JAAM_1_3:
+            case HARDWARE::JAAM_2_1:
+                meta = REGION_MAP_META_ODESA_WITH_KYIV;
+                positions = REGION_MAP_LEDS_ODESA_WITH_KYIV;
+                metaCount = STATE_MAP_LED_ODESA_WITH_KYIV_SIZE;
+                break;
+            case HARDWARE::ODESA:
+                meta = REGION_MAP_META_ODESA_WITHOUT_KYIV;
+                positions = REGION_MAP_LEDS_ODESA_WITHOUT_KYIV;
+                metaCount = STATE_MAP_LED_ODESA_WITHOUT_KYIV_SIZE;
+                break;
+            case HARDWARE::ZAKARPATTIA_KYIV:
+                meta = REGION_MAP_META_TRANSCARPATHIA_WITH_KYIV;
+                positions = REGION_MAP_LEDS_TRANSCARPATHIA_WITH_KYIV;
+                metaCount = STATE_MAP_LED_TRANSCARPATHIA_WITH_KYIV_SIZE;
+                break;
+            case HARDWARE::ZAKARPATTIA:
+                meta = REGION_MAP_META_TRANSCARPATHIA_WITHOUT_KYIV;
+                positions = REGION_MAP_LEDS_TRANSCARPATHIA_WITHOUT_KYIV;
+                metaCount = STATE_MAP_LED_TRANSCARPATHIA_WITHOUT_KYIV_SIZE;
+                break;
+            default:
+                meta = REGION_MAP_META_ODESA_WITH_KYIV;
+                positions = REGION_MAP_LEDS_ODESA_WITH_KYIV;
+                metaCount = STATE_MAP_LED_ODESA_WITH_KYIV_SIZE;
+                break;
+        }
     }
-
-    base = hardwareConfig.getRegionMap();
-
-    if (!base) return;
-
-    memcpy(customMap, base, sizeof(customMap));
+    
+    // Підрахуємо загальну кількість LED
+    size_t totalLeds = 0;
+    for (size_t i = 0; i < metaCount; i++) {
+        totalLeds += meta[i].led_count;
+    }
+    
+    // Виділяємо пам'ять і копіюємо дані
+    if (allocCurrentMap(metaCount, totalLeds)) {
+        copyToCurrentMap(meta, positions, metaCount);
+        LOG.printf("[INIT] Loaded region map: %zu regions, %zu LEDs total\n", currentMap.size, totalLeds);
+    } else {
+        LOG.println("[ERROR] Failed to load region map");
+    }
 }
 
 // Генерація bgLedColors (викликається при ініціалізації)
@@ -150,7 +324,7 @@ inline void generateBgLedColorsMap() {
     memset(bgLedColors, 0, sizeof(bgLedColors));
     
     int bgLedCount = settings.getInt(BG_LED_COUNT);
-    if (bgLedCount <= 0 || bgLedCount > MAX_BG_LEDS) {
+    if (bgLedCount <= 0 || bgLedCount > MAX_LEDS_STRIP_BG) {
         LOG.printf("[INIT] BG LED count not configured or invalid.\n");
         return;
     }
@@ -183,48 +357,27 @@ inline void generateBgLedColorsMap() {
 // Отримати колір для конкретного LED
 inline uint32_t getBgLedColor(int ledIndex) {
     int bgLedCount = settings.getInt(BG_LED_COUNT);
-    if (ledIndex >= 0 && ledIndex < bgLedCount && ledIndex < MAX_BG_LEDS) {
+    if (ledIndex >= 0 && ledIndex < bgLedCount && ledIndex < MAX_LEDS_STRIP_BG) {
         return bgLedColors[ledIndex];
     }
     return 0x000000; // Чорний за замовчуванням для неіснуючих LED
 }
 
-// Повертає потрібний mapping (customMap або стандартний)
-inline const RegionLedMapEntry* getRegionEntryByHardware(uint8_t hardware) {
-    return customMap; // Повертаємо customMap, який був заповнений раніше
-}
-
 // Отримати регіон по region_id
-inline const RegionLedMapEntry* getRegionEntry(uint16_t region_id) {
-    const RegionLedMapEntry* leds = getRegionEntryByHardware(settings.getInt(HARDWARE));
-    for (int i = 0; i < MAX_REGIONS; ++i) {
-        if (leds[i].region_id == region_id) {
-            return &leds[i];
-        }
-    }
-    return nullptr;
-}
-
-// Отримати список LED для region_id
-inline const int* getLedsForRegion(uint16_t region_id, uint8_t& count) {
-    const RegionLedMapEntry* entry = getRegionEntry(region_id);
-    if (entry) {
-        count = entry->led_count;
-        return entry->led_positions;
-    }
-    count = 0;
-    return nullptr;
+inline const RegionLedMapMeta* getRegionEntry(uint16_t region_id) {
+    return findRegionMeta(region_id);
 }
 
 // Пошук усіх region_id по led_position
 inline std::vector<uint16_t> getRegionsForLed(int led_position) {
     std::vector<uint16_t> regions;
-    const RegionLedMapEntry* leds = getRegionEntryByHardware(settings.getInt(HARDWARE));
-    for (int i = 0; i < MAX_REGIONS; ++i) {
-        const RegionLedMapEntry& entry = leds[i];
-        for (int j = 0; j < entry.led_count; ++j) {
-            if (entry.led_positions[j] == led_position) {
-                regions.push_back(entry.region_id);
+    for (size_t i = 0; i < currentMap.size; ++i) {
+        const RegionLedMapMeta& meta = currentMap.meta[i];
+        const uint16_t* leds = getRegionLeds(&meta);
+        for (uint8_t j = 0; j < meta.led_count; ++j) {
+            if (leds[j] == led_position) {
+                regions.push_back(meta.region_id);
+                break;  // No need to check other LEDs in this region
             }
         }
     }
@@ -314,20 +467,6 @@ inline uint32_t getFlagColorForRegion(uint16_t region_id) {
     return DefaultColors::FLAG_YELLOW;
 }
 
-// Перевірка чи є тривога на леді:
-inline bool isAlertForLed(int led_position) {
-    std::vector<uint16_t> regions = getRegionsForLed(led_position);
-    for (uint16_t region_id : regions) {
-        auto it = alertsMap.find(region_id);
-        if (it != alertsMap.end() && it->second != 0) {
-            LOG.printf("[REGION] Region %d led_position %d true\n", region_id, led_position);
-            return true;            
-        }
-    }
-    LOG.printf("[REGION] Region led_position %d false\n", led_position);
-    return false;
-}
-
 // перевірка вільної пам'яті і порівняння з останнєю перевіркою
 inline void checkFreeHeap(const char* label) {
     static size_t lastUsedHeap = 0; 
@@ -399,130 +538,77 @@ inline bool hasHigherPriority(int bit1, int bit2) {
     return index1 != -1 && index2 != -1 && index1 < index2;
 }
 
-// Функція для пошуку найстаршого біту для конкретного LED
-inline int findHighestBitForLed(int position) {
-    auto regions = getRegionsForLed(position);
-    if (regions.empty()) {
-        LOG.printf("[LED] LED %d does not belong to any region\n", position);
-        return -1; // LED не належить жодному регіону
-    }
+// ─── Flat-версії (без heap, для нового обробника TYPE_ALERTS_BATCH) ──────────
 
-    int globalHighestBit = -1;
-    uint16_t highestBitRegion = 0;
-    bool foundAnyBit = false;
-
-    // Проходимо по всіх регіонах для цього LED
-    for (uint16_t regionId : regions) {
-        auto it = alertsMap.find(regionId);
-        if (it != alertsMap.end() && it->second > 0) {
-            int currentHighestBit = findHighestBit16(it->second);
-            
-            if (currentHighestBit != -1 && (!foundAnyBit || hasHigherPriority(currentHighestBit, globalHighestBit))) {
-                globalHighestBit = currentHighestBit;
-                highestBitRegion = regionId;
-                foundAnyBit = true;
-            }
+// alertsFlat індексується саме цим значенням — НЕ region_id напряму,
+// бо region_id є довільним числом (3..9999), а не порядковим індексом.
+// Повертає позицію регіону в currentMap.meta (0..currentMap.size-1), або -1 якщо не знайдено.
+inline int getRegionFlatIdx(uint16_t region_id) {
+    for (size_t i = 0; i < currentMap.size; ++i) {
+        if (currentMap.meta[i].region_id == region_id) {
+            return (int)i;
         }
     }
-    
-    if (foundAnyBit) {
-        // Знаходимо назву регіону за його ID
-        const char* regionName = "Невідомий регіон";
-        for (int i = 0; i < MAX_REGIONS; i++) {
-            if (DISTRICTS[i].id == highestBitRegion) {
-                regionName = DISTRICTS[i].name;
-                break;
-            }
-        }
-        // LOG.printf("[LED] LED %d: highest bit %d ([%d] %s)\n", 
-        //           position, globalHighestBit, highestBitRegion, regionName);
-        return globalHighestBit;
-    }
-    
-    return -1; // Немає активних бітів в жодному з регіонів
-}
-
-// Повертає найвищий біт для конкретного регіону по прямому входженню до alertsMap
-inline int findHighestBitForRegionDirect(uint16_t region_id) {
-    auto it = alertsMap.find(region_id);
-    if (it != alertsMap.end() && it->second != 0) {
-        int bit = findHighestBit16(it->second);
-        //LOG.printf("[REGION DIRECT] region_id=%d, highestBit=%d\n", region_id, bit);
-        return bit;
-    }
-    //LOG.printf("[REGION DIRECT] No alert data for region %d\n", region_id);
     return -1;
 }
 
-// Повертає найвищий біт серед усіх регіонів, до яких належать леди region_id
-inline int findHighestBitForRegion(uint16_t region_id) {
-    uint8_t ledCount = 0;
-    const int* leds = getLedsForRegion(region_id, ledCount);
-    if (!leds || ledCount == 0) {
-        LOG.printf("[REGION] No leds for region %d\n", region_id);
-        return -1;
-    }
-
-    std::set<uint16_t> allRegions;
-    // Збираємо всі регіони, до яких належать ці леди
-    for (uint8_t i = 0; i < ledCount; ++i) {
-        auto regions = getRegionsForLed(leds[i]);
-        allRegions.insert(regions.begin(), regions.end());
-    }
-
-    // Шукаємо найвищий біт серед усіх регіонів
-    int maxBit = -1;
-    for (uint16_t reg : allRegions) {
-        auto it = alertsMap.find(reg);
-        if (it != alertsMap.end() && it->second != 0) {
-            int bit = findHighestBit16(it->second);
-            //LOG.printf("[REGION] region_id=%d, Bit=%d\n", it->first, bit);
-            if (bit != -1 && (maxBit == -1 || bit > maxBit)) {
-                maxBit = bit;
+// Пошук усіх region_id для led_position без heap-алокації.
+// Записує region_id у out[], повертає кількість знайдених.
+inline int getRegionsForLedStatic(int led_position, uint16_t* out, int max_out) {
+    int count = 0;
+    for (size_t i = 0; i < currentMap.size && count < max_out; ++i) {
+        const RegionLedMapMeta& meta = currentMap.meta[i];
+        const uint16_t* leds = getRegionLeds(&meta);
+        for (uint8_t j = 0; j < meta.led_count; ++j) {
+            if (leds[j] == led_position) {
+                out[count++] = meta.region_id;
+                break;
             }
         }
     }
-    //LOG.printf("[REGION] region_id=%d, highestBit=%d\n", region_id, maxBit);
-    return maxBit;
+    return count;
 }
 
-// Перевіряє, чи входить led_position у леди домашнього регіону
-inline bool isLedInHomeRegion(int led_position) {
-    LOG.printf("[HOME DISTRICT] check led %d. ", led_position);
-    // Отримуємо масив LED-ів для домашнього регіону
-    uint8_t ledCount = 0;
-    const int* leds = getLedsForRegion(settings.getInt(HOME_DISTRICT), ledCount);
+// Повертає найвищий priority-bit для LED використовуючи alertsFlat (без heap).
+// out_region — сюди записується region_id, який дає цей bit (або 0 якщо немає).
+inline int findHighestBitForLedFlat(int position, uint16_t* out_region = nullptr) {
+    uint16_t region_buf[16];
+    int region_count = getRegionsForLedStatic(position, region_buf, 16);
 
-    // Якщо для регіону немає LED-ів — повертаємо false
-    if (leds == nullptr || ledCount == 0) {
-        return false;
-    }
+    int      best_bit    = -1;
+    uint16_t best_region = 0;
 
-    LOG.printf("Leds:");
-    for (uint8_t i = 0; i < ledCount; ++i) {
-        LOG.printf(" %d", leds[i]);
-    }
-    LOG.printf(". ");
-
-    // Перевіряємо, чи входить led_position у масив
-    bool found = false;
-    for (uint8_t i = 0; i < ledCount; ++i) {
-        if (leds[i] == led_position) {
-            found = true;
-            break;
+    for (int i = 0; i < region_count; ++i) {
+        uint16_t rid = region_buf[i];
+        int idx = getRegionFlatIdx(rid);  // позиція в currentMap.meta (не region_id!)
+        if (idx < 0) continue;
+        uint16_t flags = alertsFlat[idx];
+        if (flags == 0) continue;
+        int bit = findHighestBit16(flags);
+        if (bit != -1 && (best_bit == -1 || hasHigherPriority(bit, best_bit))) {
+            best_bit    = bit;
+            best_region = rid;
         }
     }
-    if (found) {
-        LOG.printf("Led %d is in home district\n", led_position);
-        return true;
-    }
-    LOG.printf("Led %d not found in home district\n", led_position);
-    return false;
+
+    if (out_region) *out_region = best_region;
+    return best_bit;
 }
 
-// Перевіряє, чи є region_id домашнім регіоном
-inline bool isHomeRegion(int region_id) {
-    return region_id == settings.getInt(HOME_DISTRICT);
+// Повертає найвищий priority-bit для регіону з alertsFlat (без heap).
+inline int findHighestBitForRegionFlat(uint16_t region_id) {
+    int idx = getRegionFlatIdx(region_id);
+    if (idx < 0) return -1;
+    uint16_t flags = alertsFlat[idx];
+    return (flags != 0) ? findHighestBit16(flags) : -1;
+}
+
+// Заповнює ledBitCache з поточного стану alertsFlat.
+// Викликати після init-фетчу і після reconnect.
+inline void rebuildLedBitCache() {
+    for (int led = 0; led < MAX_LEDS_STRIP_MAIN; ++led) {
+        ledBitCache[led] = (int8_t)findHighestBitForLedFlat(led);
+    }
 }
 
 inline int getHighestActualBit(int sourceBit) {
@@ -899,29 +985,29 @@ inline String getAlertsJson() {
     JsonDocument doc;
     JsonArray regions = doc["regions"].to<JsonArray>();
     
-    // Перебираємо всі регіони з alertsMap
-    for (const auto& alertEntry : alertsMap) {
-        uint16_t region_id = alertEntry.first;
-        uint16_t flags16 = alertEntry.second;
-        
+    // Перебираємо всі регіони з alertsFlat (indexed by currentMap.meta position)
+    for (size_t i = 0; i < currentMap.size; i++) {
+        uint16_t flags16 = alertsFlat[i];
+        uint16_t region_id = currentMap.meta[i].region_id;
+
         // Перевіряємо чи є активний перший біт (повітряна тривога)
         bool airAlert = flags16 & (1 << 0);
         if (!airAlert) {
             continue; // Пропускаємо регіони без активної повітряної тривоги
         }
-        
+
         // Перевіряємо чи регіон є в DISTRICTS
         bool foundInDistricts = false;
         String regionName = "";
-        
-        for (int i = 0; i < MAX_REGIONS; i++) {
-            if (DISTRICTS[i].id == region_id) {
+
+        for (int j = 0; j < MAX_REGIONS; j++) {
+            if (DISTRICTS[j].id == region_id) {
                 foundInDistricts = true;
-                regionName = DISTRICTS[i].name;
+                regionName = DISTRICTS[j].name;
                 break;
             }
         }
-        
+
         if (!foundInDistricts) {
             continue; // Пропускаємо регіони не знайдені в DISTRICTS
         }
@@ -951,7 +1037,7 @@ inline String getAlertsJson() {
     return response;
 }
 
-inline const char* getNameById(SettingListItem list[], int id, int size) {
+inline const char* getNameById(const SettingListItem list[], int id, int size) {
   for (int i = 0; i < size; i++) {
     if (list[i].id == id) {
       return list[i].name;
