@@ -12,7 +12,7 @@ extern Adafruit_NeoPixel* strip_service;
 // Стан одного LED (indexed by position in mainStates / serviceStates)
 struct LedState {
     uint32_t color;
-    uint32_t initColor;
+    uint32_t adaptedInitColor;
     uint32_t startTime;    // глобальний час для синхронізації фази
     uint32_t localStart;   // локальний час для розрахунку тривалості
     uint32_t period;
@@ -29,7 +29,7 @@ struct LedState {
 struct StripState {
     Adafruit_NeoPixel* strip;
     uint32_t color;
-    uint32_t initColor;
+    uint32_t adaptedInitColor;
     uint32_t startTime;
     uint32_t localStart;
     uint32_t period;

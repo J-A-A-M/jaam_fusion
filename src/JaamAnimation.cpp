@@ -249,7 +249,7 @@ bool AnimationManager::createAnimation(uint16_t type,
         if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
             mainOverride.strip      = strip;
             mainOverride.color      = color;
-            mainOverride.initColor  = initialColor;
+            mainOverride.adaptedInitColor  = initialColor;
             mainOverride.startTime  = startTime;
             mainOverride.localStart = now;
             mainOverride.period     = period;
@@ -286,7 +286,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             }
             bgState.strip      = strip;
             bgState.color      = color;
-            bgState.initColor  = initColor;
+            bgState.adaptedInitColor  = initColor;
             bgState.startTime  = startTime;
             bgState.localStart = now;
             bgState.period     = period;
@@ -345,7 +345,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             }
 
             s.color      = color;
-            s.initColor  = initColor;
+            s.adaptedInitColor  = initColor;
             s.startTime  = startTime;
             s.localStart = now;
             s.period     = period;
@@ -394,8 +394,7 @@ uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
         case AnimationTypes::BLEND_FADE: {
             float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
             uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
-            return blendColors(adaptedColor, adaptedInitColor, factor);
+            return blendColors(adaptedColor, s.adaptedInitColor, factor);
         }
         case AnimationTypes::PULSE: {
             float factor;
@@ -418,8 +417,7 @@ uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
         }
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
             uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
-            return blendColors(adaptedInitColor, adaptedColor, phase);
+            return blendColors(s.adaptedInitColor, adaptedColor, phase);
         }
         case AnimationTypes::OFF:
         default:
@@ -450,8 +448,7 @@ uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed)
         case AnimationTypes::BLEND_FADE: {
             float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
             uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
-            return blendColors(adaptedColor, adaptedInitColor, factor);
+            return blendColors(adaptedColor, s.adaptedInitColor, factor);
         }
         case AnimationTypes::PULSE: {
             float factor;
@@ -474,8 +471,7 @@ uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed)
         }
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
             uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
-            return blendColors(adaptedInitColor, adaptedColor, phase);
+            return blendColors(s.adaptedInitColor, adaptedColor, phase);
         }
         case AnimationTypes::OFF:
         default:
@@ -494,7 +490,7 @@ void AnimationManager::renderRunningLight(const StripState& s, float elapsed) {
 
     // Базовий колір для всіх LED
     for (int i = 0; i < totalLeds; i++) {
-        s.strip->setPixelColor(i, s.initColor);
+        s.strip->setPixelColor(i, s.adaptedInitColor);
     }
 
     // Анімаційне вікно
@@ -502,13 +498,13 @@ void AnimationManager::renderRunningLight(const StripState& s, float elapsed) {
         int idx = (windowStart + w) % totalLeds;
         uint32_t ledColor;
         if (w == 0) {
-            ledColor = s.initColor;
+            ledColor = s.adaptedInitColor;
         } else if (w <= 4) {
             float factor = (float)(w - 1) / 3.0f;
-            ledColor = blendColors(s.initColor, s.color, factor);
+            ledColor = blendColors(s.adaptedInitColor, s.color, factor);
         } else {
             float factor = (float)(w - 5) / 3.0f;
-            ledColor = blendColors(s.color, s.initColor, factor);
+            ledColor = blendColors(s.color, s.adaptedInitColor, factor);
         }
         uint8_t br = s.endBr;
         uint8_t r = ((ledColor >> 16) & 0xFF) * br / 255;
@@ -1335,20 +1331,21 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         // - Для ALERT: перехід від clear до alert
         // - Для NO_ALERT: перехід від alert назад до clear  
         // - Для інших загроз: перехід від alert до більш небезпечного стану
-        uint32_t initialColor;
+        uint32_t initColor;
         if (eventType == AlertModes::ALERT) {
-            initialColor = colorFromHex(settings->getString(COLOR_CLEAR));
+            initColor = colorFromHex(settings->getString(COLOR_CLEAR));
         } else {
             // NO_ALERT та інші загрози починаються з alert кольору
-            initialColor = colorFromHex(settings->getString(COLOR_ALERT));
+            initColor = colorFromHex(settings->getString(COLOR_ALERT));
         }
+        uint32_t adaptedInitColor = adaptColorBrightness(initColor, globalStart);
         
         // Отримуємо поточний час старту для синхронізації
         uint32_t startTime = synchronizedMode ? getStartTime(animType) : now;
         
         previewState.strip = strip_main;
         previewState.color = color;
-        previewState.initColor = initialColor;
+        previewState.adaptedInitColor = adaptedInitColor;
         previewState.startTime = startTime;
         previewState.localStart = now;
         previewState.period = period;
@@ -1364,7 +1361,7 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         if (strip_bg != nullptr) {
             previewStateBg.strip = strip_bg;
             previewStateBg.color = color;
-            previewStateBg.initColor = initialColor;
+            previewStateBg.adaptedInitColor = adaptedInitColor;
             previewStateBg.startTime = startTime;
             previewStateBg.localStart = now;
             previewStateBg.period = period;
