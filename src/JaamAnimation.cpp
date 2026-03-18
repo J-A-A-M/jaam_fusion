@@ -230,7 +230,8 @@ bool AnimationManager::createAnimation(uint16_t type,
                                        uint8_t startBrightness,
                                        uint8_t endBrightness,
                                        uint16_t region_id,
-                                       int bit)
+                                       int bit,
+                                       int initialBit)
 {
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] ERROR: Strip is nullptr\n");
@@ -258,6 +259,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             mainOverride.startBr    = startBrightness;
             mainOverride.endBr      = endBrightness;
             mainOverride.bit        = (int8_t)bit;
+            mainOverride.initialBit = (int8_t)initialBit;
             mainOverride.mapMode    = map_mode;
             mainOverride.active     = true;
             xSemaphoreGive(animMutex);
@@ -295,6 +297,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             bgState.startBr    = startBrightness;
             bgState.endBr      = endBrightness;
             bgState.bit        = (int8_t)bit;
+            bgState.initialBit = (int8_t)initialBit;
             bgState.mapMode    = map_mode;
             bgState.active     = true;
             LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, period=%u, cycles=%u, bit=%d\n",
@@ -354,6 +357,7 @@ bool AnimationManager::createAnimation(uint16_t type,
             s.startBr    = startBrightness;
             s.endBr      = endBrightness;
             s.bit        = (int8_t)bit;
+            s.initialBit = (int8_t)initialBit;
             s.mapMode    = map_mode;
             s.active     = true;
             anyCreated   = true;
@@ -788,10 +792,12 @@ void AnimationManager::adaptAllAnimationColors() {
         for (int i = 0; i < numMain; i++) {
             if (mainStates[i].active) {
                 mainStates[i].color = ledActualColor(strip_main, i, false, mainStates[i].bit);
+                mainStates[i].adaptedInitColor = ledActualColor(strip_main, i, true, mainStates[i].initialBit);
             }
         }
         if (bgState.active) {
             bgState.color = ledActualColor(strip_bg, 0, false, bgState.bit);
+            bgState.adaptedInitColor = ledActualColor(strip_bg, 0, true, bgState.initialBit);
         }
         xSemaphoreGive(animMutex);
     }

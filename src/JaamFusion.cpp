@@ -753,7 +753,7 @@ void alertAction(int bit, int districtId) {
     display.showServiceMessage(getEventTypeName(bit), districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
 }
 
-void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
+void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, int initialBit, uint16_t region_id, bool increase = true) {
     LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
 
     if (strip == nullptr) {
@@ -875,7 +875,8 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         startBrightness,
         endBrightness,
         region_id,
-        bit
+        bit,
+        initialBit
     )) {
         LOG.printf("[ERROR] Failed to create animation\n");
         return;
@@ -998,12 +999,12 @@ void onMessageCallback(WebsocketsMessage msg) {
                 for (uint8_t j = 0; j < meta->led_count; ++j) {
                     int led = (int)leds[j];
                     if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
-                    animateLed(strip_main, MapModes::ALERT, led, actualBitDiff, region_id, true);
+                    animateLed(strip_main, MapModes::ALERT, led, actualBitDiff, highestBitRegion, region_id, true);
                 }
                 // Домашній регіон — окрема анімація strip_bg
                 if ((uint16_t)settings.getInt(HOME_DISTRICT) == region_id) {
                     LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
-                    animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, region_id, true);
+                    animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, highestBitRegion, region_id, true);
                     alertAction(actualBitDiff, region_id);
                 }
             }   
@@ -1093,7 +1094,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 bool increase = hasHigherPriority((int)newBit, (int)oldBit);
                 LOG.printf("[WEBSOCKET] LED %d: bit %d -> %d (%s), region %d\n",
                            led, oldBit, newBit, increase ? "increase" : "decrease", new_region);
-                animateLed(strip_main, MapModes::ALERT, led, (int)newBit, new_region, increase);
+                animateLed(strip_main, MapModes::ALERT, led, (int)newBit, (int)oldBit, new_region, increase);
 
                 ledBitCache[led] = newBit;
             }
@@ -1111,7 +1112,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     if (localAlertBit == -1) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
                 }
-                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit,
+                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit,
                            settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
             }
@@ -1847,6 +1848,7 @@ void initSettings() {
             case BRIGHTNESS_LAMP:
             case BRIGHTNESS_SERVICE:
                 adaptStripColorsAndBrightness();
+                handleAdaptAnimationColors();
                 handleAdaptAnimationBrightness();
                 break;
             

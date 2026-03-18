@@ -21,6 +21,7 @@ struct LedState {
     uint8_t  startBr;
     uint8_t  endBr;
     int8_t   bit;
+    int8_t   initialBit;
     uint8_t  mapMode;
     bool     active;
 };
@@ -38,6 +39,7 @@ struct StripState {
     uint8_t  startBr;
     uint8_t  endBr;
     int8_t   bit;
+    int8_t   initialBit;
     uint8_t  mapMode;
     bool     active;
 };
@@ -111,7 +113,8 @@ class AnimationManager {
                            uint8_t startBrightness = 50,
                            uint8_t endBrightness = 255,
                            uint16_t region_id = 0,
-                           int bit = 0);
+                           int bit = 0,
+                           int initialBit = -1);
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
