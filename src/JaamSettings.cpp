@@ -99,8 +99,8 @@ std::map<Type, SettingItemInt> intSettings = {
     {BRIGHTNESS_BG, {"bbg", 100}},
     {BRIGHTNESS_SERVICE, {"bs", 50}},
     {BRIGHTNESS_ANIMATION_END, {"baend", 20}},
-    {BRIGHTNESS_MIN, {"brmin", 0}},
-    {BRIGHTNESS_MAX, {"brmax", 50}},
+    {BRIGHTNESS_MIN, {"brmin", 3}},
+    {BRIGHTNESS_MAX, {"brmax", 90}},
     {BRIGHTNESS_MAX_ACCEPT, {"brmxa", 0}},
     {NIGHT_MODE_LIGHT_THRESHOLD, {"nmlt", 30}},
     {WEATHER_MIN_TEMP, {"mintemp", -10}},
@@ -329,9 +329,7 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
         return false;
     }
     
-    // Перевірка BRIGHTNESS_MAX: 0 (default) або відсоток в діапазоні [0..ABSOLUTE_MAX_PCT]
-    // Значення 1..(DEFAULT_MAX_PCT-1), що можуть надходити з UI, вважаються допустимими
-    // і можуть інтерпретуватися як "використовувати значення за замовчуванням" під час застосування налаштувань.
+    // Перевірка BRIGHTNESS_MAX: 0 (default) або відсоток в діапазоні [0..ABSOLUTE_MAX]
     if (type == BRIGHTNESS_MAX) {
         // негативні значення яскравості завжди некоректні
         if (value < 0) {
@@ -339,14 +337,9 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
             return false;
         }
         // перевищення абсолютного максимуму залишається помилкою
-        if (value > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT) {
-            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% exceeds absolute max %d%%\n", value, JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX_PCT);
+        if (value > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX) {
+            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% exceeds absolute max %d%%\n", value, JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX);
             return false;
-        }
-        // значення 0 або 1..DEFAULT_MAX_PCT-1 не відхиляємо, щоб не ламати збереження налаштувань з UI
-        if (value != 0 && value < JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT) {
-            LOG.printf("[SETTINGS] BRIGHTNESS_MAX %d%% below default max %d%%; value accepted but will be treated as default max at runtime\n",
-                       value, JaamHardwareLed::BRIGHTNESS_DEFAULT_MAX_PCT);
         }
     }
     

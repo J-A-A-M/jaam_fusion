@@ -2044,7 +2044,6 @@ void initSettings() {
                 // Параметри для ALERT
                 case ANIMATION_ALERT_ON_TYPE:
                 case ANIMATION_ALERT_ON_CYCLE_TIME:
-                case BRIGHTNESS_ALERT:
                 case COLOR_ALERT:
                     eventType = AlertModes::ALERT;
                     animType = settings.getInt(ANIMATION_ALERT_ON_TYPE);
@@ -2057,7 +2056,6 @@ void initSettings() {
                 // Параметри для NO_ALERT (скасування тривоги)
                 case ANIMATION_ALERT_OFF_TYPE:
                 case ANIMATION_ALERT_OFF_CYCLE_TIME:
-                case BRIGHTNESS_CLEAR:
                 case COLOR_CLEAR:
                     eventType = AlertModes::NO_ALERT;
                     animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
@@ -2070,7 +2068,6 @@ void initSettings() {
                 // Параметри для EXPLOSION
                 case ANIMATION_EXPLOSION_TYPE:
                 case ANIMATION_EXPLOSION_CYCLE_TIME:
-                case BRIGHTNESS_EXPLOSION:
                 case COLOR_EXPLOSION:
                     eventType = AlertModes::EXPLOSION;
                     animType = settings.getInt(ANIMATION_EXPLOSION_TYPE);
@@ -2083,7 +2080,6 @@ void initSettings() {
                 // Параметри для DRONES
                 case ANIMATION_DRONE_TYPE:
                 case ANIMATION_DRONE_CYCLE_TIME:
-                case BRIGHTNESS_DRONES:
                 case COLOR_DRONES:
                     eventType = AlertModes::DRONES;
                     animType = settings.getInt(ANIMATION_DRONE_TYPE);
@@ -2096,7 +2092,6 @@ void initSettings() {
                 // Параметри для RECON_DRONES
                 case ANIMATION_RECON_DRONE_TYPE:
                 case ANIMATION_RECON_DRONE_CYCLE_TIME:
-                case BRIGHTNESS_RECON_DRONES:
                 case COLOR_RECON_DRONES:
                     eventType = AlertModes::RECON_DRONES;
                     animType = settings.getInt(ANIMATION_RECON_DRONE_TYPE);
@@ -2109,7 +2104,6 @@ void initSettings() {
                 // Параметри для MISSILES
                 case ANIMATION_MISSILE_TYPE:
                 case ANIMATION_MISSILE_CYCLE_TIME:
-                case BRIGHTNESS_MISSILES:
                 case COLOR_MISSILES:
                     eventType = AlertModes::MISSILES;
                     animType = settings.getInt(ANIMATION_MISSILE_TYPE);
@@ -2122,7 +2116,6 @@ void initSettings() {
                 // Параметри для KABS
                 case ANIMATION_KAB_TYPE:
                 case ANIMATION_KAB_CYCLE_TIME:
-                case BRIGHTNESS_KABS:
                 case COLOR_KABS:
                     eventType = AlertModes::KABS;
                     animType = settings.getInt(ANIMATION_KAB_TYPE);
@@ -2135,7 +2128,6 @@ void initSettings() {
                 // Параметри для BALLISTIC
                 case ANIMATION_BALLISTIC_TYPE:
                 case ANIMATION_BALLISTIC_CYCLE_TIME:
-                case BRIGHTNESS_BALLISTIC:
                 case COLOR_BALLISTIC:
                     eventType = AlertModes::BALLISTIC;
                     animType = settings.getInt(ANIMATION_BALLISTIC_TYPE);

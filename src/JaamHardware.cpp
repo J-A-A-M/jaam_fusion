@@ -277,10 +277,8 @@ uint8_t JaamHardware::getMaxBrightness() {
             // Only honor a custom max brightness if the user has explicitly accepted the risk.
             bool accepted = settings.getBool(BRIGHTNESS_MAX_ACCEPT);
             if (accepted) {
-                int customMaxPct = settings.getInt(BRIGHTNESS_MAX);
-                if (customMaxPct > 0) {
-                    // Convert user scale (0-100) to raw brightness: raw = pct * ABSOLUTE_MAX / 100
-                    int customMax = customMaxPct * JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX / 100;
+                int customMax = settings.getInt(BRIGHTNESS_MAX);
+                if (customMax > 0) {
                     // Defensive clamping as safety net: even if validation is bypassed
                     // (e.g. direct preferences edit, backup restore), hardware limits are enforced
                     if (customMax > JaamHardwareLed::BRIGHTNESS_ABSOLUTE_MAX) {

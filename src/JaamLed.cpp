@@ -11,6 +11,7 @@ void JaamLed::setSettings(JaamSettings* settings) {
 }
 
 uint8_t JaamLed::brightnessAbsolute(uint8_t percent) {
+    if (percent == 0) return 0; // Швидкий вихід для 0% яскравості
     // Пряме лінійне перетворення відсотків в абсолютні значення 0-255
     if (percent > 100) percent = 100;  // Обмеження максимального значення
     return (uint8_t)((percent * 255) / 100);
@@ -18,6 +19,7 @@ uint8_t JaamLed::brightnessAbsolute(uint8_t percent) {
 }
 
 uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
+    if (percent == 0) return 0; // Швидкий вихід для 0% яскравості
     // // Використовуємо пряму параболічну залежність
     float normalized = percent / 100.0f;
     float squared = normalized * normalized;
@@ -25,12 +27,13 @@ uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
 }
 
 uint8_t JaamLed::brightnessMapped(uint8_t percent) {
+    if (percent == 0) return 0; // Швидкий вихід для 0% яскравості
     if (percent > 100) percent = 100;
     uint8_t maxBrightness = hardwareConfig.getMaxBrightness();
     uint8_t minBrightness = hardwareConfig.getMinBrightness();
     // Використовуємо функцію map для лінійного масштабування відсотків до діапазону мінімальної та максимальної яскравості,
     // визначених для поточного апаратного забезпечення
-    return (uint8_t) map(percent, 0, 100, minBrightness, maxBrightness);
+    return (uint8_t) map(percent, 1, 100, minBrightness, maxBrightness);
 }
 
 // Перевірка ініціалізації стрічки

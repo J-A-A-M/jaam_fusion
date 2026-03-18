@@ -58,24 +58,19 @@ namespace JaamHardwareLed {
     constexpr int SERVICE_LED_FORMAT_DISABLED = -1;
     
     // Brightness factors for different hardware types
-    constexpr uint8_t BRIGHTNESS_JAAM_3_0_MAX = 35;
-    constexpr uint8_t BRIGHTNESS_JAAM_3_2_MAX = 35;
-    constexpr uint8_t BRIGHTNESS_JAAM_1_3_MAX = 50;
-    constexpr uint8_t BRIGHTNESS_JAAM_2_1_MAX = 50;
-    constexpr uint8_t BRIGHTNESS_DEFAULT_MAX = 50;
+    constexpr uint8_t BRIGHTNESS_JAAM_3_0_MAX = 35;     // ~19% of 180, consumption ~1,6A (~8W at 5V) with white at full brightness
+    constexpr uint8_t BRIGHTNESS_JAAM_3_2_MAX = 35;     // ~19% of 180
+    constexpr uint8_t BRIGHTNESS_JAAM_1_3_MAX = 127;    // 70% of 180, consumption ~0,6A (~3W at 5V) with white at full brightness
+    constexpr uint8_t BRIGHTNESS_JAAM_2_1_MAX = 65;     // ~36% of 180, consumption ~1,4A (~7W at 5V) with white at full brightness
+    constexpr uint8_t BRIGHTNESS_DEFAULT_MAX = 90;      // 50% of 180, a safer default for custom hardware
     
-    constexpr uint8_t BRIGHTNESS_JAAM_3_0_MIN = 2;
-    constexpr uint8_t BRIGHTNESS_JAAM_3_2_MIN = 2;
+    constexpr uint8_t BRIGHTNESS_JAAM_3_0_MIN = 3;
+    constexpr uint8_t BRIGHTNESS_JAAM_3_2_MIN = 3;
     constexpr uint8_t BRIGHTNESS_JAAM_1_3_MIN = 3;
-    constexpr uint8_t BRIGHTNESS_JAAM_2_1_MIN = 2;
+    constexpr uint8_t BRIGHTNESS_JAAM_2_1_MIN = 3;
 
     // Absolute maximum brightness cap (safety limit, ~70% of 255)
     constexpr uint8_t BRIGHTNESS_ABSOLUTE_MAX = 180;
-
-    // User-facing 0-100 scale constants (raw = user_value * ABSOLUTE_MAX / 100)
-    constexpr uint8_t BRIGHTNESS_DEFAULT_MAX_PCT =
-        static_cast<uint8_t>((BRIGHTNESS_DEFAULT_MAX * 100u + BRIGHTNESS_ABSOLUTE_MAX / 2u) / BRIGHTNESS_ABSOLUTE_MAX); // rounded BRIGHTNESS_DEFAULT_MAX * 100 / BRIGHTNESS_ABSOLUTE_MAX
-    constexpr uint8_t BRIGHTNESS_ABSOLUTE_MAX_PCT = 100; // maps to BRIGHTNESS_ABSOLUTE_MAX
 }
 
 class JaamHardware {
