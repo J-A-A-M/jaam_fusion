@@ -374,7 +374,9 @@ uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
         }
         case AnimationTypes::BLEND_FADE: {
             float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
-            return blendColors(s.color, s.initColor, factor);
+            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
+            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
+            return blendColors(adaptedColor, adaptedInitColor, factor);
         }
         case AnimationTypes::PULSE: {
             float factor;
@@ -396,17 +398,13 @@ uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
                  | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
         }
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
-            return blendColors(s.initColor, s.color, phase);
+            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
+            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
+            return blendColors(adaptedInitColor, adaptedColor, phase);
         }
-        case AnimationTypes::OFF: {
-            uint32_t c = s.color;
-            float br = (float)s.startBr;
-            return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
-                 | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
-                 | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
-        }
+        case AnimationTypes::OFF:
         default:
-            return s.color;
+            return adaptColorBrightness(s.color, s.startBr);
     }
 }
 
@@ -432,7 +430,9 @@ uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed)
         }
         case AnimationTypes::BLEND_FADE: {
             float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
-            return blendColors(s.color, s.initColor, factor);
+            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
+            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
+            return blendColors(adaptedColor, adaptedInitColor, factor);
         }
         case AnimationTypes::PULSE: {
             float factor;
@@ -454,17 +454,13 @@ uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed)
                  | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
         }
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
-            return blendColors(s.initColor, s.color, phase);
+            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
+            uint32_t adaptedInitColor = adaptColorBrightness(s.initColor, s.startBr);
+            return blendColors(adaptedInitColor, adaptedColor, phase);
         }
-        case AnimationTypes::OFF: {
-            uint32_t c = s.color;
-            float br = (float)s.startBr;
-            return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
-                 | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
-                 | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
-        }
+        case AnimationTypes::OFF:
         default:
-            return s.color;
+            return adaptColorBrightness(s.color, s.startBr);
     }
 }
 
@@ -543,7 +539,6 @@ void AnimationManager::update() {
                 if (phase > 0.9f || (mainOverride.cycles - elapsed) < 0.001f) br = mainOverride.endBr;
                 if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                     Adafruit_NeoPixel* s = mainOverride.strip;
-                    s->setBrightness(led.brightnessMapped(br));
                     for (uint16_t i = 0; i < s->numPixels(); i++) {
                         s->setPixelColor(i, ledActualColor(s, i));
                     }
@@ -789,7 +784,7 @@ void AnimationManager::adaptAllAnimationColors() {
 
 void AnimationManager::adaptAllAnimationBrightness() {
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
-        uint8_t globalEnd = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ANIMATION_END));
+        uint8_t globalEnd = led.brightnessRelative(settings->getInt(BRIGHTNESS_ANIMATION_END));
         int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
 
         for (int i = 0; i < numMain; i++) {
@@ -827,7 +822,7 @@ void AnimationManager::adaptAllAnimationPeriod() {
             uint32_t newPeriod   = period;
             uint32_t totalTimeMs = 0;
             switch (bit) {
-                case -1: newPeriod = settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);  totalTimeMs = settings->getInt(ALERT_OFF_TIME)      * 1000UL; break;
+                case -1: newPeriod = settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);  totalTimeMs = settings->getInt(ALERT_OFF_TIME)       * 1000UL; break;
                 case  0: newPeriod = settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME);   totalTimeMs = settings->getInt(ALERT_ON_TIME)        * 1000UL; break;
                 case  5: newPeriod = settings->getInt(ANIMATION_DRONE_CYCLE_TIME);      totalTimeMs = settings->getInt(DRONE_TIME)           * 1000UL; break;
                 case  6: newPeriod = settings->getInt(ANIMATION_MISSILE_CYCLE_TIME);    totalTimeMs = settings->getInt(MISSILE_TIME)         * 1000UL; break;
@@ -926,28 +921,28 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
         if (is_enabled) {
             if (bit == -1) {
                 color = colorFromHex(settings->getString(COLOR_CLEAR));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
             } else if (bit == 0) {
                 color = colorFromHex(settings->getString(COLOR_ALERT));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ALERT));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT));
             } else if (bit == 5) {
                 color = colorFromHex(settings->getString(COLOR_DRONES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_DRONES));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_DRONES));
             } else if (bit == 6) {
                 color = colorFromHex(settings->getString(COLOR_MISSILES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_MISSILES));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_MISSILES));
             } else if (bit == 7) {
                 color = colorFromHex(settings->getString(COLOR_KABS));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_KABS));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_KABS));
             } else if (bit == 8) {
                 color = colorFromHex(settings->getString(COLOR_BALLISTIC));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BALLISTIC));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BALLISTIC));
             } else if (bit == 9) {
                 color = colorFromHex(settings->getString(COLOR_EXPLOSION));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_EXPLOSION));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_EXPLOSION));
             } else if (bit == 10) {
                 color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_RECON_DRONES));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_RECON_DRONES));
             }
             break;
         }
@@ -957,7 +952,7 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
 
 uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapted) {
     uint32_t color;
-    uint8_t brightness = 255;
+    uint8_t brightness = 0;
     if (strip == strip_main) {
         LOG.printf("[COLOR] main strip color\n");
         color = DefaultColors::MAIN_STRIP;
@@ -976,7 +971,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         break;
                     case MapModes::ALERT:
                         color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     case MapModes::WEATHER: {
                         uint16_t home = settings->getInt(HOME_DISTRICT);
@@ -989,16 +984,16 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
                     case MapModes::FLAG:
                         color = DefaultColors::FLAG_BLUE;
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     case MapModes::LAMP:
                         color = colorFromHex(settings->getString(COLOR_LAMP));
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_LAMP));
                         break;
                 }
             }
@@ -1006,7 +1001,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
         } else {
             LOG.printf("[COLOR] bg strip color SELF\n");
             color = colorFromHex(settings->getString(COLOR_BG));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
         }
     }
     if (strip == strip_service) {
@@ -1018,7 +1013,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                 break;
             default:
                 color = DefaultColors::SERVICE_STRIP;
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_SERVICE));
                 break;
         }
     }
@@ -1039,10 +1034,10 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
         brightness = result.second;
     } else {
         color = colorFromHex(settings->getString(COLOR_CLEAR));
-        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
+        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
         if (region_id == settings->getInt(HOME_DISTRICT)) {
             color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
-            brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
         }
     }
     if (adapted) {
@@ -1084,11 +1079,11 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         uint16_t region_buf[16];
                         int region_count = getRegionsForLedStatic(position, region_buf, 16);
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_CLEAR));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
                         for (int r = 0; r < region_count; ++r) {
                             if (region_buf[r] == (uint16_t)settings->getInt(HOME_DISTRICT)) {
                                 color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
-                                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+                                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
                                 break;
                             }
                         }
@@ -1115,7 +1110,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     } else {
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
                     }
-                    brightness = 255;
+                    brightness = led.brightnessRelative(100);
                     break;
                 }
                 case MapModes::FLAG: {
@@ -1131,12 +1126,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         }
                         color = (yellowVotes > blueVotes) ? DefaultColors::FLAG_YELLOW : DefaultColors::FLAG_BLUE;
                     }
-                    brightness = 255;
+                    brightness = led.brightnessRelative(100);
                     break;
                 }
                 case MapModes::LAMP: {
                     color = colorFromHex(settings->getString(COLOR_LAMP));
-                    brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
+                    brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_LAMP));
                     break;
                 }
             }
@@ -1149,7 +1144,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         } else {
             if (settings->getInt(BG_LED_MODE) == BgLedModes::COLOR_MAP) {
                 color = getBgLedColor(position);
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
             } else {
                 switch (getCurrentMapMode()) {
                     case MapModes::OFF:
@@ -1169,7 +1164,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
                     case MapModes::WEATHER: {
@@ -1183,16 +1178,16 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
                     case MapModes::FLAG:
                         color = DefaultColors::FLAG_BLUE;
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     case MapModes::LAMP:
                         color = colorFromHex(settings->getString(COLOR_LAMP));
-                        brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_LAMP));
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_LAMP));
                         break;
                 }
             }
@@ -1206,7 +1201,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 break;
             default:
                 color = getServicePinColor(position);
-                brightness = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_SERVICE));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_SERVICE));
                 break;
         }
     }
@@ -1313,8 +1308,8 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         // Створюємо анімацію на всій стрічці
         uint32_t now = millis();
         uint32_t cycles = (5000 + period - 1) / period;  // Кількість циклів за 5 секунд
-        uint8_t globalStart = led.brightnessAbsolute(brightness);
-        uint8_t globalEnd = led.brightnessAbsolute(settings->getInt(BRIGHTNESS_ANIMATION_END));
+        uint8_t globalStart = led.brightnessRelative(brightness);
+        uint8_t globalEnd = led.brightnessRelative(settings->getInt(BRIGHTNESS_ANIMATION_END));
         uint8_t mapMode = getCurrentMapMode();
         
         // Початковий колір залежить від типу події:

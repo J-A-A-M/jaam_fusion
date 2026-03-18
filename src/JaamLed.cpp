@@ -1,21 +1,20 @@
 #include "JaamLed.h"
 #include "JaamUtils.h"
 #include "JaamHardware.h"
+#include "JaamSettings.h"
 
 extern JaamHardware hardwareConfig;
+extern JaamSettings settings;
 
-JaamLed::JaamLed() : settings(nullptr) {}
+JaamLed::JaamLed() {}
 
-void JaamLed::setSettings(JaamSettings* settings) {
-    this->settings = settings;
-}
-
-uint8_t JaamLed::brightnessAbsolute(uint8_t percent) {
-    if (percent == 0) return 0; // Швидкий вихід для 0% яскравості
-    // Пряме лінійне перетворення відсотків в абсолютні значення 0-255
-    if (percent > 100) percent = 100;  // Обмеження максимального значення
-    return (uint8_t)((percent * 255) / 100);
-
+uint8_t JaamLed::brightnessRelative(uint8_t percentLocal) {
+    uint8_t percentCommon = settings.getInt(CURRENT_BRIGHTNESS);
+    if (percentCommon == 0 || percentLocal == 0) return 0; // Швидкий вихід для 0% яскравості
+    if (percentCommon > 100) percentCommon = 100;
+    if (percentLocal > 100) percentLocal = 100;
+    uint8_t combinedPercent = (percentCommon * percentLocal) / 100;
+    return brightnessMapped(combinedPercent);
 }
 
 uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
@@ -45,8 +44,6 @@ bool JaamLed::isStripInitialized(Adafruit_NeoPixel* strip) {
 StripStatus JaamLed::createStrip(Adafruit_NeoPixel*& strip, 
                     int pin, 
                     uint32_t count, 
-                    uint8_t brightness,
-                    uint32_t color, 
                     uint8_t type) {
     if (pin <= 0) {
         return StripStatus::STRIP_PIN_NOT_SET;
@@ -68,11 +65,11 @@ StripStatus JaamLed::createStrip(Adafruit_NeoPixel*& strip,
     }
     
     strip->begin();
-    strip->setBrightness(brightnessMapped(brightness));
     strip->clear();
-    
+    strip->setBrightness(255); // Start with max brightness for color setting
+
     for(int i = 0; i < count; i++) {
-        strip->setPixelColor(i, color);
+        strip->setPixelColor(i, DefaultColors::OFF);
     }
     strip->show();
     return StripStatus::SUCCESS;
@@ -119,8 +116,6 @@ void JaamLed::verifyStripCleanup(Adafruit_NeoPixel* strip) {
 StripStatus JaamLed::recreateStrip(Adafruit_NeoPixel*& strip,
                                  int pin,
                                  uint32_t count,
-                                 uint8_t brightness,
-                                 uint32_t color,
                                  uint8_t type) {
     LOG.printf("[LED] Recreating strip: pin=%d, count=%d\n", pin, count);
     
@@ -134,7 +129,7 @@ StripStatus JaamLed::recreateStrip(Adafruit_NeoPixel*& strip,
     defragmentMemory("after strip destruction");
     
     // Create new strip
-    StripStatus result = createStrip(strip, pin, count, brightness, color, type);
+    StripStatus result = createStrip(strip, pin, count, type);
     
     // Log final memory state
     logMemoryUsage("after strip recreation");
