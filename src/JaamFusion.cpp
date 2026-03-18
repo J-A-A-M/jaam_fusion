@@ -36,12 +36,12 @@
 using namespace websockets;
 
 // --- Forward Declarations ---
-void handleAdaptColors();
+void adaptStripColorsAndBrightness();
 void handleAdaptAnimationColors();
 void handleAdaptAnimationBrightness();
 void handleAdaptAnimationPeriod();
 void handleAdaptAnimationType();
-void handleAdaptStripBrightness();
+void adaptStripColorsAndBrightness();
 void handleRecalculateLeds();
 void handleReconnectStrips(bool main, bool bg, bool service);
 void handleUpdateBatteryPin();
@@ -65,6 +65,7 @@ void requestRecalculateLeds();
 void requestAdaptColors();
 void requestToRegenerateBgColorMap();
 void displayProcess();
+void brightnessProcess();
 
 // --- MAIN Configuration ---
 char                chipID[13];
@@ -509,7 +510,7 @@ void handleClick(int event, JaamButton::Action action) {
     case 3:
       isMapOff = !isMapOff;
       display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
-      handleAdaptColors();
+      adaptStripColorsAndBrightness();
       break;
     // toggle display
     case 4:
@@ -1193,7 +1194,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
         int homeTemp = decodeTemperature(encodedTemp);
         api.updateHomeDistrictTemp(homeTemp);
-        handleAdaptColors();
+        adaptStripColorsAndBrightness();
     }
     
     checkFreeHeap("Websockets data processing");
@@ -1660,49 +1661,49 @@ void syncTime(int8_t attempts) {
     }
 }
 
-void adaptColors() {
+void adaptStripColorsAndBrightness() {
     if (strip_main != nullptr) {
-            LOG.printf("[WEB] Adjusting main colors\n");               
-            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-        }
-        if (strip_bg != nullptr) {
-            LOG.printf("[WEB] Adjusting bg colors\n");
-            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                switch (settings.getInt(BG_LED_MODE)) {
-                    case BgLedModes::COLOR_MAP: {
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            uint32_t color = animation.ledActualColor(strip, i);
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
+        LOG.printf("[LED] Adjusting main strip colors and brightness\n");               
+        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+            for (uint16_t i = 0; i < strip->numPixels(); i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+    }
+    if (strip_bg != nullptr) {
+        LOG.printf("[LED] Adjusting bg strip colors and brightness\n");
+        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+            switch (settings.getInt(BG_LED_MODE)) {
+                case BgLedModes::COLOR_MAP: {
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
                     }
-                    default: {
-                        uint32_t color = animation.stripActualColor(strip);
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
+                    break;
+                }
+                default: {
+                    uint32_t color = animation.stripActualColor(strip);
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        strip->setPixelColor(i, color);
                     }
+                    break;
                 }
-                strip->show();
-            });               
-        }
-        if (strip_service != nullptr) {
-            LOG.printf("[WEB] Adjusting service colors\n");
-            animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });               
-        }
+            }
+            strip->show();
+        });               
+    }
+    if (strip_service != nullptr) {
+        LOG.printf("[LED] Adjusting service strip colors and brightness\n");
+        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+            for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });               
+    }
 }
 
 // --- ALERT Functions ---
@@ -1806,33 +1807,32 @@ void initSettings() {
             case ENABLE_RECON_DRONES:
             case ENABLE_BALLISTIC:
             case ENABLE_EXPLOSIONS:
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
                 break;
             
             // Домашній регіон (кольори + анімації + оновлення бітів)
             case HOME_DISTRICT:
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
                 handleUpdateHomeAlertBit();
                 break;
             
             // Основна яскравість (загальна адаптація)
+            // Яскравість для анімацій (кольори + яскравість анімацій)
+            // Яскравість сервісних LED (тільки кольори)
             case BRIGHTNESS:
             case BRIGHTNESS_DAY:
             case BRIGHTNESS_NIGHT:
             case BRIGHTNESS_MODE:
+            // Додатково перераховуємо CURRENT_BRIGHTNESS
+                brightnessProcess();
             case DAY_START:
             case NIGHT_START:
             case NIGHT_MODE_LIGHT_THRESHOLD:
             case BRIGHTNESS_MIN:
             case BRIGHTNESS_MAX:
             case BRIGHTNESS_MAX_ACCEPT:
-                handleAdaptStripBrightness();
-                handleAdaptAnimationBrightness();
-                break;
-            
-            // Яскравість для анімацій (кольори + яскравість анімацій)
             case BRIGHTNESS_ALERT:
             case BRIGHTNESS_CLEAR:
             case BRIGHTNESS_EXPLOSION:
@@ -1844,14 +1844,10 @@ void initSettings() {
             case BRIGHTNESS_HOME_DISTRICT:
             case BRIGHTNESS_BG:
             case BRIGHTNESS_ANIMATION_END:
-                handleAdaptColors();
-                handleAdaptAnimationBrightness();
-                break;
-            
-            // Яскравість сервісних LED (тільки кольори)
             case BRIGHTNESS_LAMP:
             case BRIGHTNESS_SERVICE:
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
+                handleAdaptAnimationBrightness();
                 break;
             
             // Час анімацій
@@ -1922,7 +1918,7 @@ void initSettings() {
                 handleRecalculateLeds();
                 handleReconnectStrips(true, true, true);
                 handleReconfigureDisplay();
-                handleAdaptStripBrightness();
+                adaptStripColorsAndBrightness();
                 handleReconfigureButtons();
                 handleReconfigureSound();
                 handleReconfigureSensors();
@@ -2458,7 +2454,7 @@ void initStrip() {
     initStripMain();
     initStripBg();
     initStripService();   
-    handleAdaptStripBrightness();
+    adaptStripColorsAndBrightness();
 
     // Тепер заповнюємо allLedsMain і allLedsBg після ініціалізації стрічок
     allLedsMain.clear();
@@ -2700,7 +2696,7 @@ void checkMinuteOfSilence()
                 clockBeepInterval = async.setInterval(playMinOfSilenceSound, 2000); // every 2 sec
             }
             // adapt colors on min of silence start
-            handleAdaptColors();
+            adaptStripColorsAndBrightness();
             handleAdaptAnimationColors();
         } else {
             // turn off mos beep
@@ -2713,7 +2709,7 @@ void checkMinuteOfSilence()
                 uaAnthemPlaying = true;
             } else {
                 // adapt colors on min of silence end
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
             }
         }
@@ -2860,10 +2856,6 @@ void lightSensorProcess() {
 
 // --- Settings Change Handlers ---
 
-void handleAdaptColors() {
-    adaptColors();
-}
-
 void handleAdaptAnimationColors() {
     LOG.printf("[SETTINGS] Adjusting animation colors\n");
     animation.adaptAllAnimationColors();
@@ -2884,48 +2876,7 @@ void handleAdaptAnimationType() {
     animation.adaptAllAnimationType();
 }
 
-void handleAdaptStripBrightness() {
-    LOG.printf("[SETTINGS] Adjusting strip brightness\n");
-    if (strip_main != nullptr) {
-        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-            for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-    }
-    if (strip_bg != nullptr) {
-        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-            switch (settings.getInt(BG_LED_MODE)) {
-                case BgLedModes::COLOR_MAP: {
-                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    break;
-                }
-                default: {
-                    uint32_t color = animation.stripActualColor(strip);
-                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                        strip->setPixelColor(i, color);
-                    }
-                    break;
-                }
-            }
-            strip->show();
-        });
-    }
-    if (strip_service != nullptr) {
-        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-            for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-    }
-}
+
 
 void handleRecalculateLeds() {
     LOG.printf("[SETTINGS] Recalculating LEDs\n");
@@ -2972,7 +2923,7 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
             needReconnectService = false;
         }
         
-        handleAdaptStripBrightness();
+        adaptStripColorsAndBrightness();
         
         // Оновлюємо посилання в веб-інтерфейсі
         web.setStrips(strip_main, strip_bg, strip_service);
@@ -3125,7 +3076,7 @@ void requestRecalculateLeds() {
 
 void requestAdaptColors() {
     LOG.printf("[REQUEST] Adapting colors\n");
-    handleAdaptColors();
+    adaptStripColorsAndBrightness();
 }
 
 void requestToRegenerateBgColorMap() {
@@ -3139,7 +3090,7 @@ void brightnessProcess() {
     if (settings.getInt(CURRENT_BRIGHTNESS) != currentBrightness) {
         settings.saveInt(CURRENT_BRIGHTNESS, currentBrightness);
         LOG.printf("[BRIGHTNESS] Setting current_brightness to %d\n", currentBrightness);
-        handleAdaptStripBrightness();     
+        adaptStripColorsAndBrightness();     
         handleAdaptAnimationColors();
     }
 }
@@ -3225,7 +3176,7 @@ void displayProcess()
     if (uaAnthemPlaying && (!sound.isBuzzerPlaying() && !sound.isDFPlayerPlaying())) {
         uaAnthemPlaying = false;
         // adapt colors on min of silence end
-        handleAdaptColors();
+        adaptStripColorsAndBrightness();
         handleAdaptAnimationColors();
     }
 
@@ -3359,8 +3310,8 @@ void setup() {
     initMapping();
     checkFreeHeap("LED mapping initialization");
 
-    // Адаптація led для відображення парпору України
-    adaptColors();
+    // Адаптація led для відображення прапору України
+    adaptStripColorsAndBrightness();
     checkFreeHeap("colors adaptation");
 
     initSiren();
