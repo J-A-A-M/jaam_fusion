@@ -1,5 +1,4 @@
 #include <ArduinoJson.h>
-#include <cmath>
 #include "JaamApi.h"
 #include "JaamConfig.h"
 #include "JaamUtils.h"

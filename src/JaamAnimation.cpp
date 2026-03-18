@@ -7,21 +7,40 @@ extern int getCurrentMapMode();
 
 // Helper: HSV -> RGB (returns 0xRRGGBB)
 static inline uint32_t hsvToRgb(float h, float s, float v) {
-    while (h < 0) h += 360.0f;
+    // Нормалізація h (якщо h завжди в межах 0-360, ці рядки майже нічого не коштують)
+    while (h < 0.0f) h += 360.0f;
     while (h >= 360.0f) h -= 360.0f;
-    float c = v * s;
-    float x = c * (1 - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
-    float m = v - c;
+
+    // Швидка перевірка: якщо насиченість 0, це просто відтінок сірого
+    if (s <= 0.0f) {
+        uint8_t val = (uint8_t)(v * 255.0f + 0.5f);
+        return ((uint32_t)val << 16) | ((uint32_t)val << 8) | val;
+    }
+
+    float hh = h / 60.0f;
+    int i = (int)hh;        // Отримуємо індекс сектора (0 до 5)
+    float f = hh - i;       // Дробова частина всередині сектора
+
+    float p = v * (1.0f - s);
+    float q = v * (1.0f - (s * f));
+    float t = v * (1.0f - (s * (1.0f - f)));
+
     float r1 = 0, g1 = 0, b1 = 0;
-    if (h < 60) { r1 = c; g1 = x; b1 = 0; }
-    else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
-    else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
-    else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
-    else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
-    else { r1 = c; g1 = 0; b1 = x; }
-    uint8_t R = (uint8_t)roundf((r1 + m) * 255.0f);
-    uint8_t G = (uint8_t)roundf((g1 + m) * 255.0f);
-    uint8_t B = (uint8_t)roundf((b1 + m) * 255.0f);
+
+    switch (i) {
+        case 0:  r1 = v; g1 = t; b1 = p; break;
+        case 1:  r1 = q; g1 = v; b1 = p; break;
+        case 2:  r1 = p; g1 = v; b1 = t; break;
+        case 3:  r1 = p; g1 = q; b1 = v; break;
+        case 4:  r1 = t; g1 = p; b1 = v; break;
+        default: r1 = v; g1 = p; b1 = q; break; // випадок 5
+    }
+
+    // Замінюємо roundf на додавання 0.5 (стандартний трюк для додатних чисел)
+    uint8_t R = (uint8_t)(r1 * 255.0f + 0.5f);
+    uint8_t G = (uint8_t)(g1 * 255.0f + 0.5f);
+    uint8_t B = (uint8_t)(b1 * 255.0f + 0.5f);
+
     return ((uint32_t)R << 16) | ((uint32_t)G << 8) | B;
 }
 

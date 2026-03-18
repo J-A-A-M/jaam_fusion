@@ -1,5 +1,4 @@
 #pragma once
-#include <math.h>
 #include <string>
 #include <map>
 #include <set>
@@ -250,7 +249,8 @@ static float roundToDecimal(float value, int decimals) {
     if (decimals > 3) decimals = 3; 
     static const float mults[] = {1.0f, 10.0f, 100.0f, 1000.0f};
     float m = mults[decimals];
-    return roundf(value * m) / m;
+    float scaled = value * m;
+    return (float)((int)(scaled + (scaled >= 0.0f ? 0.5f : -0.5f))) / m;
 }
 
 // Генерація customMap (викликається окремо при зміні налаштувань)

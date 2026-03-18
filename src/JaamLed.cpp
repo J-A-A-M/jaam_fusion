@@ -13,7 +13,7 @@ uint8_t JaamLed::brightnessRelative(uint8_t percentLocal) {
     if (percentCommon == 0 || percentLocal == 0) return 0; // Швидкий вихід для 0% яскравості
     if (percentCommon > 100) percentCommon = 100;
     if (percentLocal > 100) percentLocal = 100;
-    uint8_t combinedPercent = (percentCommon * percentLocal) / 100;
+    uint8_t combinedPercent = ((uint16_t)percentCommon * percentLocal + 50) / 100; // Додаємо 50 для округлення при діленні на 100
     return brightnessMapped(combinedPercent);
 }
 

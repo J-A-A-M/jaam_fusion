@@ -10,7 +10,6 @@
 #include <AHTxx.h>
 #endif
 #include <WString.h>
-#include <cmath>
 
 class JaamClimateSensor {
     public:
