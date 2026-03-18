@@ -1829,6 +1829,7 @@ void initSettings() {
             case BRIGHTNESS_MAX:
             case BRIGHTNESS_MAX_ACCEPT:
                 handleAdaptStripBrightness();
+                handleAdaptAnimationBrightness();
                 break;
             
             // Яскравість для анімацій (кольори + яскравість анімацій)
