@@ -297,7 +297,8 @@ function updateParameter(name, value) {
 function updateSliderValue(name, value) {
     const valueElement = document.getElementById(name + 'Value');
     if (valueElement) {
-        valueElement.textContent = '[' + value + ']';
+        const unit = valueElement.getAttribute('data-unit') || '';
+        valueElement.textContent = '[' + value + (unit ? ' ' + unit : '') + ']';
     }
 }
 
@@ -597,7 +598,7 @@ function renderControl(ctrl, lists) {
         const div = groupDiv();
         
         const lab = document.createElement('label');
-        lab.setAttribute('for', name);
+        lab.htmlFor = name;
         lab.textContent = label + ':';
         
         const sel = document.createElement('select');
@@ -629,7 +630,7 @@ function renderControl(ctrl, lists) {
         const div = groupDiv();
         
         const lab = document.createElement('label');
-        lab.setAttribute('for', name);
+        lab.htmlFor = name;
         lab.textContent = label + ':';
         
         const sel = document.createElement('select');
@@ -696,6 +697,10 @@ function renderControl(ctrl, lists) {
         const div = document.createElement('div');
         div.className = 'switch-container';
         
+        const lab = document.createElement('label');
+        lab.htmlFor = name;
+        lab.textContent = label;
+        
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.id = name;
@@ -703,12 +708,8 @@ function renderControl(ctrl, lists) {
         input.checked = !!current;
         input.onchange = (e) => updateBoolParameter(name, e.target.checked);
         
-        const lab = document.createElement('label');
-        lab.setAttribute('for', name);
-        lab.textContent = label;
-        
-        div.appendChild(input);
         div.appendChild(lab);
+        div.appendChild(input);
         
         if (visibility && visibility.trim() !== '') {
             div.setAttribute('data-visibility', visibility);
@@ -724,7 +725,7 @@ function renderControl(ctrl, lists) {
         div.className = 'text-input-container';
         
         const lab = document.createElement('label');
-        lab.setAttribute('for', name);
+        lab.htmlFor = name;
         lab.textContent = label + ':';
         
         const inp = document.createElement('input');
@@ -751,22 +752,20 @@ function renderControl(ctrl, lists) {
         const div = document.createElement('div');
         div.className = 'color-picker-container';
         
-        const span = document.createElement('span');
-        span.className = 'value';
+        const lab = document.createElement('label');
+        lab.htmlFor = name;
+        lab.className = 'color-label';
+        lab.textContent = label;
         
         const inp = document.createElement('input');
         inp.type = 'color';
         inp.id = name;
+        inp.className = 'color-input';
         inp.value = current;
         inp.onchange = (e) => updateColor(name, e.target.value);
-        span.appendChild(inp);
         
-        const lab = document.createElement('label');
-        lab.setAttribute('for', name);
-        lab.textContent = label;
-        
-        div.appendChild(span);
         div.appendChild(lab);
+        div.appendChild(inp);
         
         if (visibility && visibility.trim() !== '') {
             div.setAttribute('data-visibility', visibility);
@@ -777,18 +776,29 @@ function renderControl(ctrl, lists) {
     }
     
     if (type === 'slider') {
-        const [_, name, label, min, max, step, current, section, visibility] = ctrl;
+        const [_, name, label, min, max, step, current, section, unit, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'slider-container';
+        
+        const header = document.createElement('div');
+        header.className = 'slider-header';
+        
+        const lab = document.createElement('label');
+        lab.htmlFor = name;
+        lab.className = 'slider-label';
+        lab.textContent = label + ':';
         
         const val = document.createElement('span');
         val.className = 'value';
         val.id = name + 'Value';
-        val.textContent = '[' + current + ']';
+        const unitStr = unit || '';
+        val.textContent = '[' + current + (unitStr ? ' ' + unitStr : '') + ']';
+        if (unitStr) {
+            val.setAttribute('data-unit', unitStr);
+        }
         
-        const lab = document.createElement('label');
-        lab.setAttribute('for', name);
-        lab.textContent = label + ':';
+        header.appendChild(lab);
+        header.appendChild(val);
         
         const rng = document.createElement('input');
         rng.type = 'range';
@@ -801,8 +811,7 @@ function renderControl(ctrl, lists) {
         rng.oninput = (e) => updateSliderValue(name, e.target.value);
         rng.onchange = (e) => updateParameter(name, e.target.value);
         
-        div.appendChild(val);
-        div.appendChild(lab);
+        div.appendChild(header);
         div.appendChild(rng);
         
         if (visibility && visibility.trim() !== '') {
@@ -983,9 +992,17 @@ async function renderUI() {
             const type = ctrl[0];
             let section = 'general'; // Default section
             
-            // Extract section based on control type and position
-            // All controls have visibility as last parameter, section is always second-to-last
-            section = ctrl[ctrl.length - 2] || 'general';
+            // Extract section based on control type using model definition
+            const modelDef = schema.models[type];
+            if (modelDef) {
+                const sectionIndex = modelDef.indexOf('section');
+                if (sectionIndex !== -1 && sectionIndex + 1 < ctrl.length) {
+                    section = ctrl[sectionIndex + 1] || 'general';
+                }
+            } else {
+                // Fallback: section is second-to-last for most controls
+                section = ctrl[ctrl.length - 2] || 'general';
+            }
             
             if (!controlsBySection[section]) {
                 controlsBySection[section] = [];

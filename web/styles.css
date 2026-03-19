@@ -226,6 +226,23 @@ h1 {
     margin: 20px 0;
 }
 
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 15px;
+}
+
+.slider-label {
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--text-color);
+    text-align: left;
+    flex: 1;
+    line-height: 1.4;
+}
+
 .slider {
     width: 100%;
     height: 25px;
@@ -240,16 +257,37 @@ h1 {
 }
 
 .value {
-    font-size: 18px;
-    margin-right: 10px;
-    width: 60px;
-    display: inline-block;
+    font-size: 16px;
+    min-width: 85px;
     text-align: right;
     color: var(--text-color);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .color-picker-container {
     margin: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.color-label {
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--text-color);
+    flex: 1;
+    line-height: 1.4;
+}
+
+.color-input {
+    width: 50px;
+    height: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
 }
 
 .text-input-container {
@@ -319,11 +357,16 @@ h1 {
     margin: 20px 0;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 .switch-container label {
-    margin-left: 8px;
     color: var(--text-color);
+    font-weight: bold;
+    font-size: 16px;
+    flex: 1;
+    line-height: 1.4;
 }
 
 .switch {
@@ -335,6 +378,7 @@ h1 {
     position: relative;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    flex-shrink: 0;
 }
 
 .switch:checked {
