@@ -3183,7 +3183,6 @@ void displayProcess()
         // adapt colors on min of silence end
         adaptStripColorsAndBrightness();
         handleAdaptAnimationColors();
-        
     }
 
     // Turn off display at night if setting enabled (Priority - highest)
