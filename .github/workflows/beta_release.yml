@@ -13,6 +13,9 @@ run-name: 🧪 Beta Release ${{ inputs.version }}
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -217,10 +220,10 @@ jobs:
           "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100&sort=created&direction=desc")
         
         # 2️⃣ Знаходимо останній pre-release beta для поточної версії
-        PREVIOUS_BETA_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.prerelease == true and (.tag_name // \"\") | startswith(\"${BASE_VERSION}-b\")) | .tag_name" | head -1)
+        PREVIOUS_BETA_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.prerelease == true and .tag_name != null and (.tag_name | startswith(\"${BASE_VERSION}-b\"))) | .tag_name" | head -1)
         
         # 3️⃣ Знаходимо останній stable або попередній beta (не поточної версії)
-        LAST_STABLE_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.tag_name != null and .tag_name != \"${TAG_NAME}\" and (.prerelease == false or ((.tag_name // \"\") | startswith(\"${BASE_VERSION}-b\") | not))) | .tag_name" | head -1)
+        LAST_STABLE_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.tag_name != null and .tag_name != \"${TAG_NAME}\" and (.prerelease == false or (.tag_name | startswith(\"${BASE_VERSION}-b\") | not))) | .tag_name" | head -1)
         
         echo "   Попередній beta: ${PREVIOUS_BETA_TAG:-'(відсутній - це перший beta)'}"
         echo "   Останній stable/попередній: ${LAST_STABLE_TAG:-'(відсутній - перша версія)'}"
@@ -323,11 +326,11 @@ jobs:
                 }],
                 "generationConfig": {
                   "temperature": 0.7,
-                  "maxOutputTokens": 2048
+                  "maxOutputTokens": 120000
                 }
               }')
             
-            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}" \
+            RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}" \
               -H "Content-Type: application/json" \
               -d "$JSON_PAYLOAD")
             
