@@ -252,14 +252,14 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_NEW_ALERT, {"rgbcna", "#FF3C00"}},
     {COLOR_ALERT_OVER, {"rgbcao", "#00FF3C"}},
     {COLOR_EXPLOSION, {"rgbcex", "#00FFFF"}},
-    {COLOR_MISSILES, {"rgbcmi", "#AA00FF"}},
-    {COLOR_DRONES, {"rgbcdr", "#FF00AA"}},
+    {COLOR_MISSILES, {"rgbcmi", "#9600FF"}},
+    {COLOR_DRONES, {"rgbcdr", "#FF00FF"}},
     {COLOR_RECON_DRONES, {"rgbcrdr", "#0000FF"}},
     {COLOR_KABS, {"rgbckab", "#FFFF00"}},
     {COLOR_BALLISTIC, {"rgbcbal", "#FFFFFF"}},
     {COLOR_HOME_DISTRICT, {"rgbchd", "#5CFF5C"}},
     {COLOR_BG, {"rgbcbg", "#00FF00"}},
-    {COLOR_LAMP, {"rgbclamp", "#D707FF"}},
+    {COLOR_LAMP, {"rgbclamp", "#D707D7"}},
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {
