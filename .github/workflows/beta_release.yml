@@ -97,7 +97,7 @@ jobs:
         fi
     
     - name: Upload updated platformio.ini
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: platformio-config
         path: platformio.ini
@@ -125,7 +125,7 @@ jobs:
     - uses: actions/checkout@v6
     
     - name: Download updated platformio.ini
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: platformio-config
     
@@ -167,7 +167,7 @@ jobs:
         ls -lh release/*.bin
     
     - name: Upload binary artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: firmware-${{ matrix.chip }}
         path: release/*.bin
@@ -184,7 +184,7 @@ jobs:
         fetch-depth: 0
     
     - name: Download all firmware binaries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         pattern: firmware-*
         path: release
@@ -217,10 +217,10 @@ jobs:
           "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100&sort=created&direction=desc")
         
         # 2️⃣ Знаходимо останній pre-release beta для поточної версії
-        PREVIOUS_BETA_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.prerelease == true and .tag_name | startswith(\"${BASE_VERSION}-b\")) | .tag_name" | head -1)
+        PREVIOUS_BETA_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.prerelease == true and (.tag_name // \"\") | startswith(\"${BASE_VERSION}-b\")) | .tag_name" | head -1)
         
         # 3️⃣ Знаходимо останній stable або попередній beta (не поточної версії)
-        LAST_STABLE_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.tag_name != \"${TAG_NAME}\" and (.prerelease == false or .tag_name | startswith(\"${BASE_VERSION}-b\") | not)) | .tag_name" | head -1)
+        LAST_STABLE_TAG=$(echo "$RELEASES" | jq -r ".[] | select(.tag_name != null and .tag_name != \"${TAG_NAME}\" and (.prerelease == false or ((.tag_name // \"\") | startswith(\"${BASE_VERSION}-b\") | not))) | .tag_name" | head -1)
         
         echo "   Попередній beta: ${PREVIOUS_BETA_TAG:-'(відсутній - це перший beta)'}"
         echo "   Останній stable/попередній: ${LAST_STABLE_TAG:-'(відсутній - перша версія)'}"
@@ -310,7 +310,7 @@ jobs:
           
           ⚠️ ВАЖЛИВО про другий розділ: Робимо його менш деталізованим, ніж перший. Включай ТІЛЬКИ найважливіші та найпомітніші зміни, пропускай дрібниці та технічні деталі.
           
-          ⚠️ КРИТИЧНО: Це генерація для автоматичної публікації релізу. Виводи ТІЛЬКИ Markdown текст changelog без жодних додаткових текстів, коментарів чи пояснень!\"
+          ⚠️ КРИТИЧНО: Це генерація для автоматичної публікації релізу. Виводи ТІЛЬКИ Markdown текст changelog без жодних додаткових текстів, коментарів чи пояснень!"
             
             # Створюємо JSON payload
             JSON_PAYLOAD=$(jq -n \
