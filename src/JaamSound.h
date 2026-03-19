@@ -1,5 +1,4 @@
 #pragma once
-#include <cmath>
 #if BUZZER_ENABLED
 #include <melody_player.h>
 #include <melody_factory.h>

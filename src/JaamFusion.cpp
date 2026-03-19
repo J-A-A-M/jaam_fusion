@@ -36,12 +36,12 @@
 using namespace websockets;
 
 // --- Forward Declarations ---
-void handleAdaptColors();
+void adaptStripColorsAndBrightness();
 void handleAdaptAnimationColors();
 void handleAdaptAnimationBrightness();
 void handleAdaptAnimationPeriod();
 void handleAdaptAnimationType();
-void handleAdaptStripBrightness();
+void adaptStripColorsAndBrightness();
 void handleRecalculateLeds();
 void handleReconnectStrips(bool main, bool bg, bool service);
 void handleUpdateBatteryPin();
@@ -65,6 +65,7 @@ void requestRecalculateLeds();
 void requestAdaptColors();
 void requestToRegenerateBgColorMap();
 void displayProcess();
+void brightnessProcess();
 
 // --- MAIN Configuration ---
 char                chipID[13];
@@ -454,8 +455,9 @@ void mapUpdate(float percents) {
     if (percents > 1.0f) percents = 1.0f;
 
     uint32_t litCount = static_cast<uint32_t>(num_leds_main * percents + 0.5f);
-    const uint32_t green = strip_main->Color(0, 255, 0);
-    const uint32_t off = strip_main->Color(0, 0, 0);
+    const uint32_t green = animation.adaptColorBrightness(DefaultColors::MAIN_STRIP, led.brightnessRelative(100)); // Використовуємо 100% локальної яскравості для максимальної видимості прогресу
+    const uint32_t off = DefaultColors::OFF;
+    
 
     animation.safeStripOperation(strip_main, [&](Adafruit_NeoPixel* strip) {
         for (uint32_t i = 0; i < num_leds_main; ++i) {
@@ -467,11 +469,9 @@ void mapUpdate(float percents) {
     if (strip_bg != nullptr) {
         uint32_t bgCount = strip_bg->numPixels();
         uint32_t bgLitCount = static_cast<uint32_t>(bgCount * percents + 0.5f);
-        const uint32_t bgGreen = strip_bg->Color(0, 255, 0);
-        const uint32_t bgOff = strip_bg->Color(0, 0, 0);
         animation.safeStripOperation(strip_bg, [&](Adafruit_NeoPixel* strip) {
             for (uint32_t i = 0; i < bgCount; ++i) {
-                strip->setPixelColor(i, i < bgLitCount ? bgGreen : bgOff);
+                strip->setPixelColor(i, i < bgLitCount ? green : off);
             }
             strip->show();
         });
@@ -481,11 +481,9 @@ void mapUpdate(float percents) {
         static uint32_t serviceIndex = 0;
         uint32_t serviceCount = strip_service->numPixels();
         if (serviceCount > 0) {
-            const uint32_t serviceGreen = strip_service->Color(0, 255, 0);
-            const uint32_t serviceOff = strip_service->Color(0, 0, 0);
             animation.safeStripOperation(strip_service, [&](Adafruit_NeoPixel* strip) {
                 for (uint32_t i = 0; i < serviceCount; ++i) {
-                    strip->setPixelColor(i, i == serviceIndex ? serviceGreen : serviceOff);
+                    strip->setPixelColor(i, i == serviceIndex ? green : off);
                 }
                 strip->show();
             });
@@ -512,7 +510,7 @@ void handleClick(int event, JaamButton::Action action) {
     case 3:
       isMapOff = !isMapOff;
       display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
-      handleAdaptColors();
+      adaptStripColorsAndBrightness();
       break;
     // toggle display
     case 4:
@@ -755,7 +753,7 @@ void alertAction(int bit, int districtId) {
     display.showServiceMessage(getEventTypeName(bit), districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
 }
 
-void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, uint16_t region_id, bool increase = true) {
+void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, int initialBit, uint16_t region_id, bool increase = true) {
     LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
 
     if (strip == nullptr) {
@@ -773,7 +771,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     uint32_t period;
     uint32_t cycles;
     uint8_t startBrightness;
-    uint8_t endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ANIMATION_END));
+    uint8_t endBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ANIMATION_END));
     uint8_t ledCount;
 
     //int actualBit = getHighestActualBit(bit);
@@ -787,7 +785,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     switch (bit) {
         case -1: 
             color = animation.colorFromHex(settings.getString(COLOR_CLEAR));  
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_CLEAR));             
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_CLEAR));             
             animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
             cycles = (settings.getInt(ALERT_OFF_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
@@ -795,48 +793,48 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         case 0:
             color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
             animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ALERT));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ALERT));
             period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
             break;
         case 5: 
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_DRONES));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_DRONES));
             animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
             break;
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_MISSILES));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_MISSILES));
             animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
             break;
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_KABS));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_KABS));
             animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(KAB_TIME) * 1000)/settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 1;
             break;
         case 8:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_BALLISTIC));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_BALLISTIC));
             animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(BALLISTIC_TIME) * 1000)/settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME)  : 1;
             break;
         case 9:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_EXPLOSION));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_EXPLOSION));
             animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 1000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
             break;
         case 10:
             color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
-            startBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_RECON_DRONES));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_RECON_DRONES));
             animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
@@ -877,7 +875,8 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         startBrightness,
         endBrightness,
         region_id,
-        bit
+        bit,
+        initialBit
     )) {
         LOG.printf("[ERROR] Failed to create animation\n");
         return;
@@ -1000,12 +999,12 @@ void onMessageCallback(WebsocketsMessage msg) {
                 for (uint8_t j = 0; j < meta->led_count; ++j) {
                     int led = (int)leds[j];
                     if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
-                    animateLed(strip_main, MapModes::ALERT, led, actualBitDiff, region_id, true);
+                    animateLed(strip_main, MapModes::ALERT, led, actualBitDiff, highestBitRegion, region_id, true);
                 }
                 // Домашній регіон — окрема анімація strip_bg
                 if ((uint16_t)settings.getInt(HOME_DISTRICT) == region_id) {
                     LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
-                    animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, region_id, true);
+                    animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, highestBitRegion, region_id, true);
                     alertAction(actualBitDiff, region_id);
                 }
             }   
@@ -1095,7 +1094,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 bool increase = hasHigherPriority((int)newBit, (int)oldBit);
                 LOG.printf("[WEBSOCKET] LED %d: bit %d -> %d (%s), region %d\n",
                            led, oldBit, newBit, increase ? "increase" : "decrease", new_region);
-                animateLed(strip_main, MapModes::ALERT, led, (int)newBit, new_region, increase);
+                animateLed(strip_main, MapModes::ALERT, led, (int)newBit, (int)oldBit, new_region, increase);
 
                 ledBitCache[led] = newBit;
             }
@@ -1113,7 +1112,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     if (localAlertBit == -1) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
                 }
-                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit,
+                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit,
                            settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
             }
@@ -1196,7 +1195,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
         int homeTemp = decodeTemperature(encodedTemp);
         api.updateHomeDistrictTemp(homeTemp);
-        handleAdaptColors();
+        adaptStripColorsAndBrightness();
     }
     
     checkFreeHeap("Websockets data processing");
@@ -1408,7 +1407,7 @@ void initStripMain() {
         LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    mainLedPin, num_leds_main, ledType, 
                    mainLedColorFormat, settings.getInt(MAIN_LED_FREQUENCY));
-        status = led.createStrip(strip_main, mainLedPin, num_leds_main, 10, DefaultColors::MAIN_STRIP, ledType);
+        status = led.createStrip(strip_main, mainLedPin, num_leds_main, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_main: %d\n", status);
         } else {
@@ -1448,7 +1447,7 @@ void initStripBg() {
         LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    bgLedPin, bgLedCount, ledType,
                    bgLedColorFormat, settings.getInt(BG_LED_FREQUENCY));
-        status = led.createStrip(strip_bg, bgLedPin, bgLedCount, 10, DefaultColors::BG_STRIP, ledType);
+        status = led.createStrip(strip_bg, bgLedPin, bgLedCount, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_bg: %d\n", status);
         } else {
@@ -1487,7 +1486,7 @@ void initStripService() {
         LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
                    serviceLedPin, num_leds_service, ledType,
                    serviceLedColorFormat, settings.getInt(SERVICE_LED_FREQUENCY));
-        status = led.createStrip(strip_service, serviceLedPin, num_leds_service, 10, DefaultColors::SERVICE_STRIP, ledType);
+        status = led.createStrip(strip_service, serviceLedPin, num_leds_service, ledType);
         if (status != StripStatus::SUCCESS) {
             LOG.printf("[LED] ERROR: Failed to create strip_service: %d\n", status);
         } else {
@@ -1663,49 +1662,49 @@ void syncTime(int8_t attempts) {
     }
 }
 
-void adaptColors() {
+void adaptStripColorsAndBrightness() {
     if (strip_main != nullptr) {
-            LOG.printf("[WEB] Adjusting main colors\n");               
-            animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-                for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });
-        }
-        if (strip_bg != nullptr) {
-            LOG.printf("[WEB] Adjusting bg colors\n");
-            animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-                switch (settings.getInt(BG_LED_MODE)) {
-                    case BgLedModes::COLOR_MAP: {
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            uint32_t color = animation.ledActualColor(strip, i);
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
+        LOG.printf("[LED] Adjusting main strip colors and brightness\n");               
+        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
+            for (uint16_t i = 0; i < strip->numPixels(); i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });
+    }
+    if (strip_bg != nullptr) {
+        LOG.printf("[LED] Adjusting bg strip colors and brightness\n");
+        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
+            switch (settings.getInt(BG_LED_MODE)) {
+                case BgLedModes::COLOR_MAP: {
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        uint32_t color = animation.ledActualColor(strip, i);
+                        strip->setPixelColor(i, color);
                     }
-                    default: {
-                        uint32_t color = animation.stripActualColor(strip);
-                        for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                            strip->setPixelColor(i, color);
-                        }
-                        break;
+                    break;
+                }
+                default: {
+                    uint32_t color = animation.stripActualColor(strip);
+                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                        strip->setPixelColor(i, color);
                     }
+                    break;
                 }
-                strip->show();
-            });               
-        }
-        if (strip_service != nullptr) {
-            LOG.printf("[WEB] Adjusting service colors\n");
-            animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-                for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                    uint32_t color = animation.ledActualColor(strip, i);
-                    strip->setPixelColor(i, color);
-                }
-                strip->show();
-            });               
-        }
+            }
+            strip->show();
+        });               
+    }
+    if (strip_service != nullptr) {
+        LOG.printf("[LED] Adjusting service strip colors and brightness\n");
+        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
+            for(uint16_t i = 0; i < strip->numPixels(); i++) {
+                uint32_t color = animation.ledActualColor(strip, i);
+                strip->setPixelColor(i, color);
+            }
+            strip->show();
+        });               
+    }
 }
 
 // --- ALERT Functions ---
@@ -1809,32 +1808,32 @@ void initSettings() {
             case ENABLE_RECON_DRONES:
             case ENABLE_BALLISTIC:
             case ENABLE_EXPLOSIONS:
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
                 break;
             
             // Домашній регіон (кольори + анімації + оновлення бітів)
             case HOME_DISTRICT:
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
                 handleUpdateHomeAlertBit();
                 break;
             
             // Основна яскравість (загальна адаптація)
+            // Яскравість для анімацій (кольори + яскравість анімацій)
+            // Яскравість сервісних LED (тільки кольори)
             case BRIGHTNESS:
             case BRIGHTNESS_DAY:
             case BRIGHTNESS_NIGHT:
             case BRIGHTNESS_MODE:
+            // Додатково перераховуємо CURRENT_BRIGHTNESS
+                brightnessProcess();
             case DAY_START:
             case NIGHT_START:
             case NIGHT_MODE_LIGHT_THRESHOLD:
             case BRIGHTNESS_MIN:
             case BRIGHTNESS_MAX:
             case BRIGHTNESS_MAX_ACCEPT:
-                handleAdaptStripBrightness();
-                break;
-            
-            // Яскравість для анімацій (кольори + яскравість анімацій)
             case BRIGHTNESS_ALERT:
             case BRIGHTNESS_CLEAR:
             case BRIGHTNESS_EXPLOSION:
@@ -1846,14 +1845,11 @@ void initSettings() {
             case BRIGHTNESS_HOME_DISTRICT:
             case BRIGHTNESS_BG:
             case BRIGHTNESS_ANIMATION_END:
-                handleAdaptColors();
-                handleAdaptAnimationBrightness();
-                break;
-            
-            // Яскравість сервісних LED (тільки кольори)
             case BRIGHTNESS_LAMP:
             case BRIGHTNESS_SERVICE:
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
+                handleAdaptAnimationColors();
+                handleAdaptAnimationBrightness();
                 break;
             
             // Час анімацій
@@ -1924,7 +1920,7 @@ void initSettings() {
                 handleRecalculateLeds();
                 handleReconnectStrips(true, true, true);
                 handleReconfigureDisplay();
-                handleAdaptStripBrightness();
+                adaptStripColorsAndBrightness();
                 handleReconfigureButtons();
                 handleReconfigureSound();
                 handleReconfigureSensors();
@@ -2044,7 +2040,6 @@ void initSettings() {
                 // Параметри для ALERT
                 case ANIMATION_ALERT_ON_TYPE:
                 case ANIMATION_ALERT_ON_CYCLE_TIME:
-                case BRIGHTNESS_ALERT:
                 case COLOR_ALERT:
                     eventType = AlertModes::ALERT;
                     animType = settings.getInt(ANIMATION_ALERT_ON_TYPE);
@@ -2057,7 +2052,6 @@ void initSettings() {
                 // Параметри для NO_ALERT (скасування тривоги)
                 case ANIMATION_ALERT_OFF_TYPE:
                 case ANIMATION_ALERT_OFF_CYCLE_TIME:
-                case BRIGHTNESS_CLEAR:
                 case COLOR_CLEAR:
                     eventType = AlertModes::NO_ALERT;
                     animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
@@ -2070,7 +2064,6 @@ void initSettings() {
                 // Параметри для EXPLOSION
                 case ANIMATION_EXPLOSION_TYPE:
                 case ANIMATION_EXPLOSION_CYCLE_TIME:
-                case BRIGHTNESS_EXPLOSION:
                 case COLOR_EXPLOSION:
                     eventType = AlertModes::EXPLOSION;
                     animType = settings.getInt(ANIMATION_EXPLOSION_TYPE);
@@ -2083,7 +2076,6 @@ void initSettings() {
                 // Параметри для DRONES
                 case ANIMATION_DRONE_TYPE:
                 case ANIMATION_DRONE_CYCLE_TIME:
-                case BRIGHTNESS_DRONES:
                 case COLOR_DRONES:
                     eventType = AlertModes::DRONES;
                     animType = settings.getInt(ANIMATION_DRONE_TYPE);
@@ -2096,7 +2088,6 @@ void initSettings() {
                 // Параметри для RECON_DRONES
                 case ANIMATION_RECON_DRONE_TYPE:
                 case ANIMATION_RECON_DRONE_CYCLE_TIME:
-                case BRIGHTNESS_RECON_DRONES:
                 case COLOR_RECON_DRONES:
                     eventType = AlertModes::RECON_DRONES;
                     animType = settings.getInt(ANIMATION_RECON_DRONE_TYPE);
@@ -2109,7 +2100,6 @@ void initSettings() {
                 // Параметри для MISSILES
                 case ANIMATION_MISSILE_TYPE:
                 case ANIMATION_MISSILE_CYCLE_TIME:
-                case BRIGHTNESS_MISSILES:
                 case COLOR_MISSILES:
                     eventType = AlertModes::MISSILES;
                     animType = settings.getInt(ANIMATION_MISSILE_TYPE);
@@ -2122,7 +2112,6 @@ void initSettings() {
                 // Параметри для KABS
                 case ANIMATION_KAB_TYPE:
                 case ANIMATION_KAB_CYCLE_TIME:
-                case BRIGHTNESS_KABS:
                 case COLOR_KABS:
                     eventType = AlertModes::KABS;
                     animType = settings.getInt(ANIMATION_KAB_TYPE);
@@ -2135,7 +2124,6 @@ void initSettings() {
                 // Параметри для BALLISTIC
                 case ANIMATION_BALLISTIC_TYPE:
                 case ANIMATION_BALLISTIC_CYCLE_TIME:
-                case BRIGHTNESS_BALLISTIC:
                 case COLOR_BALLISTIC:
                     eventType = AlertModes::BALLISTIC;
                     animType = settings.getInt(ANIMATION_BALLISTIC_TYPE);
@@ -2468,7 +2456,7 @@ void initStrip() {
     initStripMain();
     initStripBg();
     initStripService();   
-    handleAdaptStripBrightness();
+    adaptStripColorsAndBrightness();
 
     // Тепер заповнюємо allLedsMain і allLedsBg після ініціалізації стрічок
     allLedsMain.clear();
@@ -2623,7 +2611,7 @@ void animations() {
     uint32_t period = random(AnimationConfig::MIN_PERIOD, AnimationConfig::MAX_PERIOD + 1);
     uint32_t cycles = 30; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
-    uint8_t endBrightness = led.brightnessAbsolute(settings.getInt(BRIGHTNESS_ANIMATION_END)); //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
+    uint8_t endBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ANIMATION_END)); //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
     
     // Створення анімації з обробкою помилок
     if (!animation.createAnimation(
@@ -2710,7 +2698,7 @@ void checkMinuteOfSilence()
                 clockBeepInterval = async.setInterval(playMinOfSilenceSound, 2000); // every 2 sec
             }
             // adapt colors on min of silence start
-            handleAdaptColors();
+            adaptStripColorsAndBrightness();
             handleAdaptAnimationColors();
         } else {
             // turn off mos beep
@@ -2723,7 +2711,7 @@ void checkMinuteOfSilence()
                 uaAnthemPlaying = true;
             } else {
                 // adapt colors on min of silence end
-                handleAdaptColors();
+                adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
             }
         }
@@ -2870,10 +2858,6 @@ void lightSensorProcess() {
 
 // --- Settings Change Handlers ---
 
-void handleAdaptColors() {
-    adaptColors();
-}
-
 void handleAdaptAnimationColors() {
     LOG.printf("[SETTINGS] Adjusting animation colors\n");
     animation.adaptAllAnimationColors();
@@ -2894,51 +2878,7 @@ void handleAdaptAnimationType() {
     animation.adaptAllAnimationType();
 }
 
-void handleAdaptStripBrightness() {
-    LOG.printf("[SETTINGS] Adjusting strip brightness\n");
-    if (strip_main != nullptr) {
-        animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
-            strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-            for (uint16_t i = 0; i < strip->numPixels(); i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-    }
-    if (strip_bg != nullptr) {
-        animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
-            strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-            switch (settings.getInt(BG_LED_MODE)) {
-                case BgLedModes::COLOR_MAP: {
-                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                        uint32_t color = animation.ledActualColor(strip, i);
-                        strip->setPixelColor(i, color);
-                    }
-                    break;
-                }
-                default: {
-                    uint32_t color = animation.stripActualColor(strip);
-                    for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                        strip->setPixelColor(i, color);
-                    }
-                    break;
-                }
-            }
-            strip->show();
-        });
-    }
-    if (strip_service != nullptr) {
-        animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
-            strip->setBrightness(led.brightnessMapped(settings.getInt(CURRENT_BRIGHTNESS)));
-            for(uint16_t i = 0; i < strip->numPixels(); i++) {
-                uint32_t color = animation.ledActualColor(strip, i);
-                strip->setPixelColor(i, color);
-            }
-            strip->show();
-        });
-    }
-}
+
 
 void handleRecalculateLeds() {
     LOG.printf("[SETTINGS] Recalculating LEDs\n");
@@ -2985,7 +2925,7 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
             needReconnectService = false;
         }
         
-        handleAdaptStripBrightness();
+        adaptStripColorsAndBrightness();
         
         // Оновлюємо посилання в веб-інтерфейсі
         web.setStrips(strip_main, strip_bg, strip_service);
@@ -3138,7 +3078,7 @@ void requestRecalculateLeds() {
 
 void requestAdaptColors() {
     LOG.printf("[REQUEST] Adapting colors\n");
-    handleAdaptColors();
+    adaptStripColorsAndBrightness();
 }
 
 void requestToRegenerateBgColorMap() {
@@ -3152,7 +3092,7 @@ void brightnessProcess() {
     if (settings.getInt(CURRENT_BRIGHTNESS) != currentBrightness) {
         settings.saveInt(CURRENT_BRIGHTNESS, currentBrightness);
         LOG.printf("[BRIGHTNESS] Setting current_brightness to %d\n", currentBrightness);
-        handleAdaptStripBrightness();     
+        adaptStripColorsAndBrightness();     
         handleAdaptAnimationColors();
     }
 }
@@ -3238,7 +3178,7 @@ void displayProcess()
     if (uaAnthemPlaying && (!sound.isBuzzerPlaying() && !sound.isDFPlayerPlaying())) {
         uaAnthemPlaying = false;
         // adapt colors on min of silence end
-        handleAdaptColors();
+        adaptStripColorsAndBrightness();
         handleAdaptAnimationColors();
     }
 
@@ -3372,8 +3312,8 @@ void setup() {
     initMapping();
     checkFreeHeap("LED mapping initialization");
 
-    // Адаптація led для відображення парпору України
-    adaptColors();
+    // Адаптація led для відображення прапору України
+    adaptStripColorsAndBrightness();
     checkFreeHeap("colors adaptation");
 
     initSiren();
@@ -3414,7 +3354,6 @@ void setup() {
     // Встановлюємо режим роботи анімацій
     animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
     checkFreeHeap("animation settings");
-    led.setSettings(&settings);
     checkFreeHeap("LED settings");
     battery.setSettings(&settings);
     checkFreeHeap("battery settings");

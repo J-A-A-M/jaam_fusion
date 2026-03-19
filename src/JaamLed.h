@@ -1,6 +1,5 @@
 #pragma once
 #include <Adafruit_NeoPixel.h>// Оголошуємо стрічки як покажчики
-#include "JaamSettings.h"
 #include "JaamLogs.h"
 #include "JaamConfig.h"
 
@@ -21,15 +20,12 @@ enum class StripStatus {
 };
 
 class JaamLed {
-private:
-    JaamSettings* settings;
 
 public:
     JaamLed();
-    void setSettings(JaamSettings* settings);
     
     // Convert percentage to 0-255 scale
-    static uint8_t brightnessAbsolute(uint8_t percent);
+    static uint8_t brightnessRelative(uint8_t percentLocal);
     static uint8_t brightnessParabolic(uint8_t percent);
     static uint8_t brightnessMapped(uint8_t percent);
 
@@ -40,8 +36,6 @@ public:
     static StripStatus createStrip(Adafruit_NeoPixel*& strip, 
                         int pin, 
                         uint32_t count, 
-                        uint8_t brightness,
-                        uint32_t color, 
                         uint8_t type);
     
     // Функція для безпечного видалення стрічки
@@ -54,8 +48,6 @@ public:
     static StripStatus recreateStrip(Adafruit_NeoPixel*& strip,
                                    int pin,
                                    uint32_t count,
-                                   uint8_t brightness,
-                                   uint32_t color,
                                    uint8_t type);
 };
 

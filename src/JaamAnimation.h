@@ -12,7 +12,7 @@ extern Adafruit_NeoPixel* strip_service;
 // Стан одного LED (indexed by position in mainStates / serviceStates)
 struct LedState {
     uint32_t color;
-    uint32_t initColor;
+    uint32_t adaptedInitColor;
     uint32_t startTime;    // глобальний час для синхронізації фази
     uint32_t localStart;   // локальний час для розрахунку тривалості
     uint32_t period;
@@ -21,6 +21,7 @@ struct LedState {
     uint8_t  startBr;
     uint8_t  endBr;
     int8_t   bit;
+    int8_t   initialBit;
     uint8_t  mapMode;
     bool     active;
 };
@@ -29,7 +30,7 @@ struct LedState {
 struct StripState {
     Adafruit_NeoPixel* strip;
     uint32_t color;
-    uint32_t initColor;
+    uint32_t adaptedInitColor;
     uint32_t startTime;
     uint32_t localStart;
     uint32_t period;
@@ -38,6 +39,7 @@ struct StripState {
     uint8_t  startBr;
     uint8_t  endBr;
     int8_t   bit;
+    int8_t   initialBit;
     uint8_t  mapMode;
     bool     active;
 };
@@ -111,7 +113,8 @@ class AnimationManager {
                            uint8_t startBrightness = 50,
                            uint8_t endBrightness = 255,
                            uint16_t region_id = 0,
-                           int bit = 0);
+                           int bit = 0,
+                           int initialBit = -1);
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
