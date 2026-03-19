@@ -373,6 +373,22 @@ bool AnimationManager::createAnimation(uint16_t type,
 }
 
 // ──────────────────────────────────────────────────────
+static float computeColorPulseFactor(float phase) {
+    float factor;
+    if (phase < 0.2f) {
+        factor = sinf(phase * 5.0f * PI);
+    } else if (phase < 0.3f) {
+        factor = 1.0f - (phase - 0.2f) * 5.0f;
+    } else if (phase < 0.4f) {
+        factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
+    } else {
+        factor = 1.0f - (phase - 0.4f) * 1.67f;
+    }
+    if (factor < 0.0f) factor = 0.0f;
+    if (factor > 1.0f) factor = 1.0f;
+    return factor;
+}
+
 // Обчислення кольору анімації (без звернень до стрічок)
 // ──────────────────────────────────────────────────────
 
@@ -420,19 +436,7 @@ uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
                  | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
         }
         case AnimationTypes::COLOR_PULSE: {
-            float factor;
-            if (phase < 0.2f) {
-                factor = sinf(phase * 5.0f * PI);
-            } else if (phase < 0.3f) {
-                factor = 1.0f - (phase - 0.2f) * 5.0f;
-            } else if (phase < 0.4f) {
-                factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
-            } else {
-                factor = 1.0f - (phase - 0.4f) * 1.67f;
-            }
-            if (factor < 0.0f) factor = 0.0f;
-            if (factor > 1.0f) factor = 1.0f;
-
+            float factor = computeColorPulseFactor(phase);
             uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
             return blendColors(adaptedColor, s.adaptedInitColor, 1.0f - factor);
         }
@@ -491,18 +495,7 @@ uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed)
                  | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
         }
         case AnimationTypes::COLOR_PULSE: {
-            float factor;
-            if (phase < 0.2f) {
-                factor = sinf(phase * 5.0f * PI);
-            } else if (phase < 0.3f) {
-                factor = 1.0f - (phase - 0.2f) * 5.0f;
-            } else if (phase < 0.4f) {
-                factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
-            } else {
-                factor = 1.0f - (phase - 0.4f) * 1.67f;
-            }
-            if (factor < 0.0f) factor = 0.0f;
-            if (factor > 1.0f) factor = 1.0f;
+            float factor = computeColorPulseFactor(phase);
             uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
             return blendColors(adaptedColor, s.adaptedInitColor, 1.0f - factor);
         }
