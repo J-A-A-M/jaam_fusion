@@ -575,10 +575,10 @@ static SettingListItem ANIMATION_TYPES[] = {
   {AnimationTypes::BLEND_FADE, "Перехід між кольорами"},
   {AnimationTypes::PULSE, "Пульсація"},
   {AnimationTypes::ONE_WAY_BLEND_FADE, "Односторонній перехід між кольорами"},
-  {AnimationTypes::COLOR_PULSE, "Кольорова пульсація"},
   {AnimationTypes::RUNNING_LIGHT, "RUNNING_LIGHT", true},
   {AnimationTypes::SET_BRIGHTNESS, "SET_BRIGHTNESS", true},
-  {AnimationTypes::OFF, "Статичний колір"}
+  {AnimationTypes::OFF, "Статичний колір"},
+  {AnimationTypes::COLOR_PULSE, "Кольорова пульсація"}
 };
 
 enum Type {
