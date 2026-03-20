@@ -228,9 +228,8 @@ jobs:
         echo "   Попередній beta: ${PREVIOUS_BETA_TAG:-'(відсутній - це перший beta)'}"
         echo "   Останній stable/попередній: ${LAST_STABLE_TAG:-'(відсутній - перша версія)'}"
         
-        # Витягуємо два набори комітів
+        # Витягуємо набір комітів
         NEW_COMMITS=""
-        PREVIOUS_COMMITS=""
         
         # Перший розділ: нові коміти від попереднього beta поточної версії
         if [ -n "$PREVIOUS_BETA_TAG" ]; then
@@ -397,11 +396,12 @@ jobs:
           
           ## 🆕 Що нового у версії ${FULL_VERSION}
           
-          ${NEW_COMMITS}
+          ${NEW_COMMITS}"
           
-          ## 📋 Зміни з попередніх beta версій (відносно версії ${LAST_STABLE_TAG})
-          
-          ${PREVIOUS_RELEASE_NOTES}"
+          # Якщо є попередні реліз ноти, додаємо їх як другий розділ
+          if [ -n "$PREVIOUS_RELEASE_NOTES" ]; then
+            CHANGELOG+=$'\n\n'"## 📋 Зміни з попередніх beta версій (відносно версії ${LAST_STABLE_TAG})"$'\n'"${PREVIOUS_RELEASE_NOTES}"
+          fi
         fi
         
         # Зберігаємо changelog
