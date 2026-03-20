@@ -296,10 +296,9 @@ function updateParameter(name, value) {
 }
 
 function updateSliderValue(name, value) {
-    const valueElement = document.getElementById(name + 'Value');
-    if (valueElement) {
-        const unit = valueElement.getAttribute('data-unit') || '';
-        valueElement.textContent = '[' + value + (unit ? ' ' + unit : '') + ']';
+    const inputElement = document.getElementById(name + 'Input');
+    if (inputElement) {
+        inputElement.value = value;
     }
 }
 
@@ -780,27 +779,21 @@ function renderControl(ctrl, lists) {
         const [_, name, label, min, max, step, current, section, unit, visibility] = ctrl;
         const div = document.createElement('div');
         div.className = 'slider-container';
-        
+
         const header = document.createElement('div');
         header.className = 'slider-header';
-        
+
         const lab = document.createElement('label');
         lab.htmlFor = name;
         lab.className = 'slider-label';
         lab.textContent = label + ':';
-        
-        const val = document.createElement('span');
-        val.className = 'value';
-        val.id = name + 'Value';
-        const unitStr = unit || '';
-        val.textContent = '[' + current + (unitStr ? ' ' + unitStr : '') + ']';
-        if (unitStr) {
-            val.setAttribute('data-unit', unitStr);
-        }
-        
+
         header.appendChild(lab);
-        header.appendChild(val);
-        
+
+        const unitStr = unit || '';
+        const minNum = Number(min);
+        const maxNum = Number(max);
+
         const rng = document.createElement('input');
         rng.type = 'range';
         rng.min = min;
@@ -809,17 +802,49 @@ function renderControl(ctrl, lists) {
         rng.value = current;
         rng.className = 'slider';
         rng.id = name;
+
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.id = name + 'Input';
+        inp.className = 'slider-input';
+        inp.min = min;
+        inp.max = max;
+        inp.step = step;
+        inp.value = current;
+        inp.oninput = (e) => {
+            const clamped = Math.min(maxNum, Math.max(minNum, Number(e.target.value)));
+            rng.value = clamped;
+        };
+        inp.onchange = (e) => {
+            const clamped = Math.min(maxNum, Math.max(minNum, Number(e.target.value)));
+            inp.value = clamped;
+            rng.value = clamped;
+            updateParameter(name, clamped);
+        };
+
         rng.oninput = (e) => updateSliderValue(name, e.target.value);
         rng.onchange = (e) => updateParameter(name, e.target.value);
-        
+
+        const row = document.createElement('div');
+        row.className = 'slider-row';
+        row.appendChild(rng);
+        row.appendChild(inp);
+
+        if (unitStr) {
+            const unitSpan = document.createElement('span');
+            unitSpan.className = 'slider-unit';
+            unitSpan.textContent = unitStr;
+            row.appendChild(unitSpan);
+        }
+
         div.appendChild(header);
-        div.appendChild(rng);
-        
+        div.appendChild(row);
+
         if (visibility && visibility.trim() !== '') {
             div.setAttribute('data-visibility', visibility);
             updateElementVisibility(div);
         }
-        
+
         return div;
     }
     

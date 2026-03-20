@@ -244,7 +244,7 @@ h1 {
 }
 
 .slider {
-    width: 100%;
+    flex: 1;
     height: 25px;
     background: var(--border-color);
     outline: none;
@@ -256,10 +256,32 @@ h1 {
     opacity: 1;
 }
 
-.value {
-    font-size: 16px;
-    min-width: 85px;
-    text-align: right;
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slider-input {
+    width: 65px;
+    padding: 4px 6px;
+    font-size: 15px;
+    text-align: center;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+}
+
+.slider-input::-webkit-outer-spin-button,
+.slider-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+}
+
+.slider-unit {
+    font-size: 15px;
     color: var(--text-color);
     white-space: nowrap;
     flex-shrink: 0;
