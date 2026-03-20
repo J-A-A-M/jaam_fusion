@@ -3054,7 +3054,7 @@ void updateFirmware() {
 }
 
 void requestFirmwareUpdate(const char* firmwareId) {
-    const char* versionToUse = firmwareId ? firmwareId : fwUpdate.getNewVersion();
+    const char* versionToUse = firmwareId ? firmwareId : fwUpdate.getUpdateId();
     
     if (versionToUse == nullptr || strlen(versionToUse) == 0) {
         LOG.printf("[FIRMWARE] No firmware version specified\n");

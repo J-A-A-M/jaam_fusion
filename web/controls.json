@@ -36,7 +36,7 @@
         [
             "dropdown",
             "bg_led_mode",
-            "Режим фонової підствітки",
+            "Режим фонової стрічки",
             "bg_led_mode",
             "general",
             "hardware!=0"
