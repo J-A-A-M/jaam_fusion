@@ -169,9 +169,8 @@ uint32_t AnimationManager::getStartTime(uint16_t animationType) {
             if (!globalTimesInitialized[animationType]) {
                 globalStartTimes[animationType] = currentTime;
                 globalTimesInitialized[animationType] = true;
-                LOG.printf("[ANIMATION] Initialized global time for type %d (%s): %u\n",
+                LOG.printf("[ANIMATION] Initialized global time for type %d: %u\n",
                           animationType,
-                          ANIMATION_TYPES[animationType].name,
                           globalStartTimes[animationType]);
             }
             uint32_t returnTime = globalStartTimes[animationType];
@@ -206,8 +205,8 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
             if (globalTimesInitialized[animationType]) {
                 globalTimesInitialized[animationType] = false;
                 globalStartTimes[animationType] = 0;
-                LOG.printf("[ANIMATION] Reset global time for type %d (%s)\n",
-                          animationType, ANIMATION_TYPES[animationType].name);
+                LOG.printf("[ANIMATION] Reset global time for type %d\n",
+                          animationType);
             }
             xSemaphoreGive(globalTimesMutex);
         }
@@ -243,7 +242,6 @@ bool AnimationManager::createAnimation(uint16_t type,
     uint32_t now = millis();
 
     const char* stripName = getStripName(strip);
-    const char* typeName  = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
 
     // ── RUNNING_LIGHT / SET_BRIGHTNESS — strip-level override ──
     if (type == AnimationTypes::RUNNING_LIGHT || type == AnimationTypes::SET_BRIGHTNESS) {
@@ -264,8 +262,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             mainOverride.active     = true;
             xSemaphoreGive(animMutex);
         }
-        LOG.printf("[ANIMATION] START strip=%s, type=%s, period=%u, cycles=%u\n",
-                   stripName, typeName, period, cycles);
+        LOG.printf("[ANIMATION] START strip=%s, type=%d, period=%u, cycles=%u\n",
+                   stripName, type, period, cycles);
         return true;
     }
 
@@ -274,8 +272,8 @@ bool AnimationManager::createAnimation(uint16_t type,
         // ── strip_bg — один стан на всю стрічку ──
         if (strip == strip_bg) {
             if (!hasHigherPriority(bit, bgState.bit) && bit != -1 && bgState.active) {
-                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d: existing bit %d vs %d\n",
-                           stripName, typeName, region_id, bgState.bit, bit);
+                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%d, region=%d: existing bit %d vs %d\n",
+                           stripName, type, region_id, bgState.bit, bit);
                 xSemaphoreGive(animMutex);
                 return false;
             }
@@ -300,8 +298,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             bgState.initialBit = (int8_t)initialBit;
             bgState.mapMode    = map_mode;
             bgState.active     = true;
-            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, period=%u, cycles=%u, bit=%d\n",
-                       stripName, typeName, region_id, period, cycles, bit);
+            LOG.printf("[ANIMATION] START strip=%s, type=%d, region=%d, period=%u, cycles=%u, bit=%d\n",
+                       stripName, type, region_id, period, cycles, bit);
             xSemaphoreGive(animMutex);
             return true;
         }
@@ -329,14 +327,14 @@ bool AnimationManager::createAnimation(uint16_t type,
             LedState& s = stateArr[ledPos];
 
             if (s.active && !hasHigherPriority(bit, (int)s.bit) && bit != -1) {
-                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d, led=%d: existing bit %d vs %d\n",
-                           stripName, typeName, region_id, ledPos, s.bit, bit);
+                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%d, region=%d, led=%d: existing bit %d vs %d\n",
+                           stripName, type, region_id, ledPos, s.bit, bit);
                 continue;
             }
 
             if (s.active) {
-                LOG.printf("[ANIMATION] REPLACING strip=%s, type=%s, region=%d, led=%d: bit %d -> %d\n",
-                           stripName, typeName, region_id, ledPos, s.bit, bit);
+                LOG.printf("[ANIMATION] REPLACING strip=%s, type=%d, region=%d, led=%d: bit %d -> %d\n",
+                           stripName, type, region_id, ledPos, s.bit, bit);
             }
 
             uint32_t initColor = initialColor;
@@ -362,8 +360,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             s.active     = true;
             anyCreated   = true;
 
-            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, led=%d, period=%u, cycles=%u, bit=%d\n",
-                       stripName, typeName, region_id, ledPos, period, cycles, bit);
+            LOG.printf("[ANIMATION] START strip=%s, type=%d, region=%d, led=%d, period=%u, cycles=%u, bit=%d\n",
+                       stripName, type, region_id, ledPos, period, cycles, bit);
         }
 
         xSemaphoreGive(animMutex);
@@ -760,19 +758,16 @@ void AnimationManager::logActiveAnimations() {
         for (int i = 0; i < numMain; i++) {
             if (!mainStates[i].active) continue;
             const LedState& s = mainStates[i];
-            const char* typeName = (s.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[s.animType].name : "unknown";
             LOG.printf("[DEBUG] main LED %d: type=%s, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
-                       i, typeName, s.bit, s.period, s.cycles, s.startBr, s.endBr);
+                       i, s.animType, s.bit, s.period, s.cycles, s.startBr, s.endBr);
         }
         if (bgState.active) {
-            const char* typeName = (bgState.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[bgState.animType].name : "unknown";
-            LOG.printf("[DEBUG] bg: type=%s, bit=%d, period=%u, cycles=%u\n",
-                       typeName, bgState.bit, bgState.period, bgState.cycles);
+            LOG.printf("[DEBUG] bg: type=%d, bit=%d, period=%u, cycles=%u\n",
+                       bgState.animType, bgState.bit, bgState.period, bgState.cycles);
         }
         if (mainOverride.active) {
-            const char* typeName = (mainOverride.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[mainOverride.animType].name : "unknown";
-            LOG.printf("[DEBUG] mainOverride: type=%s, period=%u, cycles=%u\n",
-                       typeName, mainOverride.period, mainOverride.cycles);
+            LOG.printf("[DEBUG] mainOverride: type=%d, period=%u, cycles=%u\n",
+                       mainOverride.animType, mainOverride.period, mainOverride.cycles);
         }
         xSemaphoreGive(animMutex);
     }
