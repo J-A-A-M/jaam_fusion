@@ -428,6 +428,13 @@ uint32_t AnimationManager::computeColorRaw(
             uint32_t adaptedColor = adaptColorBrightness(color, startBr);
             return blendColors(adaptedColor, adaptedInitColor, 1.0f - factor);
         }
+        case AnimationTypes::COLOR_BLINK: {
+            if (phase < 0.5f) {
+                return adaptColorBrightness(color, startBr);
+            } else {
+                return adaptedInitColor;
+            }
+        }
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
             uint32_t adaptedColor = adaptColorBrightness(color, startBr);
             return blendColors(adaptedInitColor, adaptedColor, phase);
