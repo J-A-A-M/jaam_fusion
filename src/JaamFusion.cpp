@@ -1810,6 +1810,7 @@ void initSettings() {
             case ENABLE_EXPLOSIONS:
                 adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
+                handleAdaptAnimationBrightness();
                 break;
             
             // Домашній регіон (кольори + анімації + оновлення бітів)
@@ -1817,6 +1818,7 @@ void initSettings() {
                 adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
                 handleUpdateHomeAlertBit();
+                handleAdaptAnimationBrightness();
                 break;
             
             // Основна яскравість (загальна адаптація)
@@ -3094,6 +3096,7 @@ void brightnessProcess() {
         LOG.printf("[BRIGHTNESS] Setting current_brightness to %d\n", currentBrightness);
         adaptStripColorsAndBrightness();     
         handleAdaptAnimationColors();
+        handleAdaptAnimationBrightness();
     }
 }
 
