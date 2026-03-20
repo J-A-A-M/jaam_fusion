@@ -758,7 +758,7 @@ void AnimationManager::logActiveAnimations() {
         for (int i = 0; i < numMain; i++) {
             if (!mainStates[i].active) continue;
             const LedState& s = mainStates[i];
-            LOG.printf("[DEBUG] main LED %d: type=%s, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
+            LOG.printf("[DEBUG] main LED %d: type=%d, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
                        i, s.animType, s.bit, s.period, s.cycles, s.startBr, s.endBr);
         }
         if (bgState.active) {
