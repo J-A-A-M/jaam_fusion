@@ -278,7 +278,8 @@ function updateAlertsInfo() {
 function updateParameter(name, value) {
     const valueElement = document.getElementById(name + 'Value');
     if (valueElement) {
-        valueElement.textContent = '[' + value + ']';
+        const unit = valueElement.getAttribute('data-unit') || '';
+        valueElement.textContent = '[' + value + (unit ? ' ' + unit : '') + ']';
     }
     
     fetch('/parameter', {
