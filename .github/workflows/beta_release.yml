@@ -249,15 +249,27 @@ jobs:
         if [ -n "$PREVIOUS_BETA_TAG" ] && [ -n "$LAST_STABLE_TAG" ]; then
           echo "   📝 Витягуємо release notes з попередніх beta релізів (відносно ${LAST_STABLE_TAG})..."
           # Отримуємо всі beta теги новіші за LAST_STABLE_TAG
-          BETA_TAGS=$(git tag -l "*-b*" | while read tag; do
+          BETA_TAGS=$(git tag -l "${BASE_VERSION}-b*" | while read tag; do
             if git merge-base --is-ancestor "${LAST_STABLE_TAG}" "$tag" 2>/dev/null; then
                 echo "$tag"
             fi
           done | sort -V)
 
-          # Витягуємо Release Notes з кожного beta тегу
+          # Витягуємо Release Notes з кожного beta тегу (обмежуємо до 10: 2 найстаріших + 8 найновіших)
           PREVIOUS_RELEASE_NOTES=""
-          for beta_tag in $BETA_TAGS; do
+          BETA_TAGS_ARRAY=($BETA_TAGS)
+          BETA_COUNT=${#BETA_TAGS_ARRAY[@]}
+
+          if [ "$BETA_COUNT" -le 10 ]; then
+            SELECTED_TAGS=("${BETA_TAGS_ARRAY[@]}")
+          else
+            OLDEST_TWO=("${BETA_TAGS_ARRAY[@]:0:2}")
+            NEWEST_EIGHT=("${BETA_TAGS_ARRAY[@]: -8}")
+            SELECTED_TAGS=("${OLDEST_TWO[@]}" "${NEWEST_EIGHT[@]}")
+            echo "   ⚠️ Знайдено ${BETA_COUNT} beta тегів, обмежуємо до 10 (2 найстаріших + 8 найновіших)"
+          fi
+
+          for beta_tag in "${SELECTED_TAGS[@]}"; do
             echo "   📖 Витягуємо Release Notes з ${beta_tag}..."
             NOTES=$(echo "$RELEASES" | jq -r --arg tag "$beta_tag" '.[] | select(.tag_name == $tag) | .body // empty')
 
