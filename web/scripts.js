@@ -276,12 +276,6 @@ function updateAlertsInfo() {
 
 // Settings update helpers
 function updateParameter(name, value) {
-    const valueElement = document.getElementById(name + 'Value');
-    if (valueElement) {
-        const unit = valueElement.getAttribute('data-unit') || '';
-        valueElement.textContent = '[' + value + (unit ? ' ' + unit : '') + ']';
-    }
-    
     fetch('/parameter', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
