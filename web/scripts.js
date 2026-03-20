@@ -806,11 +806,13 @@ function renderControl(ctrl, lists) {
         inp.step = step;
         inp.value = current;
         inp.oninput = (e) => {
-            const clamped = Math.min(maxNum, Math.max(minNum, Number(e.target.value)));
-            rng.value = clamped;
+            const val = Number(e.target.value);
+            if (!Number.isFinite(val)) return;
+            rng.value = Math.min(maxNum, Math.max(minNum, val));
         };
         inp.onchange = (e) => {
-            const clamped = Math.min(maxNum, Math.max(minNum, Number(e.target.value)));
+            const val = Number(e.target.value);
+            const clamped = Number.isFinite(val) ? Math.min(maxNum, Math.max(minNum, val)) : Number(rng.value);
             inp.value = clamped;
             rng.value = clamped;
             updateParameter(name, clamped);
