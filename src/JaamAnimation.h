@@ -68,8 +68,12 @@ class AnimationManager {
         LedState   mainStates[MAX_LEDS_STRIP_MAIN];
         LedState   serviceStates[MAX_LEDS_STRIP_SERVICE];
 
+        // Окремі стани для режиму Random Colors
+        LedState   rcMainStates[MAX_REGIONS];           // Random Colors main strip
+        StripState rcBgState;                           // Random Colors bg strip
+
         // Стани стрічок-в-цілому
-        StripState bgState;
+        StripState bgState;        // Strip-level анімації для strip_bg
         StripState mainOverride;   // RUNNING_LIGHT / SET_BRIGHTNESS
         StripState previewState;   // Попередній перегляд анімацій (main strip)
         StripState previewStateBg; // Попередній перегляд анімацій (bg strip)
@@ -78,6 +82,10 @@ class AnimationManager {
         bool previewActive;
         uint32_t previewEndTime;
         int8_t previewEventType;
+
+        // Random Colors mode flags
+        bool randomColorsMainInitialized;
+        bool randomColorsBgInitialized;
 
         // Обчислення кольору за elapsed для per-LED анімацій
         uint32_t computeColor(const LedState& s, float elapsed);
@@ -140,4 +148,9 @@ class AnimationManager {
         void startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness);
         void stopPreview();
         bool isPreviewActive() const;
+
+        // Random Colors mode methods
+        void initRandomColorsMain();
+        void initRandomColorsBg();
+        void resetRandomColorsFlags();
 };

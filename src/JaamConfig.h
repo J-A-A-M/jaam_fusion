@@ -35,6 +35,7 @@ namespace MapModes {
     static const int WEATHER = 2;
     static const int FLAG = 3;
     static const int LAMP = 4;
+    static const int RANDOM_COLORS = 5;
 }
 
 // --- BG Led Modes ---
@@ -364,7 +365,7 @@ static SettingListItem LONG_CLICKS[] = {
   {10, "Перезавантаження пристрою"},
 };
 
-constexpr int MAP_MODES_COUNT = 5;
+constexpr int MAP_MODES_COUNT = 6;
 static SettingListItem MAP_MODES[] = {
   {0, "Вимкнено"},
   {1, "Тривога"},
@@ -373,6 +374,7 @@ static SettingListItem MAP_MODES[] = {
   // {7, "Радіація", false},
   {3, "Прапор"},
   {4, "Лампа"},
+  {5, "Випадкові кольори"},
 };
 
 constexpr int ALERT_CLEAR_PIN_MODES_COUNT = 2;
