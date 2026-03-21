@@ -148,12 +148,28 @@
             ""
         ],
         [
-            "dropdown_confirm",
-            "firmware_id",
-            "Вибрати прошивку",
-            "firmware_versions",
+            "dropdown",
+            "fw_update_channel",
+            "Канал оновлення прошивки",
+            "fw_update_channel_options",
             "firmware",
             ""
+        ],
+        [
+            "dropdown_confirm",
+            "firmware_id",
+            "Вибрати прошивку (Prod)",
+            "firmware_versions_prod",
+            "firmware",
+            "fw_update_channel==0"
+        ],
+        [
+            "dropdown_confirm",
+            "firmware_id",
+            "Вибрати прошивку (Beta)",
+            "firmware_versions_beta",
+            "firmware",
+            "fw_update_channel==1"
         ],
         [
             "info",

@@ -81,6 +81,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     
     // Firmware
     {"new_fw_notification", NEW_FW_NOTIFICATION, TYPE_BOOL},
+    {"fw_update_channel", FW_UPDATE_CHANNEL, TYPE_INT},
     {"firmware_id", UNKNOWN, TYPE_SPECIAL},
     
     // Display
@@ -1414,8 +1415,8 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         appendOptionsList(arr, TIMEZONES, TIMEZONES_COUNT);
     }
     {
-        JsonArray arr = dropdownLists["firmware_versions"].to<JsonArray>();
-        const JaamFirmware* firmwares = fwUpdate.getFirmwares();
+        JsonArray arr = dropdownLists["firmware_versions_beta"].to<JsonArray>();
+        const JaamFirmware* firmwares = fwUpdate.getFirmwaresBeta();
         for (int i = 0; i < 10; ++i) {
             if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
 
@@ -1439,6 +1440,38 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
             option.add(buffer); // Display Name
             option.add(0);      // Sub (not used)
         }
+    }
+    {
+        JsonArray arr = dropdownLists["firmware_versions_prod"].to<JsonArray>();
+        const JaamFirmware* firmwares = fwUpdate.getFirmwaresProd();
+        for (int i = 0; i < 10; ++i) {
+            if ((firmwares[i].major | firmwares[i].minor | firmwares[i].patch | firmwares[i].beta) == 0) continue;
+
+            char buffer[32];
+            if (firmwares[i].patch > 0) {
+                if (firmwares[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d-b%d", firmwares[i].major, firmwares[i].minor, firmwares[i].patch, firmwares[i].beta);
+                } else {
+                     snprintf(buffer, sizeof(buffer), "%d.%d.%d", firmwares[i].major, firmwares[i].minor, firmwares[i].patch);
+                }
+            } else {
+                if (firmwares[i].beta > 0) {
+                     snprintf(buffer, sizeof(buffer), "%d.%d-b%d", firmwares[i].major, firmwares[i].minor, firmwares[i].beta);
+                } else {
+                     snprintf(buffer, sizeof(buffer), "%d.%d", firmwares[i].major, firmwares[i].minor);
+                }
+            }
+
+            JsonArray option = arr.add<JsonArray>();
+            option.add(buffer); // ID (version string)
+            option.add(buffer); // Display Name
+            option.add(0);      // Sub (not used)
+        }
+    }
+    {
+        JsonArray arr = dropdownLists["fw_update_channel_options"].to<JsonArray>();
+        JsonArray opt0 = arr.add<JsonArray>(); opt0.add(0); opt0.add("Prod"); opt0.add(0);
+        JsonArray opt1 = arr.add<JsonArray>(); opt1.add(1); opt1.add("Beta"); opt1.add(0);
     }
 }
 

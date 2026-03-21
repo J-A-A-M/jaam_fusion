@@ -25,8 +25,8 @@ public:
     void init(const char* version);
     void initCallbacks();
 
-    // Parses websocket TYPE_FIRMWARE_UPDATE_BATCH payload (without header byte)
-    void processBatch(const uint8_t* data, size_t bodyLen);
+    // Parses websocket TYPE_FIRMWARE_UPDATE_BETA/PROD_BATCH payload (without header byte)
+    void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta);
 
     bool requestUpdate(const char* id);
     bool isUpdateRequested() const;
@@ -38,7 +38,8 @@ public:
     const char* getCurrentVersion() const;
     const char* getNewVersion() const;
     const char* getUpdateId() const;
-    const JaamFirmware* getFirmwares() const;
+    const JaamFirmware* getFirmwaresBeta() const;
+    const JaamFirmware* getFirmwaresProd() const;
     const JaamFirmware& getFirmware() const;
 
 private:
@@ -47,7 +48,8 @@ private:
     char _fwUpdateId[25] = {};
     bool _fwUpdateAvailable = false;
     volatile bool _needUpdate = false;
-    JaamFirmware _firmwares[10] = {};
+    JaamFirmware _firmwares_beta[10] = {};
+    JaamFirmware _firmwares_prod[10] = {};
     JaamFirmware _firmware = {};
     WiFiClientSecure _updateClient;
 

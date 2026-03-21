@@ -74,33 +74,34 @@ void JaamFirmwareUpdate::initCallbacks() {
     });
 }
 
-void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen) {
+void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta) {
     static constexpr size_t RECORD_FW = 5;
     size_t count = bodyLen / RECORD_FW;
     const uint8_t* ptr = data;
 
-    memset(_firmwares, 0, sizeof(_firmwares));
+    JaamFirmware* target = isBeta ? _firmwares_beta : _firmwares_prod;
+    memset(target, 0, 10 * sizeof(JaamFirmware));
 
-    LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_BATCH data processing\n");
+    LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_%s_BATCH data processing\n", isBeta ? "BETA" : "PROD");
 
     for (size_t i = 0; i < count; ++i) {
-        _firmwares[i].major = ptr[0];
-        _firmwares[i].minor = ptr[1];
-        _firmwares[i].patch = ptr[2];
+        target[i].major = ptr[0];
+        target[i].minor = ptr[1];
+        target[i].patch = ptr[2];
         // Little-Endian: low byte first, high byte second
-        _firmwares[i].beta = ptr[3] | (ptr[4] << 8);
+        target[i].beta = ptr[3] | (ptr[4] << 8);
         LOG.printf("Parsed FW: %d.%d.%d b%d\n",
-                   _firmwares[i].major, _firmwares[i].minor,
-                   _firmwares[i].patch, _firmwares[i].beta);
+                   target[i].major, target[i].minor,
+                   target[i].patch, target[i].beta);
         ptr += RECORD_FW;
     }
 
     // Знаходимо найновішу версію серед отриманих
     JaamFirmware latestInBatch{};
     for (size_t i = 0; i < count; ++i) {
-        if ((_firmwares[i].major | _firmwares[i].minor | _firmwares[i].patch | _firmwares[i].beta) == 0) continue;
-        if (isNewerFirmware(_firmwares[i], latestInBatch)) {
-            latestInBatch = _firmwares[i];
+        if ((target[i].major | target[i].minor | target[i].patch | target[i].beta) == 0) continue;
+        if (isNewerFirmware(target[i], latestInBatch)) {
+            latestInBatch = target[i];
         }
     }
 
@@ -181,8 +182,12 @@ const char* JaamFirmwareUpdate::getUpdateId() const {
     return _fwUpdateId;
 }
 
-const JaamFirmware* JaamFirmwareUpdate::getFirmwares() const {
-    return _firmwares;
+const JaamFirmware* JaamFirmwareUpdate::getFirmwaresBeta() const {
+    return _firmwares_beta;
+}
+
+const JaamFirmware* JaamFirmwareUpdate::getFirmwaresProd() const {
+    return _firmwares_prod;
 }
 
 const JaamFirmware& JaamFirmwareUpdate::getFirmware() const {
@@ -286,23 +291,20 @@ bool JaamFirmwareUpdate::isValidFirmwareId(const char* id) const {
         return false;
     }
     
-    // Search for matching firmware in the list
-    for (int i = 0; i < 10; ++i) {
-        const JaamFirmware& fw = _firmwares[i];
-        
-        // Skip empty entries
-        if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) {
-            continue;
-        }
-        
-        // Check if all version components match
-        if (fw.major == candidate.major && 
-            fw.minor == candidate.minor && 
-            fw.patch == candidate.patch && 
-            fw.beta == candidate.beta) {
-            return true;
+    // Search for matching firmware in both lists
+    for (int list = 0; list < 2; ++list) {
+        const JaamFirmware* arr = (list == 0) ? _firmwares_beta : _firmwares_prod;
+        for (int i = 0; i < 10; ++i) {
+            const JaamFirmware& fw = arr[i];
+            if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) continue;
+            if (fw.major == candidate.major &&
+                fw.minor == candidate.minor &&
+                fw.patch == candidate.patch &&
+                fw.beta == candidate.beta) {
+                return true;
+            }
         }
     }
-    
+
     return false;
 }
