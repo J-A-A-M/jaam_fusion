@@ -779,6 +779,7 @@ function renderControl(ctrl, lists) {
 
         const lab = document.createElement('label');
         lab.htmlFor = name;
+        lab.id = name + 'Label';
         lab.className = 'slider-label';
         lab.textContent = label + ':';
 
@@ -801,6 +802,7 @@ function renderControl(ctrl, lists) {
         inp.type = 'number';
         inp.id = name + 'Input';
         inp.className = 'slider-input';
+        inp.setAttribute('aria-labelledby', name + 'Label');
         inp.min = min;
         inp.max = max;
         inp.step = step;
