@@ -942,7 +942,8 @@ void onMessageCallback(WebsocketsMessage msg) {
             return;
         }
 
-        fwUpdate.processBatch(data + HEADER_SZ, bodyLen, isBeta);
+        bool isActiveChannel = isBeta == (settings.getInt(FW_UPDATE_CHANNEL) == 1);
+        fwUpdate.processBatch(data + HEADER_SZ, bodyLen, isBeta, isActiveChannel);
         return;
     }
     // ─── Новий обробник нотифікацій: без heap, без персистентності ───────────────

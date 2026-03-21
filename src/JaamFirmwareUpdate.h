@@ -25,8 +25,9 @@ public:
     void init(const char* version);
     void initCallbacks();
 
-    // Parses websocket TYPE_FIRMWARE_UPDATE_BETA/PROD_BATCH payload (without header byte)
-    void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta);
+    // Parses websocket TYPE_FIRMWARE_UPDATE_BETA/PROD_BATCH payload (without header byte).
+    // isActiveChannel=true — оновлює спільний стан (_newFwVersion, _fwUpdateAvailable) і сповіщає API.
+    void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta, bool isActiveChannel);
 
     bool requestUpdate(const char* id);
     bool isUpdateRequested() const;

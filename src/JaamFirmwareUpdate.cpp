@@ -74,7 +74,7 @@ void JaamFirmwareUpdate::initCallbacks() {
     });
 }
 
-void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta) {
+void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta, bool isActiveChannel) {
     static constexpr size_t RECORD_FW = 5;
     static constexpr size_t MAX_FW = 10;
     size_t count = bodyLen / RECORD_FW;
@@ -110,20 +110,21 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
         }
     }
 
-    // Порівнюємо найновішу з поточною прошивкою
-    fillFwVersion(_newFwVersion, latestInBatch);
-    _fwUpdateAvailable = isNewerFirmware(latestInBatch, _firmware);
+    // Оновлюємо спільний стан лише для активного каналу
+    if (isActiveChannel) {
+        fillFwVersion(_newFwVersion, latestInBatch);
+        _fwUpdateAvailable = isNewerFirmware(latestInBatch, _firmware);
 
-    if (_fwUpdateAvailable) {
-        LOG.printf("[FIRMWARE] Update available: %s -> %s\n", _currentFwVersion, _newFwVersion);
-    } else {
-        LOG.printf("[FIRMWARE] No updates available. Current version: %s, Latest version: %s\n",
-                   _currentFwVersion, _newFwVersion);
+        if (_fwUpdateAvailable) {
+            LOG.printf("[FIRMWARE] Update available: %s -> %s\n", _currentFwVersion, _newFwVersion);
+        } else {
+            LOG.printf("[FIRMWARE] No updates available. Current version: %s, Latest version: %s\n",
+                       _currentFwVersion, _newFwVersion);
+        }
+
+        if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
+        if (_servicePinCb) _servicePinCb();
     }
-
-    if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
-
-    if (_servicePinCb) _servicePinCb();
 }
 
 bool JaamFirmwareUpdate::requestUpdate(const char* id) {
