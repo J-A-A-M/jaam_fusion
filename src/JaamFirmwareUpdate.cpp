@@ -324,7 +324,7 @@ bool JaamFirmwareUpdate::isValidFirmwareId(const char* id, bool isBeta) const {
 
     // Перевіряємо лише список активного каналу
     const JaamFirmware* arr = isBeta ? _firmwares_beta : _firmwares_prod;
-    for (int i = 0; i < 10; ++i) {
+    for (size_t i = 0; i < MAX_FW; ++i) {
         const JaamFirmware& fw = arr[i];
         if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) continue;
         if (fw.major == candidate.major &&
