@@ -29,11 +29,11 @@ public:
     // isActiveChannel=true — оновлює спільний стан (_newFwVersion, _fwUpdateAvailable) і сповіщає API.
     void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta, bool isActiveChannel);
 
-    bool requestUpdate(const char* id);
+    bool requestUpdate(const char* id, bool isBeta);
     bool isUpdateRequested() const;
     void clearUpdateRequest();
     void download();
-    bool isValidFirmwareId(const char* id) const;
+    bool isValidFirmwareId(const char* id, bool isBeta) const;
 
     bool isUpdateAvailable() const;
     const char* getCurrentVersion() const;

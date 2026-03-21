@@ -3066,7 +3066,8 @@ void requestFirmwareUpdate(const char* firmwareId) {
     }
     
     // Встановлюємо ID прошивки для завантаження
-    if (!fwUpdate.requestUpdate(versionToUse)) {
+    bool isBeta = settings.getInt(FW_UPDATE_CHANNEL) == 1;
+    if (!fwUpdate.requestUpdate(versionToUse, isBeta)) {
         LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", versionToUse);
         return;
     }

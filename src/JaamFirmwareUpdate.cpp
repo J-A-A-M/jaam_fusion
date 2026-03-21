@@ -127,8 +127,8 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
     }
 }
 
-bool JaamFirmwareUpdate::requestUpdate(const char* id) {
-    if (!isValidFirmwareId(id)) {
+bool JaamFirmwareUpdate::requestUpdate(const char* id, bool isBeta) {
+    if (!isValidFirmwareId(id, isBeta)) {
         if (_display) _display->showServiceMessage("Невідома версія", "Помилка оновлення:", 5000);
         LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", id ? id : "(null)");
         return false;
@@ -284,31 +284,27 @@ void JaamFirmwareUpdate::fillFwVersion(char* result, JaamFirmware fw) {
     strcpy(result, version.c_str());
 }
 
-bool JaamFirmwareUpdate::isValidFirmwareId(const char* id) const {
+bool JaamFirmwareUpdate::isValidFirmwareId(const char* id, bool isBeta) const {
     if (id == nullptr || strlen(id) == 0) {
         return false;
     }
-    
-    // Parse the provided ID
+
     JaamFirmware candidate = parseFirmwareVersion(id);
-    
-    // Check if parsed firmware is valid (at least major.minor should be set)
+
     if (candidate.major == 0 && candidate.minor == 0) {
         return false;
     }
-    
-    // Search for matching firmware in both lists
-    for (int list = 0; list < 2; ++list) {
-        const JaamFirmware* arr = (list == 0) ? _firmwares_beta : _firmwares_prod;
-        for (int i = 0; i < 10; ++i) {
-            const JaamFirmware& fw = arr[i];
-            if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) continue;
-            if (fw.major == candidate.major &&
-                fw.minor == candidate.minor &&
-                fw.patch == candidate.patch &&
-                fw.beta == candidate.beta) {
-                return true;
-            }
+
+    // Перевіряємо лише список активного каналу
+    const JaamFirmware* arr = isBeta ? _firmwares_beta : _firmwares_prod;
+    for (int i = 0; i < 10; ++i) {
+        const JaamFirmware& fw = arr[i];
+        if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) continue;
+        if (fw.major == candidate.major &&
+            fw.minor == candidate.minor &&
+            fw.patch == candidate.patch &&
+            fw.beta == candidate.beta) {
+            return true;
         }
     }
 
