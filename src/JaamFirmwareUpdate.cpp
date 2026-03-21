@@ -139,6 +139,13 @@ void JaamFirmwareUpdate::applyActiveChannel(bool isBeta) {
         }
     }
 
+    // Якщо список каналу ще не отримано — не перезаписуємо стан і не сповіщаємо API
+    if ((latestInChannel.major | latestInChannel.minor | latestInChannel.patch | latestInChannel.beta) == 0) {
+        LOG.printf("[FIRMWARE] Channel switched to %s, but list is empty — skipping state update\n",
+                   isBeta ? "BETA" : "PROD");
+        return;
+    }
+
     fillFwVersion(_newFwVersion, latestInChannel);
     _fwUpdateAvailable = isNewerFirmware(latestInChannel, _firmware);
 
