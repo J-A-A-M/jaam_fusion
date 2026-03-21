@@ -76,11 +76,16 @@ void JaamFirmwareUpdate::initCallbacks() {
 
 void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta) {
     static constexpr size_t RECORD_FW = 5;
+    static constexpr size_t MAX_FW = 10;
     size_t count = bodyLen / RECORD_FW;
+    if (count > MAX_FW) {
+        LOG.printf("[FIRMWARE] Batch has %u records, clamping to %u\n", (unsigned)count, (unsigned)MAX_FW);
+        count = MAX_FW;
+    }
     const uint8_t* ptr = data;
 
     JaamFirmware* target = isBeta ? _firmwares_beta : _firmwares_prod;
-    memset(target, 0, 10 * sizeof(JaamFirmware));
+    memset(target, 0, MAX_FW * sizeof(JaamFirmware));
 
     LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_%s_BATCH data processing\n", isBeta ? "BETA" : "PROD");
 
