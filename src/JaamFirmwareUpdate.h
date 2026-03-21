@@ -30,6 +30,7 @@ public:
     void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta, bool isActiveChannel);
 
     bool requestUpdate(const char* id, bool isBeta);
+    void applyActiveChannel(bool isBeta);
     bool isUpdateRequested() const;
     void clearUpdateRequest();
     void download();

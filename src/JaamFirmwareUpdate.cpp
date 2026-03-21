@@ -127,6 +127,28 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
     }
 }
 
+void JaamFirmwareUpdate::applyActiveChannel(bool isBeta) {
+    static constexpr size_t MAX_FW = 10;
+    const JaamFirmware* arr = isBeta ? _firmwares_beta : _firmwares_prod;
+
+    JaamFirmware latestInChannel{};
+    for (size_t i = 0; i < MAX_FW; ++i) {
+        if ((arr[i].major | arr[i].minor | arr[i].patch | arr[i].beta) == 0) continue;
+        if (isNewerFirmware(arr[i], latestInChannel)) {
+            latestInChannel = arr[i];
+        }
+    }
+
+    fillFwVersion(_newFwVersion, latestInChannel);
+    _fwUpdateAvailable = isNewerFirmware(latestInChannel, _firmware);
+
+    LOG.printf("[FIRMWARE] Channel switched to %s, latest: %s, update available: %d\n",
+               isBeta ? "BETA" : "PROD", _newFwVersion, _fwUpdateAvailable);
+
+    if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
+    if (_servicePinCb) _servicePinCb();
+}
+
 bool JaamFirmwareUpdate::requestUpdate(const char* id, bool isBeta) {
     if (!isValidFirmwareId(id, isBeta)) {
         if (_display) _display->showServiceMessage("Невідома версія", "Помилка оновлення:", 5000);
