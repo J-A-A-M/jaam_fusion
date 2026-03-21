@@ -273,7 +273,9 @@ jobs:
             NOTES=$(echo "$RELEASES" | jq -r --arg tag "$beta_tag" '.[] | select(.tag_name == $tag) | .body // empty')
 
             if [ -n "$NOTES" ]; then
-              PREVIOUS_RELEASE_NOTES+=$'\n'"### ${beta_tag}"$'\n'"${NOTES}"$'\n'
+                # Якщо у $NOTES є частина, що починається з "## 📋 Зміни з попередніх beta версій" — обрізаємо її
+                NOTES=$(echo "$NOTES" | sed '/## 📋 Зміни з попередніх beta версій/,$d') 
+                PREVIOUS_RELEASE_NOTES+=$'\n'"### ${beta_tag}"$'\n'"${NOTES}"$'\n'
             fi
           done
         fi
