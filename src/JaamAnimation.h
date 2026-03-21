@@ -87,14 +87,15 @@ class AnimationManager {
         bool randomColorsMainInitialized;
         bool randomColorsBgInitialized;
 
-        // Обчислення кольору за elapsed для per-LED анімацій
-        uint32_t computeColor(const LedState& s, float elapsed);
-        // Обчислення кольору за elapsed для strip-level анімацій
-        uint32_t computeStripColor(const StripState& s, float elapsed);
+        // Обчислення кольору анімації за типом, параметрами та elapsed
+        static uint32_t computeColorRaw(uint16_t animType, uint32_t color,
+                                        uint32_t adaptedInitColor,
+                                        uint8_t startBr, uint8_t endBr,
+                                        float elapsed);
         // Рендер RUNNING_LIGHT по всій стрічці
         void renderRunningLight(const StripState& s, float elapsed);
 
-        uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
+        static uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
         std::pair<uint32_t, uint8_t> getActualColorAndBrightness(int highest_bit);
         const char* getStripName(Adafruit_NeoPixel* strip);
         
@@ -137,7 +138,7 @@ class AnimationManager {
         uint32_t stripActualColor(Adafruit_NeoPixel* strip, bool adapted = true);
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = -1);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
-        uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
+        static uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
 
         // Методи синхронізації
         void setSynchronizedMode(bool enabled);

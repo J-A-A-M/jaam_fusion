@@ -171,9 +171,8 @@ uint32_t AnimationManager::getStartTime(uint16_t animationType) {
             if (!globalTimesInitialized[animationType]) {
                 globalStartTimes[animationType] = currentTime;
                 globalTimesInitialized[animationType] = true;
-                LOG.printf("[ANIMATION] Initialized global time for type %d (%s): %u\n",
+                LOG.printf("[ANIMATION] Initialized global time for type %d: %u\n",
                           animationType,
-                          ANIMATION_TYPES[animationType].name,
                           globalStartTimes[animationType]);
             }
             uint32_t returnTime = globalStartTimes[animationType];
@@ -208,8 +207,8 @@ void AnimationManager::checkAndResetGlobalTime(uint16_t animationType) {
             if (globalTimesInitialized[animationType]) {
                 globalTimesInitialized[animationType] = false;
                 globalStartTimes[animationType] = 0;
-                LOG.printf("[ANIMATION] Reset global time for type %d (%s)\n",
-                          animationType, ANIMATION_TYPES[animationType].name);
+                LOG.printf("[ANIMATION] Reset global time for type %d\n",
+                          animationType);
             }
             xSemaphoreGive(globalTimesMutex);
         }
@@ -245,7 +244,6 @@ bool AnimationManager::createAnimation(uint16_t type,
     uint32_t now = millis();
 
     const char* stripName = getStripName(strip);
-    const char* typeName  = (type < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[type].name : "unknown";
 
     // ── RUNNING_LIGHT / SET_BRIGHTNESS — strip-level override ──
     if (type == AnimationTypes::RUNNING_LIGHT || type == AnimationTypes::SET_BRIGHTNESS) {
@@ -266,8 +264,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             mainOverride.active     = true;
             xSemaphoreGive(animMutex);
         }
-        LOG.printf("[ANIMATION] START strip=%s, type=%s, period=%u, cycles=%u\n",
-                   stripName, typeName, period, cycles);
+        LOG.printf("[ANIMATION] START strip=%s, type=%d, period=%u, cycles=%u\n",
+                   stripName, type, period, cycles);
         return true;
     }
 
@@ -276,8 +274,8 @@ bool AnimationManager::createAnimation(uint16_t type,
         // ── strip_bg — один стан на всю стрічку ──
         if (strip == strip_bg) {
             if (!hasHigherPriority(bit, bgState.bit) && bit != -1 && bgState.active) {
-                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d: existing bit %d vs %d\n",
-                           stripName, typeName, region_id, bgState.bit, bit);
+                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%d, region=%d: existing bit %d vs %d\n",
+                           stripName, type, region_id, bgState.bit, bit);
                 xSemaphoreGive(animMutex);
                 return false;
             }
@@ -302,8 +300,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             bgState.initialBit = (int8_t)initialBit;
             bgState.mapMode    = map_mode;
             bgState.active     = true;
-            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, period=%u, cycles=%u, bit=%d\n",
-                       stripName, typeName, region_id, period, cycles, bit);
+            LOG.printf("[ANIMATION] START strip=%s, type=%d, region=%d, period=%u, cycles=%u, bit=%d\n",
+                       stripName, type, region_id, period, cycles, bit);
             xSemaphoreGive(animMutex);
             return true;
         }
@@ -331,14 +329,14 @@ bool AnimationManager::createAnimation(uint16_t type,
             LedState& s = stateArr[ledPos];
 
             if (s.active && !hasHigherPriority(bit, (int)s.bit) && bit != -1) {
-                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%s, region=%d, led=%d: existing bit %d vs %d\n",
-                           stripName, typeName, region_id, ledPos, s.bit, bit);
+                LOG.printf("[ANIMATION] REJECTED strip=%s, type=%d, region=%d, led=%d: existing bit %d vs %d\n",
+                           stripName, type, region_id, ledPos, s.bit, bit);
                 continue;
             }
 
             if (s.active) {
-                LOG.printf("[ANIMATION] REPLACING strip=%s, type=%s, region=%d, led=%d: bit %d -> %d\n",
-                           stripName, typeName, region_id, ledPos, s.bit, bit);
+                LOG.printf("[ANIMATION] REPLACING strip=%s, type=%d, region=%d, led=%d: bit %d -> %d\n",
+                           stripName, type, region_id, ledPos, s.bit, bit);
             }
 
             uint32_t initColor = initialColor;
@@ -364,8 +362,8 @@ bool AnimationManager::createAnimation(uint16_t type,
             s.active     = true;
             anyCreated   = true;
 
-            LOG.printf("[ANIMATION] START strip=%s, type=%s, region=%d, led=%d, period=%u, cycles=%u, bit=%d\n",
-                       stripName, typeName, region_id, ledPos, period, cycles, bit);
+            LOG.printf("[ANIMATION] START strip=%s, type=%d, region=%d, led=%d, period=%u, cycles=%u, bit=%d\n",
+                       stripName, type, region_id, ledPos, period, cycles, bit);
         }
 
         xSemaphoreGive(animMutex);
@@ -375,113 +373,77 @@ bool AnimationManager::createAnimation(uint16_t type,
 }
 
 // ──────────────────────────────────────────────────────
+static float computePulseFactor(float phase) {
+    float factor;
+    if (phase < 0.2f) {
+        factor = sinf(phase * 5.0f * PI);
+    } else if (phase < 0.3f) {
+        factor = 1.0f - (phase - 0.2f) * 5.0f;
+    } else if (phase < 0.4f) {
+        factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
+    } else {
+        factor = 1.0f - (phase - 0.4f) * 1.67f;
+    }
+    if (factor < 0.0f) factor = 0.0f;
+    if (factor > 1.0f) factor = 1.0f;
+    return factor;
+}
+
 // Обчислення кольору анімації (без звернень до стрічок)
 // ──────────────────────────────────────────────────────
 
-uint32_t AnimationManager::computeColor(const LedState& s, float elapsed) {
-    float phase = elapsed - floorf(elapsed); // 0.0 .. 1.0
-
-    switch (s.animType) {
-        case AnimationTypes::FADE: {
-            float factor = 1.0f - (0.5f * (1.0f - cosf(2.0f * PI * phase)));
-            float scale = s.startBr + (s.endBr - s.startBr) * factor;
-            uint32_t c = s.color;
-            return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
-                 | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
-                 | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
-        }
-        case AnimationTypes::BLINK: {
-            uint8_t br = (phase < 0.5f) ? s.endBr : s.startBr;
-            uint32_t c = s.color;
-            return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
-                 | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
-                 | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
-        }
-        case AnimationTypes::BLEND_FADE: {
-            float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
-            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            return blendColors(adaptedColor, s.adaptedInitColor, factor);
-        }
-        case AnimationTypes::PULSE: {
-            float factor;
-            if (phase < 0.2f) {
-                factor = sinf(phase * 5.0f * PI);
-            } else if (phase < 0.3f) {
-                factor = 1.0f - (phase - 0.2f) * 5.0f;
-            } else if (phase < 0.4f) {
-                factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
-            } else {
-                factor = 1.0f - (phase - 0.4f) * 1.67f;
-            }
-            if (factor < 0.0f) factor = 0.0f;
-            if (factor > 1.0f) factor = 1.0f;
-            float scale = s.startBr + (s.endBr - s.startBr) * factor;
-            uint32_t c = s.color;
-            return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
-                 | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
-                 | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
-        }
-        case AnimationTypes::ONE_WAY_BLEND_FADE: {
-            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            return blendColors(s.adaptedInitColor, adaptedColor, phase);
-        }
-        case AnimationTypes::OFF:
-        default:
-            return adaptColorBrightness(s.color, s.startBr);
-    }
-}
-
-// Та сама математика, але для StripState (strip_bg)
-uint32_t AnimationManager::computeStripColor(const StripState& s, float elapsed) {
+uint32_t AnimationManager::computeColorRaw(
+        uint16_t animType, uint32_t color, uint32_t adaptedInitColor,
+        uint8_t startBr, uint8_t endBr, float elapsed) {
     float phase = elapsed - floorf(elapsed);
-
-    switch (s.animType) {
+    switch (animType) {
         case AnimationTypes::FADE: {
             float factor = 1.0f - (0.5f * (1.0f - cosf(2.0f * PI * phase)));
-            float scale = s.startBr + (s.endBr - s.startBr) * factor;
-            uint32_t c = s.color;
+            float scale = startBr + (endBr - startBr) * factor;
+            uint32_t c = color;
             return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
                  | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
                  | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
         }
         case AnimationTypes::BLINK: {
-            uint8_t br = (phase < 0.5f) ? s.endBr : s.startBr;
-            uint32_t c = s.color;
+            uint8_t br = (phase < 0.5f) ? endBr : startBr;
+            uint32_t c = color;
             return ((uint32_t)((float)((c >> 16) & 0xFF) * br / 255.0f + 0.5f) << 16)
                  | ((uint32_t)((float)((c >>  8) & 0xFF) * br / 255.0f + 0.5f) <<  8)
                  | ((uint32_t)((float)( c        & 0xFF) * br / 255.0f + 0.5f));
         }
         case AnimationTypes::BLEND_FADE: {
             float factor = 0.5f * (1.0f - cosf(2.0f * PI * phase));
-            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            return blendColors(adaptedColor, s.adaptedInitColor, factor);
+            uint32_t adaptedColor = adaptColorBrightness(color, startBr);
+            return blendColors(adaptedColor, adaptedInitColor, factor);
         }
         case AnimationTypes::PULSE: {
-            float factor;
-            if (phase < 0.2f) {
-                factor = sinf(phase * 5.0f * PI);
-            } else if (phase < 0.3f) {
-                factor = 1.0f - (phase - 0.2f) * 5.0f;
-            } else if (phase < 0.4f) {
-                factor = 0.5f + sinf((phase - 0.3f) * 5.0f * PI) * 0.5f;
-            } else {
-                factor = 1.0f - (phase - 0.4f) * 1.67f;
-            }
-            if (factor < 0.0f) factor = 0.0f;
-            if (factor > 1.0f) factor = 1.0f;
-            float scale = s.startBr + (s.endBr - s.startBr) * factor;
-            uint32_t c = s.color;
+            float factor = computePulseFactor(phase);
+            float scale = startBr + (endBr - startBr) * factor;
+            uint32_t c = color;
             return ((uint32_t)((float)((c >> 16) & 0xFF) * scale / 255.0f + 0.5f) << 16)
                  | ((uint32_t)((float)((c >>  8) & 0xFF) * scale / 255.0f + 0.5f) <<  8)
                  | ((uint32_t)((float)( c        & 0xFF) * scale / 255.0f + 0.5f));
         }
+        case AnimationTypes::COLOR_PULSE: {
+            float factor = computePulseFactor(phase);
+            uint32_t adaptedColor = adaptColorBrightness(color, startBr);
+            return blendColors(adaptedColor, adaptedInitColor, 1.0f - factor);
+        }
+        case AnimationTypes::COLOR_BLINK: {
+            if (phase < 0.5f) {
+                return adaptColorBrightness(color, startBr);
+            } else {
+                return adaptedInitColor;
+            }
+        }
         case AnimationTypes::ONE_WAY_BLEND_FADE: {
-            uint32_t adaptedColor = adaptColorBrightness(s.color, s.startBr);
-            return blendColors(s.adaptedInitColor, adaptedColor, phase);
+            uint32_t adaptedColor = adaptColorBrightness(color, startBr);
+            return blendColors(adaptedInitColor, adaptedColor, phase);
         }
         case AnimationTypes::OFF:
         default:
-            return adaptColorBrightness(s.color, s.startBr);
+            return adaptColorBrightness(color, startBr);
     }
 }
 
@@ -492,7 +454,7 @@ void AnimationManager::renderRunningLight(const StripState& s, float elapsed) {
     if (totalLeds == 0) return;
 
     const int windowSize = 9;
-    int windowStart = (int)((elapsed - floorf(elapsed)) * totalLeds);
+    int windowStart = (int)((elapsed) * totalLeds);
 
     // Базовий колір для всіх LED
     for (int i = 0; i < totalLeds; i++) {
@@ -620,9 +582,10 @@ void AnimationManager::update() {
                 float elapsed = synchronizedMode
                     ? (now - s.startTime) / float(s.period)
                     : localElapsed;
-                strip_main->setPixelColor(i, computeColor(s, elapsed));
+                strip_main->setPixelColor(i, computeColorRaw(s.animType, s.color, s.adaptedInitColor,
+                                                              s.startBr, s.endBr, elapsed));
                 mainDirty = true;
-            }  
+            }
             xSemaphoreGive(stripMutex);
         }
     }
@@ -679,7 +642,8 @@ void AnimationManager::update() {
                 float elapsed = synchronizedMode
                                     ? (now - previewState.startTime) / float(previewState.period)
                                     : localElapsed;
-                uint32_t previewColor = computeStripColor(previewState, elapsed);
+                uint32_t previewColor = computeColorRaw(previewState.animType, previewState.color, previewState.adaptedInitColor,
+                                                         previewState.startBr, previewState.endBr, elapsed);
                 for (int i = 0; i < numLeds; i++) {
                     strip_main->setPixelColor(i, previewColor);
                 }
@@ -707,7 +671,8 @@ void AnimationManager::update() {
             float elapsed = synchronizedMode
                 ? (now - bgState.startTime) / float(bgState.period)
                 : localElapsed;
-            uint32_t c = computeStripColor(bgState, elapsed);
+            uint32_t c = computeColorRaw(bgState.animType, bgState.color, bgState.adaptedInitColor,
+                                          bgState.startBr, bgState.endBr, elapsed);
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
                     strip_bg->setPixelColor(i, c);
@@ -763,7 +728,8 @@ void AnimationManager::update() {
             float elapsed = synchronizedMode
                 ? (now - previewStateBg.startTime) / float(previewStateBg.period)
                 : localElapsed;
-            uint32_t previewColor = computeStripColor(previewStateBg, elapsed);
+            uint32_t previewColor = computeColorRaw(previewStateBg.animType, previewStateBg.color, previewStateBg.adaptedInitColor,
+                                                     previewStateBg.startBr, previewStateBg.endBr, elapsed);
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
                     strip_bg->setPixelColor(i, previewColor);
@@ -795,7 +761,8 @@ void AnimationManager::update() {
                 float elapsed = synchronizedMode
                     ? (now - s.startTime) / float(s.period)
                     : localElapsed;
-                strip_service->setPixelColor(i, computeColor(s, elapsed));
+                strip_service->setPixelColor(i, computeColorRaw(s.animType, s.color, s.adaptedInitColor,
+                                                                  s.startBr, s.endBr, elapsed));
                 serviceDirty = true;
             }
             xSemaphoreGive(stripMutex);
@@ -863,9 +830,8 @@ void AnimationManager::logActiveAnimations() {
         for (int i = 0; i < numMain; i++) {
             if (!mainStates[i].active) continue;
             const LedState& s = mainStates[i];
-            const char* typeName = (s.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[s.animType].name : "unknown";
-            LOG.printf("[DEBUG] main LED %d: type=%s, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
-                       i, typeName, s.bit, s.period, s.cycles, s.startBr, s.endBr);
+            LOG.printf("[DEBUG] main LED %d: type=%d, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
+                       i, s.animType, s.bit, s.period, s.cycles, s.startBr, s.endBr);
         }
         for (int i = 0; i < currentMap.size; i++) {
             if (!rcMainStates[i].active) continue;
@@ -875,9 +841,8 @@ void AnimationManager::logActiveAnimations() {
                        i, typeName, s.bit, s.period, s.cycles, s.startBr, s.endBr);
         }
         if (bgState.active) {
-            const char* typeName = (bgState.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[bgState.animType].name : "unknown";
-            LOG.printf("[DEBUG] bg: type=%s, bit=%d, period=%u, cycles=%u\n",
-                       typeName, bgState.bit, bgState.period, bgState.cycles);
+            LOG.printf("[DEBUG] bg: type=%d, bit=%d, period=%u, cycles=%u\n",
+                       bgState.animType, bgState.bit, bgState.period, bgState.cycles);
         }
         if (rcBgState.active) {
             const char* typeName = (rcBgState.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[rcBgState.animType].name : "unknown";
@@ -885,9 +850,8 @@ void AnimationManager::logActiveAnimations() {
                        typeName, rcBgState.bit, rcBgState.period, rcBgState.cycles);
         }
         if (mainOverride.active) {
-            const char* typeName = (mainOverride.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[mainOverride.animType].name : "unknown";
-            LOG.printf("[DEBUG] mainOverride: type=%s, period=%u, cycles=%u\n",
-                       typeName, mainOverride.period, mainOverride.cycles);
+            LOG.printf("[DEBUG] mainOverride: type=%d, period=%u, cycles=%u\n",
+                       mainOverride.animType, mainOverride.period, mainOverride.cycles);
         }
         xSemaphoreGive(animMutex);
     }
