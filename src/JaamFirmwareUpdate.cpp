@@ -76,7 +76,6 @@ void JaamFirmwareUpdate::initCallbacks() {
 
 void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta, bool isActiveChannel) {
     static constexpr size_t RECORD_FW = 5;
-    static constexpr size_t MAX_FW = 10;
     size_t count = bodyLen / RECORD_FW;
     if (count > MAX_FW) {
         LOG.printf("[FIRMWARE] Batch has %u records, clamping to %u\n", (unsigned)count, (unsigned)MAX_FW);
@@ -128,7 +127,6 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
 }
 
 void JaamFirmwareUpdate::applyActiveChannel(bool isBeta) {
-    static constexpr size_t MAX_FW = 10;
     const JaamFirmware* arr = isBeta ? _firmwares_beta : _firmwares_prod;
 
     JaamFirmware latestInChannel{};

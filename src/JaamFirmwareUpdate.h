@@ -50,8 +50,9 @@ private:
     char _fwUpdateId[25] = {};
     bool _fwUpdateAvailable = false;
     volatile bool _needUpdate = false;
-    JaamFirmware _firmwares_beta[10] = {};
-    JaamFirmware _firmwares_prod[10] = {};
+    static constexpr size_t MAX_FW = 10;
+    JaamFirmware _firmwares_beta[MAX_FW] = {};
+    JaamFirmware _firmwares_prod[MAX_FW] = {};
     JaamFirmware _firmware = {};
     WiFiClientSecure _updateClient;
 
