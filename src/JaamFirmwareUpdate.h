@@ -25,20 +25,23 @@ public:
     void init(const char* version);
     void initCallbacks();
 
-    // Parses websocket TYPE_FIRMWARE_UPDATE_BATCH payload (without header byte)
-    void processBatch(const uint8_t* data, size_t bodyLen);
+    // Parses websocket TYPE_FIRMWARE_UPDATE_BETA/PROD_BATCH payload (without header byte).
+    // Оновлює спільний стан і сповіщає API лише якщо isBeta збігається з активним каналом (_activeIsBeta).
+    void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta);
 
-    bool requestUpdate(const char* id);
+    bool requestUpdate(const char* id, bool isBeta);
+    void applyActiveChannel(bool isBeta);
     bool isUpdateRequested() const;
     void clearUpdateRequest();
     void download();
-    bool isValidFirmwareId(const char* id) const;
+    bool isValidFirmwareId(const char* id, bool isBeta) const;
 
     bool isUpdateAvailable() const;
     const char* getCurrentVersion() const;
     const char* getNewVersion() const;
     const char* getUpdateId() const;
-    const JaamFirmware* getFirmwares() const;
+    const JaamFirmware* getFirmwaresBeta() const;
+    const JaamFirmware* getFirmwaresProd() const;
     const JaamFirmware& getFirmware() const;
 
 private:
@@ -47,7 +50,10 @@ private:
     char _fwUpdateId[25] = {};
     bool _fwUpdateAvailable = false;
     volatile bool _needUpdate = false;
-    JaamFirmware _firmwares[10] = {};
+    static constexpr size_t MAX_FW = 10;
+    bool _activeIsBeta = false;
+    JaamFirmware _firmwares_beta[MAX_FW] = {};
+    JaamFirmware _firmwares_prod[MAX_FW] = {};
     JaamFirmware _firmware = {};
     WiFiClientSecure _updateClient;
 

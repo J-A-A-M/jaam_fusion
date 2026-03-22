@@ -920,7 +920,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // 4) Перевіряємо тип пакета
     uint8_t type = data[0];
-    if (type != TYPE_ALERTS_BATCH && type != TYPE_NOTIFICATIONS_BATCH && type != TYPE_WEATHER_BATCH && type != TYPE_FIRMWARE_UPDATE_BATCH) {
+    if (type != TYPE_ALERTS_BATCH && type != TYPE_NOTIFICATIONS_BATCH && type != TYPE_WEATHER_BATCH && type != TYPE_FIRMWARE_UPDATE_BETA_BATCH && type != TYPE_FIRMWARE_UPDATE_PROD_BATCH) {
         LOG.printf("[ERROR] message type unknown\n");
         return;
     }
@@ -929,8 +929,9 @@ void onMessageCallback(WebsocketsMessage msg) {
     uint8_t ledCount;
     size_t bodyLen;
 
-    if(type == TYPE_FIRMWARE_UPDATE_BATCH) {
-        LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_BATCH received\n");
+    if (type == TYPE_FIRMWARE_UPDATE_BETA_BATCH || type == TYPE_FIRMWARE_UPDATE_PROD_BATCH) {
+        bool isBeta = (type == TYPE_FIRMWARE_UPDATE_BETA_BATCH);
+        LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_%s_BATCH received\n", isBeta ? "BETA" : "PROD");
         bodyLen = len - HEADER_SZ;
 
         // payloadLen має ділитися на RECORD_FW
@@ -941,7 +942,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             return;
         }
 
-        fwUpdate.processBatch(data + HEADER_SZ, bodyLen);
+        fwUpdate.processBatch(data + HEADER_SZ, bodyLen, isBeta);
         return;
     }
     // ─── Новий обробник нотифікацій: без heap, без персистентності ───────────────
@@ -1760,6 +1761,7 @@ void initSettings() {
     LOG.printf("[INIT] Init settings\n");
     settings.init();
     fwUpdate.init(VERSION);
+    fwUpdate.applyActiveChannel(settings.getInt(FW_UPDATE_CHANNEL) == 1);
     
     // Перевіряємо чи є збережене значення hostname
     if (!settings.hasKey(BROADCAST_NAME)) {
@@ -2023,6 +2025,12 @@ void initSettings() {
                 }
                 break;
     
+            // Зміна каналу оновлення прошивки — перераховуємо стан з уже отриманих списків
+            case NEW_FW_NOTIFICATION:
+            case FW_UPDATE_CHANNEL:
+                fwUpdate.applyActiveChannel(settings.getInt(FW_UPDATE_CHANNEL));
+                break;
+
             default:
                 // Інші налаштування не потребують додаткової обробки
                 break;
@@ -3064,7 +3072,8 @@ void requestFirmwareUpdate(const char* firmwareId) {
     }
     
     // Встановлюємо ID прошивки для завантаження
-    if (!fwUpdate.requestUpdate(versionToUse)) {
+    bool isBeta = settings.getInt(FW_UPDATE_CHANNEL) == 1;
+    if (!fwUpdate.requestUpdate(versionToUse, isBeta)) {
         LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", versionToUse);
         return;
     }

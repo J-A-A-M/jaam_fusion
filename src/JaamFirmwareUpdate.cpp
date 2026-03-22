@@ -74,54 +74,92 @@ void JaamFirmwareUpdate::initCallbacks() {
     });
 }
 
-void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen) {
+void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta) {
+    bool isActiveChannel = (isBeta == _activeIsBeta);
     static constexpr size_t RECORD_FW = 5;
     size_t count = bodyLen / RECORD_FW;
+    if (count > MAX_FW) {
+        LOG.printf("[FIRMWARE] Batch has %u records, clamping to %u\n", (unsigned)count, (unsigned)MAX_FW);
+        count = MAX_FW;
+    }
     const uint8_t* ptr = data;
 
-    memset(_firmwares, 0, sizeof(_firmwares));
+    JaamFirmware* target = isBeta ? _firmwares_beta : _firmwares_prod;
+    memset(target, 0, MAX_FW * sizeof(JaamFirmware));
 
-    LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_BATCH data processing\n");
+    LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_%s_BATCH data processing\n", isBeta ? "BETA" : "PROD");
 
     for (size_t i = 0; i < count; ++i) {
-        _firmwares[i].major = ptr[0];
-        _firmwares[i].minor = ptr[1];
-        _firmwares[i].patch = ptr[2];
+        target[i].major = ptr[0];
+        target[i].minor = ptr[1];
+        target[i].patch = ptr[2];
         // Little-Endian: low byte first, high byte second
-        _firmwares[i].beta = ptr[3] | (ptr[4] << 8);
+        target[i].beta = ptr[3] | (ptr[4] << 8);
         LOG.printf("Parsed FW: %d.%d.%d b%d\n",
-                   _firmwares[i].major, _firmwares[i].minor,
-                   _firmwares[i].patch, _firmwares[i].beta);
+                   target[i].major, target[i].minor,
+                   target[i].patch, target[i].beta);
         ptr += RECORD_FW;
     }
 
     // Знаходимо найновішу версію серед отриманих
     JaamFirmware latestInBatch{};
     for (size_t i = 0; i < count; ++i) {
-        if ((_firmwares[i].major | _firmwares[i].minor | _firmwares[i].patch | _firmwares[i].beta) == 0) continue;
-        if (isNewerFirmware(_firmwares[i], latestInBatch)) {
-            latestInBatch = _firmwares[i];
+        if ((target[i].major | target[i].minor | target[i].patch | target[i].beta) == 0) continue;
+        if (isNewerFirmware(target[i], latestInBatch)) {
+            latestInBatch = target[i];
         }
     }
 
-    // Порівнюємо найновішу з поточною прошивкою
-    fillFwVersion(_newFwVersion, latestInBatch);
-    _fwUpdateAvailable = isNewerFirmware(latestInBatch, _firmware);
+    // Оновлюємо спільний стан лише для активного каналу
+    if (isActiveChannel) {
+        fillFwVersion(_newFwVersion, latestInBatch);
+        snprintf(_fwUpdateId, sizeof(_fwUpdateId), "%s", _newFwVersion);
+        _fwUpdateAvailable = isNewerFirmware(latestInBatch, _firmware);
 
-    if (_fwUpdateAvailable) {
-        LOG.printf("[FIRMWARE] Update available: %s -> %s\n", _currentFwVersion, _newFwVersion);
-    } else {
-        LOG.printf("[FIRMWARE] No updates available. Current version: %s, Latest version: %s\n",
-                   _currentFwVersion, _newFwVersion);
+        if (_fwUpdateAvailable) {
+            LOG.printf("[FIRMWARE] Update available: %s -> %s\n", _currentFwVersion, _newFwVersion);
+        } else {
+            LOG.printf("[FIRMWARE] No updates available. Current version: %s, Latest version: %s\n",
+                       _currentFwVersion, _newFwVersion);
+        }
+
+        if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
+        if (_servicePinCb) _servicePinCb();
+    }
+}
+
+void JaamFirmwareUpdate::applyActiveChannel(bool isBeta) {
+    _activeIsBeta = isBeta;
+    const JaamFirmware* arr = _activeIsBeta ? _firmwares_beta : _firmwares_prod;
+
+    JaamFirmware latestInChannel{};
+    for (size_t i = 0; i < MAX_FW; ++i) {
+        if ((arr[i].major | arr[i].minor | arr[i].patch | arr[i].beta) == 0) continue;
+        if (isNewerFirmware(arr[i], latestInChannel)) {
+            latestInChannel = arr[i];
+        }
     }
 
-    if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
+    // Якщо список каналу ще не отримано — не перезаписуємо стан і не сповіщаємо API
+    if ((latestInChannel.major | latestInChannel.minor | latestInChannel.patch | latestInChannel.beta) == 0) {
+        LOG.printf("[FIRMWARE] Channel switched to %s, but list is empty — skipping state update\n",
+                   isBeta ? "BETA" : "PROD");
+        return;
+    }
 
+    fillFwVersion(_newFwVersion, latestInChannel);
+    snprintf(_fwUpdateId, sizeof(_fwUpdateId), "%s", _newFwVersion);
+    _fwUpdateAvailable = isNewerFirmware(latestInChannel, _firmware);
+
+    LOG.printf("[FIRMWARE] Channel switched to %s, latest: %s, update available: %d\n",
+               isBeta ? "BETA" : "PROD", _newFwVersion, _fwUpdateAvailable);
+
+    if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
     if (_servicePinCb) _servicePinCb();
 }
 
-bool JaamFirmwareUpdate::requestUpdate(const char* id) {
-    if (!isValidFirmwareId(id)) {
+bool JaamFirmwareUpdate::requestUpdate(const char* id, bool isBeta) {
+    if (!isValidFirmwareId(id, isBeta)) {
         if (_display) _display->showServiceMessage("Невідома версія", "Помилка оновлення:", 5000);
         LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", id ? id : "(null)");
         return false;
@@ -181,8 +219,12 @@ const char* JaamFirmwareUpdate::getUpdateId() const {
     return _fwUpdateId;
 }
 
-const JaamFirmware* JaamFirmwareUpdate::getFirmwares() const {
-    return _firmwares;
+const JaamFirmware* JaamFirmwareUpdate::getFirmwaresBeta() const {
+    return _firmwares_beta;
+}
+
+const JaamFirmware* JaamFirmwareUpdate::getFirmwaresProd() const {
+    return _firmwares_prod;
 }
 
 const JaamFirmware& JaamFirmwareUpdate::getFirmware() const {
@@ -273,36 +315,29 @@ void JaamFirmwareUpdate::fillFwVersion(char* result, JaamFirmware fw) {
     strcpy(result, version.c_str());
 }
 
-bool JaamFirmwareUpdate::isValidFirmwareId(const char* id) const {
+bool JaamFirmwareUpdate::isValidFirmwareId(const char* id, bool isBeta) const {
     if (id == nullptr || strlen(id) == 0) {
         return false;
     }
-    
-    // Parse the provided ID
+
     JaamFirmware candidate = parseFirmwareVersion(id);
-    
-    // Check if parsed firmware is valid (at least major.minor should be set)
+
     if (candidate.major == 0 && candidate.minor == 0) {
         return false;
     }
-    
-    // Search for matching firmware in the list
-    for (int i = 0; i < 10; ++i) {
-        const JaamFirmware& fw = _firmwares[i];
-        
-        // Skip empty entries
-        if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) {
-            continue;
-        }
-        
-        // Check if all version components match
-        if (fw.major == candidate.major && 
-            fw.minor == candidate.minor && 
-            fw.patch == candidate.patch && 
+
+    // Перевіряємо лише список активного каналу
+    const JaamFirmware* arr = isBeta ? _firmwares_beta : _firmwares_prod;
+    for (size_t i = 0; i < MAX_FW; ++i) {
+        const JaamFirmware& fw = arr[i];
+        if ((fw.major | fw.minor | fw.patch | fw.beta) == 0) continue;
+        if (fw.major == candidate.major &&
+            fw.minor == candidate.minor &&
+            fw.patch == candidate.patch &&
             fw.beta == candidate.beta) {
             return true;
         }
     }
-    
+
     return false;
 }
