@@ -2028,7 +2028,7 @@ void initSettings() {
             // Зміна каналу оновлення прошивки — перераховуємо стан з уже отриманих списків
             case NEW_FW_NOTIFICATION:
             case FW_UPDATE_CHANNEL:
-                fwUpdate.applyActiveChannel(settings.getInt(FW_UPDATE_CHANNEL));
+                fwUpdate.applyActiveChannel(settings.getInt(FW_UPDATE_CHANNEL) == 1);
                 break;
 
             default:
