@@ -26,8 +26,8 @@ public:
     void initCallbacks();
 
     // Parses websocket TYPE_FIRMWARE_UPDATE_BETA/PROD_BATCH payload (without header byte).
-    // isActiveChannel=true — оновлює спільний стан (_newFwVersion, _fwUpdateAvailable) і сповіщає API.
-    void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta, bool isActiveChannel);
+    // Оновлює спільний стан і сповіщає API лише якщо isBeta збігається з активним каналом (_activeIsBeta).
+    void processBatch(const uint8_t* data, size_t bodyLen, bool isBeta);
 
     bool requestUpdate(const char* id, bool isBeta);
     void applyActiveChannel(bool isBeta);
@@ -51,6 +51,7 @@ private:
     bool _fwUpdateAvailable = false;
     volatile bool _needUpdate = false;
     static constexpr size_t MAX_FW = 10;
+    bool _activeIsBeta = false;
     JaamFirmware _firmwares_beta[MAX_FW] = {};
     JaamFirmware _firmwares_prod[MAX_FW] = {};
     JaamFirmware _firmware = {};

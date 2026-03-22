@@ -74,7 +74,8 @@ void JaamFirmwareUpdate::initCallbacks() {
     });
 }
 
-void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta, bool isActiveChannel) {
+void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool isBeta) {
+    bool isActiveChannel = (isBeta == _activeIsBeta);
     static constexpr size_t RECORD_FW = 5;
     size_t count = bodyLen / RECORD_FW;
     if (count > MAX_FW) {
@@ -127,7 +128,8 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
 }
 
 void JaamFirmwareUpdate::applyActiveChannel(bool isBeta) {
-    const JaamFirmware* arr = isBeta ? _firmwares_beta : _firmwares_prod;
+    _activeIsBeta = isBeta;
+    const JaamFirmware* arr = _activeIsBeta ? _firmwares_beta : _firmwares_prod;
 
     JaamFirmware latestInChannel{};
     for (size_t i = 0; i < MAX_FW; ++i) {

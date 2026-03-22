@@ -942,8 +942,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             return;
         }
 
-        bool isActiveChannel = isBeta == (settings.getInt(FW_UPDATE_CHANNEL) == 1);
-        fwUpdate.processBatch(data + HEADER_SZ, bodyLen, isBeta, isActiveChannel);
+        fwUpdate.processBatch(data + HEADER_SZ, bodyLen, isBeta);
         return;
     }
     // ─── Новий обробник нотифікацій: без heap, без персистентності ───────────────
@@ -1762,6 +1761,7 @@ void initSettings() {
     LOG.printf("[INIT] Init settings\n");
     settings.init();
     fwUpdate.init(VERSION);
+    fwUpdate.applyActiveChannel(settings.getInt(FW_UPDATE_CHANNEL) == 1);
     
     // Перевіряємо чи є збережене значення hostname
     if (!settings.hasKey(BROADCAST_NAME)) {
