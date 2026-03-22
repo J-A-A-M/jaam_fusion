@@ -113,6 +113,7 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
     // Оновлюємо спільний стан лише для активного каналу
     if (isActiveChannel) {
         fillFwVersion(_newFwVersion, latestInBatch);
+        snprintf(_fwUpdateId, sizeof(_fwUpdateId), "%s", _newFwVersion);
         _fwUpdateAvailable = isNewerFirmware(latestInBatch, _firmware);
 
         if (_fwUpdateAvailable) {
@@ -147,6 +148,7 @@ void JaamFirmwareUpdate::applyActiveChannel(bool isBeta) {
     }
 
     fillFwVersion(_newFwVersion, latestInChannel);
+    snprintf(_fwUpdateId, sizeof(_fwUpdateId), "%s", _newFwVersion);
     _fwUpdateAvailable = isNewerFirmware(latestInChannel, _firmware);
 
     LOG.printf("[FIRMWARE] Channel switched to %s, latest: %s, update available: %d\n",
