@@ -1,3 +1,4 @@
+#include <unordered_set>
 #include "JaamAnimation.h"
 #include "JaamConfig.h"
 #include "JaamUtils.h"
@@ -592,6 +593,7 @@ void AnimationManager::update() {
 
     // ── Random Colors mode: Per-LED strip_main (rcMainStates) ──
     if (strip_main != nullptr && mapMode == MapModes::RANDOM_COLORS && !mainOverride.active && !isPreviewActiveForMode(previewState, mapMode)) {
+        std::unordered_set<int> handledLeds; // Щоб уникнути подвійного оновлення LED, які можуть бути в rcMainStates
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             for (int i = 0; i < currentMap.size; i++) {
                 LedState& s = rcMainStates[i];
@@ -610,7 +612,7 @@ void AnimationManager::update() {
                     uint32_t newColor = strip_main->Color(r, g, b);
                     
                     // Поточний колір стає початковим для нової анімації
-                    uint32_t currentColor = strip_main->getPixelColor((int)leds[meta.led_count-1]);  // Беремо колір останнього LED регіону
+                    uint32_t currentColor = adaptColorBrightness(s.color, s.endBr);  // Беремо колір останнього LED регіону
                     
                     // Перезапускаємо анімацію з новим кольором
                     s.adaptedInitColor = currentColor;
@@ -622,12 +624,20 @@ void AnimationManager::update() {
                     // LOG.printf("[RANDOM_COLORS] Main LED %d: new cycle with color #%06X\n", i, newColor);
                     continue;
                 }
-                uint32_t computedColor = computeColor(s, localElapsed);
+                uint32_t computedColor = computeColorRaw(s.animType, s.color, s.adaptedInitColor,
+                                                         s.startBr, s.endBr, localElapsed);
                 for (uint8_t j = 0; j < meta.led_count; ++j) {
-                    strip_main->setPixelColor((int)leds[j], computedColor);
+                    int ledIndex = (int)leds[j];
+                    if (handledLeds.find(ledIndex) != handledLeds.end()) {
+                        // Цей LED вже оновлений іншим станом в цьому циклі, пропускаємо, щоб уникнути конфліктів
+                        continue;
+                    }
+                    handledLeds.insert(ledIndex);
+                    strip_main->setPixelColor(ledIndex, computedColor);
                     mainDirty = true;
                 }
-            }  
+            }
+            handledLeds.clear(); // Готово до наступного оновлення
             xSemaphoreGive(stripMutex);
         }
     }
@@ -709,7 +719,8 @@ void AnimationManager::update() {
             
             LOG.printf("[RANDOM_COLORS] Bg strip: new cycle with color #%06X\n", newColor);
         } else if (!isOff) {
-            uint32_t c = computeStripColor(rcBgState, localElapsed);
+            uint32_t c = computeColorRaw(rcBgState.animType, rcBgState.color, rcBgState.adaptedInitColor,
+                                         rcBgState.startBr, rcBgState.endBr, localElapsed);
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
                     strip_bg->setPixelColor(i, c);
