@@ -300,7 +300,7 @@ static const String DF_MARCH = "/30.mp3";
 static const String DF_MANDALORIAN_CALL = "/31.mp3";
 static const String DF_MARIO = "/32.mp3";
 static const String DF_PACMAN = "/33.mp3";
-static const String DF_HELLDIVERS = "/34.mp3";  
+static const String DF_HELLDIVERS = "/34.mp3";
 
 constexpr int TRACKS_COUNT = 3;
 static String TRACKS[TRACKS_COUNT] = {
@@ -335,7 +335,7 @@ static SettingListItem LED_COLOR_FORMATS[] = {
     {NEO_WGRB, "NEO_WGRB"}
 };
 
-constexpr int LED_FREQUENCIES_COUNT = 2; 
+constexpr int LED_FREQUENCIES_COUNT = 2;
 static SettingListItem LED_FREQUENCIES[] = {
     {NEO_KHZ400, "400 КГц"},
     {NEO_KHZ800, "800 КГц (рекомендовано)"}
@@ -815,7 +815,7 @@ enum Type {
 static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     // АР Крим
     {9999, "АР Крим", false, false},
-    
+
     // Вінницька область та її райони
     {4, "Вінницька обл.", false, false},
     {36, "Вінницький район", false, true},
@@ -825,7 +825,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {32, "Тульчинський район", false, true},
     {34, "Хмільницький район", false, true},
     {155, "м. Вінниця та Вінницька територіальна громада", false, true},
-    
+
     // Волинська область та її райони
     {8, "Волинська обл.", false, false},
     {38, "Володимирський район", false, true},
@@ -833,8 +833,8 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {40, "Ковельський район", false, true},
     {39, "Луцький район", false, true},
     {225, "м. Луцьк та Луцька територіальна громада", false, true},
-    
-    
+
+
     // Дніпропетровська область та її райони
     {9, "Дніпропетровська обл.", false, false},
     {44, "Дніпровський район", false, true},
@@ -845,7 +845,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {45, "Павлоградський район", false, true},
     {48, "Синельниківський район", false, true},
     {332, "м. Дніпро та Дніпровська територіальна громада", false, true},
-    
+
     // Донецька область та її райони
     {28, "Донецька обл.", false, false},
     {54, "Бахмутський район", false, true},
@@ -856,7 +856,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {50, "Краматорський район", false, true},
     {52, "Маріупольський район", false, true},
     {56, "Покровський район", false, true},
-    
+
     // Житомирська область та її райони
     {10, "Житомирська обл.", false, false},
     {57, "Бердичівський район", false, true},
@@ -864,7 +864,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {60, "Звягельський район", false, true},
     {58, "Коростенський район", false, true},
     {442, "м. Житомир та Житомирська територіальна громада", false, true},
-    
+
     // Закарпатська область та її райони
     {11, "Закарпатська обл.", false, false},
     {61, "Берегівський район", false, true},
@@ -874,7 +874,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {64, "Тячівський район", false, true},
     {66, "Ужгородський район", false, true},
     {500, "м. Ужгород та Ужгородська територіальна громада", false, true},
-    
+
     // Запорізька область та її райони
     {12, "Запорізька обл.", false, false},
     {146, "Василівський район", false, true},
@@ -883,7 +883,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {148, "Мелітопольський район", false, true},
     {145, "Пологівський район", false, true},
     {564, "м. Запоріжжя та Запорізька територіальна громада", false, true},
-    
+
     // Івано-Франківська область та її райони
     {13, "Ів.-Франківська обл.", false, false},
     {67, "Верховинський район", false, true},
@@ -894,9 +894,9 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {72, "Надвірнянський район", false, true},
     {632, "м. Івано-Франківськ та Івано-Франківська територіальна громада", false, true},
 
-    // м. Київ 
+    // м. Київ
     {31, "м. Київ", false, false},
-    
+
     // Київська область та її райони
     {14, "Київська обл.", false, false},
     {73, "Білоцерківський район", false, true},
@@ -906,7 +906,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {74, "Вишгородський район", false, true},
     {76, "Обухівський район", false, true},
     {77, "Фастівський район", false, true},
-  
+
     // Кіровоградська область та її райони
     {15, "Кіровоградська обл.", false, false},
     {82, "Голованівський район", false, true},
@@ -914,14 +914,14 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {83, "Новоукраїнський район", false, true},
     {80, "Олександрійський район", false, true},
     {761, "м. Кропивницький та Кропивницька територіальна громада", false, true},
-    
+
     // Луганська область та її райони
     {16, "Луганська обл.", false, false},
     {85, "Сватівський район", false, true},
     {84, "Сєвєродонецький район", false, true},
     {86, "Старобільський район", false, true},
     {87, "Щастинський район", false, true},
-    
+
     // Львівська область та її райони
     {27, "Львівська обл.", false, false},
     {91, "Дрогобицький район", false, true},
@@ -932,7 +932,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {92, "Шептицький район", false, true},
     {93, "Яворівський район", false, true},
     {845, "м. Львів та Львівська територіальна громада", false, true},
-    
+
     // Миколаївська область та її райони
     {17, "Миколаївська обл.", false, false},
     {96, "Баштанський район", false, true},
@@ -940,7 +940,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {98, "Миколаївський район", false, true},
     {97, "Первомайський район", false, true},
     {926, "м. Миколаїв та Миколаївська територіальна громада", false, true},
-    
+
     // Одеська область та її райони
     {18, "Одеська обл.", false, false},
     {100, "Березівський район", false, true},
@@ -951,7 +951,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {99, "Подільський район", false, true},
     {103, "Роздільнянський район", false, true},
     {964, "м. Одеса та Одеська територіальна громада", false, true},
-    
+
     // Полтавська область та її райони
     {19, "Полтавська обл.", false, false},
     {107, "Кременчуцький район", false, true},
@@ -959,7 +959,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {108, "Миргородський район", false, true},
     {109, "Полтавський район", false, true},
     {1060, "м. Полтава та Полтавська територіальна громада", false, true},
-    
+
     // Рівненська область та її райони
     {5, "Рівненська обл.", false, false},
     {110, "Вараський район", false, true},
@@ -967,7 +967,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {112, "Рівненський район", false, true},
     {113, "Сарненський район", false, true},
     {1133, "м. Рівне та Рівненська територіальна громада", false, true},
-    
+
     // Сумська область та її райони
     {20, "Сумська обл.", false, false},
     {117, "Конотопський район", false, true},
@@ -976,14 +976,14 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {114, "Сумський район", false, true},
     {115, "Шосткинський район", false, true},
     {1187, "м. Суми та Сумська територіальна громада", false, true},
-    
+
     // Тернопільська область та її райони
     {21, "Тернопільська обл.", false, false},
     {120, "Кременецький район", false, true},
     {119, "Тернопільський район", false, true},
     {121, "Чортківський район", false, true},
     {1241, "м. Тернопіль та Тернопільська територіальна громада", false, true},
-    
+
     // Харківська область та її райони
     {22, "Харківська обл.", false, false},
     {126, "Богодухівський район", false, true},
@@ -994,7 +994,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {124, "Харківський район", false, true},
     {122, "Чугуївський район", false, true},
     {1293, "м. Харків та Харківська територіальна громада", false, true},
-    
+
     // Херсонська область та її райони
     {23, "Херсонська обл.", false, false},
     {129, "Бериславський район", false, true},
@@ -1003,14 +1003,14 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {130, "Скадовський район", false, true},
     {132, "Херсонський район", false, true},
     {1370, "м. Херсон та Херсонська територіальна громада", false, true},
-    
+
     // Хмельницька область та її райони
     {3, "Хмельницька обл.", false, false},
     {135, "Кам'янець-Подільський район", false, true},
     {134, "Хмельницький район", false, true},
     {136, "Шепетівський район", false, true},
     {1400, "м. Хмельницький та Хмельницька територіальна громада", false, true},
-    
+
     // Черкаська область та її райони
     {24, "Черкаська обл.", false, false},
     {150, "Звенигородський район", false, true},
@@ -1018,14 +1018,14 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {151, "Уманський район", false, true},
     {152, "Черкаський район", false, true},
     {1473, "м. Черкаси та Черкаська територіальна громада", false, true},
-    
+
     // Чернівецька область та її райони
     {26, "Чернівецька обл.", false, false},
     {138, "Вижницький район", false, true},
     {139, "Дністровський район", false, true},
     {137, "Чернівецький район", false, true},
     {1542, "м. Чернівці та Чернівецька територіальна громада", false, true},
-    
+
     // Чернігівська область та її райони
     {25, "Чернігівська обл.", false, false},
     {144, "Корюківський район", false, true},
@@ -1037,7 +1037,7 @@ static const SettingListItem DISTRICTS[MAX_REGIONS] = {
 };
 
 // ==============================================================================
-// REGION LED MAPS - MOVED TO JaamConfig_Generated.h  
+// REGION LED MAPS - MOVED TO JaamConfig_Generated.h
 // ==============================================================================
 // Old large RegionLedMapEntry arrays (~17KB) moved to generated file.
 // Now using compact flat array structures (~2KB) for memory efficiency.

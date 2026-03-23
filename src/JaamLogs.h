@@ -17,7 +17,7 @@ static Print* _LOG_BASE = &Serial;
 // Log entry structure
 struct LogEntry {
     char tag[16];          // [TAG] from log message
-    char message[128];     // Log message content  
+    char message[128];     // Log message content
     time_t timestamp;      // When the log was captured (Unix timestamp from NTP)
     uint8_t level;         // 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR
 };
@@ -47,9 +47,9 @@ public:
         }
         return 1;
     }
-    
+
     virtual size_t write(const uint8_t* buffer, size_t size) override;
-    
+
     // Initialize the base stream
     void begin(unsigned long speed) {
 #if TELNET_ENABLED
@@ -58,14 +58,14 @@ public:
         Serial.begin(speed);
 #endif
     }
-    
+
 private:
     Print* baseStream;
     JaamLogsManager* logsManager;
     bool logsEnabled = true;
     char lineBuffer[512];
     size_t linePos = 0;
-    
+
     void processLine(const char* line);
 };
 
@@ -75,28 +75,28 @@ public:
         static JaamLogsManager instance;
         return instance;
     }
-    
+
     // Initialize logs manager
     void begin();
-    
+
     // Add a log entry to the circular buffer (uses NTP-synced system time)
     void addLog(const char* tag, const char* message, uint8_t level = 1);
-    
+
     // Get recent logs as JSON array (limit: max number of logs to return)
     String getLogsJson(int limit = 100);
-    
+
     // Get total number of logs captured
     int getLogCount() const {
         std::lock_guard<std::mutex> lock(logMutex);
         return logCount;
     }
-    
+
     // Clear all logs
     void clearLogs();
-    
+
     // Get the logging print wrapper
     LoggingPrint* getLoggingPrint() { return loggingPrint; }
-    
+
 private:
     static const int MAX_LOGS = 100;  // Circular buffer size (~6KB total)
     LogEntry logBuffer[MAX_LOGS];     // Static circular buffer
@@ -104,14 +104,14 @@ private:
     int logCount = 0;                 // Number of logs currently stored (0 to MAX_LOGS)
     mutable std::mutex logMutex;
     LoggingPrint* loggingPrint = nullptr;
-    
+
     JaamLogsManager() = default;
     ~JaamLogsManager() = default;
-    
+
     // Prevent copying
     JaamLogsManager(const JaamLogsManager&) = delete;
     JaamLogsManager& operator=(const JaamLogsManager&) = delete;
-    
+
     friend class LoggingPrint;};
 
 extern JaamLogsManager& logsManager;

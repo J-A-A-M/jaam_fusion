@@ -22,7 +22,7 @@ static const unsigned char trident[] PROGMEM = {
 // Helper function to get clock font based on settings and display height
 static const uint8_t* getClockFont(JaamDisplayHeight height) {
     int fontId = settings.getInt(CLOCK_FONT);
-    
+
     if (height == JaamDisplayHeight::HEIGHT_32) {
         switch (fontId) {
             case 0: return u8g2_font_reddit_mono_32;
@@ -119,7 +119,7 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
         if (_u8g2) {
             delete _u8g2;
         }
-        
+
         // Move data from other
         _type = other._type;
         _height = other._height;
@@ -127,7 +127,7 @@ JaamDisplay& JaamDisplay::operator=(JaamDisplay&& other) noexcept {
         _i2cAddress = other._i2cAddress;
         _serviceMessageEndTime = other._serviceMessageEndTime;
         _u8g2 = other._u8g2;
-        
+
         // Reset other
         other._u8g2 = nullptr;
         other._isConnected = false;
@@ -161,14 +161,14 @@ void JaamDisplay::begin(JaamDisplayType type, JaamDisplayHeight height) {
     _type = type;
     _height = height;
     _isConnected = false;
-    
+
     Wire.begin();
     // Check if display is physically connected
     if (!_checkI2CConnection()) {
         LOG.printf("[DISPLAY] Display not detected on I2C bus - skipping initialization\n");
         return;
     }
-    
+
 #if DISPLAY_ENABLED
     _setupU8g2();
     if (_u8g2) {
@@ -242,7 +242,7 @@ void JaamDisplay::_setupU8g2() {
     if (_u8g2) return; // Already initialized
 
     LOG.printf("[DISPLAY] setupU8g2: type=%d height=%d\n", (int)_type, (int)_height);
-    
+
     // Select constructor based on type/height
     switch (_type) {
         case JaamDisplayType::NONE:
@@ -418,11 +418,11 @@ void JaamDisplay::printMultilineMessage(const String& line1, const String& line2
         _u8g2->setFont(fontArray[fontIdx]);
         int h = _u8g2->getAscent();
         int totalTextHeight = h * lineCount + spacing * (lineCount - 1);
-        
+
         if ((totalTextHeight + titleHeight) > dispHeight) {
             continue;
         }
-        
+
         bool allFit = true;
         for (int i = 0; i < lineCount; i++) {
             int w = _u8g2->getUTF8Width(lines[i].c_str());
@@ -431,7 +431,7 @@ void JaamDisplay::printMultilineMessage(const String& line1, const String& line2
                 break;
             }
         }
-        
+
         if (allFit) {
             fits = true;
             break;
@@ -549,14 +549,14 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
         // Smart split into 3 lines
         int textLen = text.length();
         int part = textLen / 3;
-        
+
         // Find first split point around 1/3
         int split1 = text.indexOf(' ', part);
         if (split1 == -1) {
             split1 = text.lastIndexOf(' ', part);
             if (split1 == -1) split1 = part; // fallback
         }
-        
+
         // Find second split point around 2/3, but start after split1
         int searchStart = split1 + 1;
         int target2 = (textLen * 2) / 3;
@@ -567,7 +567,7 @@ void JaamDisplay::drawIconWithText(JaamDisplayIcon iconType, const String& text)
                 split2 = split1 + (textLen - split1) / 2; // fallback: split remaining text in half
             }
         }
-        
+
         lines[0] = text.substring(0, split1);
         lines[1] = text.substring(split1, split2);
         lines[2] = text.substring(split2);
@@ -634,7 +634,7 @@ void JaamDisplay::printClock(const String& time, const String& date) {
     // Draw time using clock font (selected from settings)
     const uint8_t* clockFont = getClockFont(_height);
     _u8g2->setFont(clockFont);
-    
+
     int timeWidth = _u8g2->getUTF8Width(time.c_str());
     int timeFontHeight = _u8g2->getAscent();
 
@@ -645,7 +645,7 @@ void JaamDisplay::printClock(const String& time, const String& date) {
         int availHeight = dispHeight - titleHeight;
         y = titleHeight + (availHeight + timeFontHeight) / 2;
     }
-    
+
     // Center time horizontally
     int x = (dispWidth - timeWidth) / 2;
     _u8g2->setCursor(x > 0 ? x : 0, y);
@@ -672,18 +672,18 @@ bool JaamDisplay::isServiceMessageActive() {
 bool JaamDisplay::_checkI2CConnection() {
     // Common I2C addresses for OLED displays
     uint8_t addresses[] = {0x3C, 0x3D};
-    
+
     for (uint8_t addr : addresses) {
         Wire.beginTransmission(addr);
         uint8_t error = Wire.endTransmission();
-        
+
         if (error == 0) {
             _i2cAddress = addr; // Store the detected address
             LOG.printf("[DISPLAY] Display detected at I2C address 0x%02X\n", addr);
             return true;
         }
     }
-    
+
     LOG.printf("[DISPLAY] No display detected at common I2C addresses (0x3C, 0x3D)\n");
     return false;
 }
@@ -691,43 +691,43 @@ bool JaamDisplay::_checkI2CConnection() {
 uint8_t JaamDisplay::_drawTitle(const String& title) {
 #if DISPLAY_ENABLED
     if (!_u8g2 || title.isEmpty()) return 0;
-    
+
     _u8g2->setFont(JAAM_FONT_TITLE);
-    
+
     // Calculate available width (display width minus margins)
     const uint8_t leftMargin = 2;
     const uint8_t rightMargin = 2;
     const uint8_t maxWidth = 128 - leftMargin - rightMargin;
-    
+
     int textWidth = _u8g2->getUTF8Width(title.c_str());
-    
+
     // Check if text fits
     if (textWidth <= maxWidth) {
         _u8g2->setCursor(leftMargin, _u8g2->getAscent());
         _u8g2->print(title);
         return _u8g2->getAscent() + 2;
     }
-    
+
     // Text doesn't fit - truncate with "..."
     int ellipsisWidth = _u8g2->getUTF8Width("...");
-    
+
     // Find the maximum number of bytes that fit with ellipsis
     // We need to be careful with UTF-8 multi-byte characters (cyrillic text)
     int len = title.length();
     while (len > 0) {
         len--;
-        
+
         // Skip UTF-8 continuation bytes (10xxxxxx pattern: 0x80-0xBF)
         // to avoid cutting in the middle of a multi-byte character
         while (len > 0 && (title[len] & 0xC0) == 0x80) {
             len--;
         }
-        
+
         if (len == 0) break;
-        
+
         String testText = title.substring(0, len);
         int testWidth = _u8g2->getUTF8Width(testText.c_str()) + ellipsisWidth;
-        
+
         if (testWidth <= maxWidth) {
             // Print the truncated text
             _u8g2->setCursor(leftMargin, _u8g2->getAscent());
@@ -736,7 +736,7 @@ uint8_t JaamDisplay::_drawTitle(const String& title) {
             return _u8g2->getAscent() + 2;
         }
     }
-    
+
     // Fallback: just print "..." if nothing fits
     _u8g2->setCursor(leftMargin, _u8g2->getAscent());
     _u8g2->print("...");

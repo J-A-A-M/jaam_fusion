@@ -164,7 +164,7 @@ bool JaamFirmwareUpdate::requestUpdate(const char* id, bool isBeta) {
         LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", id ? id : "(null)");
         return false;
     }
-    
+
     snprintf(_fwUpdateId, sizeof(_fwUpdateId), "%s", id);
     _needUpdate = true;
     LOG.printf("[FIRMWARE] Update requested for: %s\n", id);

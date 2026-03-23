@@ -1,13 +1,57 @@
 [
-  {"id": "general", "name": "Загальні", "color": "#007bff"},
-  {"id": "display", "name": "Дисплей", "color": "#28a745"},
-  {"id": "network", "name": "Мережа", "color": "#17a2b8"},
-  {"id": "hardware", "name": "Апаратне забезпечення", "color": "#6f42c1"},
-  {"id": "siren", "name": "Сирена", "color": "#e83e8c"},
-  {"id": "climate", "name": "Клімат", "color": "#34f396"},
-  {"id": "animations", "name": "Анімації", "color": "#fd7e14"},
-  {"id": "brightness", "name": "Яскравість", "color": "#ffc107"},
-  {"id": "alerts", "name": "Тривоги", "color": "#6c757d"},
-  {"id": "sound", "name": "Звук", "color": "#dc3545"},
-  {"id": "firmware", "name": "Оновлення прошивки", "color": "#9c1cf8"}
+  {
+    "id": "general",
+    "name": "Загальні",
+    "color": "#007bff"
+  },
+  {
+    "id": "display",
+    "name": "Дисплей",
+    "color": "#28a745"
+  },
+  {
+    "id": "network",
+    "name": "Мережа",
+    "color": "#17a2b8"
+  },
+  {
+    "id": "hardware",
+    "name": "Апаратне забезпечення",
+    "color": "#6f42c1"
+  },
+  {
+    "id": "siren",
+    "name": "Сирена",
+    "color": "#e83e8c"
+  },
+  {
+    "id": "climate",
+    "name": "Клімат",
+    "color": "#34f396"
+  },
+  {
+    "id": "animations",
+    "name": "Анімації",
+    "color": "#fd7e14"
+  },
+  {
+    "id": "brightness",
+    "name": "Яскравість",
+    "color": "#ffc107"
+  },
+  {
+    "id": "alerts",
+    "name": "Тривоги",
+    "color": "#6c757d"
+  },
+  {
+    "id": "sound",
+    "name": "Звук",
+    "color": "#dc3545"
+  },
+  {
+    "id": "firmware",
+    "name": "Оновлення прошивки",
+    "color": "#9c1cf8"
+  }
 ]

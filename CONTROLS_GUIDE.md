@@ -90,10 +90,10 @@
 ```cpp
 static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     // ... існуючі параметри
-    
+
     // Sound settings
     {"sound_enabled", SOUND_ENABLED, TYPE_BOOL},
-    
+
     // ... інші параметри
 };
 ```
@@ -138,9 +138,9 @@ bool JaamSettings::saveBool(Type type, bool value) {
 ```cpp
 void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
     JsonObject dropdownLists = doc["dropdown_lists"].to<JsonObject>();
-    
+
     // ... існуючі списки
-    
+
     {
         JsonArray arr = dropdownLists["sound_modes"].to<JsonArray>();
         appendOptionsList(arr, SOUND_MODES, SOUND_MODES_COUNT);
@@ -758,6 +758,6 @@ jaam_fusion/
 
 ---
 
-**Версія документу**: 1.0  
-**Дата оновлення**: 5 березня 2026  
+**Версія документу**: 1.0
+**Дата оновлення**: 5 березня 2026
 **Сумісність**: JAAM Fusion v5.0+

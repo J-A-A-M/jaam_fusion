@@ -57,16 +57,16 @@ void JaamApi::reconfigure() {
         LOG.printf("[API] Settings not initialized, skipping reconfigure\n");
         return;
     }
-    
+
     bool shouldBeRunning = settings->getBool(API_ENABLED);
     int newPort = settings->getInt(API_PORT);
-    
+
     // Перевіряємо чи змінився порт
     if (isRunning && currentPort != newPort) {
         LOG.printf("[API] Port changed from %d to %d, restarting server\n", currentPort, newPort);
         stop();
     }
-    
+
     if (shouldBeRunning) {
         start();
     } else {
@@ -105,7 +105,7 @@ void JaamApi::stop() {
             delete wsServer;
             wsServer = nullptr;
         }
-        
+
         currentPort = -1;
         isRunning = false;
         LOG.printf("[API] WebSocket server stopped\n");
@@ -152,16 +152,16 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
 
     // Назва пристрою
     doc["device_name"] = settings->getString(DEVICE_NAME);
-    
+
     // Режим мапи
     doc["map_mode_id"] = settings->getInt(MAP_MODE);
-    
+
     // Режим дисплею
     doc["display_mode_id"] = settings->getInt(DISPLAY_MODE);
-    
+
     // Домашній регіон
     doc["home_region"] = settings->getInt(HOME_DISTRICT);
-    
+
     // Стан тривоги в домашньому регіоні
     doc["home_alert_flags"] = homeAlertFlags;
 
@@ -197,7 +197,7 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     JsonObject lamp = doc["lamp"].to<JsonObject>();
     lamp["color"] = settings->getString(COLOR_LAMP);
     lamp["brightness"] = settings->getInt(BRIGHTNESS_LAMP);
-    
+
     String initialData;
     serializeJson(doc, initialData);
 
@@ -310,28 +310,28 @@ void JaamApi::handleWebSocketClients() {
     if (!isRunning || !wsServer) {
         return; // API вимкнено, не обробляємо клієнтів
     }
-    
+
     // Перевіряємо нові підключення
     if (wsServer->poll()) {
         WebsocketsClient client = wsServer->accept();
         if (client.available()) {
             LOG.printf("[API] New WebSocket client connected\n");
-            
+
             // Встановлюємо callback для обробки повідомлень від клієнта
             client.onMessage([this](WebsocketsClient& c, WebsocketsMessage msg) {
                 this->handleWebSocketMessage(c, msg);
             });
-            
+
             // Відправляємо initial state при підключенні
             sendInitialState(client);
-            
+
             // Зберігаємо клієнта в список
             wsClients.push_back(client);
             servicePin(API);
             LOG.printf("[API] Client added, total clients: %d\n", wsClients.size());
         }
     }
-    
+
     // Poll всіх клієнтів для обробки повідомлень
     for (auto it = wsClients.begin(); it != wsClients.end(); ) {
         if (it->available()) {
@@ -364,7 +364,7 @@ void JaamApi::broadcastWebSocket(const String& jsonMessage) {
             client.send(jsonMessage);
         }
     }
-    
+
     // Видаляємо відключених клієнтів
     wsClients.erase(
         std::remove_if(wsClients.begin(), wsClients.end(),
@@ -381,11 +381,11 @@ void JaamApi::broadcastMapModeChange(int newMode) {
     JsonDocument doc;
     doc["type"] = "map_mode_change";
     doc["map_mode_id"] = newMode;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast map mode change: %d\n", newMode);
 }
 
@@ -393,11 +393,11 @@ void JaamApi::broadcastDisplayModeChange(int newMode) {
     JsonDocument doc;
     doc["type"] = "display_mode_change";
     doc["display_mode_id"] = newMode;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast display mode change: %d\n", newMode);
 }
 
@@ -409,11 +409,11 @@ void JaamApi::broadcastLampChange(const char* color, int brightness) {
         lamp["color"] = color;
     }
     lamp["brightness"] = brightness;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast lamp change: %s, %d\n", color ? color : "(null)", brightness);
 }
 
@@ -421,11 +421,11 @@ void JaamApi::broadcastHomeRegionChange(int regionId) {
     JsonDocument doc;
     doc["type"] = "home_region_change";
     doc["home_region"] = regionId;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast home region change: %d\n", regionId);
 }
 
@@ -434,11 +434,11 @@ void JaamApi::broadcastAlertChange(int regionId, int alertType) {
     doc["type"] = "alert_change";
     doc["region_id"] = regionId;
     doc["alert_type"] = alertType;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast alert change: region %d, type %d\n", regionId, alertType);
 }
 
@@ -446,25 +446,25 @@ void JaamApi::broadcastHomeAlertChange(uint16_t flags16) {
     JsonDocument doc;
     doc["type"] = "home_alert_change";
     doc["home_alert_flags"] = flags16;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast home alert change: 0x%04X\n", flags16);
 }
 
 void JaamApi::broadcastDeviceNameChange(const char* deviceName) {
     const char* deviceNameSafe = deviceName ? deviceName : "(null)";
-    
+
     JsonDocument doc;
     doc["type"] = "device_name_change";
     doc["device_name"] = deviceNameSafe;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast device name change: %s\n", deviceNameSafe);
 }
 
@@ -472,11 +472,11 @@ void JaamApi::broadcastHomeDistrictTempChange(int temp) {
     JsonDocument doc;
     doc["type"] = "home_district_temp_change";
     doc["home_district_temp"] = temp;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast home district temp change: %d\n", temp);
 }
 
@@ -510,7 +510,7 @@ void JaamApi::updateHomeDistrictTemp(int temp) {
 void JaamApi::updateClimateData(float temp, float humidity, float pressure) {
     // Перевіряємо чи змінилися значення (порівнюємо з поточними)
     bool hasChanges = false;
-    
+
     // Порівнюємо з урахуванням NaN
     if ((isnan(temp) != isnan(climateTemperature)) || (!isnan(temp) && temp != climateTemperature)) {
         hasChanges = true;
@@ -521,12 +521,12 @@ void JaamApi::updateClimateData(float temp, float humidity, float pressure) {
     if ((isnan(pressure) != isnan(climatePressure)) || (!isnan(pressure) && pressure != climatePressure)) {
         hasChanges = true;
     }
-    
+
     // Оновлюємо поточні значення
     this->climateTemperature = temp;
     this->climateHumidity = humidity;
     this->climatePressure = pressure;
-    
+
     // Broadcast тільки якщо є зміни
     if (isRunning && hasChanges) {
         broadcastClimateDataChange(temp, humidity, pressure);
@@ -536,10 +536,10 @@ void JaamApi::updateClimateData(float temp, float humidity, float pressure) {
 void JaamApi::updateLightLevel(float level) {
     // Перевіряємо чи змінилося значення (порівнюємо з поточним)
     bool hasChanged = (isnan(level) != isnan(lightLevel)) || (!isnan(level) && level != lightLevel);
-    
+
     // Оновлюємо поточне значення
     this->lightLevel = level;
-    
+
     // Broadcast тільки якщо є зміни
     if (isRunning && hasChanged) {
         broadcastLightLevelChange(level);
@@ -562,11 +562,11 @@ void JaamApi::updateFirmwareProgress(int progress) {
         JsonDocument doc;
         doc["type"] = "fw_update_progress";
         doc["progress"] = progress;
-        
+
         String data;
         serializeJson(doc, data);
         broadcastWebSocket(data);
-        
+
         LOG.printf("[API] Broadcast firmware update progress: %d%%\n", progress);
     }
 }
@@ -581,7 +581,7 @@ void JaamApi::broadcastSystemInfo() {
     doc["websocket_status"] = websocketStatus;
     doc["websocket_uptime"] = websocketUptime;
     doc["cpu_temp"] = cpuTemp;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
@@ -592,10 +592,10 @@ void JaamApi::broadcastClimateDataChange(float temp, float humidity, float press
     if (isnan(temp) && isnan(humidity) && isnan(pressure)) {
         return;
     }
-    
+
     JsonDocument doc;
     doc["type"] = "climate_data_change";
-    
+
     // Додаємо тільки валідні значення (не NaN)
     if (!isnan(temp)) {
         doc["climate_temp"] = temp;
@@ -606,12 +606,12 @@ void JaamApi::broadcastClimateDataChange(float temp, float humidity, float press
     if (!isnan(pressure)) {
         doc["climate_pressure"] = pressure;
     }
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
-    LOG.printf("[API] Broadcast climate data change: temp=%s, humidity=%s, pressure=%s\n", 
+
+    LOG.printf("[API] Broadcast climate data change: temp=%s, humidity=%s, pressure=%s\n",
                isnan(temp) ? "N/A" : String(temp, 2).c_str(),
                isnan(humidity) ? "N/A" : String(humidity, 2).c_str(),
                isnan(pressure) ? "N/A" : String(pressure, 2).c_str());
@@ -621,28 +621,28 @@ void JaamApi::broadcastLightLevelChange(float level) {
     if (isnan(level)) {
         return;
     }
-    
+
     JsonDocument doc;
     doc["type"] = "light_level_change";
     doc["light_level"] = level;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast light level change: %s lx\n", String(level, 2).c_str());
 }
 
 void JaamApi::broadcastFirmwareUpdate(const char* version) {
-    
+
     JsonDocument doc;
     doc["type"] = "firmware_update";
     doc["fw_latest"] = version;
-    
+
     String data;
     serializeJson(doc, data);
     broadcastWebSocket(data);
-    
+
     LOG.printf("[API] Broadcast firmware update: %s\n", version);
 }
 
@@ -658,7 +658,7 @@ void JaamApi::onSettingsChange(Type type, int intValue, float fltValue, const ch
         // Якщо API не запущено, немає сенсу обробляти зміни налаштувань для broadcast
         return;
     }
-    
+
     // Відстежуємо зміни критичних налаштувань і broadcast-имо їх
     switch (type) {
         case API_ENABLED:
@@ -666,36 +666,36 @@ void JaamApi::onSettingsChange(Type type, int intValue, float fltValue, const ch
             // При зміні API_ENABLED або API_PORT перезапускаємо сервер
             reconfigure();
             break;
-            
+
         case MAP_MODE:
             broadcastMapModeChange(intValue);
             break;
-            
+
         case DISPLAY_MODE:
             broadcastDisplayModeChange(intValue);
             break;
-            
+
         case BRIGHTNESS_LAMP:
             // Якщо змінилась яскравість лампи, відправляємо оновлення
             broadcastLampChange(settings->getString(COLOR_LAMP), intValue);
             break;
-            
+
         case COLOR_LAMP:
             // Якщо змінився колір лампи, відправляємо оновлення
             broadcastLampChange(strValue, settings->getInt(BRIGHTNESS_LAMP));
             break;
-            
+
         case HOME_DISTRICT:
             broadcastHomeRegionChange(intValue);
             break;
-            
+
         case DEVICE_NAME:
             // Якщо змінилась назва пристрою, відправляємо оновлення
             if (strValue) {
                 broadcastDeviceNameChange(strValue);
             }
             break;
-            
+
         default:
             break;
     }

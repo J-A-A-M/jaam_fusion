@@ -614,7 +614,7 @@ void AnimationManager::update() {
             bgDirty = true;
         }
     }
-    
+
     // ── Preview для strip_bg має вищий пріоритет і перезаписує кольори bgState ──
     if (strip_bg != nullptr && isPreviewActiveForMode(previewStateBg, mapMode)) {
         int numLeds = min((int)strip_bg->numPixels(), MAX_LEDS_STRIP_BG);
@@ -992,7 +992,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
     if (strip == strip_service) {
         LOG.printf("[COLOR] service strip color\n");
         switch (getCurrentMapMode()) {
-            case MapModes::OFF: 
+            case MapModes::OFF:
                 color = DefaultColors::OFF;
                 brightness = 0;
                 break;
@@ -1180,7 +1180,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     }
     if (strip == strip_service) {
         switch (getCurrentMapMode()) {
-            case MapModes::OFF: 
+            case MapModes::OFF:
                 color = DefaultColors::OFF;
                 brightness = 0;
                 break;
@@ -1261,45 +1261,45 @@ void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {
 
 void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness) {
     if (!settings) return;
-    
+
     // Перевірка чи увімкнено попередній перегляд
     if (!settings->getBool(ENABLE_ANIMATION_PREVIEW)) {
         return;
     }
-    
+
     if (strip_main == nullptr) {
         LOG.printf("[PREVIEW] strip_main is null, skipping preview\n");
         return;
     }
-    
-    LOG.printf("[PREVIEW] Starting preview: eventType=%d, animType=%d, color=0x%06X, period=%u, brightness=%u\n", 
+
+    LOG.printf("[PREVIEW] Starting preview: eventType=%d, animType=%d, color=0x%06X, period=%u, brightness=%u\n",
                eventType, animType, color, period, brightness);
-    
+
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         // Якщо вже є активний preview - просто оновлюємо параметри без відновлення кольорів
         // Це запобігає "моргання" map mode при швидкій зміні параметрів
-        
+
         // Захист від ділення на нуль
         if (period == 0) {
             period = 1;
             LOG.printf("[PREVIEW] WARNING: period was 0, using default 1\n");
         }
-        
+
         // Налаштування попереднього перегляду
         previewActive = true;
         previewEndTime = millis() + 5000;  // 5 секунд
         previewEventType = eventType;
-        
+
         // Створюємо анімацію на всій стрічці
         uint32_t now = millis();
         uint32_t cycles = (5000 + period - 1) / period;  // Кількість циклів за 5 секунд
         uint8_t globalStart = led.brightnessRelative(brightness);
         uint8_t globalEnd = led.brightnessRelative(settings->getInt(BRIGHTNESS_ANIMATION_END));
         uint8_t mapMode = getCurrentMapMode();
-        
+
         // Початковий колір залежить від типу події:
         // - Для ALERT: перехід від clear до alert
-        // - Для NO_ALERT: перехід від alert назад до clear  
+        // - Для NO_ALERT: перехід від alert назад до clear
         // - Для інших загроз: перехід від alert до більш небезпечного стану
         uint32_t initColor;
         if (eventType == AlertModes::ALERT) {
@@ -1309,10 +1309,10 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
             initColor = colorFromHex(settings->getString(COLOR_ALERT));
         }
         uint32_t adaptedInitColor = adaptColorBrightness(initColor, globalStart);
-        
+
         // Отримуємо поточний час старту для синхронізації
         uint32_t startTime = synchronizedMode ? getStartTime(animType) : now;
-        
+
         previewState.strip = strip_main;
         previewState.color = color;
         previewState.adaptedInitColor = adaptedInitColor;
@@ -1326,7 +1326,7 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         previewState.bit = 100;  // Високий пріоритет для попереднього перегляду
         previewState.mapMode = mapMode;
         previewState.active = true;
-        
+
         // Налаштовуємо preview для bg стрічки, якщо вона є
         if (strip_bg != nullptr) {
             previewStateBg.strip = strip_bg;
@@ -1343,9 +1343,9 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
             previewStateBg.mapMode = mapMode;
             previewStateBg.active = true;
         }
-        
+
         xSemaphoreGive(animMutex);
-        
+
         LOG.printf("[PREVIEW] Preview started on all LEDs for 5 seconds\n");
     }
 }
@@ -1357,18 +1357,18 @@ void AnimationManager::stopPreview() {
             xSemaphoreGive(animMutex);
             return;
         }
-        
+
         LOG.printf("[PREVIEW] Stopping preview\n");
-        
+
         previewActive = false;
         previewEndTime = 0;
         previewEventType = -1;
         previewState.active = false;
         previewStateBg.active = false;
-        
+
         xSemaphoreGive(animMutex);
     }
-    
+
     // Відновлюємо кольори (захоплюємо stripMutex лише один раз)
     if (strip_main && xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
         int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
@@ -1378,7 +1378,7 @@ void AnimationManager::stopPreview() {
         strip_main->show();
         xSemaphoreGive(stripMutex);
     }
-    
+
     // Відновлюємо кольори для bg стрічки, якщо вона є
     // Використовуємо ledActualColor для кожного пікселя, щоб коректно відновити
     // per-pixel кольори для BgLedModes::COLOR_MAP

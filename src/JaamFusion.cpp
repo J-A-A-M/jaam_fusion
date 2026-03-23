@@ -200,46 +200,46 @@ void clearAllWeatherMaps() {
     // Логування стану пам'яті перед очищенням
     size_t memBefore = ESP.getFreeHeap();
     LOG.printf("[MEMORY] Free heap before clearing weather maps: %u bytes\n", memBefore);
-    
+
     // Очищаємо всі map'и
     temperatureMap.clear();
-    
+
     // Додаткове очищення пам'яті після clear()
     // Для std::map викликаємо shrink_to_fit через swap з пустими контейнерами
     std::map<uint16_t, uint8_t>().swap(temperatureMap);
 
     // Принудове очищення пам'яті
     forceMemoryCleanup("after weather maps clearing");
-    
+
     // Дефрагментація пам'яті
     defragmentMemory("after weather maps clearing");
-    
+
     // Логування результату
     size_t memAfter = ESP.getFreeHeap();
     int memReclaimed = (int)(memAfter - memBefore);
-    
+
     LOG.printf("[MAIN] Clearing all weather maps completed\n");
-    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n", 
+    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n",
                memReclaimed, memBefore, memAfter);
 }
 
 void rebootDevice(int time = 2000, bool async = false) {
     LOG.printf("[MAIN] Rebooting in %d ms...\n", time);
     display.showServiceMessage("Перезавантаження...", "", time);
-    
+
     // Clean up all resources before reboot
     clearAllAlertsMaps();
     clearAllWeatherMaps();
     animation.clearAllAnimations();
-    
+
     // Close websocket connection properly
     if (websocket.available()) {
         websocket.close();
     }
-    
+
     // Add memory logging before reboot
     LOG.printf("[MEMORY] Free heap before reboot: %u bytes\n", ESP.getFreeHeap());
-    
+
     delay(time);
     ESP.restart();
 }
@@ -362,7 +362,7 @@ void playMelody(SoundType type) {
   case CRITICAL_MIG:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG)]);
     playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG)));
-    break; 
+    break;
   case CRITICAL_STRATEGIC:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC)]);
     playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC)));
@@ -457,7 +457,7 @@ void mapUpdate(float percents) {
     uint32_t litCount = static_cast<uint32_t>(num_leds_main * percents + 0.5f);
     const uint32_t green = animation.adaptColorBrightness(DefaultColors::MAIN_STRIP, led.brightnessRelative(100)); // Використовуємо 100% локальної яскравості для максимальної видимості прогресу
     const uint32_t off = DefaultColors::OFF;
-    
+
 
     animation.safeStripOperation(strip_main, [&](Adafruit_NeoPixel* strip) {
         for (uint32_t i = 0; i < num_leds_main; ++i) {
@@ -682,7 +682,7 @@ void servicePin(ServiceLed type) {
         animation.safeStripOperation(strip_service, [type, color](Adafruit_NeoPixel* strip) {
             strip->setPixelColor(type, color);
             strip->show();
-        }); 
+        });
     }
 }
 
@@ -716,7 +716,7 @@ void alertAction(int bit, int districtId) {
     // }
     const char* districtName = getNameById(DISTRICTS, districtId, MAX_REGIONS);
     LOG.printf("[ALERT] Home district %s status changed from %d to %d\n", districtName, alertBit, bit);
-    
+
     // Звукові сповіщення (якщо увімкнено)
     if (settings.getBool(SOUND_ON_ALERT)) {
         switch (bit){
@@ -748,13 +748,13 @@ void alertAction(int bit, int districtId) {
     if (settings.getBool(SOUND_ON_ALERT_END) && bit == AlertModes::NO_ALERT) {
         if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
     }
-    
+
     // Показуємо повідомлення на дисплеї для будь-якого типу події
     display.showServiceMessage(getEventTypeName(bit), districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, int initialBit, uint16_t region_id, bool increase = true) {
-    LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
+    LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit);
 
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] LED %d: strip is nullptr\n", led_position);
@@ -765,7 +765,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         LOG.printf("[ANIMATION] SKIPPED %d: bg mode is not HOME_REGION, background animation skipped\n", led_position);
         return;
     }
-    
+
     uint32_t color;
     uint32_t initialColor = animation.ledActualColor(strip, led_position);
     uint32_t period;
@@ -783,33 +783,33 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     // }
 
     switch (bit) {
-        case -1: 
-            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));  
-            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_CLEAR));             
+        case -1:
+            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_CLEAR));
             animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
             cycles = (settings.getInt(ALERT_OFF_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             break;
         case 0:
-            color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
+            color = animation.colorFromHex(settings.getString(COLOR_ALERT));
             animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ALERT));
             period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
             break;
-        case 5: 
+        case 5:
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_DRONES));
             animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 3000;
-            cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
+            cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1;
             break;
         case 6:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_MISSILES));
             animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 3000;
-            cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
+            cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1;
             break;
         case 7:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
@@ -861,7 +861,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         LOG.printf("[ERROR] Invalid strip for animation\n");
         return;
     }
-    
+
     if (!animation.createAnimation(
         animType,
         strip,
@@ -905,7 +905,7 @@ void onMessageCallback(WebsocketsMessage msg) {
     } else {
         //LOG.printf("[WEBSOCKET] bytes payload len: %d\n", msg.length());
     }
-    
+
     websocketLastPingTime = millis();
 
     WSString payload = msg.rawData();
@@ -1008,7 +1008,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, highestBitRegion, region_id, true);
                     alertAction(actualBitDiff, region_id);
                 }
-            }   
+            }
         }
     }
 
@@ -1198,7 +1198,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         api.updateHomeDistrictTemp(homeTemp);
         adaptStripColorsAndBrightness();
     }
-    
+
     checkFreeHeap("Websockets data processing");
 }
 
@@ -1248,7 +1248,7 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         websocketConnected = true;
         servicePin(DATA);
         LOG.printf("[WEBSOCKET] connection opened\n");
-        
+
         websocketLastPingTime = millis();
     } else if (event == WebsocketsEvent::ConnectionClosed) {
         websocketConnected = false;
@@ -1334,7 +1334,7 @@ void cleanup() {
             strip_main = nullptr;
         });
     }
-    
+
     if (strip_bg != nullptr) {
         animation.safeStripOperation(strip_bg, [](Adafruit_NeoPixel* strip) {
             strip->clear();
@@ -1347,7 +1347,7 @@ void cleanup() {
             strip_bg = nullptr;
         });
     }
-    
+
     if (strip_service != nullptr) {
         animation.safeStripOperation(strip_service, [](Adafruit_NeoPixel* strip) {
             strip->clear();
@@ -1401,12 +1401,12 @@ void initStripMain() {
         LOG.printf("[LED] SKIP: strip_main (unsupported pin %d)\n", mainLedPin);
         return;
     }
-    
+
     if (mainLedPin > 0) {
         int mainLedColorFormat = hardwareConfig.getMainLedColorFormat();
         uint8_t ledType = mainLedColorFormat + settings.getInt(MAIN_LED_FREQUENCY);
-        LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
-                   mainLedPin, num_leds_main, ledType, 
+        LOG.printf("[LED] Initializing strip_main on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n",
+                   mainLedPin, num_leds_main, ledType,
                    mainLedColorFormat, settings.getInt(MAIN_LED_FREQUENCY));
         status = led.createStrip(strip_main, mainLedPin, num_leds_main, ledType);
         if (status != StripStatus::SUCCESS) {
@@ -1445,7 +1445,7 @@ void initStripBg() {
     if (bgLedPin > 0 && bgLedCount > 0) {
         int bgLedColorFormat = hardwareConfig.getBgLedColorFormat();
         uint8_t ledType = bgLedColorFormat + settings.getInt(BG_LED_FREQUENCY);
-        LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
+        LOG.printf("[LED] Initializing strip_bg on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n",
                    bgLedPin, bgLedCount, ledType,
                    bgLedColorFormat, settings.getInt(BG_LED_FREQUENCY));
         status = led.createStrip(strip_bg, bgLedPin, bgLedCount, ledType);
@@ -1467,7 +1467,7 @@ void initStripBg() {
     //         }
     //         strip->show();
     //     });
-    //     needAdaptStripBrightness = true;      
+    //     needAdaptStripBrightness = true;
     // }
 }
 
@@ -1480,11 +1480,11 @@ void initStripService() {
         LOG.printf("[LED] SKIP: strip_service (unsupported pin %d)\n", serviceLedPin);
         return;
     }
-    
+
     if (serviceLedPin > 0) {
         int serviceLedColorFormat = hardwareConfig.getServiceLedColorFormat();
         uint8_t ledType = serviceLedColorFormat + settings.getInt(SERVICE_LED_FREQUENCY);
-        LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n", 
+        LOG.printf("[LED] Initializing strip_service on pin %d with %d LEDs, type %d (format:%d + freq:%d)\n",
                    serviceLedPin, num_leds_service, ledType,
                    serviceLedColorFormat, settings.getInt(SERVICE_LED_FREQUENCY));
         status = led.createStrip(strip_service, serviceLedPin, num_leds_service, ledType);
@@ -1572,10 +1572,10 @@ static TimezoneInfo* getTimezoneInfo(int timezoneId) {
 
 static void applyTimezoneSettings(int timezoneId) {
     TimezoneInfo* tzInfo = getTimezoneInfo(timezoneId);
-    LOG.printf("[TIME] Applying timezone ID %d (offset: %d hours %d minutes)\n", 
+    LOG.printf("[TIME] Applying timezone ID %d (offset: %d hours %d minutes)\n",
                timezoneId, tzInfo->offset, tzInfo->minutes);
     timeClient.setTimeZone(tzInfo->offset, tzInfo->minutes);
-    
+
     // Налаштування DST
     if (tzInfo->hasDST) {
         if (currentDST != nullptr) {
@@ -1601,7 +1601,7 @@ static void printNtpStatus(NTPtime* timeClient) {
     switch (timeClient->NTPstatus()) {
         case 0:
             LOG.printf("[TIME] OK\n");
-            LOG.printf("[TIME] Current date and time: %s\n", 
+            LOG.printf("[TIME] Current date and time: %s\n",
                 timeClient->unixToString("DD.MM.YYYY hh:mm:ss").c_str());
             break;
         case 1:
@@ -1665,7 +1665,7 @@ void syncTime(int8_t attempts) {
 
 void adaptStripColorsAndBrightness() {
     if (strip_main != nullptr) {
-        LOG.printf("[LED] Adjusting main strip colors and brightness\n");               
+        LOG.printf("[LED] Adjusting main strip colors and brightness\n");
         animation.safeStripOperation(strip_main, [](Adafruit_NeoPixel* strip) {
             for (uint16_t i = 0; i < strip->numPixels(); i++) {
                 uint32_t color = animation.ledActualColor(strip, i);
@@ -1694,7 +1694,7 @@ void adaptStripColorsAndBrightness() {
                 }
             }
             strip->show();
-        });               
+        });
     }
     if (strip_service != nullptr) {
         LOG.printf("[LED] Adjusting service strip colors and brightness\n");
@@ -1704,7 +1704,7 @@ void adaptStripColorsAndBrightness() {
                 strip->setPixelColor(i, color);
             }
             strip->show();
-        });               
+        });
     }
 }
 
@@ -1762,7 +1762,7 @@ void initSettings() {
     settings.init();
     fwUpdate.init(VERSION);
     fwUpdate.applyActiveChannel(settings.getInt(FW_UPDATE_CHANNEL) == 1);
-    
+
     // Перевіряємо чи є збережене значення hostname
     if (!settings.hasKey(BROADCAST_NAME)) {
         // Встановлюємо значення за замовчуванням: jaam_[chipId]
@@ -1773,19 +1773,19 @@ void initSettings() {
     } else {
         LOG.printf("[INIT] BROADCAST_NAME: %s\n", settings.getString(BROADCAST_NAME));
     }
-    
+
     // Реєструємо callback для автоматичного broadcast змін налаштувань до API
     settings.setChangeCallback([](Type type, int intValue, float fltValue, const char* strValue) {
-      
+
         // Повідомляємо mDNS про зміни налаштувань
         mdnsService.onSettingsChange(type, intValue, fltValue, strValue);
-        
+
         // Повідомляємо API про зміни налаштувань
         api.onSettingsChange(type, intValue, fltValue, strValue);
 
         // Повідомляємо Siren про зміни налаштувань
         siren.onSettingsChange(type, intValue, fltValue, strValue);
-        
+
         // Обробляємо зміни налаштувань локально
         switch(type) {
             // Кольори та зовнішній вигляд (адаптація + анімації)
@@ -1814,7 +1814,7 @@ void initSettings() {
                 handleAdaptAnimationColors();
                 handleAdaptAnimationBrightness();
                 break;
-            
+
             // Домашній регіон (кольори + анімації + оновлення бітів)
             case HOME_DISTRICT:
                 adaptStripColorsAndBrightness();
@@ -1822,7 +1822,7 @@ void initSettings() {
                 handleUpdateHomeAlertBit();
                 handleAdaptAnimationBrightness();
                 break;
-            
+
             // Основна яскравість (загальна адаптація)
             // Яскравість для анімацій (кольори + яскравість анімацій)
             // Яскравість сервісних LED (тільки кольори)
@@ -1855,7 +1855,7 @@ void initSettings() {
                 handleAdaptAnimationColors();
                 handleAdaptAnimationBrightness();
                 break;
-            
+
             // Час анімацій
             case ANIMATION_ALERT_ON_CYCLE_TIME:
             case ANIMATION_ALERT_OFF_CYCLE_TIME:
@@ -1867,7 +1867,7 @@ void initSettings() {
             case ANIMATION_EXPLOSION_CYCLE_TIME:
                 handleAdaptAnimationPeriod();
                 break;
-            
+
             // Тип анімацій
             case ANIMATION_ALERT_ON_TYPE:
             case ANIMATION_ALERT_OFF_TYPE:
@@ -1879,31 +1879,31 @@ void initSettings() {
             case ANIMATION_EXPLOSION_TYPE:
                 handleAdaptAnimationType();
                 break;
-            
+
             // Режим синхронізації анімацій
             case ENABLE_SYNC_ANIMATIONS:
                 handleUpdateAnimationsMode();
                 break;
-            
+
             // LED MAIN конфігурація (формат/частота - тільки reconnect)
             case MAIN_LED_COLOR_FORMAT:
             case MAIN_LED_FREQUENCY:
                 handleReconnectStrips(true, false, false);
                 break;
-            
+
             // LED MAIN пін/кількість (перерахунок + reconnect)
             case MAIN_LED_PIN:
             case MAIN_LED_COUNT:
                 handleRecalculateLeds();
                 handleReconnectStrips(true, false, false);
                 break;
-            
+
             // LED BG конфігурація (формат/частота - тільки reconnect)
             case BG_LED_COLOR_FORMAT:
             case BG_LED_FREQUENCY:
                 handleReconnectStrips(false, true, false);
                 break;
-            
+
             // LED BG пін/кількість (перерахунок + reconnect)
             case BG_LED_PIN:
             case BG_LED_COUNT:
@@ -1911,14 +1911,14 @@ void initSettings() {
                 handleRegenerateBgColorMap();
                 handleReconnectStrips(false, true, false);
                 break;
-            
+
             // LED SERVICE конфігурація (формат/частота/пін)
             case SERVICE_LED_COLOR_FORMAT:
             case SERVICE_LED_FREQUENCY:
             case SERVICE_LED_PIN:
                 handleReconnectStrips(false, false, true);
                 break;
-            
+
             // Повна апаратна реконфігурація
             case HARDWARE:
                 handleRecalculateLeds();
@@ -1930,7 +1930,7 @@ void initSettings() {
                 handleReconfigureSensors();
                 handleReconnectWebsocket();
                 break;
-            
+
             // Режими районів (перерахунок LED)
             case DISTRICT_MODE_KYIV:
             case DISTRICT_MODE_KHARKIV:
@@ -1938,7 +1938,7 @@ void initSettings() {
             case KYIV_LED:
                 handleRecalculateLeds();
                 break;
-            
+
             // Налаштування дисплею
             case DISPLAY_MODEL:
             case DISPLAY_HEIGHT:
@@ -1946,14 +1946,14 @@ void initSettings() {
             case INVERT_DISPLAY:
                 handleReconfigureDisplay();
                 break;
-            
+
             // Корекція сенсорів клімату
             case TEMP_CORRECTION:
             case HUM_CORRECTION:
             case PRESSURE_CORRECTION:
                 handleAdaptClimate();
                 break;
-            
+
             // Звукова конфігурація (джерело + піни)
             case SOUND_SOURCE:
             case BUZZER_PIN:
@@ -1961,19 +1961,19 @@ void initSettings() {
             case DF_TX_PIN:
                 handleReconfigureSound();
                 break;
-            
+
             // Гучність мелодій
             case MELODY_VOLUME_DAY:
             case MELODY_VOLUME_NIGHT:
                 handleAdaptVolume();
                 break;
-            
+
             // Моніторинг батареї
             case ENABLE_BATTERY_MONITORING:
             case BATTERY_PIN:
                 handleUpdateBatteryPin();
                 break;
-            
+
             // Конфігурація кнопок
             case USE_TOUCH_BUTTON_1:
             case USE_TOUCH_BUTTON_2:
@@ -1989,12 +1989,12 @@ void initSettings() {
             case BUTTON_3_PIN:
                 handleReconfigureButtons();
                 break;
-            
+
             // Часовий пояс
             case TIME_ZONE:
                 handleUpdateTimezone();
                 break;
-            
+
             // Вивід логів у Serial/Telnet
             case LOGS_ENABLED:
                 loggingStream.setLogsEnabled(intValue == 1);
@@ -2004,7 +2004,7 @@ void initSettings() {
             case NTP_HOST:
                 handleUpdateNtpHost();
                 break;
-            
+
             // WebSocket сервер
             case WS_SERVER_HOST:
             case WS_SERVER_PORT:
@@ -2016,7 +2016,7 @@ void initSettings() {
             case DISPLAY_OFF_AT_NIGHT:
                 displayProcess();
                 break;
-            
+
             // Увімкнення/вимкнення попереднього перегляду
             case ENABLE_ANIMATION_PREVIEW:
                 if (intValue == 0) {
@@ -2024,7 +2024,7 @@ void initSettings() {
                     animation.stopPreview();
                 }
                 break;
-    
+
             // Зміна каналу оновлення прошивки — перераховуємо стан з уже отриманих списків
             case NEW_FW_NOTIFICATION:
             case FW_UPDATE_CHANNEL:
@@ -2035,7 +2035,7 @@ void initSettings() {
                 // Інші налаштування не потребують додаткової обробки
                 break;
         }
-        
+
         // Попередній перегляд анімації (якщо увімкнено)
         if (settings.getBool(ENABLE_ANIMATION_PREVIEW)) {
             int8_t eventType = -2;  // -2 означає "не визначено"
@@ -2044,7 +2044,7 @@ void initSettings() {
             uint32_t color = 0xFF0000;
             uint8_t brightness = 255;
             bool isAnimationParam = false;
-            
+
             // Визначаємо тип події та одразу заповнюємо параметри
             switch (type) {
                 // Параметри для ALERT
@@ -2058,7 +2058,7 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_ALERT);
                     isAnimationParam = true;
                     break;
-                    
+
                 // Параметри для NO_ALERT (скасування тривоги)
                 case ANIMATION_ALERT_OFF_TYPE:
                 case ANIMATION_ALERT_OFF_CYCLE_TIME:
@@ -2070,7 +2070,7 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_CLEAR);
                     isAnimationParam = true;
                     break;
-                    
+
                 // Параметри для EXPLOSION
                 case ANIMATION_EXPLOSION_TYPE:
                 case ANIMATION_EXPLOSION_CYCLE_TIME:
@@ -2082,7 +2082,7 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_EXPLOSION);
                     isAnimationParam = true;
                     break;
-                    
+
                 // Параметри для DRONES
                 case ANIMATION_DRONE_TYPE:
                 case ANIMATION_DRONE_CYCLE_TIME:
@@ -2094,7 +2094,7 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_DRONES);
                     isAnimationParam = true;
                     break;
-                    
+
                 // Параметри для RECON_DRONES
                 case ANIMATION_RECON_DRONE_TYPE:
                 case ANIMATION_RECON_DRONE_CYCLE_TIME:
@@ -2106,7 +2106,7 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_RECON_DRONES);
                     isAnimationParam = true;
                     break;
-                    
+
                 // Параметри для MISSILES
                 case ANIMATION_MISSILE_TYPE:
                 case ANIMATION_MISSILE_CYCLE_TIME:
@@ -2118,7 +2118,7 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_MISSILES);
                     isAnimationParam = true;
                     break;
-                    
+
                 // Параметри для KABS
                 case ANIMATION_KAB_TYPE:
                 case ANIMATION_KAB_CYCLE_TIME:
@@ -2130,7 +2130,7 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_KABS);
                     isAnimationParam = true;
                     break;
-                    
+
                 // Параметри для BALLISTIC
                 case ANIMATION_BALLISTIC_TYPE:
                 case ANIMATION_BALLISTIC_CYCLE_TIME:
@@ -2142,11 +2142,11 @@ void initSettings() {
                     brightness = settings.getInt(BRIGHTNESS_BALLISTIC);
                     isAnimationParam = true;
                     break;
-                    
+
                 default:
                     break;
             }
-            
+
             // Запуск попереднього перегляду
             if (isAnimationParam) {
                 // Показуємо повідомлення на дисплеї
@@ -2199,8 +2199,8 @@ void initSensors() {
 void initSound() {
 #if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
   sound.init(
-    hardwareConfig.getBuzzerPin(), 
-    hardwareConfig.getDfRxPin(), 
+    hardwareConfig.getBuzzerPin(),
+    hardwareConfig.getDfRxPin(),
     hardwareConfig.getDfTxPin(),
     settings.getInt(MELODY_VOLUME_CURRENT),
     settings.getInt(MELODY_VOLUME_DAY),
@@ -2276,11 +2276,11 @@ void initMDNS() {
 
 void initApi() {
     LOG.printf("[INIT] Init API\n");
-    
+
     // Ініціалізуємо API
     api.setSettings(&settings);
     api.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
-    
+
     SystemInfo info = getSystemInfo();
     api.setSystemInfo(
         info.usedMemory,
@@ -2291,7 +2291,7 @@ void initApi() {
         info.websocketUptime,
         info.cpuTemp
     );
-    
+
     // Стартуємо API якщо дозволено в налаштуваннях
     api.reconfigure();
 }
@@ -2305,7 +2305,7 @@ void initWeb() {
     web.setSettings(&settings);
     web.setStorage(&storage);
     web.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
-    
+
     web.begin(strip_main, strip_bg, strip_service);
     webInitialized = true;
 }
@@ -2351,7 +2351,7 @@ void initWifi() {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
     delay(100);
-    
+
     // Встановлюємо режим станції
     WiFi.mode(WIFI_STA);
     wm.setHostname(settings.getString(BROADCAST_NAME));
@@ -2385,10 +2385,10 @@ void initWifi() {
     initWeb();
     initApi();
     initMDNS();
-    
+
     // // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
     // WiFi.begin();
-    
+
     // // Чекаємо підключення 10 секунд
     // int attempts = 0;
     // while (WiFi.status() != WL_CONNECTED && attempts < 20) {
@@ -2396,7 +2396,7 @@ void initWifi() {
     //     attempts++;
     //     LOG.printf(".");
     // }
-    
+
     // if (WiFi.status() == WL_CONNECTED) {
     //     lastWifiConnectTime = millis();
     //     wifiConnected = true;
@@ -2410,40 +2410,40 @@ void initWifi() {
 
     // LOG.printf("[WIFI] Failed to connect to saved network\n");
     // LOG.printf("[WIFI] Starting WiFiManager...\n");
-    
+
     // // Create local WiFiManager to avoid global memory usage
     // {
     //     WiFiManager wm_temp;
-        
+
     //     // Мінімальні налаштування для економії пам'яті
     //     wm_temp.setHostname("jaam_fusion");
     //     wm_temp.setConfigPortalBlocking(true);
     //     wm_temp.setConnectTimeout(15);
     //     wm_temp.setConnectRetries(2);
     //     wm_temp.setConfigPortalTimeout(120);
-        
+
     //     // Простий колбек без додаткових операцій
     //     wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
     //         LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
     //     });
-        
+
     //     // Створюємо ім'я AP з chip ID
     //     char apName[32];
     //     snprintf(apName, sizeof(apName), "JAAM_%s", chipID);
-        
+
     //     // Спроба підключення
     //     if (!wm_temp.autoConnect(apName)) {
     //         LOG.printf("[WIFI] Failed to connect. Rebooting...\n");
     //         rebootDevice(3000);
     //         return;
     //     }
-        
+
     //     lastWifiConnectTime = millis();
     //     LOG.printf("[WIFI] Connected to WiFi via WiFiManager\n");
     //     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-        
+
     // } // wm_temp destructor called here, freeing memory
-    
+
     LOG.printf("[WIFI] initialization completed\n");
     LOG.printf("[MEMORY] Free heap after WiFi init: %u bytes\n", ESP.getFreeHeap());
 }
@@ -2465,7 +2465,7 @@ void initStrip() {
     // Ініціалізуємо стрічки з бажаними пінами
     initStripMain();
     initStripBg();
-    initStripService();   
+    initStripService();
     adaptStripColorsAndBrightness();
 
     // Тепер заповнюємо allLedsMain і allLedsBg після ініціалізації стрічок
@@ -2473,7 +2473,7 @@ void initStrip() {
     for (uint32_t i = 0; i < num_leds_main; ++i) {
         allLedsMain.push_back(i);
     }
-    
+
     allLedsBg.clear();
     int bgCount = hardwareConfig.getBgLedsCount();
     if (bgCount > 0) {
@@ -2566,7 +2566,7 @@ void animations() {
     static int currentIdx = 0;
     int ledsIdx[1] = { currentIdx };
     uint8_t r = random(256), g = random(256), b = random(256);
-    
+
     // Випадковий вибір стрічки
     Adafruit_NeoPixel* strip = nullptr;
     // int stripRand = random(0, 2);
@@ -2593,11 +2593,11 @@ void animations() {
     // r = 255;
     // g = 0;
     // b = 0;
-    
+
     uint32_t color = strip->Color(r, g, b);
 
     // Випадковий вибір типу анімації
-    
+
     int typeRand = random(0, 4); // 0, 1 або 2 для FADE, BLINK або BLEND_FADE
     switch(typeRand) {
         case 0:
@@ -2622,7 +2622,7 @@ void animations() {
     uint32_t cycles = 30; // random(AnimationConfig::MIN_CYCLES, AnimationConfig::MAX_CYCLES + 1);
     uint8_t startBrightness = 50; // random(AnimationConfig::MIN_START_BRIGHTNESS, AnimationConfig::MAX_START_BRIGHTNESS + 1);
     uint8_t endBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ANIMATION_END)); //   random(AnimationConfig::MIN_END_BRIGHTNESS, AnimationConfig::MAX_END_BRIGHTNESS + 1);
-    
+
     // Створення анімації з обробкою помилок
     if (!animation.createAnimation(
         animType,
@@ -2744,12 +2744,12 @@ void websocketProcess() {
         //int positions[] = {}; // not used in RUNNING_LIGHT
         animation.createAnimation(
             AnimationTypes::RUNNING_LIGHT,
-            strip_main,  
-            MapModes::ALERT,       
-            {}, // not used in RUNNING_LIGHT        
-            0,            
-            0xFF0000,      
-            0x001100,        
+            strip_main,
+            MapModes::ALERT,
+            {}, // not used in RUNNING_LIGHT
+            0,
+            0xFF0000,
+            0x001100,
             1000,
             180,
             50,
@@ -2790,7 +2790,7 @@ void memoryProcess() {
         websocketStatus.c_str(),
         info.websocketUptime / 60
     );
-    
+
     api.updateSystemInfo(
         info.usedMemory,
         info.uptime,
@@ -2800,7 +2800,7 @@ void memoryProcess() {
         info.websocketUptime,
         info.cpuTemp
     );
-    
+
     loopCount++;
 }
 
@@ -2809,7 +2809,7 @@ void memoryProcess() {
 void wifiProcess() {
     static uint8_t reconnectAttempts = 0;
     const uint8_t MAX_RECONNECT_ATTEMPTS = 5;
-    
+
     if (WiFi.status() != WL_CONNECTED) {
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             LOG.printf("[WIFI] Reconnect\n");
@@ -2833,7 +2833,7 @@ void timeProcess() {
 
 // Виводимо інформацію про активні анімації
 void animationsLog() {
-  
+
   animation.logActiveAnimations();
 }
 
@@ -2899,16 +2899,16 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
     static bool needReconnectMain = false;
     static bool needReconnectBg = false;
     static bool needReconnectService = false;
-    
+
     if (main) needReconnectMain = true;
     if (bg) needReconnectBg = true;
     if (service) needReconnectService = true;
-    
+
     // Виконуємо переподключення, якщо є якісь флаги
     if (needReconnectMain || needReconnectBg || needReconnectService) {
-        LOG.printf("[SETTINGS] Reconnecting LED strips (main:%d bg:%d svc:%d)\n", 
+        LOG.printf("[SETTINGS] Reconnecting LED strips (main:%d bg:%d svc:%d)\n",
                    needReconnectMain, needReconnectBg, needReconnectService);
-        
+
         if (needReconnectMain) {
             reconnectStripMain();
             // Перезбираємо список індексів для Main після reconnect
@@ -2934,12 +2934,12 @@ void handleReconnectStrips(bool main = false, bool bg = false, bool service = fa
             reconnectStripService();
             needReconnectService = false;
         }
-        
+
         adaptStripColorsAndBrightness();
-        
+
         // Оновлюємо посилання в веб-інтерфейсі
         web.setStrips(strip_main, strip_bg, strip_service);
-        
+
         LOG.printf("[LED] Strip reconnection completed.\n");
         logMemoryUsage("after strip reconnection complete");
     }
@@ -3065,19 +3065,19 @@ void updateFirmware() {
 
 void requestFirmwareUpdate(const char* firmwareId) {
     const char* versionToUse = firmwareId ? firmwareId : fwUpdate.getUpdateId();
-    
+
     if (versionToUse == nullptr || strlen(versionToUse) == 0) {
         LOG.printf("[FIRMWARE] No firmware version specified\n");
         return;
     }
-    
+
     // Встановлюємо ID прошивки для завантаження
     bool isBeta = settings.getInt(FW_UPDATE_CHANNEL) == 1;
     if (!fwUpdate.requestUpdate(versionToUse, isBeta)) {
         LOG.printf("[FIRMWARE] Invalid firmware ID: %s\n", versionToUse);
         return;
     }
-    
+
     LOG.printf("[FIRMWARE] Update requested for version: %s\n", versionToUse);
     async.setTimeout(updateFirmware, 500); // Додаємо невелику затримку перед початком оновлення
 }
@@ -3103,7 +3103,7 @@ void brightnessProcess() {
     if (settings.getInt(CURRENT_BRIGHTNESS) != currentBrightness) {
         settings.saveInt(CURRENT_BRIGHTNESS, currentBrightness);
         LOG.printf("[BRIGHTNESS] Setting current_brightness to %d\n", currentBrightness);
-        adaptStripColorsAndBrightness();     
+        adaptStripColorsAndBrightness();
         handleAdaptAnimationColors();
         handleAdaptAnimationBrightness();
     }
@@ -3120,14 +3120,14 @@ void showWeather() {
     auto it = temperatureMap.find(homeDistrict);
     const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
     char weatherInfo[50];
-    
+
     if (it != temperatureMap.end()) {
         int homeTemp = decodeTemperature(it->second);
         snprintf(weatherInfo, sizeof(weatherInfo), "%d℃", homeTemp);
     } else {
         snprintf(weatherInfo, sizeof(weatherInfo), "--℃");
     }
-    
+
     display.printMessage(weatherInfo, regionName);
 }
 
@@ -3135,14 +3135,14 @@ void showTechnicalInfo() {
     SystemInfo info = getSystemInfo();
     const char* version = fwUpdate.getCurrentVersion();
     uint32_t totalMemory = info.usedMemory + info.freeMemory;
-    
+
     String versionStr = String("v") + version;
     String ipAddrStr = wifiConnected ? WiFi.localIP().toString() : "Н/А";
-    
+
     char memBuf[30];
     snprintf(memBuf, sizeof(memBuf), "%u/%u KB", info.usedMemory / 1024, totalMemory / 1024);
     String memoryStr = String(memBuf);
-    
+
     display.printMultilineMessage(versionStr, ipAddrStr, memoryStr, "", "Тех. інформація:");
 }
 
@@ -3150,10 +3150,10 @@ void showMicroclimate() {
     float temp = climate.getTemperature();
     float hum = climate.getHumidity();
     char climateInfo[50];
-    
+
     bool hasTemp = !isnan(temp);
     bool hasHum = !isnan(hum);
-    
+
     if (hasTemp && hasHum) {
         snprintf(climateInfo, sizeof(climateInfo), "%.1f℃ %.1f%%", temp, hum);
     } else if (hasTemp) {
@@ -3163,13 +3163,13 @@ void showMicroclimate() {
     } else {
         snprintf(climateInfo, sizeof(climateInfo), "Немає даних");
     }
-    
+
     display.printMessage(climateInfo, "Мікроклімат");
 }
 
 void showCombined() {
     int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), 2, timeClient.second());
-    
+
     switch(periodIndex) {
         case 0: // Show Clock
             showClock();
@@ -3215,43 +3215,43 @@ void displayProcess()
         showNewFirmwareNotification();
         return;
     }
-    
+
     // Check if display is manually turned off
     if (isDisplayOff && !display.isServiceMessageActive()) {
         display.clear();
         return;
     }
-    
+
     // Handle display modes
     int displayMode = settings.getInt(DISPLAY_MODE);
-    
+
     switch(displayMode) {
         case 0: // Вимкнено (Disabled)
         if (!display.isServiceMessageActive()) {
             display.clear();
         }
             break;
-        
+
         case 1: // Годинник (Clock)
             showClock();
             break;
-        
+
         case 2: // Погода (Weather)
             showWeather();
             break;
-        
+
         case 3: // Технічна інформація (Technical Information)
             showTechnicalInfo();
             break;
-        
+
         case 4: // Мікроклімат (Microclimate)
             showMicroclimate();
             break;
-        
+
         case 9: // Комбінований (Combined)
             showCombined();
             break;
-        
+
         default:
             showClock();
             break;
@@ -3266,12 +3266,12 @@ void volumeProcess() {
     settings.saveInt(MELODY_VOLUME_CURRENT, volumeLocal);
     #if BUZZER_ENABLED
     if (sound.isBuzzerEnabled()) {
-      sound.setBuzzerVolume(volumeLocal); 
+      sound.setBuzzerVolume(volumeLocal);
     }
     #endif
     #if DFPLAYER_PRO_ENABLED
     if (sound.isDFPlayerConnected()) {
-      sound.setDFPlayerVolume(volumeLocal); 
+      sound.setDFPlayerVolume(volumeLocal);
     }
     #endif
     LOG.printf("Set volume to: %d\n", volumeLocal);
@@ -3316,7 +3316,7 @@ void setup() {
     // Ініціалізуємо storage перед strip, щоб мати можливість завантажити кастомну мапу для стрічок з пам'яті
     initStorage();
     checkFreeHeap("SPIFFS initialization");
-    
+
     initStrip();
     checkFreeHeap("LED strips initialization");
     brightnessProcess();
@@ -3362,7 +3362,7 @@ void setup() {
 
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
-    
+
     // Встановлюємо режим роботи анімацій
     animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
     checkFreeHeap("animation settings");
@@ -3390,7 +3390,7 @@ void setup() {
     async.setInterval(beepHourProcess, BEEP_HOUR_CHECK_INTERVAL);
 
     checkFreeHeap("async tasks configuration");
-    
+
     LOG.printf("[SETUP] Initialization complete\n");
     checkFreeHeap("full setup");
     loggingStream.setLogsEnabled(settings.getBool(LOGS_ENABLED));

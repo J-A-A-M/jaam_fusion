@@ -90,7 +90,7 @@ bool JaamSound::isBuzzerPlaying() {
 int JaamSound::findTrackIndex(int number) {
     #if DFPLAYER_PRO_ENABLED
       String trackName = String("/") + (number < 10 ? "0" : "") + String(number) + ".mp3";
-    
+
       for (int i = 0; i < TRACKS_COUNT; i++) {
         if (TRACKS[i] == trackName) {
           return i;
@@ -150,11 +150,11 @@ void JaamSound::initDFPlayer() {
         LOG.printf("[SOUND] DFPlayer init failed: max attempts reached\n");
         return;
       }
-      
+
     }
     LOG.printf("[SOUND] DFPlayer RX OK!\n");
     dfplayer.setVol(2);
-    delay(500); 
+    delay(500);
     if (dfplayer.getVol() != 2) {
       LOG.printf("[SOUND] DFPlayer TX Fail!\n");
       return;
@@ -163,7 +163,7 @@ void JaamSound::initDFPlayer() {
     dfConnected = true;
     LOG.printf("[SOUND] DFPlayer ready!\n");
 
-    dfplayer.setVol(0); 
+    dfplayer.setVol(0);
     dfplayer.switchFunction(dfplayer.MUSIC);
     dfplayer.setVol(map(volumeCurrent, 0, 100, 0, dfPlayerMaxVolume));
     LOG.printf("[SOUND] Volume: %d\n", dfplayer.getVol());
@@ -199,7 +199,7 @@ void JaamSound::initDFPlayer() {
         String trackPath = String("/") + (fileNumber < 10 ? "0" : "") + String(fileNumber) + ".mp3";
         dynamicTracks[i] = trackPath;
 
-        char buf[16];   
+        char buf[16];
         snprintf(buf, sizeof(buf), "%d", fileNumber);
 
         dynamicTrackNames[i].id = i;
@@ -268,4 +268,3 @@ bool JaamSound::isDFPlayerConnected() {
     return false;
 #endif
 }
-

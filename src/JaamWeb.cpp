@@ -51,12 +51,12 @@ static bool parseStrictFloat(const String& s, float& out) {
 }
 
 // Типи значень параметрів
-enum ValueType { 
-    TYPE_INT, 
-    TYPE_STRING, 
-    TYPE_FLOAT, 
-    TYPE_BOOL, 
-    TYPE_SPECIAL 
+enum ValueType {
+    TYPE_INT,
+    TYPE_STRING,
+    TYPE_FLOAT,
+    TYPE_BOOL,
+    TYPE_SPECIAL
 };
 
 // Маппінг параметрів з типом значення
@@ -78,12 +78,12 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"time_zone", TIME_ZONE, TYPE_INT},
     {"device_name", DEVICE_NAME, TYPE_STRING},
     {"device_description", DEVICE_DESCRIPTION, TYPE_STRING},
-    
+
     // Firmware
     {"new_fw_notification", NEW_FW_NOTIFICATION, TYPE_BOOL},
     {"fw_update_channel", FW_UPDATE_CHANNEL, TYPE_INT},
     {"firmware_id", UNKNOWN, TYPE_SPECIAL},
-    
+
     // Display
     {"display_model", DISPLAY_MODEL, TYPE_INT},
     {"display_height", DISPLAY_HEIGHT, TYPE_INT},
@@ -94,7 +94,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"display_off_at_night", DISPLAY_OFF_AT_NIGHT, TYPE_BOOL},
     {"clock_font", CLOCK_FONT, TYPE_INT},
     {"display_alert_message_time", DISPLAY_ALERT_MESSAGE_TIME, TYPE_INT},
-    
+
     // Network
     {"broadcast_name", BROADCAST_NAME, TYPE_STRING},
     {"ws_server_host", WS_SERVER_HOST, TYPE_STRING},
@@ -102,7 +102,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"ntp_host", NTP_HOST, TYPE_STRING},
     {"api_enabled", API_ENABLED, TYPE_BOOL},
     {"api_port", API_PORT, TYPE_INT},
-    
+
     // Hardware
     {"main_led_pin", MAIN_LED_PIN, TYPE_INT},
     {"main_led_count", MAIN_LED_COUNT, TYPE_INT},
@@ -135,7 +135,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"brightness_min", BRIGHTNESS_MIN, TYPE_INT},
     {"brightness_max", BRIGHTNESS_MAX, TYPE_INT},
     {"brightness_max_accept", BRIGHTNESS_MAX_ACCEPT, TYPE_BOOL},
-    
+
     // Siren
     {"alert_clear_pin_mode", ALERT_CLEAR_PIN_MODE, TYPE_INT},
     {"alert_pin", ALERT_PIN, TYPE_INT},
@@ -147,14 +147,14 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"clear_pin_2", CLEAR_PIN_2, TYPE_INT},
     {"alert_clear_pin_time_2", ALERT_CLEAR_PIN_TIME_2, TYPE_INT},
     {"alert_pin_active_level_2", ALERT_PIN_ACTIVE_LEVEL_2, TYPE_INT},
-    
+
     // Climate
     {"weather_min_temp", WEATHER_MIN_TEMP, TYPE_INT},
     {"weather_max_temp", WEATHER_MAX_TEMP, TYPE_INT},
     {"temp_correction", TEMP_CORRECTION, TYPE_FLOAT},
     {"hum_correction", HUM_CORRECTION, TYPE_FLOAT},
     {"pressure_correction", PRESSURE_CORRECTION, TYPE_FLOAT},
-    
+
     // Animations
     {"enable_sync_animations", ENABLE_SYNC_ANIMATIONS, TYPE_BOOL},
     {"enable_animation_preview", ENABLE_ANIMATION_PREVIEW, TYPE_BOOL},
@@ -193,7 +193,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"color_home", COLOR_HOME_DISTRICT, TYPE_STRING},
     {"color_bg", COLOR_BG, TYPE_STRING},
     {"color_lamp", COLOR_LAMP, TYPE_STRING},
-    
+
     // Brightness
     {"brightness_mode", BRIGHTNESS_MODE, TYPE_INT},
     {"day_start", DAY_START, TYPE_INT},
@@ -215,7 +215,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"brightness_lamp", BRIGHTNESS_LAMP, TYPE_INT},
     {"brightness_service", BRIGHTNESS_SERVICE, TYPE_INT},
     {"brightness_animation_end", BRIGHTNESS_ANIMATION_END, TYPE_INT},
-    
+
     // Alerts
     {"enable_kabs", ENABLE_KABS, TYPE_BOOL},
     {"enable_missiles", ENABLE_MISSILES, TYPE_BOOL},
@@ -223,7 +223,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"enable_recon_drones", ENABLE_RECON_DRONES, TYPE_BOOL},
     {"enable_ballistic", ENABLE_BALLISTIC, TYPE_BOOL},
     {"enable_explosions", ENABLE_EXPLOSIONS, TYPE_BOOL},
-    
+
     // Sound
     {"sound_source", SOUND_SOURCE, TYPE_INT},
     {"melody_volume_day", MELODY_VOLUME_DAY, TYPE_INT},
@@ -249,7 +249,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"melody_on_missiles", MELODY_ON_MISSILES, TYPE_INT},
     {"melody_on_kabs", MELODY_ON_KABS, TYPE_INT},
     {"melody_on_ballistic", MELODY_ON_BALLISTIC, TYPE_INT},
-    
+
     // Legacy/unused parameters for compatibility
     {"district_mode_kyiv", DISTRICT_MODE_KYIV, TYPE_INT},
     {"district_mode_kharkiv", DISTRICT_MODE_KHARKIV, TYPE_INT},
@@ -260,7 +260,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
 void sendLargeJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
     LOG.printf("[WEB] Sending JSON, size: %d bytes\n", jsonLen);
-    
+
     server->send(200, "application/json", json);
     if (server->client().connected()) {
         server->client().flush();
@@ -270,62 +270,62 @@ void sendLargeJson(WebServer* server, const String& json) {
 void sendCompressedJson(WebServer* server, const String& json) {
     size_t jsonLen = json.length();
     uint8_t* compressedBytes = nullptr;
-    
+
     // Compress using ESP32-targz LZPacker
     size_t compressedSize = LZPacker::compress((uint8_t*)json.c_str(), jsonLen, &compressedBytes);
-    
+
     if (compressedSize == 0 || compressedBytes == nullptr) {
         LOG.printf("[WEB] Compression failed, sending uncompressed\n");
         if (compressedBytes) free(compressedBytes);
         sendLargeJson(server, json);
         return;
     }
-    
+
     float ratio = (1.0f - (float)compressedSize / (float)jsonLen) * 100.0f;
     // LOG.printf("[WEB] Compressed JSON: %d -> %d bytes (%.1f%% reduction)\n", jsonLen, compressedSize, ratio);
-    
+
     // Send compressed data
     server->sendHeader("Content-Encoding", "gzip");
     server->setContentLength(compressedSize);
     server->send(200, "application/json", "");
-    
+
     WiFiClient client = server->client();
     if (client && client.connected()) {
         client.write(compressedBytes, compressedSize);
         client.flush();
     }
-    
+
     free(compressedBytes);
 }
 
 void sendCompressedHtml(WebServer* server, const String& html) {
     size_t htmlLen = html.length();
     uint8_t* compressedBytes = nullptr;
-    
+
     // Compress using ESP32-targz LZPacker
     size_t compressedSize = LZPacker::compress((uint8_t*)html.c_str(), htmlLen, &compressedBytes);
-    
+
     if (compressedSize == 0 || compressedBytes == nullptr) {
         LOG.printf("[WEB] HTML compression failed, sending uncompressed\n");
         if (compressedBytes) free(compressedBytes);
         server->send(200, "text/html", html);
         return;
     }
-    
+
     float ratio = (1.0f - (float)compressedSize / (float)htmlLen) * 100.0f;
     // LOG.printf("[WEB] Compressed HTML: %d -> %d bytes (%.1f%% reduction)\n", htmlLen, compressedSize, ratio);
-    
+
     // Send compressed data
     server->sendHeader("Content-Encoding", "gzip");
     server->setContentLength(compressedSize);
     server->send(200, "text/html", "");
-    
+
     WiFiClient client = server->client();
     if (client && client.connected()) {
         client.write(compressedBytes, compressedSize);
         client.flush();
     }
-    
+
     free(compressedBytes);
 }
 
@@ -363,7 +363,7 @@ void JaamWeb::handleCss() {
     String etag = "\"" + String(styles_css_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 Not Modified
     if (server.hasHeader("If-None-Match")) {
         String clientEtag = server.header("If-None-Match");
@@ -372,13 +372,13 @@ void JaamWeb::handleCss() {
             return;
         }
     }
-    
+
     // Send pre-compressed gzip data
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(styles_css_gz_len);
     server.send_P(200, "text/css", (const char*)styles_css_gz, styles_css_gz_len);
@@ -389,7 +389,7 @@ void JaamWeb::handleJs() {
     String etag = "\"" + String(scripts_js_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 Not Modified
     if (server.hasHeader("If-None-Match")) {
         String clientEtag = server.header("If-None-Match");
@@ -398,13 +398,13 @@ void JaamWeb::handleJs() {
             return;
         }
     }
-    
+
     // Send pre-compressed gzip data
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(scripts_js_gz_len);
     server.send_P(200, "application/javascript", (const char*)scripts_js_gz, scripts_js_gz_len);
@@ -415,7 +415,7 @@ void JaamWeb::handleMapEditorCss() {
     String etag = "\"" + String(map_editor_css_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 Not Modified
     if (server.hasHeader("If-None-Match")) {
         String clientEtag = server.header("If-None-Match");
@@ -424,13 +424,13 @@ void JaamWeb::handleMapEditorCss() {
             return;
         }
     }
-    
+
     // Send pre-compressed gzip data
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(map_editor_css_gz_len);
     server.send_P(200, "text/css", (const char*)map_editor_css_gz, map_editor_css_gz_len);
@@ -441,7 +441,7 @@ void JaamWeb::handleMapEditorJs() {
     String etag = "\"" + String(map_editor_js_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 Not Modified
     if (server.hasHeader("If-None-Match")) {
         String clientEtag = server.header("If-None-Match");
@@ -450,13 +450,13 @@ void JaamWeb::handleMapEditorJs() {
             return;
         }
     }
-    
+
     // Send pre-compressed gzip data
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(map_editor_js_gz_len);
     server.send_P(200, "application/javascript", (const char*)map_editor_js_gz, map_editor_js_gz_len);
@@ -467,7 +467,7 @@ void JaamWeb::handleBgColorEditorCss() {
     String etag = "\"" + String(bg_color_editor_css_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 Not Modified
     if (server.hasHeader("If-None-Match")) {
         String clientEtag = server.header("If-None-Match");
@@ -476,13 +476,13 @@ void JaamWeb::handleBgColorEditorCss() {
             return;
         }
     }
-    
+
     // Send pre-compressed gzip data
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(bg_color_editor_css_gz_len);
     server.send_P(200, "text/css", (const char*)bg_color_editor_css_gz, bg_color_editor_css_gz_len);
@@ -493,7 +493,7 @@ void JaamWeb::handleBgColorEditorJs() {
     String etag = "\"" + String(bg_color_editor_js_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 Not Modified
     if (server.hasHeader("If-None-Match")) {
         String clientEtag = server.header("If-None-Match");
@@ -502,13 +502,13 @@ void JaamWeb::handleBgColorEditorJs() {
             return;
         }
     }
-    
+
     // Send pre-compressed gzip data
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(bg_color_editor_js_gz_len);
     server.send_P(200, "application/javascript", (const char*)bg_color_editor_js_gz, bg_color_editor_js_gz_len);
@@ -543,7 +543,7 @@ void JaamWeb::handleColorParameter() {
 
     // Валідація формату #RRGGBB
     if (value.length() != 7 || value[0] != '#') {
-        LOG.printf("[WEB] Invalid color format for %s (settingType: %d): '%s' - must be #RRGGBB\n", 
+        LOG.printf("[WEB] Invalid color format for %s (settingType: %d): '%s' - must be #RRGGBB\n",
                    name.c_str(), settingType, valuePtr);
         server.send(400, "application/json", "{\"error\":\"Invalid color format, expected #RRGGBB\"}");
         return;
@@ -551,7 +551,7 @@ void JaamWeb::handleColorParameter() {
     for (int i = 1; i < 7; i++) {
         char c = value[i];
         if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
-            LOG.printf("[WEB] Invalid hex character in color for %s (settingType: %d): '%s' at position %d\n", 
+            LOG.printf("[WEB] Invalid hex character in color for %s (settingType: %d): '%s' at position %d\n",
                        name.c_str(), settingType, valuePtr, i);
             server.send(400, "application/json", "{\"error\":\"Invalid hex character in color\"}");
             return;
@@ -584,7 +584,7 @@ void JaamWeb::handleParameter() {
     // Use global parameter mappings
     Type settingType = UNKNOWN;
     ValueType valueType = TYPE_INT;
-    
+
     for (const auto& mapping : ALL_PARAM_MAPPINGS) {
         if (name == mapping.name) {
             settingType = mapping.settingType;
@@ -611,20 +611,20 @@ void JaamWeb::handleParameter() {
 
     // Викликаємо відповідний save метод
     bool success = false;
-    
+
     switch (valueType) {
         case TYPE_INT: {
             int intValue;
             if (!parseStrictInt(value, intValue)) {
-                LOG.printf("[WEB] Invalid integer value for %s (settingType: %d): '%s'\n", 
+                LOG.printf("[WEB] Invalid integer value for %s (settingType: %d): '%s'\n",
                            name.c_str(), settingType, valuePtr);
                 server.send(400, "application/json", "{\"error\":\"Invalid integer value\"}");
                 return;
             }
-            
+
             success = settings->saveInt(settingType, intValue);
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), intValue, success);
-            
+
             // Додаткові дії для мелодій
             if (success && (settingType == MELODY_ON_ALERT || settingType == MELODY_ON_ALERT_END ||
                 settingType == MELODY_ON_EXPLOSION || settingType == MELODY_ON_DRONES ||
@@ -634,40 +634,40 @@ void JaamWeb::handleParameter() {
             }
             break;
         }
-            
+
         case TYPE_BOOL: {
             int intValue;
             if (!parseStrictInt(value, intValue)) {
-                LOG.printf("[WEB] Invalid boolean value for %s (settingType: %d): '%s'\n", 
+                LOG.printf("[WEB] Invalid boolean value for %s (settingType: %d): '%s'\n",
                            name.c_str(), settingType, valuePtr);
                 server.send(400, "application/json", "{\"error\":\"Invalid boolean value\"}");
                 return;
             }
-            
+
             success = settings->saveBool(settingType, intValue != 0);
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), intValue != 0, success);
             break;
         }
-            
+
         case TYPE_FLOAT: {
             float floatValue;
             if (!parseStrictFloat(value, floatValue)) {
-                LOG.printf("[WEB] Invalid float value for %s (settingType: %d): '%s'\n", 
+                LOG.printf("[WEB] Invalid float value for %s (settingType: %d): '%s'\n",
                            name.c_str(), settingType, valuePtr);
                 server.send(400, "application/json", "{\"error\":\"Invalid float value\"}");
                 return;
             }
-            
+
             success = settings->saveFloat(settingType, floatValue);
             LOG.printf("[WEB] Setting %s: %.2f (success: %d)\n", name.c_str(), floatValue, success);
             break;
         }
-            
+
         case TYPE_STRING:
             success = settings->saveString(settingType, valuePtr);
             LOG.printf("[WEB] Setting %s: %s (success: %d)\n", name.c_str(), valuePtr, success);
             break;
-            
+
         default:
             success = false;
             break;
@@ -695,7 +695,7 @@ void JaamWeb::handleTextParameter() {
     // Use global parameter mappings
     Type settingType = UNKNOWN;
     ValueType valueType = TYPE_INT;
-    
+
     for (const auto& mapping : ALL_PARAM_MAPPINGS) {
         if (name == mapping.name) {
             settingType = mapping.settingType;
@@ -840,7 +840,7 @@ void JaamWeb::handleAlertsInfo() {
 
 void JaamWeb::handleLogsInfo() {
     setCrossOrigin();
-    
+
     // Get limit from query parameter (default 100)
     int limit = 100;
     if (server.hasArg("limit")) {
@@ -850,7 +850,7 @@ void JaamWeb::handleLogsInfo() {
             limit = constrain(parsed, 10, 500);
         }
     }
-    
+
     String response = logsManager.getLogsJson(limit);
     sendCompressedJson(&server, response);
     response.clear();
@@ -858,21 +858,21 @@ void JaamWeb::handleLogsInfo() {
 
 void JaamWeb::handleMapData() {
     setCrossOrigin();
-    
+
     JsonDocument doc;
     JsonArray regions = doc["regions"].to<JsonArray>();
-    
+
     // Use already loaded currentMap
     for (int i = 0; i < MAX_REGIONS; ++i) {
         if ((DISTRICTS[i].id == 0 && i > 0)) {
             continue;
         }
-        
+
         JsonObject region = regions.add<JsonObject>();
         region["id"] = DISTRICTS[i].id;
         region["name"] = DISTRICTS[i].name;
         region["sub"] = DISTRICTS[i].sub;
-        
+
         // Find LED positions for this region in currentMap
         const RegionLedMapMeta* meta = findRegionMeta(DISTRICTS[i].id);
         if (meta && meta->led_count > 0) {
@@ -883,7 +883,7 @@ void JaamWeb::handleMapData() {
             }
             JsonArray ledsArray = region["leds"].to<JsonArray>();
             String leds_str = "";
-            
+
             for (uint8_t k = 0; k < meta->led_count; ++k) {
                 ledsArray.add(leds[k]);
                 if (k > 0) leds_str += ", ";
@@ -907,7 +907,7 @@ void JaamWeb::handleUiPage() {
         server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         server.sendHeader("Pragma", "no-cache");
         server.sendHeader("Expires", "0");
-        
+
         // Serve a dynamic UI page that mirrors getHtmlTemplate design but renders from /ui-schema
         String html;
         html.reserve(12000);
@@ -1054,7 +1054,7 @@ void JaamWeb::handleSaveMap() {
             if (value.length() > 0) {
                 TempRegion tempRegion;
                 tempRegion.region_id = region_id;
-                
+
                 // Парсимо LED позиції (comma-separated)
                 int lastComma = -1;
                 for (int k = 0; k < value.length(); ++k) {
@@ -1093,7 +1093,7 @@ void JaamWeb::handleSaveMap() {
                     }
                     tempRegion.leds.push_back(static_cast<uint16_t>(parsedLed));
                 }
-                
+
                 if (tempRegion.leds.size() > 0) {
                     tempRegions.push_back(tempRegion);
                 }
@@ -1141,7 +1141,7 @@ void JaamWeb::handleSaveMap() {
 
     // Зберігаємо
     bool success = storage->saveCurrentMap(meta, leds, tempRegions.size());
-    
+
     delete[] meta;
     delete[] leds;
 
@@ -1163,7 +1163,7 @@ void JaamWeb::handleMapEditor() {
     server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     server.sendHeader("Pragma", "no-cache");
     server.sendHeader("Expires", "0");
-    
+
     String html = "<!DOCTYPE html><html>";
     html += "<head>";
     String deviceName = settings->getString(DEVICE_NAME);
@@ -1174,7 +1174,7 @@ void JaamWeb::handleMapEditor() {
     html += "<script src=\"/scripts.js?v=" + String(scripts_js_hash) + "\"></script>";
     html += "<link rel=\"stylesheet\" href=\"/map-editor.css?v=" + String(map_editor_css_hash) + "\">";
     html += "<script src=\"/map-editor.js?v=" + String(map_editor_js_hash) + "\"></script>";
-    
+
     html += "</head><body>";
 
     html += "<div class='container'>";
@@ -1193,12 +1193,12 @@ void JaamWeb::handleMapEditor() {
     html += "</div>";
     html += "</div>";
     html += "</div>";
-    
+
     // Container for dynamically loaded map content
     html += "<div id='mapContent'>";
     html += "<div style='text-align: center; padding: 20px; color: var(--secondary-text);'>Завантаження даних карти...</div>";
     html += "</div>";
-    
+
     html += "</div></body></html>";
     sendCompressedHtml(&server, html);
     html.clear(); // Звільнення пам'яті
@@ -1210,28 +1210,28 @@ void JaamWeb::handleMapEditor() {
 
 void JaamWeb::handleBgColorsData() {
     setCrossOrigin();
-    
+
     JsonDocument doc;
     JsonObject data = doc.to<JsonObject>();
-    
+
     int bgLedCount = settings->getInt(BG_LED_COUNT);
     data["count"] = bgLedCount;
-    
+
     JsonArray colors = data["colors"].to<JsonArray>();
-    
+
     if (bgLedCount > 0) {
         // Використовуємо глобальну структуру bgLedColors
         for (int i = 0; i < bgLedCount; ++i) {
             JsonObject color = colors.add<JsonObject>();
             color["led"] = i;
-            
+
             uint32_t ledColor = getBgLedColor(i);
             String colorHex = String(ledColor, HEX);
             while (colorHex.length() < 6) colorHex = "0" + colorHex;
             color["color"] = colorHex;
         }
     }
-    
+
     // Серіалізуємо JSON у компактному форматі
     String response;
     serializeJson(doc, response);
@@ -1246,20 +1246,20 @@ void JaamWeb::handleSaveBgColors() {
         server.send(500, "text/plain", "Storage not initialized");
         return;
     }
-    
+
     int bgLedCount = settings->getInt(BG_LED_COUNT);
     if (bgLedCount <= 0) {
         server.send(400, "text/plain", "BG LED count not configured");
         return;
     }
-    
+
     uint32_t* colors = new uint32_t[bgLedCount];
-    
+
     // Ініціалізуємо чорним кольором
     for (int i = 0; i < bgLedCount; ++i) {
         colors[i] = 0x000000;
     }
-    
+
     // Парсимо кольори з POST даних
     for (int i = 0; i < bgLedCount; ++i) {
         String paramName = "color_" + String(i);
@@ -1273,7 +1273,7 @@ void JaamWeb::handleSaveBgColors() {
             LOG.printf("[WEB] Setting LED %d color: %s -> 0x%06X\n", i, colorStr.c_str(), colors[i]);
         }
     }
-    
+
     if (storage->saveBgLedColors(colors, bgLedCount)) {
         LOG.printf("[WEB] BG LED colors saved successfully and global structure updated.\n");
         requestToRegenerateBgColorMap();
@@ -1284,7 +1284,7 @@ void JaamWeb::handleSaveBgColors() {
         LOG.printf("[WEB] BG LED colors saving error.\n");
         server.send(500, "text/plain", "BG LED colors save error");
     }
-    
+
     delete[] colors;
 }
 
@@ -1293,7 +1293,7 @@ void JaamWeb::handleBgColorEditor() {
     server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     server.sendHeader("Pragma", "no-cache");
     server.sendHeader("Expires", "0");
-    
+
     String html = "<!DOCTYPE html><html>";
     html += "<head>";
     String deviceName = settings->getString(DEVICE_NAME);
@@ -1304,7 +1304,7 @@ void JaamWeb::handleBgColorEditor() {
     html += "<script src=\"/scripts.js?v=" + String(scripts_js_hash) + "\"></script>";
     html += "<link rel=\"stylesheet\" href=\"/bg-color-editor.css?v=" + String(bg_color_editor_css_hash) + "\">";
     html += "<script src=\"/bg-color-editor.js?v=" + String(bg_color_editor_js_hash) + "\"></script>";
-    
+
     html += "</head><body>";
 
     html += "<div class='container'>";
@@ -1320,7 +1320,7 @@ void JaamWeb::handleBgColorEditor() {
     html += "</div>";
     html += "</div>";
     html += "</div>";
-    
+
     // Container for dynamically loaded color content
     html += "<div id='colorContent'>";
     html += "</div></body></html>";
@@ -1477,23 +1477,23 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
 
 void JaamWeb::handleUiSchemaModels() {
     setCrossOrigin();
-    
+
     // Cache for 24 hours with hash-based ETag
     String etag = "\"" + String(ui_schema_models_json_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 response
     if (server.hasHeader("If-None-Match") && server.header("If-None-Match") == etag) {
         server.send(304);
         return;
     }
-    
+
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(ui_schema_models_json_gz_len);
     server.send_P(200, "application/json", (const char*)ui_schema_models_json_gz, ui_schema_models_json_gz_len);
@@ -1501,23 +1501,23 @@ void JaamWeb::handleUiSchemaModels() {
 
 void JaamWeb::handleUiSchemaSections() {
     setCrossOrigin();
-    
+
     // Cache for 24 hours with hash-based ETag
     String etag = "\"" + String(ui_schema_sections_json_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 response
     if (server.hasHeader("If-None-Match") && server.header("If-None-Match") == etag) {
         server.send(304);
         return;
     }
-    
+
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(ui_schema_sections_json_gz_len);
     server.send_P(200, "application/json", (const char*)ui_schema_sections_json_gz, ui_schema_sections_json_gz_len);
@@ -1535,23 +1535,23 @@ void JaamWeb::handleUiSchemaDropdownLists() {
 
 void JaamWeb::handleUiSchemaControls() {
     setCrossOrigin();
-    
+
     // Cache for 24 hours with hash-based ETag
     String etag = "\"" + String(ui_schema_controls_json_hash) + "\"";
     server.sendHeader("Cache-Control", "public, max-age=86400");
     server.sendHeader("ETag", etag);
-    
+
     // Check If-None-Match for 304 response
     if (server.hasHeader("If-None-Match") && server.header("If-None-Match") == etag) {
         server.send(304);
         return;
     }
-    
+
     WiFiClient client = server.client();
     if (!client || !client.connected()) {
         return;
     }
-    
+
     server.sendHeader("Content-Encoding", "gzip");
     server.setContentLength(ui_schema_controls_json_gz_len);
     server.send_P(200, "application/json", (const char*)ui_schema_controls_json_gz, ui_schema_controls_json_gz_len);
@@ -1564,7 +1564,7 @@ void JaamWeb::buildUiSchemaControlsValues(JsonDocument& doc) {
     for (const auto& mapping : ALL_PARAM_MAPPINGS) {
         JsonArray v = values.add<JsonArray>();
         v.add(mapping.name);
-        
+
         switch (mapping.valueType) {
             case TYPE_INT:
                 v.add(settings->getInt(mapping.settingType));
@@ -1590,12 +1590,12 @@ void JaamWeb::buildUiSchemaControlsValues(JsonDocument& doc) {
 
 void JaamWeb::handleUiSchemaControlsValues() {
     setCrossOrigin();
-    
+
     // Prevent caching to ensure fresh values on every request
     server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     server.sendHeader("Pragma", "no-cache");
     server.sendHeader("Expires", "0");
-    
+
     JsonDocument doc;
     buildUiSchemaControlsValues(doc);
     String response;

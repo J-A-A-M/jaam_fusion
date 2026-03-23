@@ -1249,4 +1249,3 @@ const uint16_t REGION_MAP_LEDS_TRANSCARPATHIA_WITHOUT_KYIV[] = {
      20,  20,  20,  20,  24,  24,  24,  24,  24,   8,   8,   8,   8,   8,   8,
       8
 };
-

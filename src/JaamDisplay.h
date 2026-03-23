@@ -36,11 +36,11 @@ class JaamDisplay {
 public:
     JaamDisplay();
     ~JaamDisplay();
-    
+
     // Delete copy constructor and copy assignment operator (rule of five)
     JaamDisplay(const JaamDisplay&) = delete;
     JaamDisplay& operator=(const JaamDisplay&) = delete;
-    
+
     // Move constructor and move assignment operator
     JaamDisplay(JaamDisplay&& other) noexcept;
     JaamDisplay& operator=(JaamDisplay&& other) noexcept;
@@ -61,7 +61,7 @@ private:
     JaamDisplayHeight _height = JaamDisplayHeight::HEIGHT_64;
     bool _isConnected = false;
     uint8_t _i2cAddress = 0x3C;
-    
+
 #if DISPLAY_ENABLED
     U8G2* _u8g2 = nullptr;
 #endif

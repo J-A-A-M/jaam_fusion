@@ -29,10 +29,10 @@ class JaamSound {
         int dfPlayerMaxVolume;
     #endif
         int buzzerPin;
-        bool dfConnected; 
+        bool dfConnected;
         int dfRxPin;
         int dfTxPin;
-        
+
     public:
     #if DFPLAYER_PRO_ENABLED
         int maxFilesCount;
@@ -46,16 +46,16 @@ class JaamSound {
         String* dynamicTracks;
         SettingListItem* dynamicTrackNames;
 
-        JaamSound() : 
+        JaamSound() :
         #if DFPLAYER_PRO_ENABLED
-            dfSerial(2), 
+            dfSerial(2),
             dfPlayerMaxVolume(30),
-            maxFilesCount(50), 
+            maxFilesCount(50),
         #endif
             dfConnected(false),
             dfTotalFiles(0),
-            buzzerPin(-1), 
-            dfRxPin(-1), 
+            buzzerPin(-1),
+            dfRxPin(-1),
             dfTxPin(-1),
             beepHour(-1),
             soundSource(2) /* Any */,

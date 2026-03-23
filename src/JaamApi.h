@@ -20,7 +20,7 @@ public:
     bool isApiRunning() const;
     void handleWebSocketClients();
     int getClientsCount() const;
-    
+
     // Broadcast події до всіх підключених WebSocket клієнтів
     void broadcastMapModeChange(int newMode);
     void broadcastDisplayModeChange(int newMode);
@@ -31,7 +31,7 @@ public:
     void broadcastClimateDataChange(float temp, float humidity, float pressure);
     void broadcastLightLevelChange(float lightLevel);
     void broadcastSystemInfo();
-    
+
     // Оновлення даних
     void updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);
     void updateHomeAlert(uint16_t flags16);
@@ -40,7 +40,7 @@ public:
     void updateLightLevel(float lightLevel);
     void updateNewFirmwareInfo(const char* version);
     void updateFirmwareProgress(int progress);
-    
+
     // Обробка змін налаштувань
     void onSettingsChange(Type type, int intValue, float fltValue, const char* strValue);
 

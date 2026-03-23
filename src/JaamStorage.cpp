@@ -72,7 +72,7 @@ bool JaamStorage::saveBgLedColors(const uint32_t* colors, int count) {
 bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCount) {
     LOG.printf("[STORAGE] Attempting to open BG LED colors file: %s\n", BG_LED_COLORS_PATH);
     File file = SPIFFS.open(BG_LED_COLORS_PATH, "r");
-    
+
     if (!file) {
         LOG.printf("[STORAGE] BG LED colors file not found or cannot be opened. Using default black colors.\n");
         actualCount = 0;
@@ -90,7 +90,7 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
         actualCount = 0;
         return false;
     }
-    
+
     yield();
 
     JsonDocument* doc = new (std::nothrow) JsonDocument();
@@ -102,7 +102,7 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
 
     LOG.printf("[STORAGE] Deserializing JSON from string...\n");
     DeserializationError error = deserializeJson(*doc, json_content);
-    
+
     if (error) {
         LOG.printf("[STORAGE] deserializeJson() failed: %s\n", error.c_str());
         delete doc;
@@ -122,7 +122,7 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
     for (JsonObject obj : array) {
         int led_index = obj["led"];
         String color_str = obj["color"];
-        
+
         if (led_index >= 0 && led_index < maxCount) {
             // Конвертуємо HEX рядок в uint32_t
             uint32_t color = strtol(color_str.c_str(), nullptr, 16);
@@ -130,7 +130,7 @@ bool JaamStorage::loadBgLedColors(uint32_t* colors, int maxCount, int& actualCou
             actualCount = max(actualCount, led_index + 1);
         }
     }
-    
+
     delete doc;
     LOG.printf("[STORAGE] Finished processing BG LED colors. Loaded %d colors.\n", actualCount);
     return true;
@@ -145,7 +145,7 @@ bool JaamStorage::saveCurrentMap(const RegionLedMapMeta* meta, const uint16_t* l
         LOG.printf("[STORAGE] Invalid parameters for saveCurrentMap\n");
         return false;
     }
-    
+
     File file = SPIFFS.open(CUSTOM_MAP_PATH, "w");
     if (!file) {
         LOG.printf("[STORAGE] Failed to open %s for writing\n", CUSTOM_MAP_PATH);
@@ -160,7 +160,7 @@ bool JaamStorage::saveCurrentMap(const RegionLedMapMeta* meta, const uint16_t* l
             JsonObject obj = array.add<JsonObject>();
             obj["region_id"] = meta[i].region_id;
             JsonArray ledsArray = obj["leds"].to<JsonArray>();
-            
+
             const uint16_t* regionLeds = &leds[meta[i].start_index];
             for (uint8_t j = 0; j < meta[i].led_count; ++j) {
                 ledsArray.add(regionLeds[j]);
@@ -181,7 +181,7 @@ bool JaamStorage::saveCurrentMap(const RegionLedMapMeta* meta, const uint16_t* l
 bool JaamStorage::loadCurrentMap(RegionLedMapMeta*& meta, uint16_t*& leds, size_t& metaCount, size_t& totalLeds) {
     LOG.printf("[STORAGE] Attempting to open current map file: %s\n", CUSTOM_MAP_PATH);
     File file = SPIFFS.open(CUSTOM_MAP_PATH, "r");
-    
+
     if (!file) {
         LOG.printf("[STORAGE] Current map file not found or cannot be opened.\n");
         meta = nullptr;
@@ -204,7 +204,7 @@ bool JaamStorage::loadCurrentMap(RegionLedMapMeta*& meta, uint16_t*& leds, size_
         totalLeds = 0;
         return false;
     }
-    
+
     yield();
 
     JsonDocument* doc = new (std::nothrow) JsonDocument();
@@ -219,7 +219,7 @@ bool JaamStorage::loadCurrentMap(RegionLedMapMeta*& meta, uint16_t*& leds, size_
 
     LOG.printf("[STORAGE] Deserializing JSON from string...\n");
     DeserializationError error = deserializeJson(*doc, json_content);
-    
+
     if (error) {
         LOG.printf("[STORAGE] deserializeJson() failed: %s\n", error.c_str());
         delete doc;
@@ -233,7 +233,7 @@ bool JaamStorage::loadCurrentMap(RegionLedMapMeta*& meta, uint16_t*& leds, size_
 
     JsonArray array = doc->as<JsonArray>();
     metaCount = array.size();
-    
+
     if (metaCount == 0) {
         LOG.printf("[STORAGE] Empty map array.\n");
         delete doc;
@@ -269,7 +269,7 @@ bool JaamStorage::loadCurrentMap(RegionLedMapMeta*& meta, uint16_t*& leds, size_
     // Заповнення масивів
     size_t metaIdx = 0;
     size_t ledsIdx = 0;
-    
+
     for (JsonObject obj : array) {
         uint16_t region_id = obj["region_id"];
         JsonArray ledsArray = obj["leds"];
@@ -285,7 +285,7 @@ bool JaamStorage::loadCurrentMap(RegionLedMapMeta*& meta, uint16_t*& leds, size_
 
         metaIdx++;
     }
-    
+
     delete doc;
     LOG.printf("[STORAGE] Finished loading current map: %d regions, %d total LEDs\n", metaCount, totalLeds);
     return true;

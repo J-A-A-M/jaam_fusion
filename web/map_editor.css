@@ -75,7 +75,7 @@
     background: var(--panel-bg, var(--main-bg)) !important;
     border: 1px solid var(--border-color, #dee2e6) !important;
     border-radius: 10px !important;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3) !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
     padding: 20px !important;
     transition: background-color 0.3s ease !important;
 }

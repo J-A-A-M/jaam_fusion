@@ -23,7 +23,7 @@ class JaamLed {
 
 public:
     JaamLed();
-    
+
     // Convert percentage to 0-255 scale
     static uint8_t brightnessRelative(uint8_t percentLocal);
     static uint8_t brightnessParabolic(uint8_t percent);
@@ -33,21 +33,20 @@ public:
     static bool isStripInitialized(Adafruit_NeoPixel* strip);
 
     // Функція для створення стрічки з обробкою помилок
-    static StripStatus createStrip(Adafruit_NeoPixel*& strip, 
-                        int pin, 
-                        uint32_t count, 
+    static StripStatus createStrip(Adafruit_NeoPixel*& strip,
+                        int pin,
+                        uint32_t count,
                         uint8_t type);
-    
+
     // Функція для безпечного видалення стрічки
     static void destroyStrip(Adafruit_NeoPixel*& strip);
-    
+
     // Add memory cleanup verification
     static void verifyStripCleanup(Adafruit_NeoPixel* strip);
-    
+
     // Add strip recreation with proper cleanup
     static StripStatus recreateStrip(Adafruit_NeoPixel*& strip,
                                    int pin,
                                    uint32_t count,
                                    uint8_t type);
 };
-
