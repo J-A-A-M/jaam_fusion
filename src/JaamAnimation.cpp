@@ -600,6 +600,10 @@ void AnimationManager::update() {
 
                 float localElapsed = now < s.localStart ? 0.0f : (now - s.localStart) / float(s.period);
                 const RegionLedMapMeta* meta = findRegionMeta(regionId);
+                if (meta == nullptr) {
+                    LOG.printf("[RANDOM_COLORS] WARNING: No meta found for region %u\n", regionId);
+                    continue;
+                }
                 if (meta->led_count == 0) continue; // Немає LED для цього регіону, пропускаємо
 
                 const uint16_t* leds = getRegionLeds(meta);
@@ -886,16 +890,6 @@ void AnimationManager::adaptAllAnimationColors() {
             bgState.color = ledActualColor(strip_bg, 0, false, bgState.bit);
             bgState.adaptedInitColor = ledActualColor(strip_bg, 0, true, bgState.initialBit);
         }
-        if (randomColorsMainInitialized) {
-            for (int i = 0; i < ADMIN_UNITS_COUNT; i++) {
-                if (rcMainStates[i].active) {
-                    rcMainStates[i].adaptedInitColor = adaptColorBrightness(rcMainStates[i].adaptedInitColor, led.brightnessRelative(100));
-                }
-            }
-        }
-        if (randomColorsBgInitialized && rcBgState.active) {
-            rcBgState.adaptedInitColor = adaptColorBrightness(rcBgState.adaptedInitColor, led.brightnessRelative(100));
-        }
         xSemaphoreGive(animMutex);
     }
 }
@@ -1127,6 +1121,10 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         color = colorFromHex(settings->getString(COLOR_LAMP));
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_LAMP));
                         break;
+                    case MapModes::RANDOM_COLORS:
+                        color = strip_bg->getPixelColor(0); // Поточний колір стрічки (припускаємо, що всі LED однакові)
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        break;
                 }
             }
             LOG.printf("[COLOR] bg strip color HOME_DISTRICT\n");
@@ -1267,7 +1265,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     break;
                 }
                 case MapModes::RANDOM_COLORS: {
-                    color = adaptColorBrightness(strip->getPixelColor(position), led.brightnessRelative(100)); // для отримання поточного кольору анімації RANDOM_COLORS
+                    color = strip->getPixelColor(position); // Отримуємо поточний колір без додаткового brightness
                     brightness = led.brightnessRelative(100);
                     break;
                 }
