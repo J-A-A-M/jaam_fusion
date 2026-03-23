@@ -69,7 +69,7 @@ class AnimationManager {
         LedState   serviceStates[MAX_LEDS_STRIP_SERVICE];
 
         // Окремі стани для режиму Random Colors
-        LedState   rcMainStates[MAX_REGIONS];           // Random Colors main strip
+        LedState   rcMainStates[ADMIN_UNITS_COUNT];     // Random Colors main strip
         StripState rcBgState;                           // Random Colors bg strip
 
         // Стани стрічок-в-цілому
