@@ -75,6 +75,10 @@ def generate_led_array(regions: List[Dict]) -> List[str]:
         region_name = region.get("name", f"Region {region['regionId']}")
         leds = region["leds"]
 
+        # Skip regions with empty LED arrays
+        if not leds:
+            continue
+
         # Format LEDs as comma-separated values
         led_str = ", ".join(str(led) for led in leds)
         led_line_with_comma = f"    {led_str},"
@@ -235,7 +239,8 @@ def main():
 
     print("\n📊 Overall statistics:")
     print(f"   Maps:         {len(maps):3d}")
-    print(f"   Regions:      {total_regions:3d} (avg {total_regions // len(maps)} per map)")
+    avg_regions = total_regions // len(maps) if len(maps) > 0 else 0
+    print(f"   Regions:      {total_regions:3d} (avg {avg_regions} per map)")
     print(f"   Physical LEDs:{total_physical_leds:4d} total")
     print(f"   LED entries:  {total_led_entries:4d} total")
     print(f"   Memory used:  {total_bytes:5d} bytes")

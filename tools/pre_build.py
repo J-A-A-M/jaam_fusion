@@ -25,8 +25,9 @@ scripts = [tools_dir / "compress_assets.py", tools_dir / "convert_region_map.py"
 # Run all scripts
 for script in scripts:
     if not script.exists():
-        print(f"⚠ Warning: {script.name} not found, skipping...")
-        continue
+        print(f"✗ Error: Required script {script.name} not found at {script}")
+        print(f"✗ Pre-build failed - cannot continue without {script.name}")
+        sys.exit(1)
 
     print(f"\n{'='*60}")
     print(f"Running: {script.name}")
@@ -45,7 +46,3 @@ for script in scripts:
 print("\n" + "=" * 60)
 print("✓ All pre-build scripts completed successfully")
 print("=" * 60 + "\n")
-
-
-if __name__ == "__main__":
-    main()

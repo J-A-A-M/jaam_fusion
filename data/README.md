@@ -113,7 +113,7 @@ python3 tools/convert_region_map.py [input.json] [output.h]
 ```
 
 **Вивід скрипта:**
-```
+```text
 ============================================================
 Converting region maps to C++ header...
 ============================================================
@@ -121,12 +121,12 @@ Converting region maps to C++ header...
 📖 Reading: region_maps.json
 
 🗺️  JAAM_3_0
-   Regions:     169
-   LEDs:         548
-   Metadata:      845 bytes
-   LED array:    1096 bytes
-   Total:        1941 bytes
-   Savings:     ~15000 bytes vs old structure
+   Regions:      169
+   Physical LEDs: 273
+   LED entries:   548
+   Metadata:       845 bytes
+   LED array:     1096 bytes
+   Total:         1941 bytes
 
 ...
 
@@ -134,10 +134,11 @@ Converting region maps to C++ header...
 ✅ Generated: src/JaamConfig_Generated.h
 
 📊 Overall statistics:
-   Maps:          6
-   Regions:     1004 (avg 167 per map)
-   LEDs:        2022 total
-   Memory used:  9064 bytes
+   Maps:           6
+   Regions:      1004 (avg 167 per map)
+   Physical LEDs: 780 total
+   LED entries:  2022 total
+   Memory used:   9064 bytes
 ============================================================
 ```
 
