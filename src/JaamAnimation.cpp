@@ -1084,7 +1084,13 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
         color = DefaultColors::MAIN_STRIP;
     }
     if (strip == strip_bg) {
-        if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
+        // Handle RANDOM_COLORS mode first, regardless of BG_LED_MODE
+        if (!isMapOff && getCurrentMapMode() == MapModes::RANDOM_COLORS) {
+            // rcBgState has already rendered with brightness applied
+            color = strip_bg->getPixelColor(0); // Already brightness-adjusted by rcBgState
+            brightness = led.brightnessRelative(100);
+            LOG.printf("[COLOR] bg strip color RANDOM_COLORS (already brightness-adjusted)\n");
+        } else if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
             if (isMapOff) {
                 color = DefaultColors::OFF;
                 brightness = 0;
@@ -1120,10 +1126,6 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                     case MapModes::LAMP:
                         color = colorFromHex(settings->getString(COLOR_LAMP));
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_LAMP));
-                        break;
-                    case MapModes::RANDOM_COLORS:
-                        color = strip_bg->getPixelColor(0); // Поточний колір стрічки (припускаємо, що всі LED однакові)
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                 }
             }
@@ -1533,8 +1535,23 @@ void AnimationManager::stopPreview() {
     // Використовуємо ledActualColor для кожного пікселя, щоб коректно відновити
     // per-pixel кольори для BgLedModes::COLOR_MAP
     if (strip_bg && xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
-            strip_bg->setPixelColor(i, ledActualColor(strip_bg, i));
+        int currentMapMode = getCurrentMapMode();
+        
+        // Special case for RANDOM_COLORS: restore from rcBgState animation frame
+        if (currentMapMode == MapModes::RANDOM_COLORS && rcBgState.active) {
+            uint32_t now = millis();
+            float localElapsed = now < rcBgState.localStart ? 0.0f : (now - rcBgState.localStart) / float(rcBgState.period);
+            uint32_t c = computeColorRaw(rcBgState.animType, rcBgState.color, rcBgState.adaptedInitColor,
+                                         rcBgState.startBr, rcBgState.endBr, localElapsed);
+            for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                strip_bg->setPixelColor(i, c);
+            }
+            LOG.printf("[PREVIEW] Restored RANDOM_COLORS bg strip from rcBgState\n");
+        } else {
+            // Regular restore using ledActualColor for each pixel (COLOR_MAP support)
+            for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                strip_bg->setPixelColor(i, ledActualColor(strip_bg, i));
+            }
         }
         strip_bg->show();
         xSemaphoreGive(stripMutex);
@@ -1570,6 +1587,14 @@ void AnimationManager::initRandomColorsMain() {
     // Записуємо безпосередньо в rcMainStates[] без використання createAnimation()
     if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
         for (int idx = 0; idx < ADMIN_UNITS_COUNT; idx++) {
+            uint16_t regionId = ADMIN_UNITS[idx];
+            
+            // Перевіряємо чи існує LED map для цього регіону
+            const RegionLedMapMeta* meta = findRegionMeta(regionId);
+            if (meta == nullptr || meta->led_count == 0) {
+                // Пропускаємо регіони без LED map
+                continue;
+            }
 
             // Генеруємо початковий випадковий колір
             uint8_t r = random(256);
