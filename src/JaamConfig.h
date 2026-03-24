@@ -34,7 +34,8 @@ namespace MapModes {
     static const int ALERT = 1;
     static const int WEATHER = 2;
     static const int FLAG = 3;
-    static const int LAMP = 4;
+    static const int RANDOM_COLORS = 4;
+    static const int LAMP = 5;
 }
 
 // --- BG Led Modes ---
@@ -93,6 +94,7 @@ static const uint32_t CLIMATE_CHECK_INTERVAL = 10000;       // 10 seconds
 static const uint32_t LIGHT_SENSOR_CHECK_INTERVAL = 1000;   // 1 second
 static const uint32_t VOLUME_CHECK_INTERVAL = 1000;         // 1 second
 static const uint32_t BEEP_HOUR_CHECK_INTERVAL = 1000;      // 1 second
+static const uint32_t RAND_COLOR_MOD_ANIM_INTERVAL = 1000;  // 1 second
 
 // --- Packet structure ---
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
@@ -367,7 +369,7 @@ static SettingListItem LONG_CLICKS[] = {
   {10, "Перезавантаження пристрою"},
 };
 
-constexpr int MAP_MODES_COUNT = 5;
+constexpr int MAP_MODES_COUNT = 6;
 static SettingListItem MAP_MODES[] = {
   {0, "Вимкнено"},
   {1, "Тривога"},
@@ -375,7 +377,8 @@ static SettingListItem MAP_MODES[] = {
   {2, "Погода"},
   // {7, "Радіація", false},
   {3, "Прапор"},
-  {4, "Лампа"},
+  {4, "Випадкові кольори"},
+  {5, "Лампа"},
 };
 
 constexpr int ALERT_CLEAR_PIN_MODES_COUNT = 2;
@@ -810,6 +813,39 @@ enum Type {
     API_PORT,
     BRIGHTNESS_MAX,
     BRIGHTNESS_MAX_ACCEPT,
+};
+
+// --- Адміністративні одиниці України (області + обласні центри + м. Київ + АР Крим) ---
+static const uint8_t ADMIN_UNITS_COUNT = 28;
+static const uint16_t ADMIN_UNITS[ADMIN_UNITS_COUNT] = {
+    9999,  // АР Крим
+    3,     // Хмельницька обл.
+    4,     // Вінницька обл.
+    5,     // Рівненська обл.
+    8,     // Волинська обл.
+    9,     // Дніпропетровська обл.
+    10,    // Житомирська обл.
+    11,    // Закарпатська обл.
+    12,    // Запорізька обл.
+    564,   // м. Запоріжжя
+    13,    // Івано-Франківська обл.
+    14,    // Київська обл.
+    31,    // м. Київ
+    15,    // Кіровоградська обл.
+    16,    // Луганська обл.
+    17,    // Миколаївська обл.
+    18,    // Одеська обл.
+    19,    // Полтавська обл.
+    20,    // Сумська обл.
+    21,    // Тернопільська обл.
+    22,    // Харківська обл.
+    1293,  // м. Харків
+    23,    // Херсонська обл.
+    24,    // Черкаська обл.
+    25,    // Чернігівська обл.
+    26,    // Чернівецька обл.
+    27,    // Львівська обл.
+    28     // Донецька обл.
 };
 
 static const SettingListItem DISTRICTS[MAX_REGIONS] = {

@@ -4,6 +4,34 @@
 #include "JaamUtils.h"
 #include "JaamLogs.h"
 
+// Helper functions for mode validation
+bool JaamApi::isValidMapMode(int mode_id) const {
+    for (int i = 0; i < MAP_MODES_COUNT; i++) {
+        if (MAP_MODES[i].id == mode_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool JaamApi::isValidDisplayMode(int mode_id) const {
+    for (int i = 0; i < DISPLAY_MODES_COUNT; i++) {
+        if (DISPLAY_MODES[i].id == mode_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool JaamApi::isValidRegionId(int region_id) const {
+    for (int i = 0; i < MAX_REGIONS; i++) {
+        if (DISTRICTS[i].id == region_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 extern void servicePin(ServiceLed type);
 extern JaamFirmwareUpdate fwUpdate;
@@ -234,7 +262,7 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
         if (!doc["mode_id"].isNull()) {
             int newMode = doc["mode_id"].as<int>();
 
-            if (newMode >= 0 && newMode <= 4) {
+            if (isValidMapMode(newMode)) {
                 saveMapMode(newMode);
                 LOG.printf("[API] Map mode changed to: %d\n", newMode);
             } else {
@@ -247,7 +275,7 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
         if (!doc["mode_id"].isNull()) {
             int newMode = doc["mode_id"].as<int>();
 
-            if (newMode >= 0 && newMode <= 9) {
+            if (isValidDisplayMode(newMode)) {
                 saveDisplayMode(newMode);
                 LOG.printf("[API] Display mode changed to: %d\n", newMode);
             } else {
@@ -277,15 +305,8 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
     else if (type == "set_home_region") {
         if (!doc["region_id"].isNull()) {
             int regionId = doc["region_id"].as<int>();
-            // Валідація: перевіряємо чи region_id існує в DISTRICTS
-            bool validRegion = false;
-            for (int i = 0; i < MAX_REGIONS; i++) {
-                if (DISTRICTS[i].id == regionId) {
-                    validRegion = true;
-                    break;
-                }
-            }
-            if (validRegion) {
+
+            if (isValidRegionId(regionId)) {
                 settings->saveInt(HOME_DISTRICT, regionId);
                 LOG.printf("[API] Home region changed to: %d\n", regionId);
             } else {

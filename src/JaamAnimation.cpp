@@ -114,12 +114,14 @@ bool AnimationManager::isPreviewActiveForMode(const StripState& previewState, ui
         && previewState.mapMode == mapMode; // Preview для поточного режиму мапи
 }
 
-AnimationManager::AnimationManager() : settings(nullptr), synchronizedMode(false), previewActive(false), previewEndTime(0), previewEventType(-1) {
+AnimationManager::AnimationManager() : settings(nullptr), synchronizedMode(false), previewActive(false), previewEndTime(0), previewEventType(-1), randomColorsMainInitialized(false), randomColorsBgInitialized(false) {
     animMutex = xSemaphoreCreateMutex();
     globalTimesMutex = xSemaphoreCreateMutex();
     memset(mainStates,    0, sizeof(mainStates));
     memset(serviceStates, 0, sizeof(serviceStates));
+    memset(rcMainStates,  0, sizeof(rcMainStates));
     memset(&bgState,       0, sizeof(bgState));
+    memset(&rcBgState,     0, sizeof(rcBgState));
     memset(&previewState,  0, sizeof(previewState));
     memset(&previewStateBg, 0, sizeof(previewStateBg));
     memset(&mainOverride,  0, sizeof(mainOverride));
@@ -489,6 +491,30 @@ void AnimationManager::update() {
     bool     isOff  = isMapOff;
     int      mapMode = getCurrentMapMode();
 
+    // ── Track RANDOM_COLORS mode changes and initialization ──
+    static int lastMapMode = -1;
+    if (mapMode != lastMapMode) {
+        LOG.printf("[ANIMATION] Map mode changed from %d to %d\n", lastMapMode, mapMode);
+        
+        // If switching away from RANDOM_COLORS, reset and clear animations
+        if (lastMapMode == MapModes::RANDOM_COLORS && mapMode != MapModes::RANDOM_COLORS) {
+            LOG.printf("[ANIMATION] Exiting RANDOM_COLORS mode, clearing animations\n");
+            resetRandomColorsFlags();
+        }
+        
+        lastMapMode = mapMode;
+    }
+    
+    // Initialize RANDOM_COLORS mode if active
+    if (mapMode == MapModes::RANDOM_COLORS) {
+        if (strip_main) {
+            initRandomColorsMain();
+        }
+        if (strip_bg) {
+            initRandomColorsBg();
+        }
+    }
+
     bool mainDirty    = false;
     bool bgDirty      = false;
     bool serviceDirty = false;
@@ -564,6 +590,55 @@ void AnimationManager::update() {
         }
     }
 
+    // ── Random Colors mode: Per-LED strip_main (rcMainStates) ──
+    if (strip_main != nullptr && mapMode == MapModes::RANDOM_COLORS && !mainOverride.active && !isPreviewActiveForMode(previewState, mapMode)) {
+        if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+            for (int i = 0; i < ADMIN_UNITS_COUNT; i++) {
+                LedState& s = rcMainStates[i];
+                if (!s.active) continue;
+                uint16_t regionId = ADMIN_UNITS[i];
+
+                float localElapsed = now < s.localStart ? 0.0f : (now - s.localStart) / float(s.period);
+                const RegionLedMapMeta* meta = findRegionMeta(regionId);
+                if (meta == nullptr) {
+                    LOG.printf("[RANDOM_COLORS] WARNING: No meta found for region %u\n", regionId);
+                    continue;
+                }
+                if (meta->led_count == 0) continue; // Немає LED для цього регіону, пропускаємо
+
+                const uint16_t* leds = getRegionLeds(meta);
+                if (localElapsed >= s.cycles) {
+                    // Continuous cycling: генеруємо новий випадковий колір
+                    uint8_t r = random(256);
+                    uint8_t g = random(256);
+                    uint8_t b = random(256);
+                    uint32_t newColor = strip_main->Color(r, g, b);
+                    
+                    // Поточний колір стає початковим для нової анімації
+                    uint32_t currentColor = strip_main->getPixelColor(leds[0]);  // Беремо колір першого LED регіону (припускаємо, що всі LED в регіоні однакові)
+                    
+                    uint16_t delay = random(RAND_COLOR_MOD_ANIM_INTERVAL); // Додаємо випадкову затримку перед наступним циклом для кожного регіону, щоб уникнути синхронності
+                    // Перезапускаємо анімацію з новим кольором
+                    s.adaptedInitColor = currentColor;
+                    s.color = newColor;
+                    s.localStart = now + delay;
+                    s.startTime = now + delay;
+                    // period, cycles, animType залишаються без змін
+                    
+                    // LOG.printf("[RANDOM_COLORS] Main LED %d: new cycle with color #%06X\n", i, newColor);
+                    continue;
+                }
+                uint32_t computedColor = computeColorRaw(s.animType, s.color, s.adaptedInitColor,
+                                                         s.startBr, s.endBr, localElapsed);
+                for (uint8_t j = 0; j < meta->led_count; ++j) {
+                    strip_main->setPixelColor(leds[j], computedColor);
+                    mainDirty = true;
+                }
+            }
+            xSemaphoreGive(stripMutex);
+        }
+    }
+
 
     // ── Preview має вищий пріоритет і перезаписує кольори mainStates ──
     if (strip_main != nullptr && isPreviewActiveForMode(previewState, mapMode)) {
@@ -585,7 +660,7 @@ void AnimationManager::update() {
         }
     }
 
-    // ── strip_bg ──
+    // ── strip_bg strip-level (bgState) ──
     if (strip_bg != nullptr && bgState.active && !isPreviewActiveForMode(previewStateBg, mapMode)) {
         float localElapsed = (now - bgState.localStart) / float(bgState.period);
         if (localElapsed >= bgState.cycles) {
@@ -605,6 +680,44 @@ void AnimationManager::update() {
                 : localElapsed;
             uint32_t c = computeColorRaw(bgState.animType, bgState.color, bgState.adaptedInitColor,
                                           bgState.startBr, bgState.endBr, elapsed);
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                    strip_bg->setPixelColor(i, c);
+                }
+                xSemaphoreGive(stripMutex);
+            }
+            bgDirty = true;
+        }
+    }
+
+    // ── Random Colors mode: strip-level strip_bg (rcBgState) ──
+    if (strip_bg != nullptr && mapMode == MapModes::RANDOM_COLORS && rcBgState.active && !isPreviewActiveForMode(previewStateBg, mapMode)) {
+        float localElapsed = now < rcBgState.localStart ? 0.0f : (now - rcBgState.localStart) / float(rcBgState.period);
+        if (localElapsed >= rcBgState.cycles) {
+            // Continuous cycling: генеруємо новий випадковий колір
+            uint8_t r = random(256);
+            uint8_t g = random(256);
+            uint8_t b = random(256);
+            uint32_t newColor = strip_bg->Color(r, g, b);
+            
+            // Поточний колір стає початковим для нової анімації
+            uint32_t currentColor = 0;
+            if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+                currentColor = strip_bg->getPixelColor(0);  // Беремо колір першого LED
+                xSemaphoreGive(stripMutex);
+            }
+            
+            // Перезапускаємо анімацію з новим кольором
+            rcBgState.color = newColor;
+            rcBgState.adaptedInitColor = currentColor;
+            rcBgState.localStart = now;
+            rcBgState.startTime = now;
+            // period, cycles, animType залишаються без змін
+            
+            LOG.printf("[RANDOM_COLORS] Bg strip: new cycle with color #%06X\n", newColor);
+        } else if (!isOff) {
+            uint32_t c = computeColorRaw(rcBgState.animType, rcBgState.color, rcBgState.adaptedInitColor,
+                                         rcBgState.startBr, rcBgState.endBr, localElapsed);
             if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
                 for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
                     strip_bg->setPixelColor(i, c);
@@ -713,9 +826,11 @@ void AnimationManager::logActiveAnimations() {
         int count = 0;
         int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
         for (int i = 0; i < numMain; i++) if (mainStates[i].active) count++;
+        for (int i = 0; i < ADMIN_UNITS_COUNT; i++) if (rcMainStates[i].active) count++;
         int numSvc = strip_service ? min((int)strip_service->numPixels(), MAX_LEDS_STRIP_SERVICE) : 0;
         for (int i = 0; i < numSvc; i++) if (serviceStates[i].active) count++;
         if (bgState.active)      count++;
+        if (rcBgState.active)    count++;
         if (mainOverride.active) count++;
 
         LOG.printf("[ANIMATION] Active animations count: %d\n", count);
@@ -726,9 +841,21 @@ void AnimationManager::logActiveAnimations() {
             LOG.printf("[DEBUG] main LED %d: type=%d, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
                        i, s.animType, s.bit, s.period, s.cycles, s.startBr, s.endBr);
         }
+        for (int i = 0; i < ADMIN_UNITS_COUNT; i++) {
+            if (!rcMainStates[i].active) continue;
+            const LedState& s = rcMainStates[i];
+            const char* typeName = (s.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[s.animType].name : "unknown";
+            LOG.printf("[DEBUG] RC main LED %d: type=%s, bit=%d, period=%u, cycles=%u, startBr=%u, endBr=%u\n",
+                       i, typeName, s.bit, s.period, s.cycles, s.startBr, s.endBr);
+        }
         if (bgState.active) {
             LOG.printf("[DEBUG] bg: type=%d, bit=%d, period=%u, cycles=%u\n",
                        bgState.animType, bgState.bit, bgState.period, bgState.cycles);
+        }
+        if (rcBgState.active) {
+            const char* typeName = (rcBgState.animType < ANIMATION_TYPES_COUNT) ? ANIMATION_TYPES[rcBgState.animType].name : "unknown";
+            LOG.printf("[DEBUG] RC bg: type=%s, bit=%d, period=%u, cycles=%u\n",
+                       typeName, rcBgState.bit, rcBgState.period, rcBgState.cycles);
         }
         if (mainOverride.active) {
             LOG.printf("[DEBUG] mainOverride: type=%d, period=%u, cycles=%u\n",
@@ -794,6 +921,20 @@ void AnimationManager::adaptAllAnimationBrightness() {
                 bgState.startBr = result.second;
             }
             bgState.endBr = globalEnd;
+        }
+        if (randomColorsMainInitialized) {
+            uint8_t relativeBrightness = led.brightnessRelative(100);
+            for (int i = 0; i < ADMIN_UNITS_COUNT; i++) {
+                LedState& s = rcMainStates[i];
+                if (!s.active) continue;
+                s.startBr = relativeBrightness;
+                s.endBr = relativeBrightness;
+            }
+        }
+        if (randomColorsBgInitialized and rcBgState.active) {
+            uint8_t relativeBrightness = led.brightnessRelative(100);
+            rcBgState.startBr = relativeBrightness;
+            rcBgState.endBr = relativeBrightness;
         }
         xSemaphoreGive(animMutex);
     }
@@ -943,7 +1084,13 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
         color = DefaultColors::MAIN_STRIP;
     }
     if (strip == strip_bg) {
-        if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
+        // Handle RANDOM_COLORS mode first, regardless of BG_LED_MODE
+        if (!isMapOff && getCurrentMapMode() == MapModes::RANDOM_COLORS) {
+            // rcBgState has already rendered with brightness applied
+            color = strip_bg->getPixelColor(0); // Already brightness-adjusted by rcBgState
+            brightness = led.brightnessRelative(100);
+            LOG.printf("[COLOR] bg strip color RANDOM_COLORS (already brightness-adjusted)\n");
+        } else if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
             if (isMapOff) {
                 color = DefaultColors::OFF;
                 brightness = 0;
@@ -1117,6 +1264,11 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 case MapModes::LAMP: {
                     color = colorFromHex(settings->getString(COLOR_LAMP));
                     brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_LAMP));
+                    break;
+                }
+                case MapModes::RANDOM_COLORS: {
+                    color = strip->getPixelColor(position); // Отримуємо поточний колір без додаткового brightness
+                    brightness = led.brightnessRelative(100);
                     break;
                 }
             }
@@ -1383,8 +1535,23 @@ void AnimationManager::stopPreview() {
     // Використовуємо ledActualColor для кожного пікселя, щоб коректно відновити
     // per-pixel кольори для BgLedModes::COLOR_MAP
     if (strip_bg && xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
-        for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
-            strip_bg->setPixelColor(i, ledActualColor(strip_bg, i));
+        int currentMapMode = getCurrentMapMode();
+        
+        // Special case for RANDOM_COLORS: restore from rcBgState animation frame
+        if (currentMapMode == MapModes::RANDOM_COLORS && rcBgState.active) {
+            uint32_t now = millis();
+            float localElapsed = now < rcBgState.localStart ? 0.0f : (now - rcBgState.localStart) / float(rcBgState.period);
+            uint32_t c = computeColorRaw(rcBgState.animType, rcBgState.color, rcBgState.adaptedInitColor,
+                                         rcBgState.startBr, rcBgState.endBr, localElapsed);
+            for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                strip_bg->setPixelColor(i, c);
+            }
+            LOG.printf("[PREVIEW] Restored RANDOM_COLORS bg strip from rcBgState\n");
+        } else {
+            // Regular restore using ledActualColor for each pixel (COLOR_MAP support)
+            for (uint16_t i = 0; i < strip_bg->numPixels(); i++) {
+                strip_bg->setPixelColor(i, ledActualColor(strip_bg, i));
+            }
         }
         strip_bg->show();
         xSemaphoreGive(stripMutex);
@@ -1393,4 +1560,137 @@ void AnimationManager::stopPreview() {
 
 bool AnimationManager::isPreviewActive() const {
     return previewActive;
+}
+
+// ──────────────────────────────────────────────────────
+// Random Colors Mode Methods
+// ──────────────────────────────────────────────────────
+
+void AnimationManager::initRandomColorsMain() {
+    if (!strip_main || randomColorsMainInitialized) {
+        return;
+    }
+
+    // int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
+    // if (numLeds == 0) {
+    //     return;
+    // }
+    uint32_t now = millis();
+
+    LOG.printf("[RANDOM_COLORS] Initializing main strip, now=%d\n", now);
+
+
+    uint8_t brightness = led.brightnessRelative(100);
+
+
+    // Запускаємо анімації з затримкою між кожним LED
+    // Записуємо безпосередньо в rcMainStates[] без використання createAnimation()
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        for (int idx = 0; idx < ADMIN_UNITS_COUNT; idx++) {
+            uint16_t regionId = ADMIN_UNITS[idx];
+            
+            // Перевіряємо чи існує LED map для цього регіону
+            const RegionLedMapMeta* meta = findRegionMeta(regionId);
+            if (meta == nullptr || meta->led_count == 0) {
+                // Пропускаємо регіони без LED map
+                continue;
+            }
+
+            // Генеруємо початковий випадковий колір
+            uint8_t r = random(256);
+            uint8_t g = random(256);
+            uint8_t b = random(256);
+            uint32_t initialColor = adaptColorBrightness(strip_main->Color(r, g, b), brightness);
+
+            
+            // Генеруємо випадковий колір
+            r = random(256);
+            g = random(256);
+            b = random(256);
+            uint32_t randomColor = strip_main->Color(r, g, b);
+
+            uint16_t delay = random(RAND_COLOR_MOD_ANIM_INTERVAL); // Додаткова випадкова затримка до 2 секунд для кожного LED
+
+            // Налаштовуємо стан анімації ONE_WAY_BLEND_FADE в rcMainStates[]
+            LedState& s = rcMainStates[idx];
+            s.color = randomColor;
+            s.adaptedInitColor = initialColor;
+            s.startTime = now + delay;  // Стартуємо з додатковою випадковою затримкою
+            s.localStart = now + delay;
+            s.period = RAND_COLOR_MOD_ANIM_INTERVAL;
+            s.cycles = 1;
+            s.animType = AnimationTypes::ONE_WAY_BLEND_FADE;
+            s.startBr = brightness;
+            s.endBr = brightness;
+            s.bit = -1;       // no priority
+            s.initialBit = -1;
+            s.mapMode = MapModes::RANDOM_COLORS;
+            s.active = true;
+        }
+        xSemaphoreGive(animMutex);
+    }
+
+    randomColorsMainInitialized = true;
+    LOG.printf("[RANDOM_COLORS] Main strip initialized\n");
+}
+
+void AnimationManager::initRandomColorsBg() {
+    if (!strip_bg || randomColorsBgInitialized) {
+        return;
+    }
+
+    int numLeds = min((int)strip_bg->numPixels(), MAX_LEDS_STRIP_BG);
+    if (numLeds == 0) {
+        return;
+    }
+
+    LOG.printf("[RANDOM_COLORS] Initializing bg strip as single entity (strip-level)\n");
+
+    // Генеруємо випадковий колір для всієї стрічки
+    uint8_t r = random(256);
+    uint8_t g = random(256);
+    uint8_t b = random(256);
+    uint32_t randomColor = strip_bg->Color(r, g, b);
+
+    // Отримуємо поточний колір першого LED як початковий (вся стрічка буде однакова)
+    uint32_t initialColor = 0;
+    if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
+        initialColor = strip_bg->getPixelColor(0);
+        xSemaphoreGive(stripMutex);
+    }
+    uint32_t now = millis();
+    uint8_t brightness = led.brightnessRelative(100);
+    
+    // Записуємо безпосередньо в rcBgState замість використання createAnimation()
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        rcBgState.strip = strip_bg;
+        rcBgState.color = randomColor;
+        rcBgState.adaptedInitColor = initialColor;
+        rcBgState.startTime = now;  // Стартуємо без додаткової випадкової затримки
+        rcBgState.localStart = now;
+        rcBgState.period = RAND_COLOR_MOD_ANIM_INTERVAL;
+        rcBgState.cycles = 1;
+        rcBgState.animType = AnimationTypes::ONE_WAY_BLEND_FADE;
+        rcBgState.startBr = brightness;
+        rcBgState.endBr = brightness;
+        rcBgState.bit = -1;       // no priority
+        rcBgState.initialBit = -1;
+        rcBgState.mapMode = MapModes::RANDOM_COLORS;
+        rcBgState.active = true;
+        xSemaphoreGive(animMutex);
+    }
+
+    randomColorsBgInitialized = true;
+    LOG.printf("[RANDOM_COLORS] Bg strip initialized as strip-level animation\n");
+}
+
+void AnimationManager::resetRandomColorsFlags() {
+    if (xSemaphoreTake(animMutex, portMAX_DELAY) == pdTRUE) {
+        randomColorsMainInitialized = false;
+        randomColorsBgInitialized = false;
+        memset(rcMainStates,  0, sizeof(rcMainStates));
+        rcBgState.active     = false;
+        xSemaphoreGive(animMutex);
+    }
+    LOG.printf("[RANDOM_COLORS] Flags reset\n");
 }

@@ -41,7 +41,6 @@ void handleAdaptAnimationColors();
 void handleAdaptAnimationBrightness();
 void handleAdaptAnimationPeriod();
 void handleAdaptAnimationType();
-void adaptStripColorsAndBrightness();
 void handleRecalculateLeds();
 void handleReconnectStrips(bool main, bool bg, bool service);
 void handleUpdateBatteryPin();

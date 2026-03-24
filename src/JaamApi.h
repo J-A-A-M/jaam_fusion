@@ -77,6 +77,11 @@ private:
     // Latest firmware version available
     char fwLatestVersion[25];
 
+    // Helper methods for validation
+    bool isValidMapMode(int mode_id) const;
+    bool isValidDisplayMode(int mode_id) const;
+    bool isValidRegionId(int region_id) const;
+
     // WebSocket handlers
     void handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage message);
     void sendInitialState(WebsocketsClient& client);
