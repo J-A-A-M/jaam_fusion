@@ -57,6 +57,15 @@ def generate_metadata_array(map_name: str, regions: List[Dict]) -> List[str]:
         region_id = region["regionId"]
         region_name = region.get("name", f"Region {region_id}")
         led_count = len(region["leds"])
+
+        # Validate led_count doesn't exceed uint8_t maximum (255)
+        if led_count > 255:
+            raise ValueError(
+                f"Region {region_id} ('{region_name}') has {led_count} LEDs, "
+                f"which exceeds the uint8_t limit of 255 in RegionLedMapMeta. "
+                f"Consider splitting this region or using a larger field type."
+            )
+
         lines.append(f"    {{{region_id:5}, {start_offset:5}, {led_count:4}}},  // {region_name}")
         start_offset += led_count
 
