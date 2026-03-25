@@ -520,10 +520,13 @@ function mergeControlsWithValues(controls, values, models) {
     });
 }
 
-function optionEl(id, name, sub) {
+function optionEl(id, name, sub, disabled) {
     const opt = document.createElement('option');
     opt.value = id;
     opt.textContent = sub ? ('-- ' + name) : name;
+    if (disabled) {
+        opt.disabled = true;
+    }
     return opt;
 }
 
@@ -602,7 +605,7 @@ function renderControl(ctrl, lists) {
         
         const opts = lists[list] || [];
         for (const o of opts) {
-            const el = optionEl(o[0], o[1], o[2]);
+            const el = optionEl(o[0], o[1], o[2], o[3]);
             if (String(o[0]) === String(current)) el.selected = true;
             sel.appendChild(el);
         }
@@ -634,7 +637,7 @@ function renderControl(ctrl, lists) {
         
         const opts = lists[list] || [];
         for (const o of opts) {
-            const el = optionEl(o[0], o[1], o[2]);
+            const el = optionEl(o[0], o[1], o[2], o[3]);
             if (String(o[0]) === String(current)) el.selected = true;
             sel.appendChild(el);
         }
