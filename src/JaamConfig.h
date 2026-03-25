@@ -260,13 +260,13 @@ extern SettingListItem LED_COLOR_FORMATS[LED_COLOR_FORMATS_COUNT];
 constexpr int LED_FREQUENCIES_COUNT = 2;
 extern SettingListItem LED_FREQUENCIES[LED_FREQUENCIES_COUNT];
 
-constexpr int SINGLE_CLICKS_COUNT = 4;
+constexpr int SINGLE_CLICKS_COUNT = 8;
 extern SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT];
 
-constexpr int LONG_CLICKS_COUNT = 5;
+constexpr int LONG_CLICKS_COUNT = 10;
 extern SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT];
 
-constexpr int MAP_MODES_COUNT = 6;
+constexpr int MAP_MODES_COUNT = 8;
 extern SettingListItem MAP_MODES[MAP_MODES_COUNT];
 
 constexpr int ALERT_CLEAR_PIN_MODES_COUNT = 2;
@@ -290,7 +290,7 @@ struct TimezoneInfo {
 
 extern TimezoneInfo TIMEZONE_OFFSETS[];
 
-constexpr int DISPLAY_MODES_COUNT = 6;
+constexpr int DISPLAY_MODES_COUNT = 8;
 extern SettingListItem DISPLAY_MODES[DISPLAY_MODES_COUNT];
 
 constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
