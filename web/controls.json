@@ -1521,7 +1521,7 @@
             1,
             "sound",
             "%",
-            ""
+            "sound_source!=-1"
         ],
         [
             "slider",
@@ -1532,98 +1532,98 @@
             1,
             "sound",
             "%",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_alert",
             "Звукове сповіщення при тривозі у домашньому регіоні",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_alert_end",
             "Звукове сповіщення при скасуванні тривоги у домашньому регіоні",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_explosion",
             "Звукове сповіщення при вибухах",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_drones",
             "Звукове сповіщення при загрозі ударних БПЛА",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_recon_drones",
             "Звукове сповіщення при розвідувальних БПЛА",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_missiles",
             "Звукове сповіщення при загрозі крилатих та авіаційних ракет",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_kabs",
             "Звукове сповіщення при загрозі КАБ",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_ballistic",
             "Звукове сповіщення при загрозі балістики",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_every_hour",
             "Звукове сповіщення щогодини",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_button_click",
             "Сигнали при натисканні кнопки",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "sound_on_min_of_sl",
             "Відтворювати звуки під час \"Хвилини мовчання\"",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "mute_sound_on_night",
             "Вимикати всі звуки у нічний час",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "bool",
             "ignore_mute_on_alert",
             "Звукові сигнали тривоги у нічний час",
             "sound",
-            ""
+            "sound_source!=-1"
         ],
         [
             "dropdown",
@@ -1631,7 +1631,7 @@
             "Мелодія при тривозі у домашньому регіоні (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_alert==1"
         ],
         [
             "dropdown",
@@ -1639,7 +1639,7 @@
             "Мелодія при скасуванні тривоги у домашньому регіоні (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_alert_end==1"
         ],
         [
             "dropdown",
@@ -1647,7 +1647,7 @@
             "Мелодія при вибухах (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_explosion==1"
         ],
         [
             "dropdown",
@@ -1655,7 +1655,7 @@
             "Мелодія при загрозі ударних БПЛА (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_drones==1"
         ],
         [
             "dropdown",
@@ -1663,7 +1663,7 @@
             "Мелодія при розвідувальних БПЛА (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_recon_drones==1"
         ],
         [
             "dropdown",
@@ -1671,7 +1671,7 @@
             "Мелодія при загрозі крилатих та авіаційних ракет (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_missiles==1"
         ],
         [
             "dropdown",
@@ -1679,7 +1679,7 @@
             "Мелодія при загрозі КАБ (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_kabs==1"
         ],
         [
             "dropdown",
@@ -1687,7 +1687,7 @@
             "Мелодія при загрозі балістики (буззер)",
             "melodies",
             "sound",
-            ""
+            "sound_source!=-1,sound_on_ballistic==1"
         ]
     ]
 }

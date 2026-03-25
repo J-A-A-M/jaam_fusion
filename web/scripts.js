@@ -888,7 +888,7 @@ function updateElementVisibility(element) {
     // Group conditions by field name and operator
     const conditionGroups = {};
     for (const condition of conditions) {
-        const match = condition.match(/(\w+)(!=|==)(\d+)/);
+        const match = condition.match(/(\w+)(!=|==)(-?\d+)/);
         if (match) {
             const [_, field, operator] = match;
             const key = `${field}_${operator}`;
@@ -944,7 +944,7 @@ function updateElementVisibility(element) {
 
 function evaluateCondition(condition) {
     // Format: "hardware!=0" means hardware != 0
-    const match = condition.match(/(\w+)(!=|==)(\d+)/);
+    const match = condition.match(/(\w+)(!=|==)(-?\d+)/);
     if (!match) return true;
     
     const [_, field, operator, value] = match;
