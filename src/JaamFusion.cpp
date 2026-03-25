@@ -65,6 +65,7 @@ void requestAdaptColors();
 void requestToRegenerateBgColorMap();
 void displayProcess();
 void brightnessProcess();
+void rebuildSensorsListItems();
 
 // --- MAIN Configuration ---
 char                chipID[13];
@@ -2192,7 +2193,8 @@ void initSensors() {
     }
     api.setClimateData(temp, hum, press);
 
-    // initDisplayModes();
+    rebuildSensorsListItems();
+
 }
 
 void initSound() {
@@ -3282,6 +3284,21 @@ void beepHourProcess() {
     if (needToPlaySound(REGULAR) && !minuteOfSilence && sound.beepHour != timeClient.hour() && timeClient.minute() == 0 && timeClient.second() == 0) {
         sound.setBeepHour(timeClient.hour());
         playMelody(REGULAR);
+    }
+}
+
+void rebuildSensorsListItems() {
+    SettingListItem* lightSensorOption = getSettingItemById(AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT, 2); // Сенсор освітлення
+    if (lightSensorOption != nullptr) {
+        bool sensorAvailable = lightSensor.isAnySensorAvailable();
+        lightSensorOption->ignore = !sensorAvailable;
+        lightSensorOption->showDisabled = !sensorAvailable;
+    }
+    SettingListItem* climateSensorOption = getSettingItemById(DISPLAY_MODES, DISPLAY_MODES_COUNT, 4); // Мікроклімат
+    if (climateSensorOption != nullptr) {
+        bool sensorAvailable = climate.isAnySensorAvailable();
+        climateSensorOption->ignore = !sensorAvailable;
+        climateSensorOption->showDisabled = !sensorAvailable;
     }
 }
 

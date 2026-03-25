@@ -80,6 +80,16 @@ inline const char* getEventTypeName(int8_t eventType) {
     }
 }
 
+// Utility function: get SettingListItem by ID from array
+inline SettingListItem* getSettingItemById(SettingListItem* items, int count, int id) {
+    for (int i = 0; i < count; i++) {
+        if (items[i].id == id) {
+            return &items[i];
+        }
+    }
+    return nullptr;
+}
+
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
 extern time_t                         lastWifiConnectTime;
