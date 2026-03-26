@@ -91,6 +91,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"invert_display", INVERT_DISPLAY, TYPE_BOOL},
     {"display_mode", DISPLAY_MODE, TYPE_INT},
     {"display_mode_time", DISPLAY_MODE_TIME, TYPE_INT},
+    {"toggle_mode_microclimate", TOGGLE_MODE_MICROCLIMATE, TYPE_BOOL},
     {"display_off_at_night", DISPLAY_OFF_AT_NIGHT, TYPE_BOOL},
     {"clock_font", CLOCK_FONT, TYPE_INT},
     {"display_alert_message_time", DISPLAY_ALERT_MESSAGE_TIME, TYPE_INT},

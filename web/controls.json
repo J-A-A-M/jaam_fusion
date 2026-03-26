@@ -231,6 +231,13 @@
         ],
         [
             "bool",
+            "toggle_mode_microclimate",
+            "Відображати мікроклімат у Комбінованому режимі (якщо сенсор встановлено)",
+            "display",
+            "display_mode==9"
+        ],
+        [
+            "bool",
             "display_off_at_night",
             "Вимикати дисплей вночі",
             "display",
