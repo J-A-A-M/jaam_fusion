@@ -1,14 +1,14 @@
 #include "JaamConfig.h"
 
 // --- Sound Settings ---
-SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT] PROGMEM = {
+const SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT] PROGMEM = {
   {-1, "Вимкнено", false},
   {0, "Buzzer", false},
   {1, "DF Player Pro", true, false, true}
 };
 
 // --- Other Settings ---
-SettingListItem LED_COLOR_FORMATS[LED_COLOR_FORMATS_COUNT] = {
+const SettingListItem LED_COLOR_FORMATS[LED_COLOR_FORMATS_COUNT] = {
     {NEO_RGB, "NEO_RGB"},
     {NEO_RBG, "NEO_RBG"},
     {NEO_GRB, "NEO_GRB (рекомендовано)"},
@@ -19,12 +19,12 @@ SettingListItem LED_COLOR_FORMATS[LED_COLOR_FORMATS_COUNT] = {
     {NEO_WGRB, "NEO_WGRB"}
 };
 
-SettingListItem LED_FREQUENCIES[LED_FREQUENCIES_COUNT] = {
+const SettingListItem LED_FREQUENCIES[LED_FREQUENCIES_COUNT] = {
     {NEO_KHZ400, "400 КГц"},
     {NEO_KHZ800, "800 КГц (рекомендовано)"}
 };
 
-SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT] = {
+const SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT] = {
   {0, "Вимкнено"},
   {1, "Перемикання режимів мапи"},
   {2, "Перемикання режимів дисплею"},
@@ -35,7 +35,7 @@ SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT] = {
   {7, "Увімк./Вимк. режим лампи", true, false, true},
 };
 
-SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT] = {
+const SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT] = {
   {0, "Вимкнено"},
   {1, "Перемикання режимів мапи"},
   {2, "Перемикання режимів дисплею"},
@@ -48,7 +48,7 @@ SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT] = {
   {10, "Перезавантаження пристрою"},
 };
 
-SettingListItem MAP_MODES[MAP_MODES_COUNT] = {
+const SettingListItem MAP_MODES[MAP_MODES_COUNT] = {
   {0, "Вимкнено"},
   {1, "Тривога"},
   {6, "Енергосистема", true, false, true},
@@ -59,17 +59,17 @@ SettingListItem MAP_MODES[MAP_MODES_COUNT] = {
   {5, "Лампа"},
 };
 
-SettingListItem ALERT_CLEAR_PIN_MODES[ALERT_CLEAR_PIN_MODES_COUNT] = {
+const SettingListItem ALERT_CLEAR_PIN_MODES[ALERT_CLEAR_PIN_MODES_COUNT] = {
   {0, "Бістабільний"},
   {1, "Імпульсний"},
 };
 
-SettingListItem PIN_LEVELS[PIN_LEVELS_COUNT] = {
+const SettingListItem PIN_LEVELS[PIN_LEVELS_COUNT] = {
   {0, "LOW"},
   {1, "HIGH"},
 };
 
-SettingListItem TIMEZONES[TIMEZONES_COUNT] = {
+const SettingListItem TIMEZONES[TIMEZONES_COUNT] = {
   {0, "Europe/Kyiv (UTC+2)"},
   // Європейські часові пояси (географічно: захід → схід)
   {1, "Europe/London (UTC+0)"},
@@ -100,7 +100,7 @@ SettingListItem TIMEZONES[TIMEZONES_COUNT] = {
   {22, "Pacific/Fiji (UTC+12)"},
 };
 
-TimezoneInfo TIMEZONE_OFFSETS[] = {
+const TimezoneInfo TIMEZONE_OFFSETS[TIMEZONES_COUNT] = {
   // ID 0: Europe/Kyiv - Європейський східний час (EEST)
   {0, 2, 0, true, {3, 0, 7, 3}, {10, 0, 7, 4}},
   // ID 1: Europe/London - британський літній час (BST)
@@ -166,32 +166,32 @@ SettingListItem AUTO_BRIGHTNESS_MODES[AUTO_BRIGHTNESS_OPTIONS_COUNT] = {
     {2, "Сенсор освітлення"}
 };
 
-SettingListItem BG_LED_MODES[BG_LED_MODES_COUNT] = {
+const SettingListItem BG_LED_MODES[BG_LED_MODES_COUNT] = {
   {0, "Домашній Регіон"},
   {1, "Власний колір"},
   {2, "Індивідуальні кольори"},
 };
 
-SettingListItem DISPLAY_TYPES[DISPLAY_TYPES_COUNT] = {
+const SettingListItem DISPLAY_TYPES[DISPLAY_TYPES_COUNT] = {
   {0, "Відключено"},
   {1, "SSD1306"},
   {2, "SH1106G"},
   {3, "SH1107"},
 };
 
-SettingListItem DISPLAY_HEIGHTS[DISPLAY_HEIGHT_COUNT] = {
+const SettingListItem DISPLAY_HEIGHTS[DISPLAY_HEIGHT_COUNT] = {
   {32, "32"},
   {64, "64"},
 };
 
-SettingListItem DISPLAY_ROTATIONS[DISPLAY_ROTATION_COUNT] = {
+const SettingListItem DISPLAY_ROTATIONS[DISPLAY_ROTATION_COUNT] = {
   {0, "0°"},
   {90, "90°"},
   {180, "180°"},
   {270, "270°"},
 };
 
-SettingListItem CLOCK_FONTS[CLOCK_FONTS_COUNT] = {
+const SettingListItem CLOCK_FONTS[CLOCK_FONTS_COUNT] = {
   {0, "Reddit"},
   {1, "Victor"},
   {2, "M PLUS 1 CODE"},
@@ -200,7 +200,7 @@ SettingListItem CLOCK_FONTS[CLOCK_FONTS_COUNT] = {
   {5, "Bitcount Grid"},
 };
 
-SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
+const SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
 #if ARDUINO_ESP32_DEV
   {HARDWARE::JAAM_1_3, "Плата JAAM 1.3"},
   {HARDWARE::JAAM_2_1, "Плата JAAM 2.1"},
@@ -214,7 +214,7 @@ SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
   {HARDWARE::CUSTOM_MAPPING, "Власна карта LED"},
 };
 
-SettingListItem ANIMATION_TYPES[ANIMATION_TYPES_COUNT] = {
+const SettingListItem ANIMATION_TYPES[ANIMATION_TYPES_COUNT] = {
   {AnimationTypes::OFF, "Без анімації"},
   {AnimationTypes::FADE, "Циклічне затухання"},
   {AnimationTypes::BLINK, "Мерехтіння"},
@@ -260,7 +260,7 @@ const char* MELODIES[MELODIES_COUNT] PROGMEM = {
   SIREN8,
 };
 
-SettingListItem MELODY_NAMES[MELODIES_COUNT] PROGMEM = {
+const SettingListItem MELODY_NAMES[MELODIES_COUNT] PROGMEM = {
   {0, "Гімн України", false},
   {20, "Батько наш Бандера", false},
   {15, "Щедрик", false},
@@ -292,13 +292,49 @@ SettingListItem MELODY_NAMES[MELODIES_COUNT] PROGMEM = {
   {22, "Helldivers 2 - A cup of Liber-Tea", false}
 };
 
-String TRACKS[TRACKS_COUNT] = {
+// --- DF Player Track Paths ---
+const String DF_CLOCK_BEEP = "/01.mp3";
+const String DF_CLOCK_TICK = "/02.mp3";
+const String DF_UA_ANTHEM = "/03.mp3";
+const String DF_SIREN_1 = "/04.mp3";
+const String DF_SIREN_2 = "/05.mp3";
+const String DF_SIREN_3 = "/06.mp3";
+const String DF_SIREN_4 = "/07.mp3";
+const String DF_SIREN_5 = "/08.mp3";
+const String DF_SIREN_6 = "/09.mp3";
+const String DF_SIREN_7 = "/10.mp3";
+const String DF_SIREN_8 = "/11.mp3";
+const String DF_SIREN_9 = "/12.mp3";
+const String DF_SIREN_10 = "/13.mp3";
+const String DF_THE_HOBBIT = "/14.mp3";
+const String DF_THE_MATRIX = "/15.mp3";
+const String DF_AVENGERS = "/16.mp3";
+const String DF_TERMINATOR_SHORT = "/17.mp3";
+const String DF_PIRATES_OF_THE_CARRIBEAN = "/18.mp3";
+const String DF_SIREN_11 = "/19.mp3";
+const String DF_NOTIFICATION_NEWS = "/20.mp3";
+const String DF_GOOD_MORNING_VIETNAM = "/21.mp3";
+const String DF_NOTIFICATION_R2D2 = "/22.mp3";
+const String DF_NOTIFICATION_STARTREK = "/23.mp3";
+const String DF_AIR_RAID_1 = "/24.mp3";
+const String DF_CAROL_OF_THE_BELLS = "/25.mp3";
+const String DF_NOTIFICATION_BACK_TO_THE_FUTURE = "/26.mp3";
+const String DF_IMPERIAL_MARCH = "/27.mp3";
+const String DF_GOOD_BAD_UGLY = "/28.mp3";
+const String DF_HARRY_POTTER = "/29.mp3";
+const String DF_MARCH = "/30.mp3";
+const String DF_MANDALORIAN_CALL = "/31.mp3";
+const String DF_MARIO = "/32.mp3";
+const String DF_PACMAN = "/33.mp3";
+const String DF_HELLDIVERS = "/34.mp3";
+
+const String TRACKS[TRACKS_COUNT] = {
   DF_CLOCK_TICK,
   DF_CLOCK_BEEP,
   DF_UA_ANTHEM
 };
 
-SettingListItem TRACK_NAMES[TRACKS_COUNT] PROGMEM = {
+const SettingListItem TRACK_NAMES[TRACKS_COUNT] PROGMEM = {
   {0, "Годинникова стрілка", false},
   {1, "Годинник", false},
   {2, "Гімн України", false}

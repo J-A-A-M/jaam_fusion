@@ -208,75 +208,76 @@ static const char LONG_CLICK_SOUND[]     PROGMEM = "LongClick:d=8,o=4,b=300:4f";
 constexpr int MELODIES_COUNT = 29;
 extern const char* MELODIES[MELODIES_COUNT];
 
-extern SettingListItem MELODY_NAMES[MELODIES_COUNT];
+extern const SettingListItem MELODY_NAMES[MELODIES_COUNT];
 
-static const String DF_CLOCK_BEEP = "/01.mp3";
-static const String DF_CLOCK_TICK = "/02.mp3";
-static const String DF_UA_ANTHEM = "/03.mp3";
-static const String DF_SIREN_1 = "/04.mp3";
-static const String DF_SIREN_2 = "/05.mp3";
-static const String DF_SIREN_3 = "/06.mp3";
-static const String DF_SIREN_4 = "/07.mp3";
-static const String DF_SIREN_5 = "/08.mp3";
-static const String DF_SIREN_6 = "/09.mp3";
-static const String DF_SIREN_7 = "/10.mp3";
-static const String DF_SIREN_8 = "/11.mp3";
-static const String DF_SIREN_9 = "/12.mp3";
-static const String DF_SIREN_10 = "/13.mp3";
-static const String DF_THE_HOBBIT = "/14.mp3";
-static const String DF_THE_MATRIX = "/15.mp3";
-static const String DF_AVENGERS = "/16.mp3";
-static const String DF_TERMINATOR_SHORT = "/17.mp3";
-static const String DF_PIRATES_OF_THE_CARRIBEAN = "/18.mp3";
-static const String DF_SIREN_11 = "/19.mp3";
-static const String DF_NOTIFICATION_NEWS = "/20.mp3";
-static const String DF_GOOD_MORNING_VIETNAM = "/21.mp3";
-static const String DF_NOTIFICATION_R2D2 = "/22.mp3";
-static const String DF_NOTIFICATION_STARTREK = "/23.mp3";
-static const String DF_AIR_RAID_1 = "/24.mp3";
-static const String DF_CAROL_OF_THE_BELLS = "/25.mp3";
-static const String DF_NOTIFICATION_BACK_TO_THE_FUTURE = "/26.mp3";
-static const String DF_IMPERIAL_MARCH = "/27.mp3";
-static const String DF_GOOD_BAD_UGLY = "/28.mp3";
-static const String DF_HARRY_POTTER = "/29.mp3";
-static const String DF_MARCH = "/30.mp3";
-static const String DF_MANDALORIAN_CALL = "/31.mp3";
-static const String DF_MARIO = "/32.mp3";
-static const String DF_PACMAN = "/33.mp3";
-static const String DF_HELLDIVERS = "/34.mp3";  
+// --- DF Player Track Paths ---
+extern const String DF_CLOCK_BEEP;
+extern const String DF_CLOCK_TICK;
+extern const String DF_UA_ANTHEM;
+extern const String DF_SIREN_1;
+extern const String DF_SIREN_2;
+extern const String DF_SIREN_3;
+extern const String DF_SIREN_4;
+extern const String DF_SIREN_5;
+extern const String DF_SIREN_6;
+extern const String DF_SIREN_7;
+extern const String DF_SIREN_8;
+extern const String DF_SIREN_9;
+extern const String DF_SIREN_10;
+extern const String DF_THE_HOBBIT;
+extern const String DF_THE_MATRIX;
+extern const String DF_AVENGERS;
+extern const String DF_TERMINATOR_SHORT;
+extern const String DF_PIRATES_OF_THE_CARRIBEAN;
+extern const String DF_SIREN_11;
+extern const String DF_NOTIFICATION_NEWS;
+extern const String DF_GOOD_MORNING_VIETNAM;
+extern const String DF_NOTIFICATION_R2D2;
+extern const String DF_NOTIFICATION_STARTREK;
+extern const String DF_AIR_RAID_1;
+extern const String DF_CAROL_OF_THE_BELLS;
+extern const String DF_NOTIFICATION_BACK_TO_THE_FUTURE;
+extern const String DF_IMPERIAL_MARCH;
+extern const String DF_GOOD_BAD_UGLY;
+extern const String DF_HARRY_POTTER;
+extern const String DF_MARCH;
+extern const String DF_MANDALORIAN_CALL;
+extern const String DF_MARIO;
+extern const String DF_PACMAN;
+extern const String DF_HELLDIVERS;
 
 constexpr int TRACKS_COUNT = 3;
-extern String TRACKS[TRACKS_COUNT];
+extern const String TRACKS[TRACKS_COUNT];
 
-extern SettingListItem TRACK_NAMES[TRACKS_COUNT];
+extern const SettingListItem TRACK_NAMES[TRACKS_COUNT];
 
 constexpr int SOUND_SOURCES_COUNT = 3;
-extern SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT];
+extern const SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT];
 
 // --- Other Settings ---
 constexpr int LED_COLOR_FORMATS_COUNT = 8;
-extern SettingListItem LED_COLOR_FORMATS[LED_COLOR_FORMATS_COUNT];
+extern const SettingListItem LED_COLOR_FORMATS[LED_COLOR_FORMATS_COUNT];
 
 constexpr int LED_FREQUENCIES_COUNT = 2;
-extern SettingListItem LED_FREQUENCIES[LED_FREQUENCIES_COUNT];
+extern const SettingListItem LED_FREQUENCIES[LED_FREQUENCIES_COUNT];
 
 constexpr int SINGLE_CLICKS_COUNT = 8;
-extern SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT];
+extern const SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT];
 
 constexpr int LONG_CLICKS_COUNT = 10;
-extern SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT];
+extern const SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT];
 
 constexpr int MAP_MODES_COUNT = 8;
-extern SettingListItem MAP_MODES[MAP_MODES_COUNT];
+extern const SettingListItem MAP_MODES[MAP_MODES_COUNT];
 
 constexpr int ALERT_CLEAR_PIN_MODES_COUNT = 2;
-extern SettingListItem ALERT_CLEAR_PIN_MODES[ALERT_CLEAR_PIN_MODES_COUNT];
+extern const SettingListItem ALERT_CLEAR_PIN_MODES[ALERT_CLEAR_PIN_MODES_COUNT];
 
 constexpr int PIN_LEVELS_COUNT = 2;
-extern SettingListItem PIN_LEVELS[PIN_LEVELS_COUNT];
+extern const SettingListItem PIN_LEVELS[PIN_LEVELS_COUNT];
 
 constexpr int TIMEZONES_COUNT = 23;
-extern SettingListItem TIMEZONES[TIMEZONES_COUNT];
+extern const SettingListItem TIMEZONES[TIMEZONES_COUNT];
 
 struct TimezoneInfo {
     int id;          // ID з TIMEZONES
@@ -288,7 +289,7 @@ struct TimezoneInfo {
     int dstEnd[4];   // Кінець літнього часу
 };
 
-extern TimezoneInfo TIMEZONE_OFFSETS[];
+extern const TimezoneInfo TIMEZONE_OFFSETS[TIMEZONES_COUNT];
 
 constexpr int DISPLAY_MODES_COUNT = 8;
 extern SettingListItem DISPLAY_MODES[DISPLAY_MODES_COUNT];
@@ -297,19 +298,19 @@ constexpr int AUTO_BRIGHTNESS_OPTIONS_COUNT = 3;
 extern SettingListItem AUTO_BRIGHTNESS_MODES[AUTO_BRIGHTNESS_OPTIONS_COUNT];
 
 constexpr int BG_LED_MODES_COUNT = 3;
-extern SettingListItem BG_LED_MODES[BG_LED_MODES_COUNT];
+extern const SettingListItem BG_LED_MODES[BG_LED_MODES_COUNT];
 
 constexpr int DISPLAY_TYPES_COUNT = 4;
-extern SettingListItem DISPLAY_TYPES[DISPLAY_TYPES_COUNT];
+extern const SettingListItem DISPLAY_TYPES[DISPLAY_TYPES_COUNT];
 
 constexpr int DISPLAY_HEIGHT_COUNT = 2;
-extern SettingListItem DISPLAY_HEIGHTS[DISPLAY_HEIGHT_COUNT];
+extern const SettingListItem DISPLAY_HEIGHTS[DISPLAY_HEIGHT_COUNT];
 
 constexpr int DISPLAY_ROTATION_COUNT = 4;
-extern SettingListItem DISPLAY_ROTATIONS[DISPLAY_ROTATION_COUNT];
+extern const SettingListItem DISPLAY_ROTATIONS[DISPLAY_ROTATION_COUNT];
 
 constexpr int CLOCK_FONTS_COUNT = 6;
-extern SettingListItem CLOCK_FONTS[CLOCK_FONTS_COUNT];
+extern const SettingListItem CLOCK_FONTS[CLOCK_FONTS_COUNT];
 
 enum HARDWARE {
     JAAM_1_3 = 0,
@@ -328,10 +329,10 @@ enum HARDWARE {
 #else
 #define HARDWARE_OPTIONS_COUNT 5
 #endif
-extern SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT];
+extern const SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT];
 
 constexpr int ANIMATION_TYPES_COUNT = 10;
-extern SettingListItem ANIMATION_TYPES[ANIMATION_TYPES_COUNT];
+extern const SettingListItem ANIMATION_TYPES[ANIMATION_TYPES_COUNT];
 
 enum Type {
     UNKNOWN = 0,

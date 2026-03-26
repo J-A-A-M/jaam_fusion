@@ -1559,7 +1559,7 @@ void reconnectStripService() {
 
 // --- TIME Functions ---
 
-static TimezoneInfo* getTimezoneInfo(int timezoneId) {
+static const TimezoneInfo* getTimezoneInfo(int timezoneId) {
     // Шукаємо timezone по ID в масиві TIMEZONE_OFFSETS
     for (int i = 0; i < TIMEZONES_COUNT; i++) {
         if (TIMEZONE_OFFSETS[i].id == timezoneId) {
@@ -1571,7 +1571,7 @@ static TimezoneInfo* getTimezoneInfo(int timezoneId) {
 }
 
 static void applyTimezoneSettings(int timezoneId) {
-    TimezoneInfo* tzInfo = getTimezoneInfo(timezoneId);
+    const TimezoneInfo* tzInfo = getTimezoneInfo(timezoneId);
     LOG.printf("[TIME] Applying timezone ID %d (offset: %d hours %d minutes)\n", 
                timezoneId, tzInfo->offset, tzInfo->minutes);
     timeClient.setTimeZone(tzInfo->offset, tzInfo->minutes);
