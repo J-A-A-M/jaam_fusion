@@ -3156,40 +3156,91 @@ void showTechnicalInfo() {
 }
 
 void showMicroclimate() {
-    float temp = climate.getTemperature();
-    float hum = climate.getHumidity();
-    char climateInfo[50];
+    // Check sensor availability first
+    bool hasTemp = climate.isTemperatureAvailable();
+    bool hasHum = climate.isHumidityAvailable();
+    bool hasPressure = climate.isPressureAvailable();
     
-    bool hasTemp = !isnan(temp);
-    bool hasHum = !isnan(hum);
+    // Only read values if sensors are available
+    float temp = hasTemp ? climate.getTemperature() : NAN;
+    float hum = hasHum ? climate.getHumidity() : NAN;
+    float pressure = hasPressure ? climate.getPressure() : NAN;
     
-    if (hasTemp && hasHum) {
-        snprintf(climateInfo, sizeof(climateInfo), "%.1f℃ %.1f%%", temp, hum);
-    } else if (hasTemp) {
-        snprintf(climateInfo, sizeof(climateInfo), "%.1f℃", temp);
-    } else if (hasHum) {
-        snprintf(climateInfo, sizeof(climateInfo), "%.1f%%", hum);
-    } else {
-        snprintf(climateInfo, sizeof(climateInfo), "Немає даних");
+    String line1 = "";  // Temperature
+    String line2 = "";  // Humidity + Pressure
+    
+    // First line - Temperature
+    if (hasTemp) {
+        char tempBuf[30];
+        snprintf(tempBuf, sizeof(tempBuf), "%.1f℃", temp);
+        line1 = String(tempBuf);
     }
     
-    display.printMessage(climateInfo, "Мікроклімат");
+    // Second line - Humidity and Pressure
+    if (hasHum && hasPressure) {
+        char climBuf[50];
+        snprintf(climBuf, sizeof(climBuf), "%.1f%% %.0fмм", hum, pressure);
+        line2 = String(climBuf);
+    } else if (hasHum) {
+        char humBuf[30];
+        snprintf(humBuf, sizeof(humBuf), "%.1f%%", hum);
+        line2 = String(humBuf);
+    } else if (hasPressure) {
+        char pressBuf[30];
+        snprintf(pressBuf, sizeof(pressBuf), "%.0fмм", pressure);
+        line2 = String(pressBuf);
+    }
+    
+    // If no data available
+    if (line1.isEmpty() && line2.isEmpty()) {
+        line1 = "Немає даних";
+    }
+    
+    display.printMultilineMessage(line1, line2, "", "", "Мікроклімат");
 }
 
 void showCombined() {
-    int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), 2, timeClient.second());
+    // Check what modes are enabled
+    bool displayWeather = settings.getBool(TOGGLE_MODE_WEATHER);
+    bool displayMicroclimate = climate.isAnySensorAvailable() && settings.getBool(TOGGLE_MODE_MICROCLIMATE);
     
-    switch(periodIndex) {
-        case 0: // Show Clock
-            showClock();
-            break;
-        case 1: // Show Weather
-            showWeather();
-            break;
-        default:
-            showClock();
-            break;
+    // Calculate number of periods: Clock (always) + Weather (optional) + Microclimate (optional)
+    int numPeriods = 1; // Always show clock
+    if (displayWeather) numPeriods++;
+    if (displayMicroclimate) numPeriods++;
+    
+    int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), numPeriods, timeClient.second());
+    
+    // Build dynamic display sequence
+    int currentPeriod = 0;
+    
+    // Period 0: Always Clock
+    if (periodIndex == currentPeriod) {
+        showClock();
+        return;
     }
+    currentPeriod++;
+    
+    // Next period: Weather (if enabled)
+    if (displayWeather) {
+        if (periodIndex == currentPeriod) {
+            showWeather();
+            return;
+        }
+        currentPeriod++;
+    }
+    
+    // Next period: Microclimate (if enabled and available)
+    if (displayMicroclimate) {
+        if (periodIndex == currentPeriod) {
+            showMicroclimate();
+            return;
+        }
+        currentPeriod++;
+    }
+    
+    // Fallback to clock
+    showClock();
 }
 
 // --- Display Process ---
