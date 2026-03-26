@@ -3156,13 +3156,15 @@ void showTechnicalInfo() {
 }
 
 void showMicroclimate() {
-    float temp = climate.getTemperature();
-    float hum = climate.getHumidity();
-    float pressure = climate.getPressure();
+    // Check sensor availability first
+    bool hasTemp = climate.isTemperatureAvailable();
+    bool hasHum = climate.isHumidityAvailable();
+    bool hasPressure = climate.isPressureAvailable();
     
-    bool hasTemp = !isnan(temp);
-    bool hasHum = !isnan(hum);
-    bool hasPressure = !isnan(pressure);
+    // Only read values if sensors are available
+    float temp = hasTemp ? climate.getTemperature() : NAN;
+    float hum = hasHum ? climate.getHumidity() : NAN;
+    float pressure = hasPressure ? climate.getPressure() : NAN;
     
     String line1 = "";  // Temperature
     String line2 = "";  // Humidity + Pressure
@@ -3198,26 +3200,47 @@ void showMicroclimate() {
 }
 
 void showCombined() {
-    // Check if microclimate sensors are available and enabled
+    // Check what modes are enabled
+    bool displayWeather = settings.getBool(TOGGLE_MODE_WEATHER);
     bool displayMicroclimate = climate.isAnySensorAvailable() && settings.getBool(TOGGLE_MODE_MICROCLIMATE);
-    int numPeriods = displayMicroclimate ? 3 : 2;
+    
+    // Calculate number of periods: Clock (always) + Weather (optional) + Microclimate (optional)
+    int numPeriods = 1; // Always show clock
+    if (displayWeather) numPeriods++;
+    if (displayMicroclimate) numPeriods++;
     
     int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), numPeriods, timeClient.second());
     
-    switch(periodIndex) {
-        case 0: // Show Clock
-            showClock();
-            break;
-        case 1: // Show Weather
-            showWeather();
-            break;
-        case 2: // Show Microclimate
-            showMicroclimate();
-            break;
-        default:
-            showClock();
-            break;
+    // Build dynamic display sequence
+    int currentPeriod = 0;
+    
+    // Period 0: Always Clock
+    if (periodIndex == currentPeriod) {
+        showClock();
+        return;
     }
+    currentPeriod++;
+    
+    // Next period: Weather (if enabled)
+    if (displayWeather) {
+        if (periodIndex == currentPeriod) {
+            showWeather();
+            return;
+        }
+        currentPeriod++;
+    }
+    
+    // Next period: Microclimate (if enabled and available)
+    if (displayMicroclimate) {
+        if (periodIndex == currentPeriod) {
+            showMicroclimate();
+            return;
+        }
+        currentPeriod++;
+    }
+    
+    // Fallback to clock
+    showClock();
 }
 
 // --- Display Process ---
