@@ -62,16 +62,17 @@ async def send_command(websocket):
     """
     print("\n" + "=" * 60)
     print("Available commands:")
-    print("  1. Set map mode - mode_id: 0=OFF, 1=ALERT, 2=WEATHER, 3=FLAG, 4=LAMP")
-    print("  2. Set lamp color and brightness")
-    print("  3. Set home region")
+    print("  1. Set map mode - mode_id: 0=OFF, 1=ALERT, 2=WEATHER, 3=FLAG, 4=RANDOM, 5=LAMP")
+    print("  2. Set display mode - mode_id: 0=OFF, 1=CLOCK, 2=WEATHER, 3=TECH_INFO, 4=CLIMATE, 9=COMBINED")
+    print("  3. Set lamp color and brightness")
+    print("  4. Set home region")
     print("  q. Quit")
     print("=" * 60)
 
     while True:
-        cmd = input("Enter command (1/2/3/q): ").strip()
+        cmd = input("Enter command (1/2/3/4/q): ").strip()
         if cmd == "1":
-            mode_id = input("Enter map mode id (0-4): ").strip()
+            mode_id = input("Enter map mode id (0-5): ").strip()
             try:
                 mode_id = int(mode_id)
             except ValueError:
@@ -81,6 +82,16 @@ async def send_command(websocket):
             await websocket.send(json.dumps(msg))
             print(f"Sent: {msg}")
         elif cmd == "2":
+            mode_id = input("Enter display mode id (0-9): ").strip()
+            try:
+                mode_id = int(mode_id)
+            except ValueError:
+                print("Invalid mode id")
+                continue
+            msg = {"type": "set_display_mode", "mode_id": mode_id}
+            await websocket.send(json.dumps(msg))
+            print(f"Sent: {msg}")
+        elif cmd == "3":
             color = input("Enter lamp color (e.g. #FF0000): ").strip()
             brightness = input("Enter brightness (0-100): ").strip()
             try:
@@ -91,7 +102,7 @@ async def send_command(websocket):
             msg = {"type": "set_lamp", "color": color, "brightness": brightness}
             await websocket.send(json.dumps(msg))
             print(f"Sent: {msg}")
-        elif cmd == "3":
+        elif cmd == "4":
             region_id = input("Enter home region id: ").strip()
             try:
                 region_id = int(region_id)
@@ -124,20 +135,50 @@ async def receive_messages(websocket):
 
                 # Виводимо зручний summary
                 if msg_type == "initial_state":
-                    mode_names = {0: "OFF", 1: "ALERT", 2: "WEATHER", 3: "FLAG", 4: "LAMP"}
-                    mode_id = data.get("map_mode_id")
-                    mode_name = mode_names.get(mode_id, f"Unknown({mode_id})")
+                    mode_names = {0: "OFF", 1: "ALERT", 2: "WEATHER", 3: "FLAG", 4: "RANDOM", 5: "LAMP"}
+                    display_names = {0: "OFF", 1: "CLOCK", 2: "WEATHER", 3: "TECH_INFO", 4: "CLIMATE", 9: "COMBINED"}
+
+                    map_mode_id = data.get("map_mode_id")
+                    map_mode_name = mode_names.get(map_mode_id, f"Unknown({map_mode_id})")
+
+                    display_mode_id = data.get("display_mode_id")
+                    display_mode_name = display_names.get(display_mode_id, f"Unknown({display_mode_id})")
 
                     flags16 = data.get("home_alert_flags", 0)
                     active_alerts = parse_alert_flags(flags16)
 
                     print("✓ Initial state received")
                     print(f"  Device: {data.get('chip_id')} (FW: {data.get('fw_version')})")
+                    if data.get("fw_latest"):
+                        print(f"  Latest FW: {data.get('fw_latest')}")
                     print(f"  Name: {data.get('device_name', 'N/A')}")
-                    print(f"  Map mode: {mode_name} (id={mode_id})")
+                    print(f"  Map mode: {map_mode_name} (id={map_mode_id})")
+                    print(f"  Display mode: {display_mode_name} (id={display_mode_id})")
                     print(f"  Home region: {data.get('home_region')}")
                     print(f"  Home alert: {', '.join(active_alerts)} (flags=0x{flags16:04X})")
                     print(f"  Home temp: {data.get('home_district_temp', 'N/A')}°C")
+
+                    # Supported features
+                    supported_map = data.get("supported_map_modes", [])
+                    supported_display = data.get("supported_display_modes", [])
+                    supported_sensors = data.get("supported_sensors", [])
+                    if supported_map:
+                        print(f"  Supported map modes: {supported_map}")
+                    if supported_display:
+                        print(f"  Supported display modes: {supported_display}")
+                    if supported_sensors:
+                        print(f"  Supported sensors: {', '.join(supported_sensors)}")
+
+                    # Sensor data
+                    if "climate_temp" in data:
+                        print(f"  Climate temp: {data.get('climate_temp')}°C")
+                    if "climate_humidity" in data:
+                        print(f"  Climate humidity: {data.get('climate_humidity')}%")
+                    if "climate_pressure" in data:
+                        print(f"  Climate pressure: {data.get('climate_pressure')} hPa")
+                    if "light_level" in data:
+                        print(f"  Light level: {data.get('light_level')} lx")
+
                     print(f"  Memory: {data.get('used_memory', 0) / 1024:.1f} KB")
                     print(
                         f"  Uptime: {format_uptime(data.get('uptime'))}, WiFi: {format_uptime(data.get('wifi_uptime'))}"
@@ -150,10 +191,16 @@ async def receive_messages(websocket):
                     print(f"  Lamp: {lamp.get('color')} @ {lamp.get('brightness')}%")
 
                 elif msg_type == "map_mode_change":
-                    mode_names = {0: "OFF", 1: "ALERT", 2: "WEATHER", 3: "FLAG", 4: "LAMP"}
+                    mode_names = {0: "OFF", 1: "ALERT", 2: "WEATHER", 3: "FLAG", 4: "RANDOM", 5: "LAMP"}
                     mode_id = data.get("map_mode_id")
                     mode_name = mode_names.get(mode_id, f"Unknown({mode_id})")
                     print(f"→ Map mode changed to: {mode_name} (id={mode_id})")
+
+                elif msg_type == "display_mode_change":
+                    display_names = {0: "OFF", 1: "CLOCK", 2: "WEATHER", 3: "TECH_INFO", 4: "CLIMATE", 9: "COMBINED"}
+                    mode_id = data.get("display_mode_id")
+                    mode_name = display_names.get(mode_id, f"Unknown({mode_id})")
+                    print(f"→ Display mode changed to: {mode_name} (id={mode_id})")
 
                 elif msg_type == "lamp_change":
                     lamp = data.get("lamp", {})
@@ -185,6 +232,25 @@ async def receive_messages(websocket):
                 elif msg_type == "home_district_temp_change":
                     print(f"→ Home district temp changed to: {data.get('home_district_temp')}°C")
 
+                elif msg_type == "climate_data_change":
+                    parts = []
+                    if "climate_temp" in data:
+                        parts.append(f"temp={data.get('climate_temp')}°C")
+                    if "climate_humidity" in data:
+                        parts.append(f"humidity={data.get('climate_humidity')}%")
+                    if "climate_pressure" in data:
+                        parts.append(f"pressure={data.get('climate_pressure')} hPa")
+                    print(f"→ Climate data: {', '.join(parts) if parts else 'N/A'}")
+
+                elif msg_type == "light_level_change":
+                    print(f"→ Light level changed to: {data.get('light_level')} lx")
+
+                elif msg_type == "firmware_update":
+                    print(f"→ New firmware available: {data.get('fw_latest')}")
+
+                elif msg_type == "fw_update_progress":
+                    print(f"→ Firmware update progress: {data.get('progress')}%")
+
             except json.JSONDecodeError as e:
                 print(f"\n✗ Failed to parse JSON: {e}")
 
@@ -203,9 +269,9 @@ async def test_commands(websocket):
     print("Testing commands...")
     print("=" * 60)
 
-    # Тест 1: Змінюємо режим мапи на LAMP (mode_id=4)
-    print("\n→ Sending: set_map_mode to LAMP (mode_id=4)")
-    await websocket.send(json.dumps({"type": "set_map_mode", "mode_id": 4}))
+    # Тест 1: Змінюємо режим мапи на LAMP (mode_id=5)
+    print("\n→ Sending: set_map_mode to LAMP (mode_id=5)")
+    await websocket.send(json.dumps({"type": "set_map_mode", "mode_id": 5}))
     await asyncio.sleep(2)
 
     # Тест 2: Змінюємо колір та яскравість лампи

@@ -34,7 +34,8 @@ extern void requestFirmwareUpdate(const char* firmwareId);
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
-    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), lightLevel(NAN) {
+    climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), lightLevel(NAN),
+    sensorTempAvailable(false), sensorHumidityAvailable(false), sensorPressureAvailable(false), sensorLightAvailable(false) {
     fwLatestVersion[0] = '\0';
 }
 
@@ -73,6 +74,13 @@ void JaamApi::setClimateData(float temperature, float humidity, float pressure) 
 
 void JaamApi::setLightLevel(float level) {
     lightLevel = level;
+}
+
+void JaamApi::setSensorAvailability(bool tempAvailable, bool humidityAvailable, bool pressureAvailable, bool lightAvailable) {
+    this->sensorTempAvailable = tempAvailable;
+    this->sensorHumidityAvailable = humidityAvailable;
+    this->sensorPressureAvailable = pressureAvailable;
+    this->sensorLightAvailable = lightAvailable;
 }
 
 void JaamApi::reconfigure() {
@@ -214,6 +222,37 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     // Рівень освітлення з датчика світла, якщо є
     if (!isnan(lightLevel)) {
         doc["light_level"] = lightLevel;
+    }
+
+    // Список підтримуваних режимів мапи
+    JsonArray supportedMapModes = doc["supported_map_modes"].to<JsonArray>();
+    for (int i = 0; i < MAP_MODES_COUNT; i++) {
+        if (!MAP_MODES[i].ignore) {
+            supportedMapModes.add(MAP_MODES[i].id);
+        }
+    }
+
+    // Список підтримуваних режимів дисплею
+    JsonArray supportedDisplayModes = doc["supported_display_modes"].to<JsonArray>();
+    for (int i = 0; i < DISPLAY_MODES_COUNT; i++) {
+        if (!DISPLAY_MODES[i].ignore) {
+            supportedDisplayModes.add(DISPLAY_MODES[i].id);
+        }
+    }
+
+    // Список підтримуваних сенсорів
+    JsonArray supportedSensors = doc["supported_sensors"].to<JsonArray>();
+    if (sensorTempAvailable) {
+        supportedSensors.add("temperature");
+    }
+    if (sensorHumidityAvailable) {
+        supportedSensors.add("humidity");
+    }
+    if (sensorPressureAvailable) {
+        supportedSensors.add("pressure");
+    }
+    if (sensorLightAvailable) {
+        supportedSensors.add("light");
     }
 
     // Налаштування лампи

@@ -16,6 +16,7 @@ public:
     void setHomeDistrictTemp(int temp);
     void setClimateData(float temperature, float humidity, float pressure);
     void setLightLevel(float lightLevel);
+    void setSensorAvailability(bool tempAvailable, bool humidityAvailable, bool pressureAvailable, bool lightAvailable);
     void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
@@ -73,6 +74,12 @@ private:
 
     // Light sensor data
     float lightLevel;
+
+    // Sensor availability flags
+    bool sensorTempAvailable;
+    bool sensorHumidityAvailable;
+    bool sensorPressureAvailable;
+    bool sensorLightAvailable;
 
     // Latest firmware version available
     char fwLatestVersion[25];

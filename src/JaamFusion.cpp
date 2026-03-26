@@ -2192,6 +2192,14 @@ void initSensors() {
         press = climate.getPressure();
     }
     api.setClimateData(temp, hum, press);
+    
+    // Set sensor availability for API
+    api.setSensorAvailability(
+        climate.isTemperatureAvailable(),
+        climate.isHumidityAvailable(),
+        climate.isPressureAvailable(),
+        lightSensor.isLightSensorAvailable()
+    );
 
     rebuildSensorsListItems();
 
