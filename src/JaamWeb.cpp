@@ -1012,14 +1012,17 @@ void JaamWeb::handleUiPage() {
     }
 }
 
-// Helper to push dropdown options to a JsonArray as compact lists: [id, name, sub]
+// Helper to push dropdown options to a JsonArray as compact lists: [id, name, sub, disabled]
 static void appendOptionsList(JsonArray arr, const SettingListItem items[], int itemCount) {
     for (int i = 0; i < itemCount; ++i) {
-        if (items[i].ignore) continue;
+        // Skip items with ignore=true unless they have showDisabled=true
+        if (items[i].ignore && !items[i].showDisabled) continue;
+        
         JsonArray opt = arr.add<JsonArray>();
         opt.add(items[i].id);
         opt.add(items[i].name);
         opt.add(items[i].sub ? 1 : 0);
+        opt.add(items[i].showDisabled ? 1 : 0);  // disabled
     }
 }
 

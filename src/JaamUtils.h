@@ -80,6 +80,16 @@ inline const char* getEventTypeName(int8_t eventType) {
     }
 }
 
+// Utility function: get SettingListItem by ID from array
+inline SettingListItem* getSettingItemById(SettingListItem* items, int count, int id) {
+    for (int i = 0; i < count; i++) {
+        if (items[i].id == id) {
+            return &items[i];
+        }
+    }
+    return nullptr;
+}
+
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
 extern time_t                         lastWifiConnectTime;
@@ -1071,7 +1081,7 @@ inline const char* getNameById(const SettingListItem list[], int id, int size) {
   return "";
 }
 
-inline int getIndexById(SettingListItem list[], int id, int size) {
+inline int getIndexById(const SettingListItem list[], int id, int size) {
   for (int i = 0; i < size; i++) {
     if (list[i].id == id) {
       return i;

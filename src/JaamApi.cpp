@@ -4,32 +4,27 @@
 #include "JaamUtils.h"
 #include "JaamLogs.h"
 
-// Helper functions for mode validation
-bool JaamApi::isValidMapMode(int mode_id) const {
-    for (int i = 0; i < MAP_MODES_COUNT; i++) {
-        if (MAP_MODES[i].id == mode_id) {
-            return true;
+// Generic helper function for validating item by ID
+static bool isValidItemId(const SettingListItem* items, int count, int id) {
+    for (int i = 0; i < count; i++) {
+        if (items[i].id == id) {
+            return !items[i].ignore;
         }
     }
     return false;
+}
+
+// Helper functions for mode validation
+bool JaamApi::isValidMapMode(int mode_id) const {
+    return isValidItemId(MAP_MODES, MAP_MODES_COUNT, mode_id);
 }
 
 bool JaamApi::isValidDisplayMode(int mode_id) const {
-    for (int i = 0; i < DISPLAY_MODES_COUNT; i++) {
-        if (DISPLAY_MODES[i].id == mode_id) {
-            return true;
-        }
-    }
-    return false;
+    return isValidItemId(DISPLAY_MODES, DISPLAY_MODES_COUNT, mode_id);
 }
 
 bool JaamApi::isValidRegionId(int region_id) const {
-    for (int i = 0; i < MAX_REGIONS; i++) {
-        if (DISTRICTS[i].id == region_id) {
-            return true;
-        }
-    }
-    return false;
+    return isValidItemId(DISTRICTS, MAX_REGIONS, region_id);
 }
 
 
