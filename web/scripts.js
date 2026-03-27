@@ -550,6 +550,47 @@ function markdownToHtml(markdown) {
 // Release notes cache to avoid redundant GitHub API calls
 const releaseNotesCache = {};
 
+// Global reference to lists for dynamic updates
+let globalLists = {};
+
+// Update firmware_id dropdown options based on selected channel
+function updateFirmwareIdOptions(channelValue) {
+    const firmwareSelect = document.getElementById('firmware_id');
+    if (!firmwareSelect) return;
+    
+    // Determine which list to use based on channel
+    const listName = channelValue === '0' ? 'firmware_versions_prod' : 'firmware_versions_beta';
+    const opts = globalLists[listName] || [];
+    
+    // Store current selection
+    const currentValue = firmwareSelect.value;
+    
+    // Clear existing options
+    firmwareSelect.innerHTML = '';
+    
+    // Add new options
+    let hasCurrentValue = false;
+    for (const o of opts) {
+        const el = optionEl(o[0], o[1], o[2], o[3]);
+        if (String(o[0]) === currentValue) {
+            el.selected = true;
+            hasCurrentValue = true;
+        }
+        firmwareSelect.appendChild(el);
+    }
+    
+    // If current value not in new list, select first option
+    if (!hasCurrentValue && opts.length > 0) {
+        firmwareSelect.value = opts[0][0];
+    }
+    
+    // Update release notes for the selected version
+    const releaseNotesPanel = document.getElementById('releaseNotesPanel');
+    if (releaseNotesPanel && firmwareSelect.value) {
+        loadReleaseNotes(firmwareSelect.value, releaseNotesPanel);
+    }
+}
+
 // Load release notes for a specific firmware version from GitHub
 async function loadReleaseNotes(version, panel) {
     if (!panel || !version) return;
@@ -747,7 +788,14 @@ function renderControl(ctrl, lists) {
             if (String(o[0]) === String(current)) el.selected = true;
             sel.appendChild(el);
         }
-        sel.onchange = (e) => updateParameter(name, e.target.value);
+        sel.onchange = (e) => {
+            updateParameter(name, e.target.value);
+            
+            // Handle fw_update_channel change - update firmware_id options
+            if (name === 'fw_update_channel') {
+                updateFirmwareIdOptions(e.target.value);
+            }
+        };
         
         div.appendChild(lab);
         div.appendChild(sel);
@@ -773,6 +821,7 @@ function renderControl(ctrl, lists) {
         sel.id = name;
         sel.name = name;
         
+        // Use provided list as default (will be updated by updateFirmwareIdOptions for firmware_id)
         const opts = lists[list] || [];
         for (const o of opts) {
             const el = optionEl(o[0], o[1], o[2], o[3]);
@@ -1249,6 +1298,9 @@ async function renderUI() {
             controlsBySection[section].push(ctrl);
         }
         
+        // Store lists globally for dynamic updates
+        globalLists = lists;
+        
         // Render controls into their respective sections
         for (const section of sections) {
             const sectionContent = document.getElementById('content-' + section.id);
@@ -1277,6 +1329,12 @@ async function renderUI() {
                     });
                 }
             }
+        }
+        
+        // Initialize firmware_id with correct list based on fw_update_channel
+        const channelSelect = document.getElementById('fw_update_channel');
+        if (channelSelect) {
+            updateFirmwareIdOptions(channelSelect.value);
         }
         
         // Setup visibility listeners and update initial state
