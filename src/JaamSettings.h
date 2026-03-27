@@ -24,6 +24,7 @@ public:
     bool hasKey(Type type);
     void getSettingsBackup(Print* stream, const char* fwVersion, const char* chipID, const char* time);
     bool restoreSettingsBackup(const char* settings);
+    bool resetToDefaults();
     
     // Реєстрація callback для відстеження змін
     void setChangeCallback(SettingsChangeCallback callback);

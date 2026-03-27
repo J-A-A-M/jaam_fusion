@@ -343,6 +343,144 @@ function updateTextParameter(name, value) {
         });
 }
 
+// Settings backup/restore/reset functions
+function downloadSettingsBackup() {
+    fetch('/settings/backup')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to download backup');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Get filename from Content-Disposition header or use default
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            
+            // Generate filename with timestamp
+            const now = new Date();
+            const timestamp = now.getFullYear() + 
+                              String(now.getMonth() + 1).padStart(2, '0') + 
+                              String(now.getDate()).padStart(2, '0') + '_' +
+                              String(now.getHours()).padStart(2, '0') + 
+                              String(now.getMinutes()).padStart(2, '0') + 
+                              String(now.getSeconds()).padStart(2, '0');
+            a.download = 'settings_backup_' + timestamp + '.json';
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            console.log('Settings backup downloaded successfully');
+        })
+        .catch(error => {
+            console.error('Error downloading backup:', error);
+            alert('Помилка завантаження backup: ' + error.message);
+        });
+}
+
+function restoreSettingsBackup(file) {
+    if (!file) {
+        console.error('No file provided');
+        return;
+    }
+    
+    // Read file content
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const content = e.target.result;
+            
+            // Validate JSON
+            const data = JSON.parse(content);
+            if (!data.settings) {
+                throw new Error('Invalid backup format: missing settings');
+            }
+            
+            // Confirm restore
+            const confirmMsg = 'Відновити налаштування з backup?\n\n' +
+                             (data.fw_version ? 'Версія прошивки: ' + data.fw_version + '\n' : '') +
+                             (data.time ? 'Дата backup: ' + data.time + '\n' : '') +
+                             '\nПісля відновлення сторінка перезавантажиться.';
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            // Send restore request
+            fetch('/settings/restore', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: content
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Налаштування успішно відновлено!\n\nСторінка перезавантажиться через 2 секунди.');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        throw new Error(data.error || 'Unknown error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error restoring settings:', error);
+                    alert('Помилка відновлення налаштувань: ' + error.message);
+                });
+            
+        } catch (error) {
+            console.error('Error parsing backup file:', error);
+            alert('Помилка читання backup файлу: ' + error.message);
+        }
+    };
+    
+    reader.onerror = function() {
+        console.error('Error reading file');
+        alert('Помилка читання файлу');
+    };
+    
+    reader.readAsText(file);
+}
+
+function resetSettings() {
+    const confirmMsg = 'Скинути всі налаштування до початкових?\n\n' +
+                      'УВАГА: Цю дію неможливо скасувати!\n' +
+                      'Рекомендується створити backup перед скиданням.\n\n' +
+                      'Після скидання пристрій автоматично перезавантажиться.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    // Double confirmation for safety
+    if (!confirm('Ви впевнені? Всі налаштування будуть скинуті!\n\nПристрій перезавантажиться.')) {
+        return;
+    }
+    
+    fetch('/settings/reset', {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Налаштування успішно скинуто до початкових!\n\nПристрій перезавантажується...\nНатисніть ОК для перезавантаження сторінки налаштувань.');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                throw new Error(data.error || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            console.error('Error resetting settings:', error);
+            alert('Помилка скидання налаштувань: ' + error.message);
+        });
+}
+
 // Simple markdown to HTML converter for GitHub-style markdown
 function markdownToHtml(markdown) {
     if (!markdown) return '';
@@ -854,16 +992,70 @@ function renderControl(ctrl, lists) {
         const div = document.createElement('div');
         div.className = 'button-container';
         
+        // For settings management buttons
+        if (name === 'settings_backup' || name === 'settings_restore' || name === 'settings_reset') {
+            div.className = 'button-container button-settings';
+        }
+        
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'form-button';
         btn.textContent = label;
         btn.style.backgroundColor = color;
         btn.style.borderColor = color;
-        btn.onclick = () => {
-            const w = window.open(url, '_blank', 'noopener,noreferrer');
-            if (w) w.opener = null;
-        };
+        
+        // Handle special button actions
+        if (name === 'settings_backup') {
+            btn.onclick = () => downloadSettingsBackup();
+        } else if (name === 'settings_restore') {
+            btn.onclick = () => {
+                // Create a hidden file input
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.json';
+                fileInput.style.display = 'none';
+                
+                // Cleanup function
+                const cleanup = () => {
+                    if (fileInput.parentNode) {
+                        document.body.removeChild(fileInput);
+                    }
+                };
+                
+                // Handle file selection
+                fileInput.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        restoreSettingsBackup(file);
+                    }
+                    cleanup();
+                };
+                
+                // Handle dialog close without file selection
+                // When file picker is closed, window regains focus
+                const handleFocus = () => {
+                    // Small delay to ensure onchange fires first if file was selected
+                    setTimeout(() => {
+                        if (fileInput.parentNode && !fileInput.files.length) {
+                            cleanup();
+                        }
+                        window.removeEventListener('focus', handleFocus);
+                    }, 300);
+                };
+                
+                window.addEventListener('focus', handleFocus);
+                
+                document.body.appendChild(fileInput);
+                fileInput.click();
+            };
+        } else if (name === 'settings_reset') {
+            btn.onclick = () => resetSettings();
+        } else if (url) {
+            btn.onclick = () => {
+                const w = window.open(url, '_blank', 'noopener,noreferrer');
+                if (w) w.opener = null;
+            };
+        }
         
         div.appendChild(btn);
         
@@ -1043,6 +1235,29 @@ async function renderUI() {
             if (sectionContent && controlsBySection[section.id]) {
                 for (const ctrl of controlsBySection[section.id]) {
                     sectionContent.appendChild(renderControl(ctrl, lists));
+                }
+                
+                // Group settings buttons into a row container
+                const settingsButtons = sectionContent.querySelectorAll('.button-settings');
+                if (settingsButtons.length > 0) {
+                    const row = document.createElement('div');
+                    row.className = 'button-settings-row';
+                    
+                    // Move all settings buttons into the row
+                    settingsButtons.forEach(btn => {
+                        row.appendChild(btn);
+                    });
+                    
+                    // Insert the row after the last non-button element or at the end
+                    const lastNonButton = Array.from(sectionContent.children)
+                        .filter(el => !el.classList.contains('button-settings'))
+                        .pop();
+                    
+                    if (lastNonButton) {
+                        lastNonButton.insertAdjacentElement('afterend', row);
+                    } else {
+                        sectionContent.appendChild(row);
+                    }
                 }
             }
         }
