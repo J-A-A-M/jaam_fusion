@@ -805,10 +805,22 @@ function renderControl(ctrl, lists) {
         const confirmBtn = document.createElement('button');
         confirmBtn.type = 'button';
         confirmBtn.className = 'form-button confirm-button';
-        confirmBtn.textContent = 'Підтвердити';
+        confirmBtn.textContent = 'Оновити';
         confirmBtn.style.marginTop = '8px';
 
         confirmBtn.onclick = () => {
+            // Add confirmation dialog for firmware update
+            if (name === 'firmware_id') {
+                const selectedVersion = sel.value;
+                const confirmMsg = 'Оновити прошивку до версії ' + selectedVersion + '?\n\n' +
+                                  'УВАГА: Під час оновлення пристрій перезавантажиться.\n' +
+                                  'Не вимикайте живлення під час процесу оновлення!\n\n' +
+                                  'Продовжити оновлення?';
+                
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+            }
             updateParameter(name, sel.value);
         };
         

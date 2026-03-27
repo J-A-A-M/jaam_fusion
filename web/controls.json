@@ -199,7 +199,7 @@
         [
             "dropdown_confirm",
             "firmware_id",
-            "Вибрати прошивку (Prod)",
+            "Прошивка (Prod)",
             "firmware_versions_prod",
             "firmware",
             "fw_update_channel==0"
@@ -207,7 +207,7 @@
         [
             "dropdown_confirm",
             "firmware_id",
-            "Вибрати прошивку (Beta)",
+            "Прошивка (Beta)",
             "firmware_versions_beta",
             "firmware",
             "fw_update_channel==1"
