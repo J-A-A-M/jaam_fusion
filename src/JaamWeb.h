@@ -28,6 +28,7 @@ private:
     void handleNotFound();
     void setCrossOrigin();
     void sendCrossOriginHeader();
+    bool validateMutatingRequest();
     void handleMapEditor();
     void handleSaveMap();
     void handleBgColorEditor();

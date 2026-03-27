@@ -22,6 +22,9 @@ extern CurrentRegionMap                 currentMap;
 extern uint32_t                         bgLedColors[MAX_LEDS_STRIP_BG];
 extern JaamFirmwareUpdate               fwUpdate;
 
+// Maximum allowed size for backup payload (32KB)
+static const size_t MAX_BACKUP_SIZE = 32768;
+
 // Функції для тестового відтворення та оновлення прошивки
 extern void requestPlayTestMelody(int melodyId);
 extern void requestPlayTestTrack(int trackId);
@@ -755,6 +758,60 @@ void JaamWeb::sendCrossOriginHeader(){
     LOG.printf("[WEB] sendCORSHeader\n");
     setCrossOrigin();
     server.send(204);
+}
+
+bool JaamWeb::validateMutatingRequest() {
+    // Verify this is a POST request (should already be enforced by route registration)
+    if (server.method() != HTTP_POST) {
+        LOG.printf("[WEB] Rejected non-POST mutating request\n");
+        server.send(405, "application/json", "{\"error\":\"Method not allowed\"}");
+        return false;
+    }
+    
+    // Get the Origin or Referer header
+    String origin = server.header("Origin");
+    String referer = server.header("Referer");
+    
+    // Get the Host header to determine valid same-origin
+    String host = server.header("Host");
+    
+    LOG.printf("[WEB] Validating mutating request - Origin: '%s', Referer: '%s', Host: '%s'\n", 
+        origin.c_str(), referer.c_str(), host.c_str());
+    
+    // If neither Origin nor Referer is present, allow (direct/local requests, API clients)
+    // CSRF attacks from browsers will always include Origin/Referer
+    if (origin.isEmpty() && referer.isEmpty()) {
+        LOG.printf("[WEB] Allowing mutating request without Origin/Referer (direct/API request)\n");
+        return true;
+    }
+    
+    // Validate Origin matches Host (same-origin check)
+    if (!origin.isEmpty()) {
+        // Extract host from Origin (format: http://host:port or https://host:port)
+        String originHost = origin;
+        originHost.replace("http://", "");
+        originHost.replace("https://", "");
+        
+        if (!originHost.startsWith(host)) {
+            LOG.printf("[WEB] Rejected mutating request: Origin mismatch (expected %s, got %s)\n", 
+                host.c_str(), originHost.c_str());
+            server.send(403, "application/json", "{\"error\":\"Forbidden: origin mismatch\"}");
+            return false;
+        }
+    }
+    
+    // Validate Referer contains Host (if no Origin header)
+    if (origin.isEmpty() && !referer.isEmpty()) {
+        if (referer.indexOf(host) == -1) {
+            LOG.printf("[WEB] Rejected mutating request: Referer mismatch (expected %s in %s)\n", 
+                host.c_str(), referer.c_str());
+            server.send(403, "application/json", "{\"error\":\"Forbidden: referer mismatch\"}");
+            return false;
+        }
+    }
+    
+    LOG.printf("[WEB] Mutating request validated successfully\n");
+    return true;
 }
 
 void JaamWeb::handleNotFound() {
@@ -1677,7 +1734,20 @@ void JaamWeb::handleSettingsRestore() {
         return;
     }
 
+    // Validate same-origin and CSRF protection BEFORE processing
+    if (!validateMutatingRequest()) {
+        return; // validateMutatingRequest already sent error response
+    }
+
     setCrossOrigin();
+    
+    // Check Content-Length before processing to prevent memory exhaustion
+    size_t contentLength = server.clientContentLength();
+    if (contentLength > MAX_BACKUP_SIZE) {
+        LOG.printf("[WEB] Backup payload too large: %d bytes (max %d)\n", contentLength, MAX_BACKUP_SIZE);
+        server.send(413, "application/json", "{\"error\":\"Payload too large\"}");
+        return;
+    }
     
     // Check if we have the backup data in the POST body
     if (!server.hasArg("plain")) {
@@ -1687,14 +1757,29 @@ void JaamWeb::handleSettingsRestore() {
     }
 
     String backupData = server.arg("plain");
+    
+    // Double-check actual size matches Content-Length
+    if (backupData.length() > MAX_BACKUP_SIZE) {
+        LOG.printf("[WEB] Backup data too large: %d bytes (max %d)\n", backupData.length(), MAX_BACKUP_SIZE);
+        server.send(413, "application/json", "{\"error\":\"Payload too large\"}");
+        return;
+    }
+    
     LOG.printf("[WEB] Restoring settings from backup (%d bytes)\n", backupData.length());
 
-    // Validate JSON structure
+    // Validate JSON structure with bounded memory allocation
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, backupData);
     if (error) {
         LOG.printf("[WEB] Invalid JSON: %s\n", error.c_str());
         server.send(400, "application/json", "{\"error\":\"Invalid JSON format\"}");
+        return;
+    }
+    
+    // Check if deserialization caused memory overflow
+    if (doc.overflowed()) {
+        LOG.printf("[WEB] JSON document capacity exceeded during deserialization\n");
+        server.send(413, "application/json", "{\"error\":\"Backup data too complex\"}");
         return;
     }
 
@@ -1709,9 +1794,9 @@ void JaamWeb::handleSettingsRestore() {
     bool success = settings->restoreSettingsBackup(backupData.c_str());
     
     if (success) {
-        LOG.println("[WEB] Settings restored successfully, reconfiguring system...");
+        LOG.println("[WEB] Settings restored successfully, scheduling system reconfiguration...");
         
-        // Trigger full system reconfiguration
+        // Schedule full system reconfiguration asynchronously
         requestReconfigureAll();
         
         server.send(200, "application/json", "{\"success\":true,\"message\":\"Settings restored successfully\"}");
@@ -1726,6 +1811,11 @@ void JaamWeb::handleSettingsReset() {
         LOG.printf("[WEB] Settings is not set\n");
         server.send(500, "application/json", "{\"error\":\"Settings not initialized\"}");
         return;
+    }
+
+    // Validate same-origin and CSRF protection BEFORE processing
+    if (!validateMutatingRequest()) {
+        return; // validateMutatingRequest already sent error response
     }
 
     setCrossOrigin();

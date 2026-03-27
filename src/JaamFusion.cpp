@@ -2995,8 +2995,7 @@ void requestRebootDevice() {
     rebootDevice(1000);
 }
 
-void requestReconfigureAll() {
-    LOG.println("[SETTINGS] Requesting full system reconfiguration");
+void reconfigureAll() {
     
     // LED та кольори
     handleRecalculateLeds();
@@ -3032,6 +3031,11 @@ void requestReconfigureAll() {
     api.reconfigure();
     
     LOG.println("[SETTINGS] Full system reconfiguration completed");
+}
+
+void requestReconfigureAll() {
+    LOG.println("[SETTINGS] Requesting full system reconfiguration");
+    async.setTimeout(reconfigureAll, 500); // Додаємо невелику затримку перед початком повної переконфігурації
 }
 
 void handleAdaptClimate() {
