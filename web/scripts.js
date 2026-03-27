@@ -1062,6 +1062,14 @@ function renderControl(ctrl, lists) {
             };
         } else if (name === 'settings_reset') {
             btn.onclick = () => resetSettings();
+        } else if (name === 'wifi_settings') {
+            btn.onclick = () => {
+                // Get current IP and construct WiFi settings URL
+                const currentHost = window.location.hostname;
+                const wifiUrl = `http://${currentHost}:8080/0wifi`;
+                const w = window.open(wifiUrl, '_blank', 'noopener,noreferrer');
+                if (w) w.opener = null;
+            };
         } else if (url) {
             btn.onclick = () => {
                 const w = window.open(url, '_blank', 'noopener,noreferrer');
@@ -1252,24 +1260,21 @@ async function renderUI() {
                 // Group settings buttons into a row container
                 const settingsButtons = sectionContent.querySelectorAll('.button-settings');
                 if (settingsButtons.length > 0) {
+                    // Remember the position BEFORE moving any buttons
+                    const firstButton = settingsButtons[0];
+                    const parent = firstButton.parentNode;
+                    const referenceNode = firstButton; // We'll insert before this gets moved
+                    
                     const row = document.createElement('div');
                     row.className = 'button-settings-row';
                     
-                    // Move all settings buttons into the row
+                    // Insert the empty row first at the position of the first button
+                    parent.insertBefore(row, referenceNode);
+                    
+                    // Now move all settings buttons into the row
                     settingsButtons.forEach(btn => {
                         row.appendChild(btn);
                     });
-                    
-                    // Insert the row after the last non-button element or at the end
-                    const lastNonButton = Array.from(sectionContent.children)
-                        .filter(el => !el.classList.contains('button-settings'))
-                        .pop();
-                    
-                    if (lastNonButton) {
-                        lastNonButton.insertAdjacentElement('afterend', row);
-                    } else {
-                        sectionContent.appendChild(row);
-                    }
                 }
             }
         }
