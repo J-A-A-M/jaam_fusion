@@ -22,6 +22,9 @@ extern CurrentRegionMap                 currentMap;
 extern uint32_t                         bgLedColors[MAX_LEDS_STRIP_BG];
 extern JaamFirmwareUpdate               fwUpdate;
 
+// Maximum allowed size for backup payload (32KB)
+static const size_t MAX_BACKUP_SIZE = 32768;
+
 // Функції для тестового відтворення та оновлення прошивки
 extern void requestPlayTestMelody(int melodyId);
 extern void requestPlayTestTrack(int trackId);
@@ -30,6 +33,9 @@ extern void requestRecalculateLeds();
 extern void requestAdaptColors();
 extern void requestToRegenerateBgColorMap();
 extern void requestWebsocketReconnect();
+extern void requestReconfigureAll();
+extern void requestRebootDevice();
+
 
 // Допоміжні функції для строгого парсингу
 static bool parseStrictInt(const String& s, int& out) {
@@ -73,6 +79,8 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"home_district", HOME_DISTRICT, TYPE_INT},
     {"bg_led_mode", BG_LED_MODE, TYPE_INT},
     {"map_mode", MAP_MODE, TYPE_INT},
+    {"day_start", DAY_START, TYPE_INT},
+    {"night_start", NIGHT_START, TYPE_INT},
     {"min_of_silence", MIN_OF_SILENCE, TYPE_BOOL},
     {"logs_enabled", LOGS_ENABLED, TYPE_BOOL},
     {"time_zone", TIME_ZONE, TYPE_INT},
@@ -198,8 +206,6 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     
     // Brightness
     {"brightness_mode", BRIGHTNESS_MODE, TYPE_INT},
-    {"day_start", DAY_START, TYPE_INT},
-    {"night_start", NIGHT_START, TYPE_INT},
     {"night_mode_light_threshold", NIGHT_MODE_LIGHT_THRESHOLD, TYPE_INT},
     {"brightness", BRIGHTNESS, TYPE_INT},
     {"brightness_day", BRIGHTNESS_DAY, TYPE_INT},
@@ -754,6 +760,87 @@ void JaamWeb::sendCrossOriginHeader(){
     server.send(204);
 }
 
+bool JaamWeb::validateMutatingRequest() {
+    // Verify this is a POST request (should already be enforced by route registration)
+    if (server.method() != HTTP_POST) {
+        LOG.printf("[WEB] Rejected non-POST mutating request\n");
+        server.send(405, "application/json", "{\"error\":\"Method not allowed\"}");
+        return false;
+    }
+    
+    // Get the Origin or Referer header
+    String origin = server.header("Origin");
+    String referer = server.header("Referer");
+    
+    // Get the Host header to determine valid same-origin
+    String host = server.header("Host");
+    
+    LOG.printf("[WEB] Validating mutating request - Origin: '%s', Referer: '%s', Host: '%s'\n", 
+        origin.c_str(), referer.c_str(), host.c_str());
+    
+    // If neither Origin nor Referer is present, allow (direct/local requests, API clients)
+    // CSRF attacks from browsers will always include Origin/Referer
+    if (origin.isEmpty() && referer.isEmpty()) {
+        LOG.printf("[WEB] Allowing mutating request without Origin/Referer (direct/API request)\n");
+        return true;
+    }
+    
+    // Validate Origin matches Host (same-origin check)
+    if (!origin.isEmpty()) {
+        // Extract host:port from Origin (format: http://host:port or https://host:port)
+        String originHost = origin;
+        
+        // Remove protocol
+        int protocolEnd = originHost.indexOf("://");
+        if (protocolEnd != -1) {
+            originHost = originHost.substring(protocolEnd + 3);
+        }
+        
+        // Remove path (everything after first /)
+        int pathStart = originHost.indexOf('/');
+        if (pathStart != -1) {
+            originHost = originHost.substring(0, pathStart);
+        }
+        
+        // Exact match: originHost must equal host
+        if (originHost != host) {
+            LOG.printf("[WEB] Rejected mutating request: Origin mismatch (expected '%s', got '%s')\n", 
+                host.c_str(), originHost.c_str());
+            server.send(403, "application/json", "{\"error\":\"Forbidden: origin mismatch\"}");
+            return false;
+        }
+    }
+    
+    // Validate Referer contains Host (if no Origin header)
+    if (origin.isEmpty() && !referer.isEmpty()) {
+        // Extract host:port from Referer URL
+        String refererHost = referer;
+        
+        // Remove protocol
+        int protocolEnd = refererHost.indexOf("://");
+        if (protocolEnd != -1) {
+            refererHost = refererHost.substring(protocolEnd + 3);
+        }
+        
+        // Remove path (everything after first /)
+        int pathStart = refererHost.indexOf('/');
+        if (pathStart != -1) {
+            refererHost = refererHost.substring(0, pathStart);
+        }
+        
+        // Exact match: refererHost must equal host
+        if (refererHost != host) {
+            LOG.printf("[WEB] Rejected mutating request: Referer mismatch (expected '%s', got '%s')\n", 
+                host.c_str(), refererHost.c_str());
+            server.send(403, "application/json", "{\"error\":\"Forbidden: referer mismatch\"}");
+            return false;
+        }
+    }
+    
+    LOG.printf("[WEB] Mutating request validated successfully\n");
+    return true;
+}
+
 void JaamWeb::handleNotFound() {
     LOG.printf("[WEB] Not found: %s\n", server.uri().c_str());
     server.send(404, "text/plain", "Not found");
@@ -812,6 +899,13 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/map-data", HTTP_GET, [this]() { this->handleMapData(); });
     server.on("/map-data", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     // Dynamic UI page that renders based on /ui-schema
+
+    server.on("/settings/backup", HTTP_GET, [this]() { this->handleSettingsBackup(); });
+    server.on("/settings/backup", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/settings/restore", HTTP_POST, [this]() { this->handleSettingsRestore(); });
+    server.on("/settings/restore", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/settings/reset", HTTP_POST, [this]() { this->handleSettingsReset(); });
+    server.on("/settings/reset", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
 
     server.on("/favicon.png", HTTP_GET, [this]() { server.send(204); });
     server.onNotFound([this]() { this->handleNotFound(); });
@@ -1607,4 +1701,165 @@ void JaamWeb::handleUiSchemaControlsValues() {
     serializeJson(doc, response);
     sendCompressedJson(&server, response);
     response.clear();
+}
+
+void JaamWeb::handleSettingsBackup() {
+    if (settings == nullptr) {
+        LOG.printf("[WEB] Settings is not set\n");
+        server.send(500, "application/json", "{\"error\":\"Settings not initialized\"}");
+        return;
+    }
+
+    setCrossOrigin();
+    LOG.println("[WEB] Generating settings backup");
+
+    // Get current timestamp for filename
+    char timestamp[20];
+    time_t now = time(nullptr);
+    struct tm timeinfo;
+    if (localtime_r(&now, &timeinfo)) {
+        strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", &timeinfo);
+    } else {
+        snprintf(timestamp, sizeof(timestamp), "%lu", (unsigned long)now);
+    }
+
+    // Generate backup JSON using a custom Print stream
+    class StringPrint : public Print {
+    public:
+        String str;
+        size_t write(uint8_t c) override {
+            str += (char)c;
+            return 1;
+        }
+        size_t write(const uint8_t* buffer, size_t size) override {
+            for (size_t i = 0; i < size; i++) {
+                str += (char)buffer[i];
+            }
+            return size;
+        }
+    };
+    
+    StringPrint stream;
+    settings->getSettingsBackup(&stream, fwVersion, chipId, timestamp);
+
+    // Send as downloadable file
+    String filename = "settings_backup_";
+    filename += timestamp;
+    filename += ".json";
+    
+    server.sendHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "application/json", stream.str);
+    
+    LOG.printf("[WEB] Settings backup sent: %s (%d bytes)\n", filename.c_str(), stream.str.length());
+}
+
+void JaamWeb::handleSettingsRestore() {
+    if (settings == nullptr) {
+        LOG.printf("[WEB] Settings is not set\n");
+        server.send(500, "application/json", "{\"error\":\"Settings not initialized\"}");
+        return;
+    }
+
+    // Validate same-origin and CSRF protection BEFORE processing
+    if (!validateMutatingRequest()) {
+        return; // validateMutatingRequest already sent error response
+    }
+
+    setCrossOrigin();
+    
+    // Check Content-Length before processing to prevent memory exhaustion
+    size_t contentLength = server.clientContentLength();
+    if (contentLength > MAX_BACKUP_SIZE) {
+        LOG.printf("[WEB] Backup payload too large: %d bytes (max %d)\n", contentLength, MAX_BACKUP_SIZE);
+        server.send(413, "application/json", "{\"error\":\"Payload too large\"}");
+        return;
+    }
+    
+    // Check if we have the backup data in the POST body
+    if (!server.hasArg("plain")) {
+        LOG.println("[WEB] No backup data provided");
+        server.send(400, "application/json", "{\"error\":\"No backup data provided\"}");
+        return;
+    }
+
+    String backupData = server.arg("plain");
+    
+    // Double-check actual size matches Content-Length
+    if (backupData.length() > MAX_BACKUP_SIZE) {
+        LOG.printf("[WEB] Backup data too large: %d bytes (max %d)\n", backupData.length(), MAX_BACKUP_SIZE);
+        server.send(413, "application/json", "{\"error\":\"Payload too large\"}");
+        return;
+    }
+    
+    LOG.printf("[WEB] Restoring settings from backup (%d bytes)\n", backupData.length());
+
+    // Validate JSON structure with bounded memory allocation
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, backupData);
+    if (error) {
+        LOG.printf("[WEB] Invalid JSON: %s\n", error.c_str());
+        server.send(400, "application/json", "{\"error\":\"Invalid JSON format\"}");
+        return;
+    }
+    
+    // Check if deserialization caused memory overflow
+    if (doc.overflowed()) {
+        LOG.printf("[WEB] JSON document capacity exceeded during deserialization\n");
+        server.send(413, "application/json", "{\"error\":\"Backup data too complex\"}");
+        return;
+    }
+
+    // Check if settings array exists
+    if (!doc["settings"].is<JsonArray>()) {
+        LOG.println("[WEB] Missing 'settings' key in backup");
+        server.send(400, "application/json", "{\"error\":\"Invalid backup format\"}");
+        return;
+    }
+
+    // Restore settings
+    bool success = settings->restoreSettingsBackup(backupData.c_str());
+    
+    if (success) {
+        LOG.println("[WEB] Settings restored successfully, scheduling system reconfiguration...");
+        
+        // Schedule full system reconfiguration asynchronously
+        requestReconfigureAll();
+        
+        server.send(200, "application/json", "{\"success\":true,\"message\":\"Settings restored successfully\"}");
+    } else {
+        LOG.println("[WEB] Failed to restore settings");
+        server.send(500, "application/json", "{\"error\":\"Failed to restore settings\"}");
+    }
+}
+
+void JaamWeb::handleSettingsReset() {
+    if (settings == nullptr) {
+        LOG.printf("[WEB] Settings is not set\n");
+        server.send(500, "application/json", "{\"error\":\"Settings not initialized\"}");
+        return;
+    }
+
+    // Validate same-origin and CSRF protection BEFORE processing
+    if (!validateMutatingRequest()) {
+        return; // validateMutatingRequest already sent error response
+    }
+
+    setCrossOrigin();
+    LOG.println("[WEB] Resetting all settings to defaults");
+
+    bool success = settings->resetToDefaults();
+    
+    if (success) {
+        LOG.println("[WEB] Settings reset successfully, restarting device...");
+        
+        server.send(200, "application/json", "{\"success\":true,\"message\":\"Settings reset to defaults, device will restart\"}");
+        
+        // Give time for response to be sent, then restart
+        delay(100);
+        requestRebootDevice();
+    } else {
+        LOG.println("[WEB] Failed to reset settings");
+        server.send(500, "application/json", "{\"error\":\"Failed to reset settings\"}");
+    }
 }

@@ -58,10 +58,12 @@ void handleReconnectWebsocket();
 void handleRegenerateBgColorMap();
 void requestPlayTestMelody(int melodyId);
 void requestPlayTestTrack(int trackId);
+void requestReconfigureAll();
 void requestWebsocketReconnect();
 void requestFirmwareUpdate(const char* firmwareId = nullptr);
 void requestRecalculateLeds();
 void requestAdaptColors();
+void requestRebootDevice();
 void requestToRegenerateBgColorMap();
 void displayProcess();
 void brightnessProcess();
@@ -2986,6 +2988,54 @@ void handleReconfigureButtons() {
 void handleUpdateAnimationsMode() {
     LOG.printf("[SETTINGS] Animations sync mode %s\n", settings.getBool(ENABLE_SYNC_ANIMATIONS) ? "ENABLED" : "DISABLED");
     animation.setSynchronizedMode(settings.getBool(ENABLE_SYNC_ANIMATIONS));
+}
+
+void requestRebootDevice() {
+    LOG.printf("[SETTINGS] Reboot requested\n");
+    rebootDevice(1000);
+}
+
+void reconfigureAll() {
+    
+    // LED та кольори
+    handleRecalculateLeds();
+    handleReconnectStrips(true, true, true);
+    adaptStripColorsAndBrightness();
+    handleRegenerateBgColorMap();
+    
+    // Апаратні компоненти
+    handleReconfigureDisplay();
+    handleReconfigureSound();
+    handleReconfigureSensors();
+    handleReconfigureButtons();
+    handleUpdateBatteryPin();
+    
+    // Мережеві налаштування
+    handleReconnectWebsocket();
+    handleUpdateNtpHost();
+    
+    // Інші налаштування
+    handleUpdateTimezone();
+    handleAdaptClimate();
+    handleAdaptVolume();
+    handleUpdateAnimationsMode();
+    handleUpdateHomeAlertBit();
+    
+    // Оновлення каналу прошивки
+    fwUpdate.applyActiveChannel(settings.getInt(FW_UPDATE_CHANNEL) == 1);
+    
+    // Оновлення режиму логування
+    loggingStream.setLogsEnabled(settings.getBool(LOGS_ENABLED));
+    
+    // Оновлення API
+    api.reconfigure();
+    
+    LOG.println("[SETTINGS] Full system reconfiguration completed");
+}
+
+void requestReconfigureAll() {
+    LOG.println("[SETTINGS] Requesting full system reconfiguration");
+    async.setTimeout(reconfigureAll, 500); // Додаємо невелику затримку перед початком повної переконфігурації
 }
 
 void handleAdaptClimate() {

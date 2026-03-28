@@ -28,6 +28,7 @@ private:
     void handleNotFound();
     void setCrossOrigin();
     void sendCrossOriginHeader();
+    bool validateMutatingRequest();
     void handleMapEditor();
     void handleSaveMap();
     void handleBgColorEditor();
@@ -52,8 +53,10 @@ private:
     void handleMapEditorJs();
     void handleBgColorEditorCss();
     void handleBgColorEditorJs();
+    void handleSettingsBackup();
+    void handleSettingsRestore();
+    void handleSettingsReset();
     String getMeta();
     void buildUiSchemaDropdownLists(JsonDocument& doc);
-    void buildUiSchemaControls(JsonDocument& doc);
     void buildUiSchemaControlsValues(JsonDocument& doc);
 };

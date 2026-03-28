@@ -557,6 +557,24 @@ h1 {
     justify-content: flex-start;
 }
 
+/* Settings buttons row with dynamic spacing */
+.button-settings-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.button-container.button-settings {
+    flex: 0 0 auto;
+    min-width: 120px;
+    max-width: calc(33.333% - 7px);
+}
+
+.button-container.button-settings button {
+    width: 100%;
+}
+
 .form-button {
     background: #007bff;
     color: white;
