@@ -787,13 +787,24 @@ bool JaamWeb::validateMutatingRequest() {
     
     // Validate Origin matches Host (same-origin check)
     if (!origin.isEmpty()) {
-        // Extract host from Origin (format: http://host:port or https://host:port)
+        // Extract host:port from Origin (format: http://host:port or https://host:port)
         String originHost = origin;
-        originHost.replace("http://", "");
-        originHost.replace("https://", "");
         
-        if (!originHost.startsWith(host)) {
-            LOG.printf("[WEB] Rejected mutating request: Origin mismatch (expected %s, got %s)\n", 
+        // Remove protocol
+        int protocolEnd = originHost.indexOf("://");
+        if (protocolEnd != -1) {
+            originHost = originHost.substring(protocolEnd + 3);
+        }
+        
+        // Remove path (everything after first /)
+        int pathStart = originHost.indexOf('/');
+        if (pathStart != -1) {
+            originHost = originHost.substring(0, pathStart);
+        }
+        
+        // Exact match: originHost must equal host
+        if (originHost != host) {
+            LOG.printf("[WEB] Rejected mutating request: Origin mismatch (expected '%s', got '%s')\n", 
                 host.c_str(), originHost.c_str());
             server.send(403, "application/json", "{\"error\":\"Forbidden: origin mismatch\"}");
             return false;
@@ -802,9 +813,25 @@ bool JaamWeb::validateMutatingRequest() {
     
     // Validate Referer contains Host (if no Origin header)
     if (origin.isEmpty() && !referer.isEmpty()) {
-        if (referer.indexOf(host) == -1) {
-            LOG.printf("[WEB] Rejected mutating request: Referer mismatch (expected %s in %s)\n", 
-                host.c_str(), referer.c_str());
+        // Extract host:port from Referer URL
+        String refererHost = referer;
+        
+        // Remove protocol
+        int protocolEnd = refererHost.indexOf("://");
+        if (protocolEnd != -1) {
+            refererHost = refererHost.substring(protocolEnd + 3);
+        }
+        
+        // Remove path (everything after first /)
+        int pathStart = refererHost.indexOf('/');
+        if (pathStart != -1) {
+            refererHost = refererHost.substring(0, pathStart);
+        }
+        
+        // Exact match: refererHost must equal host
+        if (refererHost != host) {
+            LOG.printf("[WEB] Rejected mutating request: Referer mismatch (expected '%s', got '%s')\n", 
+                host.c_str(), refererHost.c_str());
             server.send(403, "application/json", "{\"error\":\"Forbidden: referer mismatch\"}");
             return false;
         }
