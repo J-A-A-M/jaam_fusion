@@ -124,7 +124,7 @@ async def send_command(websocket):
             else:
                 print("Invalid state. Use 'on', 'off', 'true', or 'false'")
                 continue
-            msg = {"type": "set_night_mode", "state": state_bool}
+            msg = {"type": "set_night_mode", "enabled": state_bool}
             await websocket.send(json.dumps(msg))
             print(f"Sent: {msg}")
         elif cmd == "6":
