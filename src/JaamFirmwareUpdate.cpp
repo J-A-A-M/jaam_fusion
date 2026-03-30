@@ -34,12 +34,12 @@ void JaamFirmwareUpdate::init(const char* version) {
 
 void JaamFirmwareUpdate::initCallbacks() {
     httpUpdate.onStart([this]() {
-        if (_api) _api->updateFirmwareProgress(0);
+        if (_api) _api->setFirmwareProgress(0);
         if (_display) _display->showServiceMessage("Починаємо!", "Оновлення:");
         delay(1000);
     });
     httpUpdate.onEnd([this]() {
-        if (_api) _api->updateFirmwareProgress(100);
+        if (_api) _api->setFirmwareProgress(100);
         if (_display) _display->showServiceMessage("Перезавантаження..", "Оновлення:");
         delay(1000);
     });
@@ -50,12 +50,12 @@ void JaamFirmwareUpdate::initCallbacks() {
         LOG.printf("[UPDATE] Progress: %u%%\n", percent);
         char progressText[5];
         snprintf(progressText, sizeof(progressText), "%u%%", percent);
-        if (_api) _api->updateFirmwareProgress(percent);
+        if (_api) _api->setFirmwareProgress(percent);
         if (_display) _display->showServiceMessage(progressText, "Оновлення:");
         if (_mapUpdateCb) _mapUpdateCb(percent / 100.0f);
     });
     httpUpdate.onError([this](int error) {
-        if (_api) _api->updateFirmwareProgress(-1);
+        if (_api) _api->setFirmwareProgress(-1);
         if (!_display) return;
         switch (error) {
             case HTTP_UE_TOO_LESS_SPACE:
@@ -123,7 +123,7 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
                        _currentFwVersion, _newFwVersion);
         }
 
-        if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
+        if (_api) _api->setNewFirmwareInfo(_newFwVersion);
         if (_servicePinCb) _servicePinCb();
     }
 }
@@ -154,7 +154,7 @@ void JaamFirmwareUpdate::applyActiveChannel(bool isBeta) {
     LOG.printf("[FIRMWARE] Channel switched to %s, latest: %s, update available: %d\n",
                isBeta ? "BETA" : "PROD", _newFwVersion, _fwUpdateAvailable);
 
-    if (_api) _api->updateNewFirmwareInfo(_newFwVersion);
+    if (_api) _api->setNewFirmwareInfo(_newFwVersion);
     if (_servicePinCb) _servicePinCb();
 }
 

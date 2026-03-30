@@ -31,11 +31,12 @@ bool JaamApi::isValidRegionId(int region_id) const {
 extern void servicePin(ServiceLed type);
 extern JaamFirmwareUpdate fwUpdate;
 extern void requestFirmwareUpdate(const char* firmwareId);
+extern bool saveNightMode(bool newState);
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
     climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), lightLevel(NAN),
-    sensorTempAvailable(false), sensorHumidityAvailable(false), sensorPressureAvailable(false), sensorLightAvailable(false) {
+    sensorTempAvailable(false), sensorHumidityAvailable(false), sensorPressureAvailable(false), sensorLightAvailable(false), nightMode(false) {
     fwLatestVersion[0] = '\0';
 }
 
@@ -56,24 +57,62 @@ void JaamApi::setSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiU
     this->websocketStatus = websocketStatus;
     this->websocketUptime = websocketUptime;
     this->cpuTemp = cpuTemp;
+    if (isRunning) {
+        broadcastSystemInfo();
+    }
 }
 
 void JaamApi::setHomeAlert(uint16_t flags16) {
     this->homeAlertFlags = flags16;
+    if (isRunning) {
+        broadcastHomeAlertChange(flags16);
+    }
 }
 
 void JaamApi::setHomeDistrictTemp(int temp) {
     this->homeDistrictTemp = temp;
+    if (isRunning) {
+        broadcastHomeDistrictTempChange(temp);
+    }
 }
 
-void JaamApi::setClimateData(float temperature, float humidity, float pressure) {
-    climateTemperature = temperature;
-    climateHumidity = humidity;
-    climatePressure = pressure;
+void JaamApi::setClimateData(float temp, float humidity, float pressure) {
+    // Перевіряємо чи змінилися значення (порівнюємо з поточними)
+    bool hasChanges = false;
+    
+    // Порівнюємо з урахуванням NaN
+    if ((isnan(temp) != isnan(climateTemperature)) || (!isnan(temp) && temp != climateTemperature)) {
+        hasChanges = true;
+    }
+    if ((isnan(humidity) != isnan(climateHumidity)) || (!isnan(humidity) && humidity != climateHumidity)) {
+        hasChanges = true;
+    }
+    if ((isnan(pressure) != isnan(climatePressure)) || (!isnan(pressure) && pressure != climatePressure)) {
+        hasChanges = true;
+    }
+    
+    // Оновлюємо поточні значення
+    this->climateTemperature = temp;
+    this->climateHumidity = humidity;
+    this->climatePressure = pressure;
+    
+    // Broadcast тільки якщо є зміни
+    if (isRunning && hasChanges) {
+        broadcastClimateDataChange(temp, humidity, pressure);
+    }
 }
 
 void JaamApi::setLightLevel(float level) {
-    lightLevel = level;
+    // Перевіряємо чи змінилося значення (порівнюємо з поточним)
+    bool hasChanged = (isnan(level) != isnan(lightLevel)) || (!isnan(level) && level != lightLevel);
+    
+    // Оновлюємо поточне значення
+    this->lightLevel = level;
+    
+    // Broadcast тільки якщо є зміни
+    if (isRunning && hasChanged) {
+        broadcastLightLevelChange(level);
+    }
 }
 
 void JaamApi::setSensorAvailability(bool tempAvailable, bool humidityAvailable, bool pressureAvailable, bool lightAvailable) {
@@ -81,6 +120,38 @@ void JaamApi::setSensorAvailability(bool tempAvailable, bool humidityAvailable, 
     this->sensorHumidityAvailable = humidityAvailable;
     this->sensorPressureAvailable = pressureAvailable;
     this->sensorLightAvailable = lightAvailable;
+}
+
+void JaamApi::setNewFirmwareInfo(const char* version) {
+    if (!version) {
+        LOG.printf("[API] updateNewFirmwareInfo called with null version\n");
+        return;
+    }
+    snprintf(fwLatestVersion, sizeof(fwLatestVersion), "%s", version);
+    if (isRunning) {
+        broadcastFirmwareUpdate(fwLatestVersion);
+    }
+}
+
+void JaamApi::setFirmwareProgress(int progress) {
+    if (isRunning) {
+        JsonDocument doc;
+        doc["type"] = "fw_update_progress";
+        doc["progress"] = progress;
+        
+        String data;
+        serializeJson(doc, data);
+        broadcastWebSocket(data);
+        
+        LOG.printf("[API] Broadcast firmware update progress: %d%%\n", progress);
+    }
+}
+
+void JaamApi::setNightMode(bool state) {
+    this->nightMode = state;
+    if (isRunning) {
+        broadcastNightModeChange(state);
+    }
 }
 
 void JaamApi::reconfigure() {
@@ -224,6 +295,9 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
         doc["light_level"] = lightLevel;
     }
 
+    // Стан нічного режиму
+    doc["night_mode"] = nightMode;
+
     // Список підтримуваних режимів мапи
     JsonArray supportedMapModes = doc["supported_map_modes"].to<JsonArray>();
     for (int i = 0; i < MAP_MODES_COUNT; i++) {
@@ -354,6 +428,14 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
             String version = doc["version"].as<String>();
             LOG.printf("[API] Firmware update requested, version: %s\n", version.c_str());
             requestFirmwareUpdate(version.c_str());
+        }
+    }
+    // Обробляємо команду set_night_mode
+    else if (type == "set_night_mode") {
+        if (!doc["state"].isNull()) {
+            bool newState = doc["state"].as<bool>();
+            saveNightMode(newState);
+            LOG.printf("[API] Night mode changed to: %s\n", newState ? "enabled" : "disabled");
         }
     }
     else {
@@ -497,6 +579,18 @@ void JaamApi::broadcastAlertChange(int regionId, int alertType) {
     LOG.printf("[API] Broadcast alert change: region %d, type %d\n", regionId, alertType);
 }
 
+void JaamApi::broadcastNightModeChange(bool state) {
+    JsonDocument doc;
+    doc["type"] = "night_mode_change";
+    doc["night_mode"] = state;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast night mode change: %s\n", state ? "enabled" : "disabled");
+}
+
 void JaamApi::broadcastHomeAlertChange(uint16_t flags16) {
     JsonDocument doc;
     doc["type"] = "home_alert_change";
@@ -533,97 +627,6 @@ void JaamApi::broadcastHomeDistrictTempChange(int temp) {
     broadcastWebSocket(data);
     
     LOG.printf("[API] Broadcast home district temp change: %d\n", temp);
-}
-
-void JaamApi::updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp) {
-    this->usedMemory = usedMemory;
-    this->uptime = uptime;
-    this->wifiUptime = wifiUptime;
-    this->wifiSignal = wifiSignal;
-    this->websocketStatus = websocketStatus;
-    this->websocketUptime = websocketUptime;
-    this->cpuTemp = cpuTemp;
-    if (isRunning) {
-        broadcastSystemInfo();
-    }
-}
-
-void JaamApi::updateHomeAlert(uint16_t flags16) {
-    this->homeAlertFlags = flags16;
-    if (isRunning) {
-        broadcastHomeAlertChange(flags16);
-    }
-}
-
-void JaamApi::updateHomeDistrictTemp(int temp) {
-    this->homeDistrictTemp = temp;
-    if (isRunning) {
-        broadcastHomeDistrictTempChange(temp);
-    }
-}
-
-void JaamApi::updateClimateData(float temp, float humidity, float pressure) {
-    // Перевіряємо чи змінилися значення (порівнюємо з поточними)
-    bool hasChanges = false;
-    
-    // Порівнюємо з урахуванням NaN
-    if ((isnan(temp) != isnan(climateTemperature)) || (!isnan(temp) && temp != climateTemperature)) {
-        hasChanges = true;
-    }
-    if ((isnan(humidity) != isnan(climateHumidity)) || (!isnan(humidity) && humidity != climateHumidity)) {
-        hasChanges = true;
-    }
-    if ((isnan(pressure) != isnan(climatePressure)) || (!isnan(pressure) && pressure != climatePressure)) {
-        hasChanges = true;
-    }
-    
-    // Оновлюємо поточні значення
-    this->climateTemperature = temp;
-    this->climateHumidity = humidity;
-    this->climatePressure = pressure;
-    
-    // Broadcast тільки якщо є зміни
-    if (isRunning && hasChanges) {
-        broadcastClimateDataChange(temp, humidity, pressure);
-    }
-}
-
-void JaamApi::updateLightLevel(float level) {
-    // Перевіряємо чи змінилося значення (порівнюємо з поточним)
-    bool hasChanged = (isnan(level) != isnan(lightLevel)) || (!isnan(level) && level != lightLevel);
-    
-    // Оновлюємо поточне значення
-    this->lightLevel = level;
-    
-    // Broadcast тільки якщо є зміни
-    if (isRunning && hasChanged) {
-        broadcastLightLevelChange(level);
-    }
-}
-
-void JaamApi::updateNewFirmwareInfo(const char* version) {
-    if (!version) {
-        LOG.printf("[API] updateNewFirmwareInfo called with null version\n");
-        return;
-    }
-    snprintf(fwLatestVersion, sizeof(fwLatestVersion), "%s", version);
-    if (isRunning) {
-        broadcastFirmwareUpdate(fwLatestVersion);
-    }
-}
-
-void JaamApi::updateFirmwareProgress(int progress) {
-    if (isRunning) {
-        JsonDocument doc;
-        doc["type"] = "fw_update_progress";
-        doc["progress"] = progress;
-        
-        String data;
-        serializeJson(doc, data);
-        broadcastWebSocket(data);
-        
-        LOG.printf("[API] Broadcast firmware update progress: %d%%\n", progress);
-    }
 }
 
 void JaamApi::broadcastSystemInfo() {

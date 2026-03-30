@@ -17,30 +17,13 @@ public:
     void setClimateData(float temperature, float humidity, float pressure);
     void setLightLevel(float lightLevel);
     void setSensorAvailability(bool tempAvailable, bool humidityAvailable, bool pressureAvailable, bool lightAvailable);
+    void setNewFirmwareInfo(const char* version);
+    void setFirmwareProgress(int progress);
+    void setNightMode(bool state);
     void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
     int getClientsCount() const;
-    
-    // Broadcast події до всіх підключених WebSocket клієнтів
-    void broadcastMapModeChange(int newMode);
-    void broadcastDisplayModeChange(int newMode);
-    void broadcastLampChange(const char* color, int brightness);
-    void broadcastHomeRegionChange(int regionId);
-    void broadcastAlertChange(int regionId, int alertType);
-    void broadcastHomeAlertChange(uint16_t flags16);
-    void broadcastClimateDataChange(float temp, float humidity, float pressure);
-    void broadcastLightLevelChange(float lightLevel);
-    void broadcastSystemInfo();
-    
-    // Оновлення даних
-    void updateSystemInfo(uint32_t usedMemory, uint32_t uptime, uint32_t wifiUptime, int8_t wifiSignal, bool websocketStatus, uint32_t websocketUptime, float cpuTemp);
-    void updateHomeAlert(uint16_t flags16);
-    void updateHomeDistrictTemp(int temp);
-    void updateClimateData(float temp, float humidity, float pressure);
-    void updateLightLevel(float lightLevel);
-    void updateNewFirmwareInfo(const char* version);
-    void updateFirmwareProgress(int progress);
     
     // Обробка змін налаштувань
     void onSettingsChange(Type type, int intValue, float fltValue, const char* strValue);
@@ -81,6 +64,9 @@ private:
     bool sensorPressureAvailable;
     bool sensorLightAvailable;
 
+    // Night mode state
+    bool nightMode;
+
     // Latest firmware version available
     char fwLatestVersion[25];
 
@@ -92,6 +78,18 @@ private:
     // WebSocket handlers
     void handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage message);
     void sendInitialState(WebsocketsClient& client);
+
+    // Broadcast події до всіх підключених WebSocket клієнтів
+    void broadcastMapModeChange(int newMode);
+    void broadcastDisplayModeChange(int newMode);
+    void broadcastLampChange(const char* color, int brightness);
+    void broadcastHomeRegionChange(int regionId);
+    void broadcastAlertChange(int regionId, int alertType);
+    void broadcastHomeAlertChange(uint16_t flags16);
+    void broadcastClimateDataChange(float temp, float humidity, float pressure);
+    void broadcastLightLevelChange(float lightLevel);
+    void broadcastSystemInfo();
+    void broadcastNightModeChange(bool state);
     void broadcastWebSocket(const String& jsonMessage);
     void broadcastDeviceNameChange(const char* deviceName);
     void broadcastHomeDistrictTempChange(int temp);
