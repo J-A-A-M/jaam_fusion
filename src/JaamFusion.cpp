@@ -507,6 +507,31 @@ bool saveNightMode(bool newState) {
     return true;
 }
 
+bool saveMapOff(bool newState, bool showMessage = true) {
+    if (isMapOff == newState) return false; // No change needed
+    isMapOff = newState;
+  
+    if (showMessage) {
+        display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
+    }
+    adaptStripColorsAndBrightness();
+    LOG.printf("[MAIN] Map %s\n", isMapOff ? "disabled" : "enabled");
+    api.setMapEnabled(!isMapOff);
+    return true;
+}
+
+bool saveDisplayOff(bool newState, bool showMessage = true) {
+    if (isDisplayOff == newState) return false; // No change needed
+    isDisplayOff = newState;
+  
+    if (showMessage) {
+        display.showServiceMessage(!isDisplayOff ? "Увімкнено" : "Вимкнено", "Дисплей:");
+    }
+    LOG.printf("[MAIN] Display %s\n", isDisplayOff ? "disabled" : "enabled");
+    api.setDisplayEnabled(!isDisplayOff);
+    return true;
+}
+
 // --- Buttons Functions ---
 
 void handleClick(int event, JaamButton::Action action) {
@@ -523,26 +548,22 @@ void handleClick(int event, JaamButton::Action action) {
       break;
     // toggle map
     case 3:
-      isMapOff = !isMapOff;
-      display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
-      adaptStripColorsAndBrightness();
+      saveMapOff(!isMapOff);
       break;
     // toggle display
     case 4:
-      isDisplayOff = !isDisplayOff;
-      display.showServiceMessage(!isDisplayOff ? "Увімкнено" : "Вимкнено", "Дисплей:");
+      saveDisplayOff(!isDisplayOff);
       break;
     // toggle display and map
     case 5:
       if (isDisplayOff != isMapOff) {
-        isDisplayOff = false;
-        isMapOff = false;
+        saveMapOff(false, false);
+        saveDisplayOff(false, false);
       } else {
-        isMapOff = !isMapOff;
-        isDisplayOff = !isDisplayOff;
+        saveMapOff(!isMapOff, false);
+        saveDisplayOff(!isDisplayOff, false);
       }
       display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Дисплей та мапу:");
-      adaptStripColorsAndBrightness();
       break;
     // toggle night mode
     case 6:
@@ -2313,6 +2334,8 @@ void initApi() {
     api.setSettings(&settings);
     api.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
     api.setNightMode(nightMode);
+    api.setMapEnabled(!isMapOff);
+    api.setDisplayEnabled(!isDisplayOff);
     
     SystemInfo info = getSystemInfo();
     api.setSystemInfo(

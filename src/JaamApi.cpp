@@ -32,11 +32,13 @@ extern void servicePin(ServiceLed type);
 extern JaamFirmwareUpdate fwUpdate;
 extern void requestFirmwareUpdate(const char* firmwareId);
 extern bool saveNightMode(bool newState);
+extern bool saveMapOff(bool newState, bool showMessage = true);
+extern bool saveDisplayOff(bool newState, bool showMessage = true);
 
 JaamApi::JaamApi() : settings(nullptr), chipId(nullptr), fwVersion(nullptr), wsServer(nullptr), isRunning(false), currentPort(-1),
     usedMemory(0), uptime(0), wifiUptime(0), wifiSignal(0), websocketStatus(false), websocketUptime(0), homeAlertFlags(0), cpuTemp(0.0f), homeDistrictTemp(0),
     climateTemperature(NAN), climateHumidity(NAN), climatePressure(NAN), lightLevel(NAN),
-    sensorTempAvailable(false), sensorHumidityAvailable(false), sensorPressureAvailable(false), sensorLightAvailable(false), nightMode(false) {
+    sensorTempAvailable(false), sensorHumidityAvailable(false), sensorPressureAvailable(false), sensorLightAvailable(false), nightMode(false), mapEnabled(true), displayEnabled(true) {
     fwLatestVersion[0] = '\0';
 }
 
@@ -151,6 +153,20 @@ void JaamApi::setNightMode(bool state) {
     this->nightMode = state;
     if (isRunning) {
         broadcastNightModeChange(state);
+    }
+}
+
+void JaamApi::setMapEnabled(bool enabled) {
+    this->mapEnabled = enabled;
+    if (isRunning) {
+        broadcastMapEnabledChange(enabled);
+    }
+}
+
+void JaamApi::setDisplayEnabled(bool enabled) {
+    this->displayEnabled = enabled;
+    if (isRunning) {
+        broadcastDisplayEnabledChange(enabled);
     }
 }
 
@@ -298,6 +314,10 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     // Стан нічного режиму
     doc["night_mode"] = nightMode;
 
+    // Стан мапи та дисплею
+    doc["map_enabled"] = mapEnabled;
+    doc["display_enabled"] = displayEnabled;
+
     // Список підтримуваних режимів мапи
     JsonArray supportedMapModes = doc["supported_map_modes"].to<JsonArray>();
     for (int i = 0; i < MAP_MODES_COUNT; i++) {
@@ -328,6 +348,10 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     if (sensorLightAvailable) {
         supportedSensors.add("light");
     }
+    // Додаємо нові сенсори
+    supportedSensors.add("night_mode");
+    supportedSensors.add("map");
+    supportedSensors.add("display");
 
     // Налаштування лампи
     JsonObject lamp = doc["lamp"].to<JsonObject>();
@@ -432,10 +456,24 @@ void JaamApi::handleWebSocketMessage(WebsocketsClient& client, WebsocketsMessage
     }
     // Обробляємо команду set_night_mode
     else if (type == "set_night_mode") {
-        if (!doc["state"].isNull()) {
-            bool newState = doc["state"].as<bool>();
+        if (!doc["enabled"].isNull()) {
+            bool newState = doc["enabled"].as<bool>();
             saveNightMode(newState);
             LOG.printf("[API] Night mode changed to: %s\n", newState ? "enabled" : "disabled");
+        }
+    }
+    else if (type == "set_map_enabled") {
+        if (!doc["enabled"].isNull()) {
+            bool enabled = doc["enabled"].as<bool>();
+            saveMapOff(!enabled, true);
+            LOG.printf("[API] Map enabled changed to: %s\n", enabled ? "enabled" : "disabled");
+        }
+    }
+    else if (type == "set_display_enabled") {
+        if (!doc["enabled"].isNull()) {
+            bool enabled = doc["enabled"].as<bool>();
+            saveDisplayOff(!enabled, true);
+            LOG.printf("[API] Display enabled changed to: %s\n", enabled ? "enabled" : "disabled");
         }
     }
     else {
@@ -589,6 +627,30 @@ void JaamApi::broadcastNightModeChange(bool state) {
     broadcastWebSocket(data);
     
     LOG.printf("[API] Broadcast night mode change: %s\n", state ? "enabled" : "disabled");
+}
+
+void JaamApi::broadcastMapEnabledChange(bool enabled) {
+    JsonDocument doc;
+    doc["type"] = "map_enabled_change";
+    doc["map_enabled"] = enabled;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast map enabled change: %s\n", enabled ? "enabled" : "disabled");
+}
+
+void JaamApi::broadcastDisplayEnabledChange(bool enabled) {
+    JsonDocument doc;
+    doc["type"] = "display_enabled_change";
+    doc["display_enabled"] = enabled;
+    
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+    
+    LOG.printf("[API] Broadcast display enabled change: %s\n", enabled ? "enabled" : "disabled");
 }
 
 void JaamApi::broadcastHomeAlertChange(uint16_t flags16) {

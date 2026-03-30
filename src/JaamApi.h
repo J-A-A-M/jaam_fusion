@@ -20,6 +20,8 @@ public:
     void setNewFirmwareInfo(const char* version);
     void setFirmwareProgress(int progress);
     void setNightMode(bool state);
+    void setMapEnabled(bool enabled);
+    void setDisplayEnabled(bool enabled);
     void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
@@ -64,8 +66,9 @@ private:
     bool sensorPressureAvailable;
     bool sensorLightAvailable;
 
-    // Night mode state
     bool nightMode;
+    bool mapEnabled;
+    bool displayEnabled;
 
     // Latest firmware version available
     char fwLatestVersion[25];
@@ -90,6 +93,8 @@ private:
     void broadcastLightLevelChange(float lightLevel);
     void broadcastSystemInfo();
     void broadcastNightModeChange(bool state);
+    void broadcastMapEnabledChange(bool enabled);
+    void broadcastDisplayEnabledChange(bool enabled);
     void broadcastWebSocket(const String& jsonMessage);
     void broadcastDeviceNameChange(const char* deviceName);
     void broadcastHomeDistrictTempChange(int temp);
