@@ -1,0 +1,139 @@
+site_name: JAAM Fusion Documentation
+site_url: https://j-a-a-m.github.io/jaam_fusion/
+repo_url: https://github.com/J-A-A-M/jaam_fusion
+repo_name: J-A-A-M/jaam_fusion
+edit_uri: edit/main/wiki/
+docs_dir: wiki
+
+theme:
+  name: material
+  language: uk
+  palette:
+    # Світла тема (відповідає :root у styles.css)
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Перемкнути на темну тему
+    # Темна тема (відповідає [data-theme='dark'] у styles.css)
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Перемкнути на світлу тему
+  
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.path
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  
+  icon:
+    repo: fontawesome/brands/github
+  
+  favicon: assets/favicon.ico
+  logo: assets/logo.png
+
+extra_css:
+  - stylesheets/custom.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/J-A-A-M/jaam_fusion
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/jaam_project
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: J-A-A-M
+      repo: jaam_fusion
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search:
+      lang: uk
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: datetime
+
+nav:
+  - Головна: index.md
+  - Початок роботи:
+      - Швидкий старт: getting-started/quickstart.md
+      - Встановлення: getting-started/installation.md
+      - Перша конфігурація: getting-started/first-config.md
+  - Обладнання:
+      - LED Mapping: hardware/led-mapping.md
+      - OLED Display: hardware/oled-display.md
+      - Сенсори: hardware/sensors.md
+      - Підтримувані плати: hardware/boards.md
+  - Функціонал:
+      - Повітряні тривоги: features/air-alerts.md
+      - OLED Display: features/oled-display.md
+      - Погода: features/weather.md
+      - Радіація: features/radiation.md
+      - Стан електромережі: features/power-grid.md
+      - Настільна лампа: features/desk-lamp.md
+  - API і інтеграції:
+      - WebSocket API: api/websocket.md
+      - REST API: api/rest.md
+      - MQTT: api/mqtt.md
+  - Веб-інтерфейс:
+      - Налаштування: web-interface/settings.md
+      - Редактор карти: web-interface/map-editor.md
+      - Оновлення прошивки: web-interface/firmware-update.md
+  - Для розробників:
+      - Архітектура: development/architecture.md
+      - UI Контроли: development/controls-guide.md
+      - Web Assets: development/web-assets.md
+      - Збірка проєкту: development/building.md
+      - Contribution Guide: development/contributing.md
+  - Довідник:
+      - Changelog: reference/changelog.md
+      - FAQ: reference/faq.md
+      - Troubleshooting: reference/troubleshooting.md

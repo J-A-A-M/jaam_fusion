@@ -1,0 +1,125 @@
+/* Кастомні стилі для JAAM Fusion Documentation */
+/* Базуються на стилях веб-конфігуратора (web/styles.css) */
+
+:root {
+  /* Світла тема - змінні з web/styles.css */
+  --md-primary-fg-color: #007bff;
+  --md-primary-fg-color--light: #4da3ff;
+  --md-primary-fg-color--dark: #0056b3;
+  --md-accent-fg-color: #007bff;
+  
+  /* Кольори фону та тексту */
+  --md-default-bg-color: #f0f0f0;
+  --md-default-fg-color: #000000;
+  --md-code-bg-color: #f8f9fa;
+  --md-code-fg-color: #000000;
+  
+  /* Додаткові кольори з web/styles.css */
+  --jaam-container-bg: #ffffff;
+  --jaam-border-color: #dee2e6;
+  --jaam-panel-bg: #f8f9fa;
+  --jaam-warning-bg: #fff3cd;
+  --jaam-warning-border: #ffeaa7;
+  --jaam-warning-text: #856404;
+  --jaam-secondary-text: #6c757d;
+}
+
+[data-md-color-scheme="slate"] {
+  /* Темна тема - змінні з web/styles.css [data-theme='dark'] */
+  --md-default-bg-color: #1a1a1a;
+  --md-default-fg-color: #ffffff;
+  --md-code-bg-color: #2d2d2d;
+  --md-code-fg-color: #ffffff;
+  
+  /* Додаткові кольори темної теми */
+  --jaam-container-bg: #2d2d2d;
+  --jaam-border-color: #444444;
+  --jaam-panel-bg: #3a3a3a;
+  --jaam-warning-bg: #5a4a2d;
+  --jaam-warning-border: #8b7355;
+  --jaam-warning-text: #d4b855;
+  --jaam-secondary-text: #aaaaaa;
+}
+
+/* Стиль контейнерів як у веб-інтерфейсі */
+.md-content__inner {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .admonition,
+[data-md-color-scheme="slate"] .md-typeset details {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Кнопки як у веб-конфігураторі */
+.md-button {
+  border-radius: 8px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.md-button:hover {
+  background-color: var(--jaam-panel-bg);
+}
+
+/* Таблиці */
+.md-typeset table:not([class]) {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--jaam-border-color);
+}
+
+/* Код блоки */
+.md-typeset pre > code {
+  border-radius: 8px;
+}
+
+/* Попередження (як у веб-інтерфейсі) */
+.md-typeset .admonition.warning,
+.md-typeset .admonition.caution {
+  background-color: var(--jaam-warning-bg);
+  border-color: var(--jaam-warning-border);
+}
+
+.md-typeset .admonition.warning .admonition-title,
+.md-typeset .admonition.caution .admonition-title {
+  color: var(--jaam-warning-text);
+}
+
+/* Додаткові класи для особливих блоків */
+.jaam-alert {
+  background-color: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+[data-md-color-scheme="slate"] .jaam-alert {
+  background-color: #4a2c2c;
+  border-color: #8b4545;
+}
+
+/* Українські прапори */
+.ukraine-badge img {
+  max-height: 24px;
+  vertical-align: middle;
+  margin: 0 4px;
+}
+
+/* Smooth transitions для всіх елементів */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Розширена висота хедера для більшого логотипу */
+.md-header {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}

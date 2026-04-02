@@ -9,3 +9,6 @@ data/.DS_Store
 .DS_Store
 .claude
 docs/*
+
+# MkDocs
+site/
