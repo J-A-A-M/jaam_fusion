@@ -2,17 +2,14 @@ name: Deploy Documentation
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, develop]
     paths:
       - 'wiki/**'
       - 'mkdocs.yml'
-      - 'README.md'
       - 'CHANGELOG.md'
-      - 'CONTROLS_GUIDE.md'
-      - 'WEB_ASSETS_README.md'
       - '.github/workflows/docs.yml'
   pull_request:
-    branches: [main, master]
+    branches: [main, develop]
     paths:
       - 'wiki/**'
       - 'mkdocs.yml'
