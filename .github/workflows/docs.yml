@@ -45,7 +45,7 @@ jobs:
           git config user.email github-actions[bot]@users.noreply.github.com
       
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force --clean --verbose
+        run: mkdocs gh-deploy --force --clean --verbose --cname info.jaam.net.ua
 
   build:
     runs-on: ubuntu-latest
