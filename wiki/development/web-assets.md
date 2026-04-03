@@ -181,7 +181,7 @@ Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGME
 
 ## Додаткові ресурси
 
-- **[CONTROLS_GUIDE.md](CONTROLS_GUIDE.md)** - Детальний довідник з додавання нових UI контролів
+- **[UI Контроли](controls-guide.md)** - Детальний довідник з додавання нових UI контролів
 - [Material Design Icons](https://pictogrammers.com/library/mdi/) - Іконки для info контролів
 - `web/ui_schema_models.json` - Визначення типів контролів
 - `web/ui_schema_sections.json` - Секції для групування контролів

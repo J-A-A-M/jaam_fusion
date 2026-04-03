@@ -23,8 +23,8 @@
 git clone https://github.com/J-A-A-M/jaam_fusion.git
 cd jaam_fusion
 
-# Встановити залежності (якщо є)
-pip install -r requirements.txt
+# Встановити PlatformIO
+pip install platformio
 
 # Зібрати та завантажити
 platformio run --target upload

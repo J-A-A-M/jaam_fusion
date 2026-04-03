@@ -4,6 +4,8 @@ repo_url: https://github.com/J-A-A-M/jaam_fusion
 repo_name: J-A-A-M/jaam_fusion
 edit_uri: edit/main/wiki/
 docs_dir: wiki
+exclude_docs: |
+  README.md
 
 theme:
   name: material
@@ -45,6 +47,12 @@ theme:
 
 extra_css:
   - stylesheets/custom.css
+
+extra_javascript:
+  # Math rendering for pymdownx.arithmatex (generic: true)
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 extra:
   social:
@@ -124,9 +132,22 @@ nav:
       - REST API: api/rest.md
       - MQTT: api/mqtt.md
   - Веб-інтерфейс:
-      - Налаштування: web-interface/settings.md
+      - Налаштування:
+        - Огляд: web-interface/settings.md
+        - Секції налаштувань:
+          - Загальні: web-interface/sections/general.md
+          - Дисплей: web-interface/sections/display.md
+          - Мережа: web-interface/sections/network.md
+          - Апаратне забезпечення: web-interface/sections/hardware.md
+          - Сирена: web-interface/sections/siren.md
+          - Клімат: web-interface/sections/climate.md
+          - Анімації: web-interface/sections/animations.md
+          - Яскравість: web-interface/sections/brightness.md
+          - Тривоги: web-interface/sections/alerts.md
+          - Звук: web-interface/sections/sound.md
+          - Оновлення прошивки: web-interface/sections/firmware.md
       - Редактор карти: web-interface/map-editor.md
-      - Оновлення прошивки: web-interface/firmware-update.md
+      - Редактор кольорів: web-interface/color-editor.md
   - Для розробників:
       - Архітектура: development/architecture.md
       - UI Контроли: development/controls-guide.md

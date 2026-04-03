@@ -161,7 +161,7 @@ Events для сповіщень між модулями.
 
 ## Конфігурація збірки
 
-Дивіться [platformio.ini](../../platformio.ini) для деталей.
+Дивіться [platformio.ini](https://github.com/J-A-A-M/jaam_fusion/blob/main/platformio.ini) для деталей.
 
 ## Для розробників
 

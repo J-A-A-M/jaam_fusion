@@ -726,7 +726,7 @@ platformio run
 
 ## Додаткові ресурси
 
-- [WEB_ASSETS_README.md](WEB_ASSETS_README.md) - Інформація про компресію та кешування
+- [Web Assets](web-assets.md) - Інформація про компресію та кешування
 - [Material Design Icons](https://pictogrammers.com/library/mdi/) - Іконки для info контролів
 - `web/scripts.js` - Клієнтська логіка обробки контролів
 - `src/JaamSettings.cpp` - Валідація та збереження налаштувань
