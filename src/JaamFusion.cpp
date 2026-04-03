@@ -499,7 +499,7 @@ bool saveNightMode(bool newState) {
     if (nightMode == newState) return false; // No change needed
     nightMode = newState;
   
-    display.showServiceMessage(nightMode ? "Увімкнено" : "Вимкнено", "Нічний режим:");
+    display.showServiceMessage(nightMode ? "Увімкнено" : "Вимкнено", "Нічна яскравість:");
     adaptStripColorsAndBrightness();
     handleAdaptAnimationBrightness();
     LOG.printf("[MAIN] Night mode %s\n", nightMode ? "enabled" : "disabled");
