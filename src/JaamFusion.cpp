@@ -148,6 +148,7 @@ bool                isDisplayOff = false;
 int                 prevMapMode = 1;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
+bool                nightMode = false;
 
 // --- CLOCK ---
 bool needDivider = false;
@@ -494,6 +495,43 @@ void mapUpdate(float percents) {
     }
 }
 
+bool saveNightMode(bool newState) {
+    if (nightMode == newState) return false; // No change needed
+    nightMode = newState;
+  
+    display.showServiceMessage(nightMode ? "Увімкнено" : "Вимкнено", "Нічна яскравість:");
+    adaptStripColorsAndBrightness();
+    handleAdaptAnimationBrightness();
+    LOG.printf("[MAIN] Night mode %s\n", nightMode ? "enabled" : "disabled");
+    api.setNightMode(nightMode);
+    return true;
+}
+
+bool saveMapOff(bool newState, bool showMessage = true) {
+    if (isMapOff == newState) return false; // No change needed
+    isMapOff = newState;
+  
+    if (showMessage) {
+        display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
+    }
+    adaptStripColorsAndBrightness();
+    LOG.printf("[MAIN] Map %s\n", isMapOff ? "disabled" : "enabled");
+    api.setMapEnabled(!isMapOff);
+    return true;
+}
+
+bool saveDisplayOff(bool newState, bool showMessage = true) {
+    if (isDisplayOff == newState) return false; // No change needed
+    isDisplayOff = newState;
+  
+    if (showMessage) {
+        display.showServiceMessage(!isDisplayOff ? "Увімкнено" : "Вимкнено", "Дисплей:");
+    }
+    LOG.printf("[MAIN] Display %s\n", isDisplayOff ? "disabled" : "enabled");
+    api.setDisplayEnabled(!isDisplayOff);
+    return true;
+}
+
 // --- Buttons Functions ---
 
 void handleClick(int event, JaamButton::Action action) {
@@ -510,32 +548,28 @@ void handleClick(int event, JaamButton::Action action) {
       break;
     // toggle map
     case 3:
-      isMapOff = !isMapOff;
-      display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Мапу:");
-      adaptStripColorsAndBrightness();
+      saveMapOff(!isMapOff);
       break;
     // toggle display
     case 4:
-      isDisplayOff = !isDisplayOff;
-      display.showServiceMessage(!isDisplayOff ? "Увімкнено" : "Вимкнено", "Дисплей:");
+      saveDisplayOff(!isDisplayOff);
       break;
     // toggle display and map
     case 5:
       if (isDisplayOff != isMapOff) {
-        isDisplayOff = false;
-        isMapOff = false;
+        saveMapOff(false, false);
+        saveDisplayOff(false, false);
       } else {
-        isMapOff = !isMapOff;
-        isDisplayOff = !isDisplayOff;
+        saveMapOff(!isMapOff, false);
+        saveDisplayOff(!isDisplayOff, false);
       }
       display.showServiceMessage(!isMapOff ? "Увімкнено" : "Вимкнено", "Дисплей та мапу:");
-      //mapCycle();
       break;
     // toggle night mode
     case 6:
-      //saveNightMode(!nightMode);
+      saveNightMode(!nightMode);
       break;
-    // toggle lamp (singl click) or reboot device (long click)
+    // reboot device (long click)
     case 10:
       rebootDevice();
       break;
@@ -1122,7 +1156,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
-            api.updateHomeAlert(homeFlags);
+            api.setHomeAlert(homeFlags);
         }
 
         // ── Init-fetch: перший пакет після підключення ────────────────────────
@@ -1197,7 +1231,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         }
         uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
         int homeTemp = decodeTemperature(encodedTemp);
-        api.updateHomeDistrictTemp(homeTemp);
+        api.setHomeDistrictTemp(homeTemp);
         adaptStripColorsAndBrightness();
     }
     
@@ -1715,13 +1749,20 @@ void adaptStripColorsAndBrightness() {
 
 // --- BRIGHTNESS Functions ---
 uint8_t getCurrentBrightnes() {
-    // if auto brightness set to day/night mode, check current hour and choose brightness
+
+    // якщо нічний режим увімкнений, повертаємо нічну яскравість незалежно від інших налаштувань
+    if (nightMode) {
+        return settings.getInt(BRIGHTNESS_NIGHT);
+    }
+    // режим яскравості 0: завжди використовувати основну яскравість
     if (settings.getInt(BRIGHTNESS_MODE) == 0) {
         return settings.getInt(BRIGHTNESS);
     }
+    // режим яскравості 1: використовувати денну або нічну яскравість залежно від часу доби
     if (settings.getInt(BRIGHTNESS_MODE) == 1) {
         return isItNightNow() ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
     }
+    // режим яскравості 2: використовувати денну або нічну яскравість залежно від рівня освітлення (якщо є датчик освітлення)
     if (settings.getInt(BRIGHTNESS_MODE) == 2 && lightSensor.isLightSensorAvailable()) {
         float lightLevel = lightSensor.getLightLevel();
         int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
@@ -1730,6 +1771,7 @@ uint8_t getCurrentBrightnes() {
             return lightLevel < threshold ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
         }
     }
+    // За замовчуванням повертаємо основну яскравість
     return settings.getInt(BRIGHTNESS);
 }
 
@@ -1748,14 +1790,14 @@ void updateClimateData() {
         if (climate.isPressureAvailable()) {
             press = climate.getPressure();
         }
-        api.updateClimateData(temp, hum, press);
+        api.setClimateData(temp, hum, press);
     }
 }
 
 void updateLightLevelData() {
     if (lightSensor.isAnySensorAvailable()) {
         float lightLevel = lightSensor.getLightLevel();
-        api.updateLightLevel(lightLevel);
+        api.setLightLevel(lightLevel);
     }
 }
 
@@ -2291,6 +2333,9 @@ void initApi() {
     // Ініціалізуємо API
     api.setSettings(&settings);
     api.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
+    api.setNightMode(nightMode);
+    api.setMapEnabled(!isMapOff);
+    api.setDisplayEnabled(!isDisplayOff);
     
     SystemInfo info = getSystemInfo();
     api.setSystemInfo(
@@ -2802,7 +2847,7 @@ void memoryProcess() {
         info.websocketUptime / 60
     );
     
-    api.updateSystemInfo(
+    api.setSystemInfo(
         info.usedMemory,
         info.uptime,
         info.wifiUptime,
@@ -3060,10 +3105,10 @@ void handleUpdateHomeAlertBit() {
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
     uint16_t homeAlertFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
     LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeAlertFlags);
-    api.updateHomeAlert(homeAlertFlags);
+    api.setHomeAlert(homeAlertFlags);
     uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
     int homeTemp = decodeTemperature(encodedTemp);
-    api.updateHomeDistrictTemp(homeTemp);
+    api.setHomeDistrictTemp(homeTemp);
 }
 
 void handleUpdateTimezone() {

@@ -66,11 +66,14 @@ async def send_command(websocket):
     print("  2. Set display mode - mode_id: 0=OFF, 1=CLOCK, 2=WEATHER, 3=TECH_INFO, 4=CLIMATE, 9=COMBINED")
     print("  3. Set lamp color and brightness")
     print("  4. Set home region")
+    print("  5. Set night mode (on/off)")
+    print("  6. Set display enabled (on/off)")
+    print("  7. Set map enabled (on/off)")
     print("  q. Quit")
     print("=" * 60)
 
     while True:
-        cmd = input("Enter command (1/2/3/4/q): ").strip()
+        cmd = input("Enter command (1/2/3/4/5/6/7/q): ").strip()
         if cmd == "1":
             mode_id = input("Enter map mode id (0-5): ").strip()
             try:
@@ -110,6 +113,42 @@ async def send_command(websocket):
                 print("Invalid region id")
                 continue
             msg = {"type": "set_home_region", "region_id": region_id}
+            await websocket.send(json.dumps(msg))
+            print(f"Sent: {msg}")
+        elif cmd == "5":
+            state = input("Enter night mode state (on/off or true/false): ").strip().lower()
+            if state in ["on", "true", "1"]:
+                state_bool = True
+            elif state in ["off", "false", "0"]:
+                state_bool = False
+            else:
+                print("Invalid state. Use 'on', 'off', 'true', or 'false'")
+                continue
+            msg = {"type": "set_night_mode", "enabled": state_bool}
+            await websocket.send(json.dumps(msg))
+            print(f"Sent: {msg}")
+        elif cmd == "6":
+            state = input("Enter display enabled state (on/off or true/false): ").strip().lower()
+            if state in ["on", "true", "1"]:
+                state_bool = True
+            elif state in ["off", "false", "0"]:
+                state_bool = False
+            else:
+                print("Invalid state. Use 'on', 'off', 'true', or 'false'")
+                continue
+            msg = {"type": "set_display_enabled", "enabled": state_bool}
+            await websocket.send(json.dumps(msg))
+            print(f"Sent: {msg}")
+        elif cmd == "7":
+            state = input("Enter map enabled state (on/off or true/false): ").strip().lower()
+            if state in ["on", "true", "1"]:
+                state_bool = True
+            elif state in ["off", "false", "0"]:
+                state_bool = False
+            else:
+                print("Invalid state. Use 'on', 'off', 'true', or 'false'")
+                continue
+            msg = {"type": "set_map_enabled", "enabled": state_bool}
             await websocket.send(json.dumps(msg))
             print(f"Sent: {msg}")
         elif cmd.lower() == "q":
@@ -157,6 +196,9 @@ async def receive_messages(websocket):
                     print(f"  Home region: {data.get('home_region')}")
                     print(f"  Home alert: {', '.join(active_alerts)} (flags=0x{flags16:04X})")
                     print(f"  Home temp: {data.get('home_district_temp', 'N/A')}°C")
+                    print(f"  Night mode: {'ON' if data.get('night_mode', False) else 'OFF'}")
+                    print(f"  Display enabled: {'ON' if data.get('display_enabled', True) else 'OFF'}")
+                    print(f"  Map enabled: {'ON' if data.get('map_enabled', True) else 'OFF'}")
 
                     # Supported features
                     supported_map = data.get("supported_map_modes", [])
@@ -216,6 +258,18 @@ async def receive_messages(websocket):
                     flags16 = data.get("home_alert_flags", 0)
                     active_alerts = parse_alert_flags(flags16)
                     print(f"→ Home alert changed to: {', '.join(active_alerts)} (flags=0x{flags16:04X})")
+
+                elif msg_type == "night_mode_change":
+                    state = data.get("night_mode", False)
+                    print(f"→ Night mode changed to: {'ON' if state else 'OFF'}")
+
+                elif msg_type == "display_enabled_change":
+                    enabled = data.get("display_enabled", True)
+                    print(f"→ Display enabled changed to: {'ON' if enabled else 'OFF'}")
+
+                elif msg_type == "map_enabled_change":
+                    enabled = data.get("map_enabled", True)
+                    print(f"→ Map enabled changed to: {'ON' if enabled else 'OFF'}")
 
                 elif msg_type == "system_info":
                     mem_kb = data.get("used_memory", 0) / 1024
