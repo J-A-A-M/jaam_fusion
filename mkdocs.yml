@@ -126,11 +126,8 @@ nav:
       - Радіація: features/radiation.md
       - Стан електромережі: features/power-grid.md
       - Настільна лампа: features/desk-lamp.md
-      - Home Assistant: features/home-assistant.md
   - API і інтеграції:
-      - WebSocket API: api/websocket.md
-      - REST API: api/rest.md
-      - MQTT: api/mqtt.md
+      - Home Assistant: api/home-assistant.md
   - Веб-інтерфейс:
       - Налаштування:
         - Огляд: web-interface/settings.md

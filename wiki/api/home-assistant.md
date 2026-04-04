@@ -121,6 +121,6 @@
 ## Дивіться також
 
 - [wiki/web-interface/sections/network.md](../web-interface/sections/network.md) — де увімкнути API
-- [wiki/features/desk-lamp.md](desk-lamp.md) — режим “Лампа”
+- [wiki/features/desk-lamp.md](../features/desk-lamp.md) — режим “Лампа”
 - [wiki/web-interface/sections/brightness.md](../web-interface/sections/brightness.md) — автояскравість
 - [wiki/web-interface/sections/climate.md](../web-interface/sections/climate.md) — сенсори мікроклімату та корекції
