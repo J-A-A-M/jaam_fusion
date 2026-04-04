@@ -73,5 +73,5 @@
 
 ## Дивіться також
 
-- [wiki/web-interface/sections/hardware.md](hardware.md) — налаштування кнопок (щоб працювало оновлення по long‑press)
-- [wiki/web-interface/sections/general.md](general.md) — базові налаштування пристрою
+- [Апаратне забезпечення](hardware.md) — налаштування кнопок (щоб працювало оновлення по long‑press)
+- [Загальні](general.md) — базові налаштування пристрою

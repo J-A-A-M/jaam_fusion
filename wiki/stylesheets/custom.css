@@ -123,3 +123,17 @@
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
 }
+
+/* Mermaid diagrams: keep text readable by allowing horizontal scroll
+   instead of shrinking the whole SVG to fit the page width. */
+.md-typeset .mermaid {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+.md-typeset .mermaid svg {
+  max-width: none !important;
+  width: auto !important;
+  height: auto;
+}

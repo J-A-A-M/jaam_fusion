@@ -48,6 +48,6 @@
 
 ## Дивіться також
 
-- [wiki/web-interface/sections/animations.md](animations.md) — типи анімацій і кольори
-- [wiki/web-interface/sections/brightness.md](brightness.md) — яскравість для подій
-- [wiki/web-interface/sections/sound.md](sound.md) — звуки для подій
+- [Анімації](animations.md) — типи анімацій і кольори
+- [Яскравість](brightness.md) — яскравість для подій
+- [Звук](sound.md) — звуки для подій

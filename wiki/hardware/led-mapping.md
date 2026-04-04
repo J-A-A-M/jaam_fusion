@@ -34,7 +34,7 @@
 
 Після цього з’являється кнопка **"Редактор мапи"**, яка відкриває сторінку редагування.
 
-Детальна інструкція: [wiki/web-interface/map-editor.md](../web-interface/map-editor.md)
+Детальна інструкція: [Редактор мапи](../web-interface/map-editor.md)
 
 ## Обмеження (як у прошивці)
 
@@ -61,7 +61,7 @@
 
 Для **"Власної карти LED"** кількість LED основної стрічки задається в секції **Апаратне забезпечення**.
 
-Детально: [wiki/web-interface/sections/hardware.md](../web-interface/sections/hardware.md)
+Детально: [Апаратне забезпечення](../web-interface/sections/hardware.md)
 
 ## Troubleshooting
 
@@ -79,4 +79,4 @@
 
 Перевірте, чи для цього регіону в мапі задано хоча б одну LED.
 
-Більше: [wiki/reference/troubleshooting.md](../reference/troubleshooting.md)
+Більше: [Troubleshooting](../reference/troubleshooting.md)

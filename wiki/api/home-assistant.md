@@ -120,7 +120,7 @@
 
 ## Дивіться також
 
-- [wiki/web-interface/sections/network.md](../web-interface/sections/network.md) — де увімкнути API
-- [wiki/features/desk-lamp.md](../features/desk-lamp.md) — режим “Лампа”
-- [wiki/web-interface/sections/brightness.md](../web-interface/sections/brightness.md) — автояскравість
-- [wiki/web-interface/sections/climate.md](../web-interface/sections/climate.md) — сенсори мікроклімату та корекції
+- [Мережа](../web-interface/sections/network.md) — де увімкнути API
+- [Настільна лампа](../features/desk-lamp.md) — режим “Лампа”
+- [Яскравість](../web-interface/sections/brightness.md) — автояскравість
+- [Клімат](../web-interface/sections/climate.md) — сенсори мікроклімату та корекції

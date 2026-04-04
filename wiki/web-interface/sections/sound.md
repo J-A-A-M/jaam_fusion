@@ -26,7 +26,7 @@
 - **DF Player (RX) (пін)**
 - **DF Player (TX) (пін)**
 
-Дивіться: [wiki/web-interface/sections/hardware.md](hardware.md)
+Дивіться: [Апаратне забезпечення](hardware.md)
 
 ## Гучність вдень/вночі
 
@@ -101,6 +101,6 @@
 
 ## Дивіться також
 
-- [wiki/web-interface/sections/general.md](general.md) — розклад **день/ніч** та **Хвилина мовчання**
-- [wiki/web-interface/sections/hardware.md](hardware.md) — піни buzzer/DFPlayer
-- [wiki/web-interface/sections/alerts.md](alerts.md) — які загрози увімкнені
+- [Загальні](general.md) — розклад **день/ніч** та **Хвилина мовчання**
+- [Апаратне забезпечення](hardware.md) — піни buzzer/DFPlayer
+- [Тривоги](alerts.md) — які загрози увімкнені

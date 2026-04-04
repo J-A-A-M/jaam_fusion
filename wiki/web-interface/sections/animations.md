@@ -113,5 +113,5 @@ $$\text{cycles} = \frac{\text{timeSeconds} \cdot 1000}{\text{cyclePeriodMs}}$$
 
 ## Дивіться також
 
-- [wiki/web-interface/sections/alerts.md](alerts.md) — увімкнення/вимкнення загроз
-- [wiki/web-interface/sections/brightness.md](brightness.md) — яскравість для подій (впливає і на preview)
+- [Тривоги](alerts.md) — увімкнення/вимкнення загроз
+- [Яскравість](brightness.md) — яскравість для подій (впливає і на preview)

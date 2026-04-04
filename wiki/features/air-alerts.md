@@ -39,7 +39,7 @@
 
 Тут можна вимкнути відображення окремих загроз (наприклад, КАБ або балістику). Це впливає на те, що буде показуватися на мапі.
 
-Детально: [wiki/web-interface/sections/alerts.md](../web-interface/sections/alerts.md)
+Детально: [Тривоги](../web-interface/sections/alerts.md)
 
 ### Кольори та анімації
 
@@ -51,7 +51,7 @@
 - тип анімації
 - тривалість показу та швидкість (цикл)
 
-Детально: [wiki/web-interface/sections/animations.md](../web-interface/sections/animations.md)
+Детально: [Анімації](../web-interface/sections/animations.md)
 
 ### Яскравість
 
@@ -59,7 +59,7 @@
 
 Яскравість задається окремо для подій (тривога/відбій/загрози) і впливає на видимість ефектів.
 
-Детально: [wiki/web-interface/sections/brightness.md](../web-interface/sections/brightness.md)
+Детально: [Яскравість](../web-interface/sections/brightness.md)
 
 ## Домашній регіон: сповіщення, звук, сирена
 
@@ -78,8 +78,8 @@
 
 Детально:
 
-- [wiki/web-interface/sections/sound.md](../web-interface/sections/sound.md)
-- [wiki/web-interface/sections/siren.md](../web-interface/sections/siren.md)
+- [Звук](../web-interface/sections/sound.md)
+- [Сирена](../web-interface/sections/siren.md)
 
 ## Troubleshooting
 
@@ -99,5 +99,5 @@
 
 ## Дивіться також
 
-- [wiki/web-interface/settings.md](../web-interface/settings.md) — як користуватися веб‑інтерфейсом (системна панель, тривоги, логи)
-- [wiki/hardware/led-mapping.md](../hardware/led-mapping.md) — як мапінг LED впливає на відображення
+- [Налаштування](../web-interface/settings.md) — як користуватися веб‑інтерфейсом (системна панель, тривоги, логи)
+- [LED Mapping](../hardware/led-mapping.md) — як мапінг LED впливає на відображення

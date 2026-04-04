@@ -1,259 +1,173 @@
-# Web Assets Compression
+# Веб-асети: пакування, кешування і стиснення
 
-## Загальна інформація
+Цей документ описує, як веб-інтерфейс JAAM Fusion пакується у прошивку:
 
-Цей проект використовує систему pre-build компресії для веб-ресурсів (CSS та JavaScript), що дозволяє зменшити розмір файлів на **74%** перед їх вбудовуванням у firmware ESP32.
+- які файли вважаються "статичними веб-асетами";
+- як вони стискаються перед збіркою і потрапляють у `src/web_assets.h`;
+- як `JaamWeb` віддає ці ресурси з gzip та кешуванням;
+- які відповіді стискаються вже під час роботи пристрою.
 
-## Результати компресії
+## Де лежать вихідні файли
 
-### Основні файли
-- **styles.css**: 15,048 bytes → 2,839 bytes (**81.1%** reduction)
-- **scripts.js**: 55,817 bytes → 13,867 bytes (**75.2%** reduction)
+Вихідні (редаговані людиною) ресурси лежать у `web/`.
 
-### Page-specific файли
-- **map_editor.css**: 1,236 bytes → 490 bytes (**60.4%** reduction)
-- **map_editor.js**: 2,456 bytes → 952 bytes (**61.2%** reduction)
-- **bg_color_editor.css**: 1,712 bytes → 621 bytes (**63.7%** reduction)
-- **bg_color_editor.js**: 4,010 bytes → 1,463 bytes (**63.5%** reduction)
+На момент написання, у прошивку вбудовуються такі файли:
 
-### UI Schema (JSON)
-- **ui_schema_models.json**: 705 bytes → 207 bytes (**70.6%** reduction)
-- **ui_schema_sections.json**: 789 bytes → 379 bytes (**52.0%** reduction)
-- **controls.json**: 41,752 bytes → 5,221 bytes (**87.5%** reduction)
+- `web/styles.css`
+- `web/scripts.js`
+- `web/map_editor.css`
+- `web/map_editor.js`
+- `web/bg_color_editor.css`
+- `web/bg_color_editor.js`
+- `web/ui_schema_models.json`
+- `web/ui_schema_sections.json`
+- `web/controls.json`
 
-### Загальна статистика
-- **Разом**: 123,525 bytes → 26,039 bytes (**78.9%** reduction)
-- **Економія**: 97,486 bytes
+Список визначений у `tools/compress_assets.py` у словнику `ASSETS`.
 
-**Примітка**: Окрім статичних файлів, всі динамічні JSON та HTML відповіді також стискаються в реальному часі (див. розділ "Динамічне стиснення відповідей").
+## Pre-build пайплайн (PlatformIO)
 
-## Архітектура
+Pre-build скрипт підключений у `platformio.ini` через:
 
-### Структура файлів
-
-```text
-jaam_fusion/
-├── web/                          # Вихідні веб-ресурси
-│   ├── styles.css               # Основні CSS стилі
-│   ├── scripts.js               # Основний JavaScript код
-│   ├── map_editor.css           # CSS для редактора карти
-│   ├── map_editor.js            # JavaScript для редактора карти
-│   ├── bg_color_editor.css      # CSS для редактора кольорів
-│   ├── bg_color_editor.js       # JavaScript для редактора кольорів
-│   ├── ui_schema_models.json    # UI моделі (статичні)
-│   ├── ui_schema_sections.json  # UI секції (статичні)
-│   └── controls.json            # UI контроли без значень (статичні)
-├── tools/
-│   └── compress_assets.py       # PlatformIO pre-build script
-└── src/
-    ├── web_assets.h             # Auto-generated (GZIP compressed arrays)
-    └── JaamWeb.cpp              # Використовує compressed assets
+```ini
+extra_scripts = pre:tools/pre_build.py
 ```
 
-### Як це працює
+Далі `tools/pre_build.py` запускає послідовно:
 
-1. **Вихідні файли**: CSS і JS зберігаються у папці `web/` як звичайні text файли
-2. **Pre-build компресія**: Перед кожною збіркою PlatformIO запускає `tools/compress_assets.py`
-3. **Генерація header**: Скрипт створює `src/web_assets.h` з GZIP-compressed binary arrays
-4. **Вбудовування**: JaamWeb.cpp включає web_assets.h та відправляє compressed дані з `Content-Encoding: gzip`
-5. **Браузер**: Автоматично розпаковує GZIP дані
+1. `tools/compress_assets.py` — стискає web-асети і генерує `src/web_assets.h`.
+2. `tools/convert_region_map.py` — окремий pre-build крок (не про веб-асети).
 
-## Використання
+### Що саме генерується
 
-### Редагування веб-ресурсів
+`tools/compress_assets.py` створює `src/web_assets.h`, де для кожного файлу є:
 
-Просто редагуйте файли у папці `web/`:
-- `web/styles.css` - основні CSS стилі
-- `web/scripts.js` - основний JavaScript код
-- `web/map_editor.css` - стилі редактора карти
-- `web/map_editor.js` - логіка редактора карти
-- `web/bg_color_editor.css` - стилі редактора кольорів
-- `web/bg_color_editor.js` - логіка редактора кольорів
-- `web/ui_schema_models.json` - моделі UI елементів (статичні)
-- `web/ui_schema_sections.json` - секції налаштувань (статичні)
-- `web/controls.json` - структура UI контролів без значень (статичні)
+- gzip-масив у `PROGMEM`, наприклад `styles_css_gz`;
+- довжина, наприклад `styles_css_gz_len`;
+- хеш версії, наприклад `styles_css_hash`.
 
-### Збірка проекту
+Важливо:
 
-```bash
-# Автоматична компресія та збірка
-platformio run
+- gzip робиться з `mtime=0`, щоб результат був детермінований;
+- хеш — це `sha256` від **стиснутих** байтів, обрізаний до 16 символів;
+- `src/web_assets.h` — згенерований файл, його не редагують вручну.
 
-# Або для environment specific
-platformio run -e firmware
-```
+Під час збірки скрипт друкує статистику (оригінал/стиснуте/хеш).
+Ці цифри є джерелом істини для розміру та “економії”.
 
-Компресія відбувається автоматично перед кожною збіркою завдяки `extra_scripts = pre:tools/compress_assets.py` у `platformio.ini`.
+## Як прошивка віддає статичні асети
 
-## Технічні деталі
+Статичні ресурси віддаються вже у стисненому (gzip) вигляді.
+`JaamWeb` встановлює:
 
-### Content-Encoding: gzip
+- `Content-Encoding: gzip`
+- `Cache-Control: public, max-age=86400`
+- `ETag: "<hash>"`
 
-Сервер відправляє заголовок `Content-Encoding: gzip`, що дозволяє браузеру автоматично розпаковувати дані. Це стандартний HTTP механізм.
+І якщо браузер надсилає `If-None-Match` з тим самим ETag,
+прошивка повертає `304 Not Modified`.
 
-### ETag для кешування
+Типові маршрути (HTTP GET):
 
-Кожен скомпонований файл має унікальний SHA256 hash, який використовується як ETag для HTTP кешування:
-- При першому завантаженні: повні 15.1KB
-- При повторних візитах: 0 bytes (304 Not Modified)
+- `/styles.css`
+- `/scripts.js`
+- `/map-editor.css`
+- `/map-editor.js`
+- `/bg-color-editor.css`
+- `/bg-color-editor.js`
+- `/ui-schema/models`
+- `/ui-schema/sections`
+- `/ui-schema/controls`
 
-### PROGMEM
+### Версії через `?v=`
 
-Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGMEM`), що економить RAM.
+Окрім ETag, головна UI-сторінка `/` підключає CSS/JS з query-параметром версії:
 
-### Розділення статичних контролів і динамічних значень
+- `/styles.css?v=<styles_css_hash>`
+- `/scripts.js?v=<scripts_js_hash>`
 
-Для максимальної оптимізації, UI контроли розділено на дві частини:
+Так само в HTML інжектиться `window.JAAM_HASHES`, і фронтенд використовує
+`?v=` для `GET /ui-schema/models`, `GET /ui-schema/sections`,
+`GET /ui-schema/controls`.
 
-**Статична частина** (`/ui-schema/controls`):
-- Файл `web/controls.json` містить **тільки структуру** контролів (без поля `current`)
-- Pre-compressed при збірці (87.5% reduction)
-- Кешується браузером через ETag (завантажується один раз)
-- Розмір: 41,752 bytes → 5,221 bytes
+## Динамічні дані та стиснення “на льоту”
 
-**Динамічна частина** (`/ui-schema/controls/values`):
-- Endpoint повертає масив значень `{values: [["name1", value1], ["name2", value2], ...]}`
-- Стискається динамічно при кожному запиті
-- Завантажується щоразу (актуальні значення з пам'яті пристрою)
-- Об'єднується з контролями на клієнті через `mergeControlsWithValues()`
+Частина відповідей генерується динамічно й стискається вже під час запиту.
+Для цього використовується `LZPacker::compress()` (бібліотека `ESP32-targz`).
 
-**Переваги**:
-- ✅ **Економія трафіку**: Велика структура (41KB) завантажується тільки один раз
-- ✅ **Швидке оновлення**: Значення (кілька KB) завантажуються швидко
-- ✅ **Кешування**: 304 Not Modified для статичної частини
-- ✅ **Паралельне завантаження**: Обидва запити через `Promise.all()`
+### JSON
 
-## Динамічне стиснення відповідей
+`sendCompressedJson()`:
 
-Окрім pre-compressed статичних файлів, сервер також стискає динамічні відповіді в реальному часі:
+- стискає відповідь у gzip;
+- віддає з `Content-Encoding: gzip`;
+- якщо стиснення не вдалося — віддає не стиснуту відповідь.
 
-### JSON API Endpoints
+Приклади ендпоінтів, які віддаються як динамічний JSON:
 
-**Більшість JSON API endpoints** стискаються динамічно через `ESP32-targz` бібліотеку:
+- `/ui-schema/dropdown_lists`
+- `/ui-schema/controls/values`
+- `/system-info`
+- `/alerts-info`
+- `/logs-info`
+- `/map-data`
+- `/bg-colors-data`
 
-- `/ui-schema/dropdown_lists` - списки для dropdown елементів
-- `/ui-schema/controls/values` - динамічні значення для контролів (стискається ESP32-targz, має anti-cache headers)
-- `/system-info` - системна інформація
-- `/alerts-info` - дані про тривоги
-- `/logs-info` - логи системи
-- `/map-data` - дані для редактора мапи
-- `/bg-colors-data` - дані кольорів фону
+Для `/ui-schema/controls/values` додатково виставляється “anti-cache”:
 
-**Виняток**: `/ui-schema/controls` - pre-compressed при збірці та завантажується з `web_assets.h` (НЕ використовує ESP32-targz)
+- `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`
+- `Pragma: no-cache`
+- `Expires: 0`
 
-**Функція**: `sendCompressedJson()` використовує `LZPacker::compress()` для автоматичного gzip стиснення.
+### HTML
 
-**Anti-caching**: `/ui-schema/controls/values` має заголовки `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` для гарантії актуальних значень.
+Деякі HTML-сторінки теж стискаються на льоту через `sendCompressedHtml()`:
 
-### HTML Pages
+- `/`
+- `/map-editor`
+- `/bg-color-editor`
 
-Динамічно згенеровані HTML сторінки також стискаються:
+Для `/` також виставляється заборона кешування,
+щоб гарантовано підхоплювались нові версії ресурсів.
 
-- `/` - головна UI сторінка
-- `/map-editor` - редактор мапи
-- `/bg-color-editor` - редактор кольорів фону
+## Дрібниці про іконки
 
-**Функція**: `sendCompressedHtml()` стискає великі HTML рядки перед відправкою.
+HTML містить посилання на `favicon.png` і `apple-touch-icon.png`.
+Станом на поточну реалізацію:
 
-### Переваги динамічного стиснення
+- `GET /favicon.png` відповідає `204`;
+- маршруту для `apple-touch-icon.png` не зареєстровано.
 
-- ✅ **Економія трафіку**: 60-80% зменшення розміру JSON/HTML відповідей
-- ✅ **Швидше завантаження**: менше часу на передачу даних через WiFi
-- ✅ **Менше навантаження**: на WiFi радіо та точку доступу
-- ✅ **Автоматичне**: браузер автоматично розпаковує `Content-Encoding: gzip`
-- ✅ **Fallback**: при помилці стиснення відправляється нестиснута версія
+Якщо потрібні реальні іконки, їх треба додати як ресурс
+(аналогічно CSS/JS) і зареєструвати handler у `JaamWeb::begin()`.
 
-### Технічні деталі
+## Як додати новий статичний файл
 
-**Бібліотека**: `tobozo/ESP32-targz@1.3.1`
-
-**Метод стиснення**: `LZPacker::compress()` - високоефективний gzip компресор
-
-**Приклад логування**:
-```
-[WEB] Compressed JSON: 3245 → 892 bytes (72.5% reduction)
-[WEB] Compressed HTML: 8921 → 2134 bytes (76.1% reduction)
-```
-
-**Управління пам'яттю**: Стиснуті дані автоматично звільняються після відправки через `free(compressedBytes)`.
-
----
-
-## Додаткові ресурси
-
-- **[UI Контроли](controls-guide.md)** - Детальний довідник з додавання нових UI контролів
-- [Material Design Icons](https://pictogrammers.com/library/mdi/) - Іконки для info контролів
-- `web/ui_schema_models.json` - Визначення типів контролів
-- `web/ui_schema_sections.json` - Секції для групування контролів
-
-## Порівняння з попередніми підходами
-
-### До змін
-- ❌ CSS/JS embedded в R"HTML(...)" raw strings всередині методів
-- ❌ Інлайн стилі та скрипти у кожному page handler
-- ❌ Дублювання коду (saveBtn стилі у кожному редакторі)
-- ❌ Розмір: ~58KB без компресії
-
-### Після змін
-- ✅ CSS/JS у окремих файлах (легше редагувати та підтримувати)
-- ✅ GZIP compression під час build (без навантаження на ESP32)
-- ✅ Pre-compressed binary arrays у PROGMEM
-- ✅ Розмір статичних assets: **~16KB** (73.7% економії)
-- ✅ Динамічне стиснення JSON/HTML через ESP32-targz (60-80% економії)
-- ✅ Hash-based ETag для ефективного кешування
-- ✅ Переиспользування коду між сторінками
-
-## Підтримка браузерів
-
-Всі сучасні браузери підтримують `Content-Encoding: gzip`:
-- Chrome/Edge (всі версії)
-- Firefox (всі версії)
-- Safari (всі версії)
-- Opera (всі версії)
+1. Додайте файл у `web/`.
+2. Додайте його в `ASSETS` у `tools/compress_assets.py`.
+3. Додайте handler у `src/JaamWeb.cpp` за зразком `handleCss()`:
+   gzip-віддача, `ETag`, `Cache-Control`, `If-None-Match`.
+4. Зареєструйте route у `JaamWeb::begin()` через `server.on()`.
+5. Підключіть ресурс у HTML/JS.
 
 ## Troubleshooting
 
-### Файл web_assets.h не генерується
+### Зміни у `web/` не видно в браузері
 
-Переконайтеся що PlatformIO правильно налаштований:
-```bash
-# Перевірте platformio.ini
-grep extra_scripts platformio.ini
-# Повинно бути: extra_scripts = pre:tools/compress_assets.py
-```
+1. Переконайтесь, що збірка виконалась (`platformio run`).
+2. Зробіть hard reload у браузері.
+3. За потреби зробіть clean build:
 
-### Помилка компіляції "web_assets.h not found"
-
-Повністю перебудуйте проект:
 ```bash
 platformio run -t clean && platformio run
 ```
 
-### Зміни в CSS/JS не застосовуються
+### Помилка `web_assets.h not found`
 
-1. Очистіть браузерний кеш (Ctrl+Shift+R або Cmd+Shift+R)
-2. Перебудуйте проект: `platformio run -t clean && platformio run`
-3. Перевірте що змінився ETag hash у консолі браузера
+Це означає, що pre-build не згенерував файл.
+Перевірте, що в `platformio.ini` підключений `tools/pre_build.py`.
 
-## Розробка
+## Додаткові ресурси
 
-Якщо потрібно додати нові веб-ресурси:
-
-1. Створіть файл у папці `web/`
-2. Додайте його в `ASSETS` dictionary у `tools/compress_assets.py`:
-   ```python
-   ASSETS = {
-       "styles_css": os.path.join(WEB_DIR, "styles.css"),
-       "scripts_js": os.path.join(WEB_DIR, "scripts.js"),
-       "map_editor_css": os.path.join(WEB_DIR, "map_editor.css"),
-       "map_editor_js": os.path.join(WEB_DIR, "map_editor.js"),
-       "bg_color_editor_css": os.path.join(WEB_DIR, "bg_color_editor.css"),
-       "bg_color_editor_js": os.path.join(WEB_DIR, "bg_color_editor.js"),
-       "ui_schema_models_json": os.path.join(WEB_DIR, "ui_schema_models.json"),
-       "ui_schema_sections_json": os.path.join(WEB_DIR, "ui_schema_sections.json"),
-       "new_file": os.path.join(WEB_DIR, "new_file.txt"),  # Нове
-   }
-   ```
-3. Створіть handler метод у JaamWeb.cpp (наприклад `handleNewFile()`)
-4. Зареєструйте route у `begin()`: `server.on("/new-file", HTTP_GET, ...)`
-5. Підключіть у HTML: `<link>` для CSS або `<script src="">` для JS
+- [Довідник по UI контролам](controls-guide.md)
+- [Архітектура](architecture.md)

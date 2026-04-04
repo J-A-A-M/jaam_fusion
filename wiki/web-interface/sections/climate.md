@@ -81,5 +81,5 @@
 
 Дивіться також:
 
-- [wiki/web-interface/sections/display.md](display.md) — режими дисплея та Комбінований режим
-- [wiki/hardware/sensors.md](../../hardware/sensors.md) — апаратне підключення сенсорів
+- [Дисплей](display.md) — режими дисплея та Комбінований режим
+- [Сенсори](../../hardware/sensors.md) — апаратне підключення сенсорів

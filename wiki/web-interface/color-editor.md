@@ -13,7 +13,7 @@
 2. Оберіть **"Індивідуальні кольори"**.
 3. З’явиться кнопка **"Редактор кольорів"** — натисніть її.
 
-Детальніше про режим фонової стрічки і кнопку: [wiki/web-interface/sections/general.md](sections/general.md)
+Детальніше про режим фонової стрічки і кнопку: [Загальні](sections/general.md)
 
 ## Передумови (кількість фонових LED)
 
@@ -23,7 +23,7 @@
 
 Якщо кількість дорівнює `0` або не налаштована, редактор покаже повідомлення, що потрібно спочатку вказати кількість LED.
 
-Дивіться: [wiki/web-interface/sections/hardware.md](sections/hardware.md)
+Дивіться: [Апаратне забезпечення](sections/hardware.md)
 
 !!! tip
     Якщо фонова стрічка підключена фізично, але вказано кількість `0` — вона буде вважатися вимкненою, і редактор не зможе показати палітру.
@@ -66,10 +66,10 @@
 
 - **Яскравість → Фонова стрічка**
 
-Дивіться: [wiki/web-interface/sections/brightness.md](sections/brightness.md)
+Дивіться: [Яскравість](sections/brightness.md)
 
 ## Дивіться також
 
-- [wiki/web-interface/sections/general.md](sections/general.md) — режим фонової стрічки та кнопка редактора
-- [wiki/web-interface/sections/hardware.md](sections/hardware.md) — пін/кількість/формат/частота фонової стрічки
-- [wiki/web-interface/sections/brightness.md](sections/brightness.md) — яскравість фонового каналу
+- [Загальні](sections/general.md) — режим фонової стрічки та кнопка редактора
+- [Апаратне забезпечення](sections/hardware.md) — пін/кількість/формат/частота фонової стрічки
+- [Яскравість](sections/brightness.md) — яскравість фонового каналу

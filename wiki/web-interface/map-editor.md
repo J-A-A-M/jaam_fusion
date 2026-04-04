@@ -17,7 +17,7 @@
 2. Оберіть **"Власна карта LED"**.
 3. З’явиться кнопка **"Редактор мапи"** — натисніть її.
 
-Детальніше про те, де це в інтерфейсі: [wiki/web-interface/sections/general.md](sections/general.md)
+Детальніше про те, де це в інтерфейсі: [Загальні](sections/general.md)
 
 ## Як влаштована форма
 
@@ -114,5 +114,5 @@
 
 ## Дивіться також
 
-- [wiki/web-interface/sections/general.md](sections/general.md) — де увімкнути **"Власна карта LED"** і відкрити редактор
-- [wiki/hardware/led-mapping.md](../hardware/led-mapping.md) — загальні принципи LED-мапінгу
+- [Загальні](sections/general.md) — де увімкнути **"Власна карта LED"** і відкрити редактор
+- [LED Mapping](../hardware/led-mapping.md) — загальні принципи LED-мапінгу

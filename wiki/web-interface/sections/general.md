@@ -24,8 +24,8 @@
 
 Вона відкриває редактор, де можна створити власне зіставлення LED ↔ регіони.
 
-- Детальніше: [wiki/web-interface/map-editor.md](../map-editor.md)
-- Загальний опис LED-мапінгу: [wiki/hardware/led-mapping.md](../../hardware/led-mapping.md)
+- Детальніше: [Редактор мапи](../map-editor.md)
+- Загальний опис LED-мапінгу: [LED Mapping](../../hardware/led-mapping.md)
 
 ## Домашній регіон
 
@@ -57,7 +57,7 @@
 
 У редакторі можна задати кольори для фонового відображення по регіонах.
 
-- Детальніше: [wiki/web-interface/color-editor.md](../color-editor.md)
+- Детальніше: [Редактор кольорів](../color-editor.md)
 
 ## Режим мапи
 
