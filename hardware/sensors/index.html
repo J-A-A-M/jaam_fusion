@@ -362,6 +362,26 @@
     
     
       <li class="md-tabs__item">
+        <a href="../../jaam-boards/jaam-1-3/" class="md-tabs__link">
+          
+  
+  
+  Плати JAAM
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
         <a href="../../development/architecture/" class="md-tabs__link">
           
   
@@ -1915,7 +1935,7 @@
   <span class="md-ellipsis">
     
   
-    Для розробників
+    Плати JAAM
   
 
     
@@ -1928,6 +1948,151 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Плати JAAM
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../jaam-boards/jaam-1-3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JAAM 1.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../jaam-boards/jaam-2-1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JAAM 2.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../jaam-boards/jaam-3-2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JAAM 3.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Для розробників
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2106,10 +2271,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -2127,8 +2292,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2594,7 +2759,7 @@
 <p class="admonition-title">Note</p>
 <p>У прошивці тиск для BME/BMP перераховується і використовується як <strong>мм рт. ст.</strong>, тому корекція тиску задається в тих самих одиницях.</p>
 </div>
-<p>Детально (UI і пояснення): <a href="../../web-interface/sections/climate/">wiki/web-interface/sections/climate.md</a></p>
+<p>Детально (UI і пояснення): <a href="../../web-interface/sections/climate/">Клімат</a></p>
 <h2 id="2-lux">2) Сенсор освітлення (lux)<a class="headerlink" href="#2-lux" title="Permanent link">&para;</a></h2>
 <h3 id="_7">Підтримувана модель<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2637,21 +2802,22 @@
 </div>
 <h3 id="_9">Для чого використовується<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h3>
 <p>1) <strong>Автояскравість (день/ніч) за освітленістю</strong></p>
-<p>Перейдіть: <strong>Яскравість → Режим яскравості → Сенсор освітлення</strong></p>
-<p>Далі задайте:</p>
-<ul>
-<li><strong>Яскравість → День</strong></li>
-<li><strong>Яскравість → Ніч</strong></li>
-<li><strong>Яскравість → Рівень освітлення для застосування "нічної" яскравості</strong></li>
-</ul>
-<p>Логіка в прошивці проста:</p>
-<ul>
-<li>якщо <code>lux &lt; threshold</code> → застосовується <strong>"Ніч"</strong></li>
-<li>інакше → <strong>"День"</strong></li>
-</ul>
+<div class="language-text highlight"><pre><span></span><code>Перейдіть: **Яскравість → Режим яскравості → Сенсор освітлення**
+
+Далі задайте:
+
+- **Яскравість → День**
+- **Яскравість → Ніч**
+- **Яскравість → Рівень освітлення для застосування &quot;нічної&quot; яскравості**
+
+Логіка в прошивці проста:
+
+- якщо `lux &lt; threshold` → застосовується **&quot;Ніч&quot;**
+- інакше → **&quot;День&quot;**
+</code></pre></div>
 <p>2) <strong>Передача в API/Web</strong></p>
 <p>Прошивка зчитує lux і передає значення в API (використовується в системній інформації/інтеграціях).</p>
-<p>Детально про режим яскравості: <a href="../../web-interface/sections/brightness/">wiki/web-interface/sections/brightness.md</a></p>
+<p>Детально про режим яскравості: <a href="../../web-interface/sections/brightness/">Яскравість</a></p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="_10">Сенсор не визначається<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
 <p>Перевірте:</p>
@@ -2664,10 +2830,10 @@
 <p>Прошивка приховує/деактивує режим <strong>"Мікроклімат"</strong>, якщо кліматичний сенсор не виявлено.</p>
 <h2 id="_12">Дивіться також<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../web-interface/sections/climate/">wiki/web-interface/sections/climate.md</a></li>
-<li><a href="../../web-interface/sections/brightness/">wiki/web-interface/sections/brightness.md</a></li>
-<li><a href="../../web-interface/sections/display/">wiki/web-interface/sections/display.md</a></li>
-<li><a href="../oled-display/">wiki/hardware/oled-display.md</a></li>
+<li><a href="../../web-interface/sections/climate/">Клімат</a></li>
+<li><a href="../../web-interface/sections/brightness/">Яскравість</a></li>
+<li><a href="../../web-interface/sections/display/">Дисплей</a></li>
+<li><a href="../oled-display/">OLED Дисплей</a></li>
 </ul>
 
 
@@ -2691,7 +2857,7 @@
     <span class="md-icon" title="Востаннє оновлено">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="4 квітня 2026 р. 13:24:18 UTC">4 квітня 2026 р. 13:24:18</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="4 квітня 2026 р. 16:17:28 UTC">4 квітня 2026 р. 16:17:28</span>
   </span>
 
     
@@ -2792,9 +2958,11 @@
       
         <script src="../../javascripts/mathjax.js"></script>
       
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-      
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid.js"></script>
       
     
   </body>
