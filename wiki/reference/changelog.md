@@ -5,14 +5,14 @@
 !!! note "Джерело істини"
         Джерело істини для змін — **релізноти у GitHub Releases**:
 
-        - https://github.com/J-A-A-M/jaam_fusion/releases
+    - [github.com/J-A-A-M/jaam_fusion/releases](https://github.com/J-A-A-M/jaam_fusion/releases)
 
         Файл `CHANGELOG.md` у репозиторії може існувати як допоміжний конспект,
         але у випадку розбіжностей орієнтуйтесь саме на релізноти.
 
 ## Де дивитись зміни
 
-- GitHub Releases: https://github.com/J-A-A-M/jaam_fusion/releases
+- GitHub Releases: [github.com/J-A-A-M/jaam_fusion/releases](https://github.com/J-A-A-M/jaam_fusion/releases)
 
 ## Примітки
 

@@ -147,6 +147,10 @@ nav:
           - Оновлення прошивки: web-interface/sections/firmware.md
       - Редактор карти: web-interface/map-editor.md
       - Редактор кольорів: web-interface/color-editor.md
+  - Плати JAAM:
+      - JAAM 1.3: jaam-boards/jaam-1-3.md
+      - JAAM 2.1: jaam-boards/jaam-2-1.md
+      - JAAM 3.2: jaam-boards/jaam-3-2.md
   - Для розробників:
       - Архітектура: development/architecture.md
       - UI Контроли: development/controls-guide.md
