@@ -117,16 +117,16 @@ nav:
       - Перша конфігурація: getting-started/first-config.md
   - Обладнання:
       - LED Mapping: hardware/led-mapping.md
-      - OLED Display: hardware/oled-display.md
+      - OLED Дисплей: hardware/oled-display.md
       - Сенсори: hardware/sensors.md
       - Підтримувані плати: hardware/boards.md
   - Функціонал:
       - Повітряні тривоги: features/air-alerts.md
-      - OLED Display: features/oled-display.md
       - Погода: features/weather.md
       - Радіація: features/radiation.md
       - Стан електромережі: features/power-grid.md
       - Настільна лампа: features/desk-lamp.md
+      - Home Assistant: features/home-assistant.md
   - API і інтеграції:
       - WebSocket API: api/websocket.md
       - REST API: api/rest.md

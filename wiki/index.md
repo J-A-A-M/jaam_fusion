@@ -77,7 +77,7 @@ JAAM Fusion - це прошивка для ESP32, яка перетворює з
 
     ---
 
-    LED Mapping, OLED Display, сенсори та підтримувані плати
+    LED Mapping, OLED Дисплей, сенсори та підтримувані плати
 
     [:octicons-arrow-right-24: Перейти](hardware/led-mapping.md)
 

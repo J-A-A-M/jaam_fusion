@@ -69,7 +69,7 @@ src/
 ├── JaamFusion.cpp          # Main entry point
 ├── JaamHardware.cpp/h      # Hardware abstraction
 ├── JaamLed.cpp/h          # LED control
-├── JaamDisplay.cpp/h       # OLED display
+├── JaamDisplay.cpp/h       # OLED дисплей
 ├── JaamWeb.cpp/h          # Web server
 ├── JaamApi.cpp/h          # API client
 ├── JaamConfig.cpp/h        # Configuration
