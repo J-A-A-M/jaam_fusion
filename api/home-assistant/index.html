@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://info.jaam.net.ua/api/websocket/">
+        <link rel="canonical" href="https://info.jaam.net.ua/api/home-assistant/">
       
       
-        <link rel="prev" href="../../features/home-assistant/">
+        <link rel="prev" href="../../features/desk-lamp/">
       
       
-        <link rel="next" href="../rest/">
+        <link rel="next" href="../../web-interface/settings/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>WebSocket API - JAAM Fusion Documentation</title>
+        <title>Home Assistant - JAAM Fusion Documentation</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#websocket-api" class="md-skip">
+        <a href="#home-assistant" class="md-skip">
           Перейти до змісту
         </a>
       
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              WebSocket API
+              Home Assistant
             
           </span>
         </div>
@@ -977,34 +977,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/home-assistant/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home Assistant
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1085,6 +1057,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home Assistant
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1092,7 +1082,7 @@
   <span class="md-ellipsis">
     
   
-    WebSocket API
+    Home Assistant
   
 
     
@@ -1102,62 +1092,247 @@
 
       </a>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../rest/" class="md-nav__link">
         
+
+<nav class="md-nav md-nav--secondary" aria-label="Зміст">
   
   
-  <span class="md-ellipsis">
+  
     
   
-    REST API
   
-
-    
-  </span>
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Зміст
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#home-assistant_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Що ви отримаєте в Home Assistant
+      
+    </span>
+  </a>
   
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Як увімкнути інтеграцію
+      
+    </span>
+  </a>
   
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../mqtt/" class="md-nav__link">
+    <nav class="md-nav" aria-label="Як увімкнути інтеграцію">
+      <ul class="md-nav__list">
         
+          <li class="md-nav__item">
+  <a href="#1-api-jaam-fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Увімкніть API в JAAM Fusion
+      
+    </span>
+  </a>
   
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-home-assistant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Додайте інтеграцію в Home Assistant
+      
+    </span>
+  </a>
   
-  <span class="md-ellipsis">
-    
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-ha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Підключіть пристрій в інтеграції HA
+      
+    </span>
+  </a>
   
-    MQTT
+    <nav class="md-nav" aria-label="3) Підключіть пристрій в інтеграції HA">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Варіант A — автодіскавері (якщо спрацював)
+      
+    </span>
+  </a>
   
-
-    
-  </span>
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Варіант B — ручне додавання (IP + порт)
+      
+    </span>
+  </a>
   
+</li>
+        
+      </ul>
+    </nav>
   
-
-      </a>
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Приклади корисних автоматизацій (ідеї)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Приклади корисних автоматизацій (ідеї)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Сповіщення про тривогу у домашньому регіоні
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Нічний сценарій
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) “Розумна лампа” для кімнати
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-bh1750" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Реакція на освітленість (якщо є BH1750)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) Контроль мікроклімату (якщо є кліматичний сенсор)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Важливі примітки
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HA не підключається
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ha_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        У HA не видно значень мікроклімату/освітленості
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Дивіться також
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2113,6 +2288,236 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Зміст
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#home-assistant_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Що ви отримаєте в Home Assistant
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Як увімкнути інтеграцію
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Як увімкнути інтеграцію">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-api-jaam-fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Увімкніть API в JAAM Fusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-home-assistant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Додайте інтеграцію в Home Assistant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-ha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Підключіть пристрій в інтеграції HA
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3) Підключіть пристрій в інтеграції HA">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Варіант A — автодіскавері (якщо спрацював)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Варіант B — ручне додавання (IP + порт)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Приклади корисних автоматизацій (ідеї)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Приклади корисних автоматизацій (ідеї)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Сповіщення про тривогу у домашньому регіоні
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Нічний сценарій
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) “Розумна лампа” для кімнати
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-bh1750" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Реакція на освітленість (якщо є BH1750)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) Контроль мікроклімату (якщо є кліматичний сенсор)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Важливі примітки
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HA не підключається
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ha_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        У HA не видно значень мікроклімату/освітленості
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Дивіться також
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2179,9 +2584,119 @@
   
 
 
-<h1 id="websocket-api">WebSocket API<a class="headerlink" href="#websocket-api" title="Permanent link">&para;</a></h1>
-<p>Real-time API через WebSocket.</p>
-<p>Детальні інструкції будуть додані пізніше.</p>
+<h1 id="home-assistant">Home Assistant<a class="headerlink" href="#home-assistant" title="Permanent link">&para;</a></h1>
+<p>Інтеграція Home Assistant дозволяє “подружити” JAAM Fusion із вашим розумним домом: бачити стан пристрою в HA та запускати автоматизації (сповіщення, керування режимами, лампою тощо).</p>
+<p>Репозиторій інтеграції: <a href="https://github.com/J-A-A-M/jaam_ha">https://github.com/J-A-A-M/jaam_ha</a></p>
+<h2 id="home-assistant_1">Що ви отримаєте в Home Assistant<a class="headerlink" href="#home-assistant_1" title="Permanent link">&para;</a></h2>
+<p>Після підключення інтеграції в HA ви зможете:</p>
+<ul>
+<li>бачити <strong>стан тривоги у домашньому регіоні</strong> та реагувати на зміни</li>
+<li>бачити <strong>температуру домашнього регіону</strong> (коли доступні погодні дані)</li>
+<li>бачити <strong>показники мікроклімату</strong> (температура/вологість/тиск), якщо підключено кліматичний сенсор</li>
+<li>бачити <strong>рівень освітленості</strong>, якщо підключено BH1750</li>
+<li>бачити <strong>статус пристрою</strong> (онлайн/звʼязок з сервером даних, сигнал Wi‑Fi тощо)</li>
+<li>бачити інформацію про <strong>версію прошивки</strong> та <strong>наявність оновлення</strong></li>
+</ul>
+<p>А також (за потреби) керувати:</p>
+<ul>
+<li>режимом мапи</li>
+<li>режимом дисплею</li>
+<li>домашнім регіоном</li>
+<li>режимом “Лампа” (колір і яскравість)</li>
+<li>примусовим нічним режимом</li>
+<li>увімкненням/вимкненням мапи та дисплею</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Якщо якийсь сенсор не підключено, відповідні дані в HA не зʼявляться.</p>
+</div>
+<h2 id="_1">Як увімкнути інтеграцію<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h3 id="1-api-jaam-fusion">1) Увімкніть API в JAAM Fusion<a class="headerlink" href="#1-api-jaam-fusion" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Відкрийте веб‑інтерфейс пристрою.</li>
+<li>Перейдіть: <strong>Мережа → Home Assistant</strong>.</li>
+<li>Увімкніть <strong>"Увімкнути API (WebSocket)"</strong>.</li>
+<li>Задайте <strong>"Порт API (WebSocket)"</strong> (зазвичай <code>81</code>).</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Порт <code>80</code> зайнятий веб‑інтерфейсом. Для інтеграції використовуйте інший порт.</p>
+</div>
+<h3 id="2-home-assistant">2) Додайте інтеграцію в Home Assistant<a class="headerlink" href="#2-home-assistant" title="Permanent link">&para;</a></h3>
+<p>Встановіть інтеграцію <code>jaam_ha</code> за інструкцією в <a href="https://github.com/J-A-A-M/jaam_ha">репозиторії</a>.</p>
+<h3 id="3-ha">3) Підключіть пристрій в інтеграції HA<a class="headerlink" href="#3-ha" title="Permanent link">&para;</a></h3>
+<p>Є два способи:</p>
+<h4 id="a">Варіант A — автодіскавері (якщо спрацював)<a class="headerlink" href="#a" title="Permanent link">&para;</a></h4>
+<p>У багатьох мережах Home Assistant може сам знайти пристрій після того, як ви увімкнули API на JAAM Fusion.</p>
+<p>Що робити:</p>
+<ol>
+<li>Відкрийте <strong>Налаштування → Пристрої та служби → Інтеграції</strong>.</li>
+<li>Перевірте блок <strong>"Виявлені"</strong> / <strong>"Discovered"</strong> (або сповіщення про новий пристрій).</li>
+<li>Натисніть <strong>"Додати"</strong> і завершіть майстер підключення.</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Якщо HA і JAAM Fusion знаходяться в різних VLAN/підмережах, автодіскавері може не спрацювати — тоді використайте ручне додавання.</p>
+</div>
+<h4 id="b-ip">Варіант B — ручне додавання (IP + порт)<a class="headerlink" href="#b-ip" title="Permanent link">&para;</a></h4>
+<p>Якщо пристрій не зʼявився автоматично, його можна додати вручну.</p>
+<p>Зазвичай потрібно вказати:</p>
+<ul>
+<li><strong>IP‑адресу</strong> (або hostname) пристрою в локальній мережі</li>
+<li><strong>порт API</strong> (той самий, який ви задали в <strong>Мережа → Home Assistant</strong>)</li>
+</ul>
+<h2 id="_2">Приклади корисних автоматизацій (ідеї)<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<p>Нижче — кілька прикладів “що можна зробити” в HA на базі даних/керування, які надає прошивка.</p>
+<h3 id="1">1) Сповіщення про тривогу у домашньому регіоні<a class="headerlink" href="#1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Коли у домашньому регіоні починається тривога — надіслати push‑повідомлення на телефон.</li>
+<li>Коли відбій — надіслати окреме повідомлення.</li>
+</ul>
+<h3 id="2">2) Нічний сценарій<a class="headerlink" href="#2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Після 23:00 увімкнути примусовий нічний режим.</li>
+<li>Вранці вимкнути примусовий нічний режим.</li>
+</ul>
+<h3 id="3">3) “Розумна лампа” для кімнати<a class="headerlink" href="#3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Увечері автоматично ввімкнути режим лампи мʼяким кольором.</li>
+<li>Удень зробити лампу яскравішою або змінити колір під настрій.</li>
+</ul>
+<h3 id="4-bh1750">4) Реакція на освітленість (якщо є BH1750)<a class="headerlink" href="#4-bh1750" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Якщо в кімнаті темно — увімкнути лампу.</li>
+<li>Якщо світло — вимкнути лампу або зменшити її яскравість.</li>
+</ul>
+<h3 id="5">5) Контроль мікроклімату (якщо є кліматичний сенсор)<a class="headerlink" href="#5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Якщо вологість висока — увімкнути вентиляцію/осушувач.</li>
+<li>Якщо температура виходить за межі — увімкнути кондиціонер/обігрів.</li>
+</ul>
+<h2 id="_3">Важливі примітки<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Безпека</p>
+<p>API призначений для використання в <strong>локальній довіреній мережі</strong>. Не рекомендується відкривати порт інтеграції в інтернет.</p>
+</div>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="ha">HA не підключається<a class="headerlink" href="#ha" title="Permanent link">&para;</a></h3>
+<p>Перевірте:</p>
+<ul>
+<li>у пристрої увімкнено API: <strong>Мережа → Home Assistant → Увімкнути API (WebSocket)</strong></li>
+<li>ви вказали правильний порт API</li>
+<li>HA і пристрій у тій самій мережі (або між мережами є доступ)</li>
+</ul>
+<h3 id="ha_1">У HA не видно значень мікроклімату/освітленості<a class="headerlink" href="#ha_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>мікроклімат зʼявиться лише якщо підключено кліматичний сенсор</li>
+<li>освітленість зʼявиться лише якщо підключено BH1750</li>
+</ul>
+<h2 id="_4">Дивіться також<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../web-interface/sections/network/">wiki/web-interface/sections/network.md</a> — де увімкнути API</li>
+<li><a href="../../features/desk-lamp/">wiki/features/desk-lamp.md</a> — режим “Лампа”</li>
+<li><a href="../../web-interface/sections/brightness/">wiki/web-interface/sections/brightness.md</a> — автояскравість</li>
+<li><a href="../../web-interface/sections/climate/">wiki/web-interface/sections/climate.md</a> — сенсори мікроклімату та корекції</li>
+</ul>
 
 
 
@@ -2204,7 +2719,7 @@
     <span class="md-icon" title="Востаннє оновлено">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2 квітня 2026 р. 14:53:37 UTC">2 квітня 2026 р. 14:53:37</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="4 квітня 2026 р. 13:24:18 UTC">4 квітня 2026 р. 13:24:18</span>
   </span>
 
     
@@ -2214,7 +2729,7 @@
     <span class="md-icon" title="Створено">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="2 квітня 2026 р. 14:53:37 UTC">2 квітня 2026 р. 14:53:37</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="4 квітня 2026 р. 13:24:18 UTC">4 квітня 2026 р. 13:24:18</span>
   </span>
 
     

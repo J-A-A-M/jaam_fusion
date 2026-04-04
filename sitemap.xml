@@ -5,15 +5,7 @@
          <lastmod>2026-04-04</lastmod>
     </url>
     <url>
-         <loc>https://info.jaam.net.ua/api/mqtt/</loc>
-         <lastmod>2026-04-04</lastmod>
-    </url>
-    <url>
-         <loc>https://info.jaam.net.ua/api/rest/</loc>
-         <lastmod>2026-04-04</lastmod>
-    </url>
-    <url>
-         <loc>https://info.jaam.net.ua/api/websocket/</loc>
+         <loc>https://info.jaam.net.ua/api/home-assistant/</loc>
          <lastmod>2026-04-04</lastmod>
     </url>
     <url>
@@ -42,10 +34,6 @@
     </url>
     <url>
          <loc>https://info.jaam.net.ua/features/desk-lamp/</loc>
-         <lastmod>2026-04-04</lastmod>
-    </url>
-    <url>
-         <loc>https://info.jaam.net.ua/features/home-assistant/</loc>
          <lastmod>2026-04-04</lastmod>
     </url>
     <url>
