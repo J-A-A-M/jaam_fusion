@@ -308,6 +308,11 @@ inline void generateCurrentRegionMap(JaamHardware& hardwareConfig) {
                 positions = REGION_MAP_LEDS_JAAM_3_2;
                 metaCount = REGION_MAP_JAAM_3_2_SIZE;
                 break;
+            case HARDWARE::JAAM_3_2_REGIONS:
+                meta = REGION_MAP_META_JAAM_3_2_REGIONS;
+                positions = REGION_MAP_LEDS_JAAM_3_2_REGIONS;
+                metaCount = REGION_MAP_JAAM_3_2_REGIONS_SIZE;
+                break;
             case HARDWARE::ODESA_KYIV:
             case HARDWARE::JAAM_1_3:
             case HARDWARE::JAAM_2_1:
