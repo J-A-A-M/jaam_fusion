@@ -1039,22 +1039,22 @@ void JaamWeb::handleUiPage() {
             <div class='header-buttons'>
                 <button class='control-button' id='systemPanelToggle' onclick='toggleSystemPanel()' title='Показати/сховати системну панель'>
                     <svg viewBox='0 0 24 24'>
-                        <path d='M13,9V7H11V9H13M13,17V11H11V17H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
+                        <path fill='currentColor' fill-rule='evenodd' clip-rule='evenodd' d='M13,9V7H11V9H13M13,17V11H11V17H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
                     </svg>
                 </button>
                 <button class='control-button' id='alertsPanelToggle' onclick='toggleAlertsPanel()' title='Показати/сховати панель тривог'>
                     <svg viewBox='0 0 24 24'>
-                        <path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/>
+                        <path fill='currentColor' fill-rule='evenodd' clip-rule='evenodd' d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z'/>
                     </svg>
                 </button>
                 <button class='control-button' id='logsPanelToggle' onclick='toggleLogsPanel()' title='Показати/сховати логи'>
                     <svg viewBox='0 0 24 24'>
-                        <path d='M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z'/>
+                        <path fill='currentColor' fill-rule='evenodd' clip-rule='evenodd' d='M6,2A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z M14,2V8H20L14,2Z M7,11H17V12.5H7V11Z M7,14H17V15.5H7V14Z M7,17H15V18.5H7V17Z'/>
                     </svg>
                 </button>
                 <button class='control-button theme-toggle' onclick='toggleTheme()' title='Перемкнути тему'>
                     <svg viewBox='0 0 24 24'>
-                        <path d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
+                        <path fill='currentColor' fill-rule='evenodd' clip-rule='evenodd' d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
                     </svg>
                 </button>
             </div>
