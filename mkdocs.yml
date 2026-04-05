@@ -118,16 +118,25 @@ nav:
       - Встановлення: getting-started/installation.md
       - Перша конфігурація: getting-started/first-config.md
   - Обладнання:
-      - LED Mapping: hardware/led-mapping.md
-      - OLED Дисплей: hardware/oled-display.md
-      - Сенсори: hardware/sensors.md
       - Підтримувані плати: hardware/boards.md
+      - OLED Дисплей: hardware/oled-display.md
+      - Сенсори:
+        - Огляд: hardware/sensors.md
+        - Сенсори клімату: hardware/sensors/climate-sensors.md
+        - Сенсор освітлення: hardware/sensors/light-sensor.md
+      - Звук:
+        - Огляд: hardware/sound.md
+        - Buzzer: hardware/sound/buzzer.md
+        - DF Player Pro: hardware/sound/df-player-pro.md
+      - LED Mapping: hardware/led-mapping.md
   - Функціонал:
       - Повітряні тривоги: features/air-alerts.md
       - Погода: features/weather.md
       - Радіація: features/radiation.md
       - Стан електромережі: features/power-grid.md
       - Настільна лампа: features/desk-lamp.md
+      - Хвилина мовчання: features/minute-of-silence.md
+      - Часовий пояс: features/time-zone.md
   - API і інтеграції:
       - Home Assistant: api/home-assistant.md
   - Веб-інтерфейс:
