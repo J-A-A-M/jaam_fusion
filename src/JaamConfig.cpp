@@ -205,6 +205,7 @@ const SettingListItem HARDWARE_OPTIONS[HARDWARE_OPTIONS_COUNT] = {
   {HARDWARE::JAAM_2_1, "Плата JAAM 2.1"},
   {HARDWARE::JAAM_3_0, "Плата JAAM 3.0"},
   {HARDWARE::JAAM_3_2, "Плата JAAM 3.2"},
+  {HARDWARE::JAAM_3_2_REGIONS, "Плата JAAM 3.2 (по областям)"},
 #endif
   {HARDWARE::ZAKARPATTIA, "Початок на Закарпатті"},
   {HARDWARE::ZAKARPATTIA_KYIV, "Початок на Закарпатті + Київ"},

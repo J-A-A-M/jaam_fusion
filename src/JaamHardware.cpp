@@ -13,6 +13,7 @@ int JaamHardware::getMainLedPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
@@ -26,6 +27,7 @@ int JaamHardware::getMainLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
             return JaamHardwareLed::MAIN_LED_COUNT_JAAM_3_2;
         case HARDWARE::JAAM_3_0:
             return JaamHardwareLed::MAIN_LED_COUNT_JAAM_3_0;
@@ -45,6 +47,7 @@ int JaamHardware::getMainLedColorFormat() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
@@ -58,6 +61,7 @@ int JaamHardware::getBgLedPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return JaamHardwarePins::BG_LED_PIN_JAAM;
@@ -72,6 +76,7 @@ int JaamHardware::getBgLedsCount() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
             return JaamHardwareLed::BG_LED_COUNT_JAAM_3;
         case HARDWARE::JAAM_2_1:
@@ -87,6 +92,7 @@ int JaamHardware::getBgLedColorFormat() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return NEO_GRB;
@@ -101,6 +107,7 @@ int JaamHardware::getServiceLedPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return JaamHardwarePins::SERVICE_LED_PIN_JAAM;
@@ -120,6 +127,7 @@ int JaamHardware::getServiceLedsCount() {
 
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return JaamHardwareLed::SERVICE_LED_COUNT_DEFAULT;
@@ -134,6 +142,7 @@ int JaamHardware::getServiceLedColorFormat() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return NEO_GRB;
@@ -148,6 +157,7 @@ int JaamHardware::getButton1Pin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
             return JaamHardwarePins::BUTTON_1_PIN_JAAM_3;
         case HARDWARE::JAAM_2_1:
@@ -163,6 +173,7 @@ int JaamHardware::getButton2Pin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return JaamHardwarePins::BUTTON_2_PIN_JAAM;
@@ -177,6 +188,7 @@ int JaamHardware::getButton3Pin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
             return JaamHardwarePins::BUTTON_3_PIN_JAAM_3;
         case HARDWARE::JAAM_2_1:
@@ -191,6 +203,7 @@ int JaamHardware::getBuzzerPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return JaamHardwarePins::BUZZER_PIN_JAAM;
@@ -203,6 +216,7 @@ int JaamHardware::getDfRxPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
             return JaamHardwarePins::DF_RX_PIN_JAAM;
         default:
@@ -214,6 +228,7 @@ int JaamHardware::getDfTxPin() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
             return JaamHardwarePins::DF_TX_PIN_JAAM;
         default:
@@ -262,6 +277,7 @@ uint8_t JaamHardware::getMaxBrightness() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
             return JaamHardwareLed::BRIGHTNESS_JAAM_3_2_MAX;
         case HARDWARE::JAAM_3_0:
             return JaamHardwareLed::BRIGHTNESS_JAAM_3_0_MAX;
@@ -299,6 +315,7 @@ uint8_t JaamHardware::getMinBrightness() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
         case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
             return JaamHardwareLed::BRIGHTNESS_JAAM_3_2_MIN;
         case HARDWARE::JAAM_3_0:
             return JaamHardwareLed::BRIGHTNESS_JAAM_3_0_MIN;

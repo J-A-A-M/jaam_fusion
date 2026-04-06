@@ -19,6 +19,66 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 
+def build_flat_arrays(
+    regions: List[Dict],
+) -> Tuple[List[Tuple[int, int, int, str]], List[int], List[Tuple[List[int], str]], int]:
+    """Build deduplicated flat arrays for a region map.
+
+    This function performs *content-based deduplication* of LED lists:
+    if multiple regions have the exact same `leds` list, their metadata entries
+    will reference the same `start_index` in the flat LED array.
+
+    Returns:
+        meta_entries: list of (region_id, start_index, led_count, region_name) in original region order
+        flat_leds: flat list of uint16 LED positions (unique segments concatenated)
+        led_segments: list of (leds_list, comment_name) in order of first appearance (unique segments only)
+        max_led: maximum LED index found in input regions, or -1 if none
+    """
+    flat_leds: List[int] = []
+    meta_entries: List[Tuple[int, int, int, str]] = []
+    led_segments: List[Tuple[List[int], str]] = []
+
+    # Map: exact LED list -> start_index in flat_leds
+    start_index_by_leds: Dict[Tuple[int, ...], int] = {}
+
+    max_led = -1
+
+    for region in regions:
+        region_id = int(region["regionId"])
+        region_name = region.get("name", f"Region {region_id}")
+        leds: List[int] = region.get("leds", [])
+
+        if leds:
+            max_led = max(max_led, max(leds))
+
+        led_count = len(leds)
+
+        # Validate led_count doesn't exceed uint8_t maximum (255)
+        if led_count > 255:
+            raise ValueError(
+                f"Region {region_id} ('{region_name}') has {led_count} LEDs, "
+                f"which exceeds the uint8_t limit of 255 in RegionLedMapMeta. "
+                f"Consider splitting this region or using a larger field type."
+            )
+
+        if led_count == 0:
+            start_index = 0
+        else:
+            key = tuple(int(x) for x in leds)
+            existing = start_index_by_leds.get(key)
+            if existing is not None:
+                start_index = existing
+            else:
+                start_index = len(flat_leds)
+                start_index_by_leds[key] = start_index
+                flat_leds.extend(key)
+                led_segments.append((list(key), region_name))
+
+        meta_entries.append((region_id, start_index, led_count, region_name))
+
+    return meta_entries, flat_leds, led_segments, max_led
+
+
 def calculate_stats(regions: List[Dict]) -> Tuple[int, int, int, int, int, int]:
     """
     Calculate statistics for a region map.
@@ -28,15 +88,10 @@ def calculate_stats(regions: List[Dict]) -> Tuple[int, int, int, int, int, int]:
     """
     num_regions = len(regions)
 
-    # Find maximum LED number (actual physical LED count)
-    max_led = 0
-    total_led_entries = 0
-    for region in regions:
-        if region["leds"]:
-            max_led = max(max_led, max(region["leds"]))
-            total_led_entries += len(region["leds"])
-
-    max_led_count = max_led + 1  # Convert from 0-indexed to count
+    # Deduplicated flat LED entries (real size of the generated LED array)
+    _, flat_leds, _, max_led = build_flat_arrays(regions)
+    total_led_entries = len(flat_leds)
+    max_led_count = (max_led + 1) if max_led >= 0 else 0  # Convert from 0-indexed to count
 
     # Calculate memory sizes based on actual array entries
     # RegionLedMapMeta has 3 fields: region_id (uint16_t), start_offset (uint16_t), led_count (uint8_t)
@@ -49,70 +104,50 @@ def calculate_stats(regions: List[Dict]) -> Tuple[int, int, int, int, int, int]:
 
 
 def generate_metadata_array(map_name: str, regions: List[Dict]) -> List[str]:
-    """Generate the metadata array entries with region name comments."""
-    lines = []
-    start_offset = 0
+    """Generate the metadata array entries with region name comments.
 
-    for region in regions:
-        region_id = region["regionId"]
-        region_name = region.get("name", f"Region {region_id}")
-        led_count = len(region["leds"])
+    Note: start offsets are computed with LED-list deduplication,
+    so multiple regions may legally share the same start_index.
+    """
+    lines: List[str] = []
+    meta_entries, _, _, _ = build_flat_arrays(regions)
 
-        # Validate led_count doesn't exceed uint8_t maximum (255)
-        if led_count > 255:
-            raise ValueError(
-                f"Region {region_id} ('{region_name}') has {led_count} LEDs, "
-                f"which exceeds the uint8_t limit of 255 in RegionLedMapMeta. "
-                f"Consider splitting this region or using a larger field type."
-            )
-
-        lines.append(f"    {{{region_id:5}, {start_offset:5}, {led_count:4}}},  // {region_name}")
-        start_offset += led_count
+    for region_id, start_index, led_count, region_name in meta_entries:
+        lines.append(f"    {{{region_id:5}, {start_index:5}, {led_count:4}}},  // {region_name}")
 
     return lines
 
 
 def generate_led_array(regions: List[Dict]) -> List[str]:
-    """Generate the flat LED positions array with region name comments."""
-    lines = []
+    """Generate the (deduplicated) flat LED positions array with comments."""
+    lines: List[str] = []
+
+    _, _, led_segments, _ = build_flat_arrays(regions)
 
     # First pass: generate all LED strings and find max length
-    led_data = []
+    led_data: List[Tuple[str, str]] = []
     max_led_length = 0
 
-    for region in regions:
-        region_name = region.get("name", f"Region {region['regionId']}")
-        leds = region["leds"]
-
-        # Skip regions with empty LED arrays
+    for leds, comment_name in led_segments:
         if not leds:
             continue
 
-        # Format LEDs as comma-separated values
         led_str = ", ".join(str(led) for led in leds)
         led_line_with_comma = f"    {led_str},"
-
         max_led_length = max(max_led_length, len(led_line_with_comma))
-        led_data.append((led_str, region_name))
+        led_data.append((led_str, comment_name))
 
     # Second pass: add aligned comments
-    for i, (led_str, region_name) in enumerate(led_data):
+    for i, (led_str, comment_name) in enumerate(led_data):
         is_last = i == len(led_data) - 1
 
-        if is_last:
-            # Last line without comma
-            led_line = f"    {led_str}"
-        else:
-            # Regular line with comma
-            led_line = f"    {led_str},"
+        led_line = f"    {led_str}" if is_last else f"    {led_str},"
 
-        # Calculate padding needed to align comments
-        padding = max_led_length - len(led_line) + 2  # +2 for spacing before comment
+        padding = max_led_length - len(led_line) + 2
         if padding < 2:
-            padding = 2  # Minimum 2 spaces
+            padding = 2
 
-        aligned_line = led_line + " " * padding + f"// {region_name}"
-        lines.append(aligned_line)
+        lines.append(led_line + " " * padding + f"// {comment_name}")
 
     return lines
 

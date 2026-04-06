@@ -72,6 +72,7 @@ h1 {
 .control-button {
     background: none;
     border: 1px solid var(--border-color);
+    color: var(--text-color);
     cursor: pointer;
     padding: 8px;
     border-radius: 8px;
@@ -88,17 +89,18 @@ h1 {
 .control-button.active {
     background-color: #007bff;
     border-color: #007bff;
+    color: white;
 }
 
 .control-button svg {
     width: 18px;
     height: 18px;
-    fill: var(--text-color);
+    fill: currentColor;
     transition: fill 0.3s ease;
 }
 
 .control-button.active svg {
-    fill: white;
+    fill: currentColor;
 }
 
 /* Перемикач теми - залишаємо для зворотної сумісності */
@@ -118,7 +120,7 @@ h1 {
 .theme-toggle svg {
     width: 20px;
     height: 20px;
-    fill: var(--text-color);
+    fill: currentColor;
     transition: fill 0.3s ease;
 }
 
