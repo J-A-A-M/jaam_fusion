@@ -535,9 +535,13 @@ bool saveDisplayOff(bool newState, bool showMessage = true) {
 
 // --- Buttons Functions ---
 
+static bool isFirmwareUpdatePriority(JaamButton::Action action) {
+    return action == JaamButton::LONG_CLICK && fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff;
+}
+
 void handleClick(uint8_t buttonId, int event, JaamButton::Action action) {
   // Firmware update action has highest priority on long click.
-  if (action == JaamButton::LONG_CLICK && fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff) {
+    if (isFirmwareUpdatePriority(action)) {
       requestFirmwareUpdate();
       return;
   }
@@ -617,7 +621,7 @@ void buttonLongClick(uint8_t buttonId, int modeLong) {
 }
 
 void buttonDuringLongClick(int modeLong, JaamButton::Action action) {
-  if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff) {
+    if (isFirmwareUpdatePriority(JaamButton::LONG_CLICK)) {
     return;
   }
     if (action == JaamButton::DURING_LONG_CLICK) {
