@@ -68,6 +68,7 @@ void requestToRegenerateBgColorMap();
 void displayProcess();
 void brightnessProcess();
 void rebuildSensorsListItems();
+bool isButtonActivated();
 
 // --- MAIN Configuration ---
 char                chipID[13];
@@ -534,9 +535,16 @@ bool saveDisplayOff(bool newState, bool showMessage = true) {
 
 // --- Buttons Functions ---
 
-void handleClick(int event, JaamButton::Action action) {
-  SoundType soundType = action == JaamButton::Action::SINGLE_CLICK ? SoundType::SINGLE_CLICK : SoundType::LONG_CLICK;
+void handleClick(uint8_t buttonId, int event, JaamButton::Action action) {
+  // Firmware update action has highest priority on long click.
+  if (action == JaamButton::LONG_CLICK && fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff) {
+      requestFirmwareUpdate();
+      return;
+  }
+
+  SoundType soundType = action == JaamButton::SINGLE_CLICK ? SoundType::SINGLE_CLICK : SoundType::LONG_CLICK;
   if (event != 0 && needToPlaySound(soundType)) playMelody(soundType);
+
   switch (event) {
     // change map mode
     case 1:
@@ -573,9 +581,11 @@ void handleClick(int event, JaamButton::Action action) {
     case 10:
       rebootDevice();
       break;
-    case 100:
-      requestFirmwareUpdate();
-      break;
+    case 11: {
+        JaamApiButtonEventType eventType = action == JaamButton::SINGLE_CLICK ? JAAM_BUTTON_EVENT_CLICK : JAAM_BUTTON_EVENT_LONG_CLICK;
+        api.broadcastButtonEvent(buttonId, eventType);
+        break;
+    }
     default:
       // do nothing
       break;
@@ -586,39 +596,31 @@ bool isButtonActivated() {
   return settings.getInt(BUTTON_1_MODE) != 0 || settings.getInt(BUTTON_1_MODE_LONG) != 0 || settings.getInt(BUTTON_2_MODE) != 0 || settings.getInt(BUTTON_2_MODE_LONG) != 0 || settings.getInt(BUTTON_3_MODE) != 0 || settings.getInt(BUTTON_3_MODE_LONG) != 0;
 }
 
-void singleClick(int mode) {
-  handleClick(mode, JaamButton::SINGLE_CLICK);
-}
-
-void longClick(int modeLong) {
-  if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff) {
-    handleClick(100, JaamButton::LONG_CLICK);
-    return;
-  }
-  handleClick(modeLong, JaamButton::LONG_CLICK);
-}
-
-void buttonClick(const char* buttonName, int mode) {
+void buttonClick(uint8_t buttonId, int mode) {
 #if TEST_MODE
-  displayMessage("Single click!", buttonName);
+    char buttonName[12];
+    snprintf(buttonName, sizeof(buttonName), "Button %u", (unsigned)buttonId);
+    displayMessage("Single click!", buttonName);
 #else
-  singleClick(mode);
+    handleClick(buttonId, mode, JaamButton::SINGLE_CLICK);
 #endif
 }
 
-void buttonLongClick(const char* buttonName, int modeLong) {
+void buttonLongClick(uint8_t buttonId, int modeLong) {
 #if TEST_MODE
-  displayMessage("Long click!", buttonName);
+    char buttonName[12];
+    snprintf(buttonName, sizeof(buttonName), "Button %u", (unsigned)buttonId);
+    displayMessage("Long click!", buttonName);
 #else
-  longClick(modeLong);
+    handleClick(buttonId, modeLong, JaamButton::LONG_CLICK);
 #endif
 }
 
-void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Action action) {
+void buttonDuringLongClick(int modeLong, JaamButton::Action action) {
   if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION) && isButtonActivated() && !isDisplayOff) {
     return;
   }
-  if (action == JaamButton::Action::DURING_LONG_CLICK) {
+    if (action == JaamButton::DURING_LONG_CLICK) {
     switch (modeLong) {
     //   case 8:
     //     // if lamp mode is active, increase lamp brightness
@@ -652,7 +654,7 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
         // do nothing
         break;
   }
-  } else if (action == JaamButton::Action::LONG_CLICK_END) {
+    } else if (action == JaamButton::LONG_CLICK_END) {
     switch (modeLong) {
       case 8:
       case 9:
@@ -669,47 +671,47 @@ void buttonDuringLongClick(const char* buttonName, int modeLong, JaamButton::Act
 
 void button1Click() {
   LOG.printf("Button 1 click\n");
-  buttonClick("Button 1", settings.getInt(BUTTON_1_MODE));
+    buttonClick(1, settings.getInt(BUTTON_1_MODE));
 }
 
 void button2Click() {
   LOG.printf("Button 2 click\n");
-  buttonClick("Button 2", settings.getInt(BUTTON_2_MODE));
+    buttonClick(2, settings.getInt(BUTTON_2_MODE));
 }
 
 void button3Click() {
   LOG.printf("Button 3 click\n");
-  buttonClick("Button 3", settings.getInt(BUTTON_3_MODE));
+    buttonClick(3, settings.getInt(BUTTON_3_MODE));
 }
 
 void button1LongClick() {
   LOG.printf("Button 1 long click\n");
-  buttonLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG));
+    buttonLongClick(1, settings.getInt(BUTTON_1_MODE_LONG));
 }
 
 void button2LongClick() {
   LOG.printf("Button 2 long click\n");
-  buttonLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG));
+    buttonLongClick(2, settings.getInt(BUTTON_2_MODE_LONG));
 }
 
 void button3LongClick() {
   LOG.printf("Button 3 long click\n");
-  buttonLongClick("Button 3", settings.getInt(BUTTON_3_MODE_LONG));
+    buttonLongClick(3, settings.getInt(BUTTON_3_MODE_LONG));
 }
 
 void button1DuringLongClick(JaamButton::Action action) {
   LOG.printf("Button 1 during long click\n");
-  buttonDuringLongClick("Button 1", settings.getInt(BUTTON_1_MODE_LONG), action);
+    buttonDuringLongClick(settings.getInt(BUTTON_1_MODE_LONG), action);
 }
 
 void button2DuringLongClick(JaamButton::Action action) {
   LOG.printf("Button 2 during long click\n");
-  buttonDuringLongClick("Button 2", settings.getInt(BUTTON_2_MODE_LONG), action);
+    buttonDuringLongClick(settings.getInt(BUTTON_2_MODE_LONG), action);
 }
 
 void button3DuringLongClick(JaamButton::Action action) {
   LOG.printf("Button 3 during long click\n");
-  buttonDuringLongClick("Button 3", settings.getInt(BUTTON_3_MODE_LONG), action);
+    buttonDuringLongClick(settings.getInt(BUTTON_3_MODE_LONG), action);
 }
 
 void servicePin(ServiceLed type) {

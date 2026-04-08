@@ -170,6 +170,35 @@ void JaamApi::setDisplayEnabled(bool enabled) {
     }
 }
 
+static const char* buttonEventTypeToString(JaamApiButtonEventType eventType) {
+    switch (eventType) {
+        case JAAM_BUTTON_EVENT_CLICK:
+            return "click";
+        case JAAM_BUTTON_EVENT_LONG_CLICK:
+            return "long_click";
+        default:
+            return "unknown";
+    }
+}
+
+void JaamApi::broadcastButtonEvent(uint8_t buttonId, JaamApiButtonEventType eventType) {
+    if (!isRunning) {
+        return;
+    }
+    const char* eventStr = buttonEventTypeToString(eventType);
+
+    JsonDocument doc;
+    doc["type"] = "button_event";
+    doc["buttonId"] = buttonId;
+    doc["event"] = eventStr;
+
+    String data;
+    serializeJson(doc, data);
+    broadcastWebSocket(data);
+
+    LOG.printf("[API] Broadcast button event: buttonId=%u, event=%s\n", buttonId, eventStr);
+}
+
 void JaamApi::reconfigure() {
     if (!settings) {
         LOG.printf("[API] Settings not initialized, skipping reconfigure\n");
@@ -352,6 +381,7 @@ void JaamApi::sendInitialState(WebsocketsClient& client) {
     supportedSensors.add("night_mode");
     supportedSensors.add("map");
     supportedSensors.add("display");
+    supportedSensors.add("button_events");
 
     // Налаштування лампи
     JsonObject lamp = doc["lamp"].to<JsonObject>();

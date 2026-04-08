@@ -120,6 +120,7 @@ nav:
   - Обладнання:
       - Підтримувані плати: hardware/boards.md
       - OLED Дисплей: hardware/oled-display.md
+      - Кнопки: hardware/buttons.md
       - Сенсори:
         - Огляд: hardware/sensors.md
         - Сенсори клімату: hardware/sensors/climate-sensors.md
