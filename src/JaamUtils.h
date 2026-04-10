@@ -94,6 +94,9 @@ inline SettingListItem* getSettingItemById(SettingListItem* items, int count, in
 extern time_t                         lastWebsocketConnectTime;
 extern time_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
+extern int                              weatherAutoMinTemp;
+extern int                              weatherAutoMaxTemp;
+extern bool                             weatherAutoBoundsValid;
 extern uint16_t                         alertsFlat[MAX_REGIONS + 1];
 extern int8_t                           ledBitCache[MAX_LEDS_STRIP_MAIN];
 extern JaamSettings                     settings;

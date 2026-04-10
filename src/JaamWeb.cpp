@@ -161,6 +161,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     // Climate
     {"weather_min_temp", WEATHER_MIN_TEMP, TYPE_INT},
     {"weather_max_temp", WEATHER_MAX_TEMP, TYPE_INT},
+    {"weather_auto_bounds", WEATHER_AUTO_BOUNDS, TYPE_BOOL},
     {"temp_correction", TEMP_CORRECTION, TYPE_FLOAT},
     {"hum_correction", HUM_CORRECTION, TYPE_FLOAT},
     {"pressure_correction", PRESSURE_CORRECTION, TYPE_FLOAT},

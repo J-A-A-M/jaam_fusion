@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <ArduinoWebsockets.h>
 #include <sys/time.h>
+#include <algorithm>
 
 #include <WiFiManager.h>
 #include <WiFiClientSecure.h>
@@ -110,6 +111,9 @@ uint16_t                animType;
 
 // --- MAP Configuration ---                       // старий обробник (TYPE_RADIATION_BATCH)
 std::map<uint16_t, uint8_t>     temperatureMap;
+int                             weatherAutoMinTemp = 0;
+int                             weatherAutoMaxTemp = 0;
+bool                            weatherAutoBoundsValid = false;
 // Current region map (flat array format) - dynamically allocated
 CurrentRegionMap                currentMap;
 uint32_t                        bgLedColors[MAX_LEDS_STRIP_BG];
@@ -206,6 +210,9 @@ void clearAllWeatherMaps() {
     
     // Очищаємо всі map'и
     temperatureMap.clear();
+
+    // Скидаємо кеш авто-меж температури
+    weatherAutoBoundsValid = false;
     
     // Додаткове очищення пам'яті після clear()
     // Для std::map викликаємо shrink_to_fit через swap з пустими контейнерами
@@ -1229,6 +1236,49 @@ void onMessageCallback(WebsocketsMessage msg) {
             LOG.printf("[WEBSOCKET] weather region %u:\tflags8=%u\n", region_id, flags8);
             ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
         }
+
+        // Оновлюємо кеш авто-меж температури (медіана + вікно 20°C з якорями)
+        if (!temperatureMap.empty()) {
+            size_t size = temperatureMap.size();
+            if (size == 1) {
+                // Один регіон — вікно ±10°C
+                int t = decodeTemperature(temperatureMap.begin()->second);
+                weatherAutoMinTemp = constrain(t - 10, -40, 40);
+                weatherAutoMaxTemp = constrain(t + 10, -40, 40);
+            } else {
+                // 1. Копіюємо температури у тимчасовий буфер та знаходимо екстремуми
+                int tempBuffer[size];
+                int actualMin = 1000;
+                int actualMax = -1000;
+                size_t idx = 0;
+                for (const auto& kv : temperatureMap) {
+                    int t = decodeTemperature(kv.second);
+                    tempBuffer[idx++] = t;
+                    if (t < actualMin) actualMin = t;
+                    if (t > actualMax) actualMax = t;
+                }
+                // 2. Сортуємо для знаходження медіани
+                std::sort(tempBuffer, tempBuffer + size);
+                int median = tempBuffer[size / 2];
+                // 3. Формуємо вікно 20°C навколо медіани
+                int targetMin = median - 10;
+                int targetMax = median + 10;
+                // 4. Якорі: розширюємо вікно, якщо реальні дані виходять за нього
+                if (actualMin < targetMin) targetMin = actualMin;
+                if (actualMax > targetMax) targetMax = actualMax;
+                // 5. Запобіжник: якщо всі температури однакові
+                if (targetMax == targetMin) {
+                    targetMax += 1;
+                    targetMin -= 1;
+                }
+                weatherAutoMinTemp = constrain(targetMin, -40, 40);
+                weatherAutoMaxTemp = constrain(targetMax, -40, 40);
+            }
+            weatherAutoBoundsValid = true;
+        } else {
+            weatherAutoBoundsValid = false;
+        }
+
         uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
         int homeTemp = decodeTemperature(encodedTemp);
         api.setHomeDistrictTemp(homeTemp);
@@ -1848,6 +1898,7 @@ void initSettings() {
             case BG_LED_MODE:
             case WEATHER_MIN_TEMP:
             case WEATHER_MAX_TEMP:
+            case WEATHER_AUTO_BOUNDS:
             case ENABLE_KABS:
             case ENABLE_MISSILES:
             case ENABLE_DRONES:

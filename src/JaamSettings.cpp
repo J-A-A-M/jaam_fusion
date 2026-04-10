@@ -125,6 +125,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {NIGHT_MODE_LIGHT_THRESHOLD, {"nmlt", 30}},            // Light level for night mode (lux)
     {WEATHER_MIN_TEMP, {"mintemp", -10}},                  // Min temperature for color scale (°C)
     {WEATHER_MAX_TEMP, {"maxtemp", 30}},                   // Max temperature for color scale (°C)
+    {WEATHER_AUTO_BOUNDS, {"wtab", 1}},                    // Auto-calculate temperature bounds from forecast (0/1)
     {RADIATION_MAX, {"maxrad", 2000}},                     // Max radiation for visualization (nSv/h)
     
     // Regional settings
