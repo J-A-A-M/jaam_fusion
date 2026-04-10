@@ -1260,9 +1260,23 @@ void onMessageCallback(WebsocketsMessage msg) {
                 // 2. Сортуємо для знаходження медіани
                 std::sort(tempBuffer, tempBuffer + size);
                 int median = tempBuffer[size / 2];
-                // 3. Формуємо вікно 20°C навколо медіани
-                int targetMin = median - 10;
-                int targetMax = median + 10;
+                // 3. Формуємо асиметричне вікно залежно від діапазону медіани
+                int windowDown, windowUp;
+                if (median < 0) {
+                    // Мороз: менше вниз, більше вгору → фактичні температури в холодному спектрі
+                    windowDown = 5;
+                    windowUp = 15;
+                } else if (median > 20) {
+                    // Спека: більше вниз, менше вгору → фактичні температури в теплому спектрі
+                    windowDown = 15;
+                    windowUp = 5;
+                } else {
+                    // Помірний діапазон: симетрично ±10°C
+                    windowDown = 10;
+                    windowUp = 10;
+                }
+                int targetMin = median - windowDown;
+                int targetMax = median + windowUp;
                 // 4. Якорі: розширюємо вікно, якщо реальні дані виходять за нього
                 if (actualMin < targetMin) targetMin = actualMin;
                 if (actualMax > targetMax) targetMax = actualMax;
