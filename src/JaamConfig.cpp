@@ -32,6 +32,7 @@ const SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT] = {
   {4, "Увімк./Вимк. дисплей"},
   {5, "Увімк./Вимк. мапу та дисплей"},
   {7, "Увімк./Вимк. режим лампи", true, false, true},
+  {11, "Передати керування в Home Assistant"},
 };
 
 const SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT] = {
@@ -45,6 +46,7 @@ const SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT] = {
   {8, "Збільшити яскравість лампи", true, false, true},
   {9, "Зменшити яскравість лампи", true, false, true},
   {10, "Перезавантаження пристрою"},
+  {11, "Передати керування в Home Assistant"},
 };
 
 const SettingListItem MAP_MODES[MAP_MODES_COUNT] = {

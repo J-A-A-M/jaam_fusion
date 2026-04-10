@@ -6,6 +6,11 @@
 
 using namespace websockets;
 
+enum JaamApiButtonEventType : uint8_t {
+    JAAM_BUTTON_EVENT_CLICK = 0,
+    JAAM_BUTTON_EVENT_LONG_CLICK = 1
+};
+
 class JaamApi {
 public:
     JaamApi();
@@ -22,6 +27,9 @@ public:
     void setNightMode(bool state);
     void setMapEnabled(bool enabled);
     void setDisplayEnabled(bool enabled);
+
+    // Broadcast button events to connected API (WebSocket) clients
+    void broadcastButtonEvent(uint8_t buttonId, JaamApiButtonEventType eventType);
     void reconfigure();
     bool isApiRunning() const;
     void handleWebSocketClients();
