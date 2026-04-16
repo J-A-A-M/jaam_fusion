@@ -145,11 +145,11 @@ std::map<Type, SettingItemInt> intSettings = {
     {SOUND_ON_MIN_OF_SL, {"somos", 0}},                    // Sound on minute of silence (0/1)
     
     // Sound events: Alert
-    {SOUND_ON_ALERT, {"soa", 0}},                          // Play sound on alert (0/1)
+    {SOUND_ON_ALERT, {"soa", 1}},                          // Play sound on alert (0/1)
     {MELODY_ON_ALERT, {"moa", 4}},                         // Melody index: 4 = Siren
     {TRACK_ON_ALERT, {"toa", 0}},                          // DFPlayer track index
-    {SOUND_ON_ALERT_END, {"soae", 0}},                     // Play sound on alert end (0/1)
-    {MELODY_ON_ALERT_END, {"moae", 5}},                    // Melody index: 5 = Communication
+    {SOUND_ON_ALERT_END, {"soae", 1}},                     // Play sound on alert end (0/1)
+    {MELODY_ON_ALERT_END, {"moae", 15}},                   // Melody index: 15 = Shedryk
     {TRACK_ON_ALERT_END, {"toae", 5}},                     // DFPlayer track index
     
     // Sound events: Threats
@@ -193,7 +193,7 @@ std::map<Type, SettingItemInt> intSettings = {
     
     // Sound settings: General
     {SOUND_ON_EVERY_HOUR, {"soeh", 0}},                    // Sound on every hour (clock beep) (0/1)
-    {SOUND_ON_BUTTON_CLICK, {"sobc", 0}},                  // Sound on button click (0/1)
+    {SOUND_ON_BUTTON_CLICK, {"sobc", 1}},                  // Sound on button click (0/1)
     {MUTE_SOUND_ON_NIGHT, {"mson", 0}},                    // Mute sound at night (0/1)
     {MELODY_VOLUME_DAY, {"mv", 100}},                      // Sound volume during day (0-100%)
     {MELODY_VOLUME_NIGHT, {"mvn", 30}},                    // Sound volume at night (0-100%)
@@ -205,7 +205,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {INVERT_DISPLAY, {"invd", 0}},                         // Invert display colors (0/1)
     {DIM_DISPLAY_ON_NIGHT, {"ddon", 1}},                   // Dim display at night (0/1)
     {MAP_MODE, {"mapmode", 1}},                            // 0 = off, 1 = alert, 2 = weather, 3 = flag, 4 = random, 5 = lamp
-    {DISPLAY_MODE, {"dm", 1}},                             // 0 = off, 1 = clock, 2 = weather, 3 = tech. info, 4 = microclimate, 5 = combine
+    {DISPLAY_MODE, {"dm", 9}},                             // 0 = off, 1 = clock, 2 = weather, 3 = tech. info, 4 = microclimate, 5 = combine
     {DISPLAY_MODE_TIME, {"dmt", 5}},                       // Time between display mode switches (seconds)
     {DISPLAY_OFF_AT_NIGHT, {"doan", 0}},                   // Turn off display at night (0/1)
     {TOGGLE_MODE_WEATHER, {"tmw", 1}},                     // Include weather in display rotation (0/1)
@@ -230,7 +230,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {DISPLAY_WIDTH, {"dw", 128}},                          // Display width in pixels
     {DISPLAY_HEIGHT, {"dh", 32}},                          // Display height in pixels (32 or 64)
     {DISPLAY_ROTATION, {"dr", 0}},                         // Display rotation (0-3 = 0°, 90°, 180°, 270°)
-    {DISPLAY_ALERT_MESSAGE_TIME, {"damt", 5}},             // Alert message display time (seconds)
+    {DISPLAY_ALERT_MESSAGE_TIME, {"damt", 10}},            // Alert message display time (seconds)
     {CLOCK_FONT, {"clkf", 0}},                             // Clock font style (0-5)
     
     // Time settings
@@ -275,8 +275,8 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_ALERT_ON_TYPE, {"aanot", 0}},               // Alert on animation type
     {ANIMATION_ALERT_OFF_TYPE, {"aaoft",0}},               // Alert off animation type
     {ANIMATION_DRONE_TYPE, {"adrt", 2}},                   // Drone animation type
-    {ANIMATION_RECON_DRONE_TYPE, {"ardrt", 1}},            // Recon drone animation type
-    {ANIMATION_MISSILE_TYPE, {"amit", 2}},                 // Missile animation type
+    {ANIMATION_RECON_DRONE_TYPE, {"ardrt", 9}},            // Recon drone animation type
+    {ANIMATION_MISSILE_TYPE, {"amit", 8}},                 // Missile animation type
     {ANIMATION_KAB_TYPE, {"akabt", 3}},                    // KAB animation type
     {ANIMATION_BALLISTIC_TYPE, {"abalit", 3}},             // Ballistic animation type
     {ANIMATION_EXPLOSION_TYPE, {"aex", 3}},                // Explosion animation type
