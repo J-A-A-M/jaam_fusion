@@ -122,7 +122,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {BRIGHTNESS_MAX_ACCEPT, {"brmxa", 0}},                 // User accepted max brightness warning (0/1)
     
     // Environmental settings
-    {NIGHT_MODE_LIGHT_THRESHOLD, {"nmlt", 30}},            // Light level for night mode (lux)
+    {NIGHT_MODE_LIGHT_THRESHOLD, {"nmlt", 10}},            // Light level for night mode (lux)
     {WEATHER_MIN_TEMP, {"mintemp", -10}},                  // Min temperature for color scale (°C)
     {WEATHER_MAX_TEMP, {"maxtemp", 30}},                   // Max temperature for color scale (°C)
     {RADIATION_MAX, {"maxrad", 2000}},                     // Max radiation for visualization (nSv/h)
@@ -249,7 +249,7 @@ std::map<Type, SettingItemInt> intSettings = {
     
     // Animation timers (seconds)
     {ALERT_ON_TIME, {"aonte", 300}},                       // Animation duration for alert on
-    {ALERT_OFF_TIME, {"aofte", 5}},                        // Animation duration for alert off
+    {ALERT_OFF_TIME, {"aofte", 300}},                      // Animation duration for alert off
     {DRONE_TIME, {"drte", 300}},                           // Animation duration for drones
     {RECON_DRONE_TIME, {"rdrte", 300}},                    // Animation duration for recon drones
     {MISSILE_TIME, {"mite", 300}},                         // Animation duration for missiles

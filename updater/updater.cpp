@@ -13,7 +13,7 @@ const char* userPassword = ""; // Пароль до WIFI мережі замов
 
 
 // const char* firmwareUrl = "https://update.jaam.net.ua/5.0"; // production
-const char* firmwareUrl = "https://update.jaam.net.ua/5.0-b10"; // beta
+const char* firmwareUrl = "https://update.jaam.net.ua/5.0-b11"; // beta
 
 // ID регіонів нижче в коментарі
 const int home_district = 31; // Київ (за замовчуванням)
@@ -38,6 +38,15 @@ void updateFirmware() {
 
   // set ID and home district for the device
   preferences.putInt("hmd", home_district); // home district
+  preferences.putInt("bm", 1); // button mode (1 - map mode change)
+  preferences.putInt("b2m", 2); // button mode (2 - display mode change)
+  preferences.putInt("b3m", 5); // button mode (7 - lamp mode)
+  preferences.putInt("bml", 0); // toggle display and map
+  preferences.putInt("b2ml", 6); // toggle night brightness
+  preferences.putInt("b3ml", 10); // reboot device
+  preferences.putInt("dsmd", 2); // display SH1106
+  preferences.putInt("dh", 64); // display SH1106
+  preferences.putInt("sobc", 1); // sound of button click (0 - off, 1 - on)
 
 #if JAAM_VERSION == 1
 
