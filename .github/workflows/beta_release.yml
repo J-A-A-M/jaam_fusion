@@ -424,7 +424,7 @@ jobs:
         tag_name: ${{ needs.prepare.outputs.tag_name }}
         name: Beta ${{ needs.prepare.outputs.full_version }}
         body_path: CHANGELOG.md
-        draft: false
+        draft: true
         prerelease: true
         files: |
           release/*.bin
