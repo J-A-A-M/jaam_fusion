@@ -321,7 +321,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_RECON_DRONES, {"rgbcrdr", "#0000FF"}},           // Recon drone color (blue)
     {COLOR_KABS, {"rgbckab", "#FFFF00"}},                   // KAB color (yellow)
     {COLOR_BALLISTIC, {"rgbcbal", "#FFFFFF"}},              // Ballistic color (white)
-    {COLOR_HOME_DISTRICT, {"rgbchd", "#5CFF5C"}},           // Home district color (light green)
+    {COLOR_HOME_DISTRICT, {"rgbchd", "#00FFC8"}},           // Home district color (light blue)
     {COLOR_BG, {"rgbcbg", "#00FF00"}},                      // Background color (green)
     {COLOR_LAMP, {"rgbclamp", "#D707D7"}},                  // Lamp mode color (purple)
 };
