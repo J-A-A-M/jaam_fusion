@@ -38,15 +38,6 @@ void updateFirmware() {
 
   // set ID and home district for the device
   preferences.putInt("hmd", home_district); // home district
-  preferences.putInt("bm", 1); // button mode (1 - map mode change)
-  preferences.putInt("b2m", 2); // button mode (2 - display mode change)
-  preferences.putInt("b3m", 5); // button mode (7 - lamp mode)
-  preferences.putInt("bml", 0); // toggle display and map
-  preferences.putInt("b2ml", 6); // toggle night brightness
-  preferences.putInt("b3ml", 10); // reboot device
-  preferences.putInt("dsmd", 2); // display SH1106
-  preferences.putInt("dh", 64); // display SH1106
-  preferences.putInt("sobc", 1); // sound of button click (0 - off, 1 - on)
 
 #if JAAM_VERSION == 1
 
@@ -69,6 +60,17 @@ void updateFirmware() {
   // Default value for JAAM 3
   preferences.putString("id", "JAAM3");
   preferences.putInt("legacy", 6); // JAAM 3.2
+  preferences.putInt("bm", 1); // button mode (1 - map mode change)
+  preferences.putInt("b2m", 2); // button mode (2 - display mode change)
+  preferences.putInt("b3m", 5); // button mode (7 - lamp mode)
+  preferences.putInt("bml", 0); // toggle display and map
+  preferences.putInt("b2ml", 6); // toggle night brightness
+  preferences.putInt("b3ml", 10); // reboot device
+  preferences.putInt("dsmd", 2); // display SH1106
+  preferences.putInt("dh", 64); // display SH1106
+  preferences.putInt("sobc", 1); // sound of button click (0 - off, 1 - on)
+  preferences.putInt("brightness", 100); // display brightness (0-100)
+  preferences.putInt("brd", 100); // auto brightness for day (0-100)
   
   Serial.println("Default JAAM 3 settings applied...");
 #endif

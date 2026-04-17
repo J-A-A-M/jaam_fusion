@@ -86,7 +86,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {CURRENT_BRIGHTNESS, {"cbr", 50}},                     // Current brightness level
     {BRIGHTNESS, {"brightness", 50}},                      // Manual brightness
     {BRIGHTNESS_DAY, {"brd", 50}},                         // Auto: day brightness
-    {BRIGHTNESS_NIGHT, {"brn", 5}},                        // Auto: night brightness
+    {BRIGHTNESS_NIGHT, {"brn", 10}},                        // Auto: night brightness
     {BRIGHTNESS_MODE, {"bra", 0}},                         // 0 = manual, 1 = auto day/night, 2 = auto sensor
     
     // Home district settings
@@ -285,7 +285,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_ALERT_ON_CYCLE_TIME, {"aacot", 1000}},      // Alert on animation cycle time
     {ANIMATION_ALERT_OFF_CYCLE_TIME, {"aacft", 1000}},     // Alert off animation cycle time
     {ANIMATION_DRONE_CYCLE_TIME, {"adct", 700}},           // Drone animation cycle time
-    {ANIMATION_RECON_DRONE_CYCLE_TIME, {"ardct", 500}},    // Recon drone animation cycle time
+    {ANIMATION_RECON_DRONE_CYCLE_TIME, {"ardct", 1000}},    // Recon drone animation cycle time
     {ANIMATION_MISSILE_CYCLE_TIME, {"amct", 700}},         // Missile animation cycle time
     {ANIMATION_KAB_CYCLE_TIME, {"akt", 500}},              // KAB animation cycle time
     {ANIMATION_BALLISTIC_CYCLE_TIME, {"abct", 500}},       // Ballistic animation cycle time
