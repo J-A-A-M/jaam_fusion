@@ -18,8 +18,8 @@ function renderColorEditor(data) {
     // Clear loading message
     container.innerHTML = '';
     
-    if (data.count === 0) {
-        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--secondary-text);">Кількість задніх LED не налаштована. Будь ласка, спочатку налаштуйте кількість LED в розділі "Налаштування".</div>';
+    if (data.count <= 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--secondary-text);">Кількість LED фонової підсвітки не налаштована. Будь ласка, спочатку налаштуйте кількість LED в розділі "Апаратне забезпечення".</div>';
         return;
     }
     
@@ -30,7 +30,7 @@ function renderColorEditor(data) {
     
     const info = document.createElement('div');
     const infoParagraph = document.createElement('p');
-    infoParagraph.textContent = 'Налаштування індивідуальних кольорів для ' + data.count + ' задніх LED. Чорний колір означає відсутність підсвітки.';
+    infoParagraph.textContent = 'Налаштування індивідуальних кольорів для ' + data.count + ' LED фонової підсвітки. Чорний колір означає вимкнений LED.';
     infoParagraph.style.marginBottom = '20px';
     infoParagraph.style.color = 'var(--text-color)';
     info.appendChild(infoParagraph);

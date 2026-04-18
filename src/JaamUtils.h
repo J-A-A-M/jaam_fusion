@@ -107,6 +107,7 @@ extern JaamDisplay                      display;
 extern bool                             wifiConnected;
 extern bool                             websocketConnected;
 extern JaamApi                          api;
+extern JaamHardware                     hardware;
 
 // Current region map (flat array format)
 struct CurrentRegionMap {
@@ -366,7 +367,7 @@ inline void generateBgLedColorsMap() {
     // Очистити масив кольорів
     memset(bgLedColors, 0, sizeof(bgLedColors));
     
-    int bgLedCount = settings.getInt(BG_LED_COUNT);
+    int bgLedCount = hardware.getBgLedsCount();
     if (bgLedCount <= 0 || bgLedCount > MAX_LEDS_STRIP_BG) {
         LOG.printf("[INIT] BG LED count not configured or invalid.\n");
         return;
@@ -399,7 +400,7 @@ inline void generateBgLedColorsMap() {
 
 // Отримати колір для конкретного LED
 inline uint32_t getBgLedColor(int ledIndex) {
-    int bgLedCount = settings.getInt(BG_LED_COUNT);
+    int bgLedCount = hardware.getBgLedsCount();
     if (ledIndex >= 0 && ledIndex < bgLedCount && ledIndex < MAX_LEDS_STRIP_BG) {
         return bgLedColors[ledIndex];
     }
