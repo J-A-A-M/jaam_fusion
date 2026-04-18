@@ -11,30 +11,30 @@
 - **SSID**: `JAAM_XXXXXX` (де XXXXXX — частина MAC-адреси)
 - **Пароль**: Немає (відкрита мережа)
 
-    ![WiFi AP на дисплеї](../../assets/images/first-config/wifi-ap-display.png){ width="500" }
+    ![WiFi AP на дисплеї](../assets/images/first-config/wifi-ap-display.png){ width="500" }
 
     *На дисплеї відображається назва WiFi мережі та IP-адреса*
 
-![IP-адреса на дисплеї](../../assets/images/first-config/wifi-ip-display.png){ width="500" }
+![IP-адреса на дисплеї](../assets/images/first-config/wifi-ip-display.png){ width="500" }
 
 ### Налаштування WiFi
 
 1. Підключіться до мережі `JAAM_XXXXXX` (без пароля)
 2. Відкрийте `http://192.168.4.1`
 
-    ![Портал налаштування WiFi](../../assets/images/first-config/wifi-portal.png){ width="400" }
+    ![Портал налаштування WiFi](../assets/images/first-config/wifi-portal.png){ width="400" }
 
     *Портал налаштування WiFi автоматично відкриється після підключення*
 
 3. Натисніть **Configure WiFi**, оберіть свою мережу зі списку та введіть пароль
 
-    ![Вибір WiFi мережі](../../assets/images/first-config/wifi-select-network.png){ width="400" }
+    ![Вибір WiFi мережі](../assets/images/first-config/wifi-select-network.png){ width="400" }
 
     *Оберіть мережу зі списку та введіть пароль*
 
 4. Натисніть **Save** — пристрій збереже налаштування і перезавантажиться
 
-    ![Збереження налаштувань](../../assets/images/first-config/wifi-save-confirmation.png){ width="500" }
+    ![Збереження налаштувань](../assets/images/first-config/wifi-save-confirmation.png){ width="500" }
 
     *Підтвердження збереження на дисплеї*
 
@@ -50,7 +50,7 @@
 3. Альтернативно: Спробуйте `http://jaam_xxxxxx.local` (де XXXXXX — частина MAC-адреси з назви WiFi мережі)
 4. Ви потрапите до головної сторінки веб-інтерфейсу
 
-    ![IP-адреса після підключення](../../assets/images/first-config/wifi-connected-ip.png){ width="500" }
+    ![IP-адреса після підключення](../assets/images/first-config/wifi-connected-ip.png){ width="500" }
 
     *IP-адресу можна побачити на дисплеї при завантаженні*
 

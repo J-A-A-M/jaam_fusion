@@ -936,6 +936,13 @@
             ""
         ],
         [
+            "bool",
+            "weather_auto_bounds",
+            "Автоматично розраховувати температурні межі для режиму \"Погода\"",
+            "climate",
+            ""
+        ],
+        [
             "slider",
             "weather_min_temp",
             "Мінімальна температура",
@@ -944,7 +951,7 @@
             1,
             "climate",
             "°C",
-            ""
+            "weather_auto_bounds==0"
         ],
         [
             "slider",
@@ -955,7 +962,7 @@
             1,
             "climate",
             "°C",
-            ""
+            "weather_auto_bounds==0"
         ],
         [
             "label",

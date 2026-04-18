@@ -57,6 +57,16 @@ static inline uint32_t colorFromTemperature(int tempC, int minC, int maxC) {
     return hsvToRgb(hue, 1.0f, 1.0f);
 }
 
+static inline void getWeatherTempBounds(JaamSettings* settings, int& minT, int& maxT) {
+    if (settings->getBool(WEATHER_AUTO_BOUNDS) && weatherAutoBoundsValid) {
+        minT = weatherAutoMinTemp;
+        maxT = weatherAutoMaxTemp;
+    } else {
+        minT = settings->getInt(WEATHER_MIN_TEMP);
+        maxT = settings->getInt(WEATHER_MAX_TEMP);
+    }
+}
+
 // Ініціалізація статичних змінних для синхронізації
 uint32_t AnimationManager::globalStartTimes[ANIMATION_TYPES_COUNT] = {0};
 bool AnimationManager::globalTimesInitialized[ANIMATION_TYPES_COUNT] = {false};
@@ -1110,8 +1120,8 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         auto it = temperatureMap.find(home);
                         if (it != temperatureMap.end()) {
                             int t = decodeTemperature(it->second);
-                            int minT = settings->getInt(WEATHER_MIN_TEMP);
-                            int maxT = settings->getInt(WEATHER_MAX_TEMP);
+                            int minT, maxT;
+                            getWeatherTempBounds(settings, minT, maxT);
                             color = colorFromTemperature(t, minT, maxT);
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
@@ -1236,8 +1246,8 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     }
                     if (cnt > 0) {
                         int avg = (int)(sum / cnt);
-                        int minT = settings->getInt(WEATHER_MIN_TEMP);
-                        int maxT = settings->getInt(WEATHER_MAX_TEMP);
+                        int minT, maxT;
+                        getWeatherTempBounds(settings, minT, maxT);
                         color = colorFromTemperature(avg, minT, maxT);
                     } else {
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
@@ -1309,8 +1319,8 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         auto it = temperatureMap.find(home);
                         if (it != temperatureMap.end()) {
                             int t = decodeTemperature(it->second);
-                            int minT = settings->getInt(WEATHER_MIN_TEMP);
-                            int maxT = settings->getInt(WEATHER_MAX_TEMP);
+                            int minT, maxT;
+                            getWeatherTempBounds(settings, minT, maxT);
                             color = colorFromTemperature(t, minT, maxT);
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
