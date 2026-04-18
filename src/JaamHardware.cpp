@@ -239,6 +239,8 @@ int JaamHardware::getDfTxPin() {
 int JaamHardware::getDisplayModel() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
             return static_cast<int>(JaamDisplayType::SH1106G);
@@ -252,6 +254,8 @@ int JaamHardware::getDisplayModel() {
 int JaamHardware::getDisplayHeight() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:
@@ -264,6 +268,8 @@ int JaamHardware::getDisplayHeight() {
 int JaamHardware::getDisplayRotation() {
     uint8_t hwType = getCurrentHardwareType();
     switch (hwType) {
+        case HARDWARE::JAAM_3_2:
+        case HARDWARE::JAAM_3_2_REGIONS:
         case HARDWARE::JAAM_3_0:
         case HARDWARE::JAAM_2_1:
         case HARDWARE::JAAM_1_3:

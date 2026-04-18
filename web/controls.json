@@ -249,7 +249,7 @@
             "Тип дисплею",
             "display_model",
             "display",
-            "hardware!=0,hardware!=3,hardware!=4"
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6,hardware!=9"
         ],
         [
             "dropdown",
@@ -257,7 +257,7 @@
             "Висота дисплею",
             "display_height",
             "display",
-            "hardware!=0,hardware!=3,hardware!=4"
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6,hardware!=9"
         ],
         [
             "dropdown",
@@ -265,7 +265,7 @@
             "Поворот дисплею",
             "display_rotation",
             "display",
-            "hardware!=0,hardware!=3,hardware!=4"
+            "hardware!=0,hardware!=3,hardware!=4,hardware!=6,hardware!=9"
         ],
         [
             "bool",
