@@ -209,8 +209,19 @@ jobs:
 
         if [ -z "$BETA_TAGS" ]; then
           echo "⚠️ Не знайдено жодного beta релізу для версії ${VERSION}"
-          echo "beta_notes=" >> $GITHUB_OUTPUT
+          touch /tmp/beta_notes.txt
+
+          # Якщо немає бет, витягуємо коміти від попереднього стабільного
+          if [ -n "$LAST_STABLE_TAG" ]; then
+            echo "   📝 Витягуємо коміти від ${LAST_STABLE_TAG} до HEAD..."
+            git log --pretty=format:"- %s (%an, %h)" ${LAST_STABLE_TAG}..HEAD 2>/dev/null > /tmp/new_commits.txt
+          else
+            echo "   📝 Немає попередніх тегів, витягуємо останні 50 комітів..."
+            git log --pretty=format:"- %s (%an, %h)" HEAD | head -50 > /tmp/new_commits.txt
+          fi
+
           echo "last_stable=${LAST_STABLE_TAG}" >> $GITHUB_OUTPUT
+          echo "last_beta=" >> $GITHUB_OUTPUT
           exit 0
         fi
 
@@ -241,7 +252,33 @@ jobs:
 
         # Зберігаємо у файл (щоб уникнути обмежень GITHUB_OUTPUT)
         echo "$ALL_BETA_NOTES" > /tmp/beta_notes.txt
+
+        # Знаходимо останній beta тег для аналізу нових комітів
+        LAST_BETA_TAG=$(echo "$BETA_TAGS" | tail -n 1)
+        echo "   Останній beta тег: ${LAST_BETA_TAG:-'(відсутній)'}"
+
+        # Витягуємо коміти між останньою бетою та HEAD
+        if [ -n "$LAST_BETA_TAG" ]; then
+          echo "   📝 Витягуємо нові коміти від ${LAST_BETA_TAG} до HEAD..."
+          NEW_COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${LAST_BETA_TAG}..HEAD 2>/dev/null)
+        elif [ -n "$LAST_STABLE_TAG" ]; then
+          echo "   📝 Немає beta тегів, витягуємо коміти від ${LAST_STABLE_TAG} до HEAD..."
+          NEW_COMMITS=$(git log --pretty=format:"- %s (%an, %h)" ${LAST_STABLE_TAG}..HEAD 2>/dev/null)
+        else
+          echo "   📝 Немає попередніх тегів, витягуємо останні 50 комітів..."
+          NEW_COMMITS=$(git log --pretty=format:"- %s (%an, %h)" HEAD | head -50)
+        fi
+
+        echo "$NEW_COMMITS" > /tmp/new_commits.txt
+
+        if [ -n "$NEW_COMMITS" ]; then
+          echo "   ✅ Знайдено нові коміти після останньої бети"
+        else
+          echo "   ℹ️ Нових комітів після останньої бети немає"
+        fi
+
         echo "last_stable=${LAST_STABLE_TAG}" >> $GITHUB_OUTPUT
+        echo "last_beta=${LAST_BETA_TAG}" >> $GITHUB_OUTPUT
         echo "✅ Збір beta release notes завершено"
 
     - name: Generate changelog with AI
@@ -252,17 +289,36 @@ jobs:
       run: |
         VERSION="${{ inputs.version }}"
         LAST_STABLE_TAG="${{ steps.collect_notes.outputs.last_stable }}"
+        LAST_BETA_TAG="${{ steps.collect_notes.outputs.last_beta }}"
         BETA_NOTES=$(cat /tmp/beta_notes.txt 2>/dev/null || echo "")
+        NEW_COMMITS=$(cat /tmp/new_commits.txt 2>/dev/null || echo "")
 
-        if [ -n "$GEMINI_API_KEY" ] && [ -n "$BETA_NOTES" ]; then
+        if [ -n "$NEW_COMMITS" ]; then
+          echo "📋 Знайдено нові коміти після останньої бети (${LAST_BETA_TAG}):"
+          echo "$NEW_COMMITS"
+        else
+          echo "ℹ️ Нових комітів після останньої бети немає"
+        fi
+
+        if [ -n "$GEMINI_API_KEY" ] && ([ -n "$BETA_NOTES" ] || [ -n "$NEW_COMMITS" ]); then
           echo "📝 Генеруємо changelog за допомогою AI..."
 
           PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
 
-          Проаналізуй release notes з beta релізів та створи фінальний changelog для стабільного релізу українською мовою у форматі Markdown.
+          Проаналізуй release notes з beta релізів та нові коміти після останньої бети, і створи фінальний changelog для стабільного релізу українською мовою у форматі Markdown.
+
+          ВАЖЛИВО: Ігноруй технічні коміти, які не впливають на функціональність прошивки:
+          - Зміни в GitHub Actions (.github/workflows)
+          - Зміни конфігурації білда (якщо вони не додають нові функції користувачам)
+          - Оновлення документації проекту
+          - Зміни в CI/CD
+          - Рефакторинг без нових функцій
+
+          НОВІ КОМІТИ (між останньою бетою ${LAST_BETA_TAG} та поточним комітом):
+          ${NEW_COMMITS:-"(нових комітів немає)"}
 
           RELEASE NOTES З BETA РЕЛІЗІВ ВЕРСІЇ ${VERSION}:
-          ${BETA_NOTES}
+          ${BETA_NOTES:-"(немає beta релізів)"}
 
           Створи changelog з такою структурою:
 
@@ -270,7 +326,7 @@ jobs:
 
           ## 🆕 Що нового у версії ${VERSION}
 
-          [Об'єднай та підсумуй всі зміни з beta релізів. Прибери дублікати. Згрупуй за категоріями:]
+          [Об'єднай та підсумуй всі зміни з НОВИХ КОМІТІВ та RELEASE NOTES З BETA РЕЛІЗІВ. Прибери дублікати. Згрупуй за категоріями:]
           - 🚀 Нові можливості
           - 🐛 Виправлення помилок
           - 🔧 Технічні покращення
@@ -286,7 +342,7 @@ jobs:
           - НЕ згадуй beta версії в тексті — це фінальний реліз
           - ⚠️ ВАЖЛИВО: Обмеження на довжину release notes становить 125 000 символів!
 
-          ⚠️ КРИТИЧНО: Виводи ТІЛЬКИ Markdown текст changelog без жодних додаткових текстів, коментарів чи пояснень!"
+          ⚠️ КРИТИЧНО: Виведи ТІЛЬКИ Markdown текст changelog без жодних додаткових текстів, коментарів чи пояснень!"
 
           JSON_PAYLOAD=$(jq -n \
             --arg prompt "$PROMPT" \
@@ -315,22 +371,28 @@ jobs:
           CHANGELOG=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
 
           if [ -z "$CHANGELOG" ]; then
-            echo "⚠️ AI не згенерував changelog, використовуємо beta notes як fallback"
+            echo "⚠️ AI не згенерував changelog, використовуємо fallback"
             CHANGELOG="# 🚀 Реліз ${VERSION}
 
-          ## 🆕 Що нового у версії ${VERSION}
+            ## 🆕 Що нового у версії ${VERSION}
 
-          ${BETA_NOTES}"
+            ${NEW_COMMITS:+### Зміни після останньої бети
+            ${NEW_COMMITS}
+
+            }${BETA_NOTES}"
           else
             echo "✅ AI згенерував changelog"
           fi
         else
-          echo "⚠️ GEMINI_API_KEY не знайдено або немає beta notes, використовуємо стандартний changelog"
+          echo "⚠️ GEMINI_API_KEY не знайдено або немає змін, використовуємо стандартний changelog"
           CHANGELOG="# 🚀 Реліз ${VERSION}
 
           ## 🆕 Що нового у версії ${VERSION}
 
-          ${BETA_NOTES}"
+          ${NEW_COMMITS:+### Зміни після останньої бети
+          ${NEW_COMMITS}
+
+          }${BETA_NOTES}"
         fi
 
         echo "$CHANGELOG" > CHANGELOG.md
