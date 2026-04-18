@@ -264,7 +264,7 @@ extern const SettingListItem LED_FREQUENCIES[LED_FREQUENCIES_COUNT];
 constexpr int SINGLE_CLICKS_COUNT = 8;
 extern const SettingListItem SINGLE_CLICKS[SINGLE_CLICKS_COUNT];
 
-constexpr int LONG_CLICKS_COUNT = 10;
+constexpr int LONG_CLICKS_COUNT = 11;
 extern const SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT];
 
 constexpr int MAP_MODES_COUNT = 8;

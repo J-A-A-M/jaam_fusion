@@ -1,0 +1,385 @@
+name: 🚀 Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версія для релізу (наприклад: 5.0 або 5.0.1)'
+        required: true
+        type: string
+
+run-name: 🚀 Production Release ${{ inputs.version }}
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.version.outputs.tag_name }}
+
+    steps:
+    - name: Validate version format
+      run: |
+        if ! echo "${{ inputs.version }}" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+          echo "❌ Невірний формат версії. Використовуйте формат X.Y або X.Y.Z (наприклад: 5.0 або 5.0.1)"
+          exit 1
+        fi
+        echo "✅ Формат версії валідний: ${{ inputs.version }}"
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Check no existing stable release
+      id: version
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        VERSION="${{ inputs.version }}"
+        TAG_NAME="${VERSION}"
+
+        # Перевіряємо чи вже існує такий тег
+        if git tag -l "${TAG_NAME}" | grep -q "${TAG_NAME}"; then
+          echo "❌ Тег ${TAG_NAME} вже існує!"
+          exit 1
+        fi
+
+        # Перевіряємо чи вже існує стабільний реліз з такою версією
+        EXISTING=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}")
+        if echo "$EXISTING" | jq -e '.id' > /dev/null 2>&1; then
+          echo "❌ Реліз ${TAG_NAME} вже існує!"
+          exit 1
+        fi
+
+        echo "✅ Версія ${TAG_NAME} вільна"
+        echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+    - name: Update version in platformio.ini
+      run: |
+        VERSION="${{ inputs.version }}"
+
+        echo "📝 Оновлюємо VERSION у platformio.ini на ${VERSION}"
+
+        if [ ! -f platformio.ini ]; then
+          echo "❌ ПОМИЛКА: platformio.ini не знайдено!"
+          exit 1
+        fi
+
+        echo "📄 Поточна VERSION у platformio.ini:"
+        grep 'VERSION=' platformio.ini || echo "VERSION не знайдено!"
+
+        sed -i 's/VERSION=\\"[^\\"]*\\"/VERSION=\\"'"${VERSION}"'\\"/g' platformio.ini
+
+        echo "📄 Нова VERSION у platformio.ini:"
+        grep 'VERSION=' platformio.ini
+
+        if grep -q 'VERSION=\\"'"${VERSION}"'\\"' platformio.ini; then
+          echo "✅ Версію успішно оновлено на ${VERSION}"
+        else
+          echo "❌ ПОМИЛКА: Версію не вдалося оновити!"
+          exit 1
+        fi
+
+    - name: Upload updated platformio.ini
+      uses: actions/upload-artifact@v5
+      with:
+        name: platformio-config
+        path: platformio.ini
+        retention-days: 1
+
+  build:
+    name: 🔨 Build ${{ inputs.version }} (${{ matrix.chip }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [firmware, firmware_esp32s3, firmware_esp32c3]
+        include:
+          - environment: firmware
+            chip: esp32
+            bin_name: JAAM
+          - environment: firmware_esp32s3
+            chip: esp32s3
+            bin_name: JAAM_s3
+          - environment: firmware_esp32c3
+            chip: esp32c3
+            bin_name: JAAM_c3
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Download updated platformio.ini
+      uses: actions/download-artifact@v5
+      with:
+        name: platformio-config
+
+    - name: Verify version in platformio.ini
+      run: |
+        EXPECTED_VERSION="${{ inputs.version }}"
+
+        echo "🔍 Перевіряємо версію в platformio.ini"
+
+        echo "📄 Вміст VERSION у platformio.ini:"
+        grep 'VERSION=' platformio.ini || echo "VERSION не знайдено!"
+
+        if grep -q "VERSION=\\\\\"${EXPECTED_VERSION}\\\\\"" platformio.ini; then
+          echo "✅ Версія правильна: ${EXPECTED_VERSION}"
+        else
+          echo "❌ ПОМИЛКА: Версія в platformio.ini не відповідає очікуваній!"
+          echo "Очікувалось: VERSION=\\\"${EXPECTED_VERSION}\\\""
+          echo "Знайдено:"
+          grep 'VERSION=' platformio.ini
+          exit 1
+        fi
+
+    - name: Setup PlatformIO
+      uses: ./.github/actions/setup-platformio
+
+    - name: Build ${{ matrix.environment }}
+      run: |
+        echo "🔨 Збираємо firmware для ${{ matrix.chip }}..."
+        platformio run -e ${{ matrix.environment }}
+
+    - name: Prepare binary
+      run: |
+        mkdir -p release
+        cp .pio/build/${{ matrix.environment }}/firmware.bin release/${{ matrix.bin_name }}_${{ inputs.version }}.bin
+        echo "📦 Розмір бінарника:"
+        ls -lh release/*.bin
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v5
+      with:
+        name: firmware-${{ matrix.chip }}
+        path: release/*.bin
+        retention-days: 1
+
+  release:
+    name: 🚀 Release ${{ inputs.version }}
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Download all firmware binaries
+      uses: actions/download-artifact@v5
+      with:
+        pattern: firmware-*
+        path: release
+        merge-multiple: true
+
+    - name: Show downloaded binaries
+      run: |
+        echo "📦 Завантажені бінарники:"
+        ls -lh release/
+
+    - name: Collect beta release notes
+      id: collect_notes
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        VERSION="${{ inputs.version }}"
+
+        echo "📋 Збираємо release notes з beta релізів версії ${VERSION}..."
+
+        RELEASES=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100&sort=created&direction=asc")
+
+        # Знаходимо попередній стабільний реліз
+        LAST_STABLE_TAG=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100&sort=created&direction=desc" \
+          | jq -r '.[] | select(.prerelease == false and .draft == false) | .tag_name' | head -1)
+
+        echo "   Попередній стабільний реліз: ${LAST_STABLE_TAG:-'(відсутній)'}"
+
+        # Збираємо всі beta теги цієї версії (відсортовані від старіших до новіших)
+        BETA_TAGS=$(git tag -l "${VERSION}-b*" | sort -V)
+        BETA_COUNT=$(echo "$BETA_TAGS" | grep -c . || echo 0)
+
+        echo "   Знайдено ${BETA_COUNT} beta релізів для версії ${VERSION}"
+
+        if [ -z "$BETA_TAGS" ]; then
+          echo "⚠️ Не знайдено жодного beta релізу для версії ${VERSION}"
+          echo "beta_notes=" >> $GITHUB_OUTPUT
+          echo "last_stable=${LAST_STABLE_TAG}" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Обмежуємо до 15 beta релізів: 3 найстаріших + 12 найновіших
+        BETA_TAGS_ARRAY=($BETA_TAGS)
+        if [ "${#BETA_TAGS_ARRAY[@]}" -le 15 ]; then
+          SELECTED_TAGS=("${BETA_TAGS_ARRAY[@]}")
+        else
+          OLDEST_THREE=("${BETA_TAGS_ARRAY[@]:0:3}")
+          NEWEST_TWELVE=("${BETA_TAGS_ARRAY[@]: -12}")
+          SELECTED_TAGS=("${OLDEST_THREE[@]}" "${NEWEST_TWELVE[@]}")
+          echo "   ⚠️ Знайдено ${#BETA_TAGS_ARRAY[@]} beta тегів, обмежуємо до 15 (3 найстаріших + 12 найновіших)"
+        fi
+
+        # Витягуємо release notes кожного beta релізу
+        ALL_BETA_NOTES=""
+        for beta_tag in "${SELECTED_TAGS[@]}"; do
+          NOTES=$(echo "$RELEASES" | jq -r --arg tag "$beta_tag" '.[] | select(.tag_name == $tag) | .body // empty')
+          if [ -n "$NOTES" ]; then
+            # Обрізаємо секцію "Зміни з попередніх beta версій" щоб уникнути дублювання
+            NOTES=$(echo "$NOTES" | sed '/## 📋 Зміни з попередніх beta версій/,$d')
+            ALL_BETA_NOTES+=$'\n'"### ${beta_tag}"$'\n'"${NOTES}"$'\n'
+            echo "   ✅ Зібрано notes з ${beta_tag}"
+          else
+            echo "   ⚠️ Немає notes для ${beta_tag}"
+          fi
+        done
+
+        # Зберігаємо у файл (щоб уникнути обмежень GITHUB_OUTPUT)
+        echo "$ALL_BETA_NOTES" > /tmp/beta_notes.txt
+        echo "last_stable=${LAST_STABLE_TAG}" >> $GITHUB_OUTPUT
+        echo "✅ Збір beta release notes завершено"
+
+    - name: Generate changelog with AI
+      id: changelog
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        VERSION="${{ inputs.version }}"
+        LAST_STABLE_TAG="${{ steps.collect_notes.outputs.last_stable }}"
+        BETA_NOTES=$(cat /tmp/beta_notes.txt 2>/dev/null || echo "")
+
+        if [ -n "$GEMINI_API_KEY" ] && [ -n "$BETA_NOTES" ]; then
+          echo "📝 Генеруємо changelog за допомогою AI..."
+
+          PROMPT="Ти - AI асистент для створення changelog для IoT пристрою \"JAAM Fusion\" - карти повітряних тривог України на базі ESP32.
+
+          Проаналізуй release notes з beta релізів та створи фінальний changelog для стабільного релізу українською мовою у форматі Markdown.
+
+          RELEASE NOTES З BETA РЕЛІЗІВ ВЕРСІЇ ${VERSION}:
+          ${BETA_NOTES}
+
+          Створи changelog з такою структурою:
+
+          # 🚀 Реліз ${VERSION}
+
+          ## 🆕 Що нового у версії ${VERSION}
+
+          [Об'єднай та підсумуй всі зміни з beta релізів. Прибери дублікати. Згрупуй за категоріями:]
+          - 🚀 Нові можливості
+          - 🐛 Виправлення помилок
+          - 🔧 Технічні покращення
+          - ⚡ Оптимізація
+          - 🎨 UI/UX покращення
+
+          Вимоги:
+          - Будь стислим та зрозумілим для кінцевих користувачів
+          - Опиши зміни простою мовою, уникай технічного жаргону де можливо
+          - Групуй схожі зміни разом, видаляй дублікати між beta релізами
+          - Підкресли найважливіші зміни
+          - НЕ додавай секції про завантаження або встановлення
+          - НЕ згадуй beta версії в тексті — це фінальний реліз
+          - ⚠️ ВАЖЛИВО: Обмеження на довжину release notes становить 125 000 символів!
+
+          ⚠️ КРИТИЧНО: Виводи ТІЛЬКИ Markdown текст changelog без жодних додаткових текстів, коментарів чи пояснень!"
+
+          JSON_PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            '{
+              "contents": [{
+                "parts": [{
+                  "text": $prompt
+                }]
+              }],
+              "generationConfig": {
+                "temperature": 0.5,
+                "maxOutputTokens": 120000
+              }
+            }')
+
+          RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD")
+
+          ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR" ]; then
+            echo "⚠️ Помилка API: $ERROR"
+            echo "$RESPONSE" | jq .
+          fi
+
+          CHANGELOG=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+
+          if [ -z "$CHANGELOG" ]; then
+            echo "⚠️ AI не згенерував changelog, використовуємо beta notes як fallback"
+            CHANGELOG="# 🚀 Реліз ${VERSION}
+
+          ## 🆕 Що нового у версії ${VERSION}
+
+          ${BETA_NOTES}"
+          else
+            echo "✅ AI згенерував changelog"
+          fi
+        else
+          echo "⚠️ GEMINI_API_KEY не знайдено або немає beta notes, використовуємо стандартний changelog"
+          CHANGELOG="# 🚀 Реліз ${VERSION}
+
+          ## 🆕 Що нового у версії ${VERSION}
+
+          ${BETA_NOTES}"
+        fi
+
+        echo "$CHANGELOG" > CHANGELOG.md
+        cat CHANGELOG.md
+
+    - name: Create Git Tag
+      run: |
+        TAG_NAME="${{ needs.prepare.outputs.tag_name }}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag -a "${TAG_NAME}" -m "Release ${TAG_NAME}"
+        git push origin "${TAG_NAME}"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ needs.prepare.outputs.tag_name }}
+        name: ${{ inputs.version }}
+        body_path: CHANGELOG.md
+        draft: true
+        prerelease: false
+        make_latest: true
+        files: |
+          release/*.bin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Commit updated version to repository
+      run: |
+        VERSION="${{ inputs.version }}"
+        BRANCH="${{ github.ref_name }}"
+
+        # Оновлюємо platformio.ini з новою версією
+        sed -i 's/VERSION=\\"[^\\"]*\\"/VERSION=\\"'"${VERSION}"'\\"/g' platformio.ini
+
+        echo "📄 VERSION після оновлення:"
+        grep 'VERSION=' platformio.ini
+
+        git add platformio.ini
+        git commit -m "chore: bump version to ${VERSION}"
+        git push origin HEAD:${BRANCH}
+
+        echo "✅ Версію ${VERSION} закомічено у гілку ${BRANCH}"
+
+    - name: Summary
+      run: |
+        echo "### ✅ Production Реліз Створено (Драфт)!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Версія**: ${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Тег**: ${{ needs.prepare.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 [Переглянути та опублікувати реліз](https://github.com/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY

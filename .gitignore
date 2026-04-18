@@ -8,6 +8,7 @@
 data/.DS_Store
 .DS_Store
 .claude
+CLAUDE.md
 docs/*
 
 # MkDocs
