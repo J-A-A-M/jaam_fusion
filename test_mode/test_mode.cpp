@@ -251,11 +251,15 @@ static void writeNvsDefaults() {
 }
 
 static void saveUserWifi() {
-    if (strlen(userSsid) == 0) return;
-    WiFi.disconnect(false, true);
+  Serial.println("[UPDATE] Disconnecting from WiFi...");
+  bool disconnect = WiFi.disconnect(false, true);
+  Serial.println(disconnect ? "[UPDATE] Disconnected from WiFi" : "[UPDATE] Disconnect from WiFi failed");
+  if (userSsid != "" && userPassword != "") {
     WiFi.begin(userSsid, userPassword);
     WiFi.waitForConnectResult(10000);
-    LOG.printf("[UPDATE] User WiFi saved: %s\n", userSsid);
+    Serial.printf("[UPDATE] Saved User WiFi creds. SSID: %s\n", userSsid);
+  } else {
+    Serial.println("[UPDATE] No User WiFi creds, erased..."); }
 }
 
 void startUpdating() {
