@@ -2442,7 +2442,7 @@ static void wifiEvents(WiFiEvent_t event) {
         case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
             char softApIp[16];
             strcpy(softApIp, WiFi.softAPIP().toString().c_str());
-            display.printMessage(softApIp, "Введіть у браузері:");
+            display.showServiceMessage(softApIp, "Введіть у браузері:");
             WiFi.removeEvent(wifiEvents);
             break;
         }
@@ -2452,16 +2452,16 @@ static void wifiEvents(WiFiEvent_t event) {
 }
 
 void apCallback(WiFiManager* wifiManager) {
-    const char* message = wifiManager->getConfigPortalSSID().c_str();
-    display.printMessage(message, "Підключіться до WiFi:");
+    String ssid = wifiManager->getConfigPortalSSID();
+    display.showServiceMessage(ssid, "Підключіться до WiFi:");
     WiFi.onEvent(wifiEvents);
 }
 
 void saveConfigCallback() {
-    display.showServiceMessage(wm.getWiFiSSID(true).c_str(), "Збережено AP:");
+    display.showServiceMessage(wm.getWiFiSSID(true), "Збережено AP:");
     delay(2000);
     rebootDevice();
-    }
+}
 
 void initWifi() {
     if (!WiFiConfig::ENABLED) {

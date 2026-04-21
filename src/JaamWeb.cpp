@@ -21,6 +21,7 @@ uint8_t temprature_sens_read();
 extern CurrentRegionMap                 currentMap;
 extern uint32_t                         bgLedColors[MAX_LEDS_STRIP_BG];
 extern JaamFirmwareUpdate               fwUpdate;
+extern JaamHardware                     hardware;
 
 // Maximum allowed size for backup payload (32KB)
 static const size_t MAX_BACKUP_SIZE = 32768;
@@ -1314,7 +1315,7 @@ void JaamWeb::handleBgColorsData() {
     JsonDocument doc;
     JsonObject data = doc.to<JsonObject>();
     
-    int bgLedCount = settings->getInt(BG_LED_COUNT);
+    int bgLedCount = hardware.getBgLedsCount();
     data["count"] = bgLedCount;
     
     JsonArray colors = data["colors"].to<JsonArray>();
@@ -1347,7 +1348,7 @@ void JaamWeb::handleSaveBgColors() {
         return;
     }
     
-    int bgLedCount = settings->getInt(BG_LED_COUNT);
+    int bgLedCount = hardware.getBgLedsCount();
     if (bgLedCount <= 0) {
         server.send(400, "text/plain", "BG LED count not configured");
         return;

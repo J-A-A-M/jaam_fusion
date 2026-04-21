@@ -86,7 +86,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {CURRENT_BRIGHTNESS, {"cbr", 50}},                     // Current brightness level
     {BRIGHTNESS, {"brightness", 50}},                      // Manual brightness
     {BRIGHTNESS_DAY, {"brd", 50}},                         // Auto: day brightness
-    {BRIGHTNESS_NIGHT, {"brn", 10}},                        // Auto: night brightness
+    {BRIGHTNESS_NIGHT, {"brn", 10}},                       // Auto: night brightness
     {BRIGHTNESS_MODE, {"bra", 0}},                         // 0 = manual, 1 = auto day/night, 2 = auto sensor
     
     // Home district settings
@@ -99,7 +99,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ENABLE_RECON_DRONES, {"erd", 1}},                     // Show recon drones
     {ENABLE_KABS, {"ekab", 1}},                            // Show KABs
     {ENABLE_BALLISTIC, {"ebal", 1}},                       // Show ballistic missiles
-    {ENABLE_SYNC_ANIMATIONS, {"esa", 0}},                  // Sync animations across regions
+    {ENABLE_SYNC_ANIMATIONS, {"esa", 1}},                  // Sync animations across regions
     {ENABLE_ANIMATION_PREVIEW, {"eap", 1}},                // Show animation preview
     
     // Brightness per state (0-100%)
@@ -143,7 +143,7 @@ std::map<Type, SettingItemInt> intSettings = {
     
     // Sound source
     {SOUND_SOURCE, {"ss", 0}},                             // 0 = buzzer, 1 = DFPlayer, 2 = none
-    {SOUND_ON_MIN_OF_SL, {"somos", 0}},                    // Sound on minute of silence (0/1)
+    {SOUND_ON_MIN_OF_SL, {"somos", 1}},                    // Sound on minute of silence (0/1)
     
     // Sound events: Alert
     {SOUND_ON_ALERT, {"soa", 1}},                          // Play sound on alert (0/1)
@@ -174,23 +174,23 @@ std::map<Type, SettingItemInt> intSettings = {
     {TRACK_ON_RECON_DRONES, {"tord", 27}},                 // DFPlayer track index
     
     // Sound events: Critical threats
-    {SOUND_ON_CRITICAL_MIG, {"socrm", 1}},                 // Play sound on critical MiG (0/1)
-    {MELODY_ON_CRITICAL_MIG, {"mocrm", 24}},               // Melody index
-    {TRACK_ON_CRITICAL_MIG, {"tocrm", 24}},                // DFPlayer track index
-    {SOUND_ON_CRITICAL_STRATEGIC, {"socrs", 1}},           // Play sound on critical strategic (0/1)
-    {MELODY_ON_CRITICAL_STRATEGIC, {"mocrs", 25}},         // Melody index
-    {TRACK_ON_CRITICAL_STRATEGIC, {"tocrs", 25}},          // DFPlayer track index
-    {SOUND_ON_CRITICAL_MIG_MISSILES, {"socrmm", 1}},       // Play sound on critical MiG missiles (0/1)
-    {MELODY_ON_CRITICAL_MIG_MISSILES, {"mocrmm", 26}},     // Melody index
-    {TRACK_ON_CRITICAL_MIG_MISSILES, {"tocrmm", 26}},      // DFPlayer track index
-    {SOUND_ON_CRITICAL_STRATEGIC_MISSILES, {"socrsm", 1}}, // Play sound on critical strategic missiles (0/1)
-    {MELODY_ON_CRITICAL_STRATEGIC_MISSILES, {"mocrsm", 27}}, // Melody index
-    {TRACK_ON_CRITICAL_STRATEGIC_MISSILES, {"tocrsm", 27}}, // DFPlayer track index
-    {SOUND_ON_CRITICAL_BALLISTIC_MISSILES, {"socrbm", 1}}, // Play sound on critical ballistic missiles (0/1)
-    {MELODY_ON_CRITICAL_BALLISTIC_MISSILES, {"mocrbm", 28}}, // Melody index
-    {TRACK_ON_CRITICAL_BALLISTIC_MISSILES, {"tocrbm", 28}}, // DFPlayer track index
-    {CRITICAL_NOTIFICATIONS_DISPLAY_TIME, {"crndt", 30}},  // Display time for critical notifications (seconds)
-    {ENABLE_CRITICAL_NOTIFICATIONS, {"ecn", 1}},           // Enable critical notifications (0/1)
+    {SOUND_ON_CRITICAL_MIG, {"socrm", 1}},                     // Play sound on critical MiG (0/1)
+    {MELODY_ON_CRITICAL_MIG, {"mocrm", 24}},                   // Melody index
+    {TRACK_ON_CRITICAL_MIG, {"tocrm", 24}},                    // DFPlayer track index
+    {SOUND_ON_CRITICAL_STRATEGIC, {"socrs", 1}},               // Play sound on critical strategic (0/1)
+    {MELODY_ON_CRITICAL_STRATEGIC, {"mocrs", 25}},             // Melody index
+    {TRACK_ON_CRITICAL_STRATEGIC, {"tocrs", 25}},              // DFPlayer track index
+    {SOUND_ON_CRITICAL_MIG_MISSILES, {"socrmm", 1}},           // Play sound on critical MiG missiles (0/1)
+    {MELODY_ON_CRITICAL_MIG_MISSILES, {"mocrmm", 26}},         // Melody index
+    {TRACK_ON_CRITICAL_MIG_MISSILES, {"tocrmm", 26}},          // DFPlayer track index
+    {SOUND_ON_CRITICAL_STRATEGIC_MISSILES, {"socrsm", 1}},     // Play sound on critical strategic missiles (0/1)
+    {MELODY_ON_CRITICAL_STRATEGIC_MISSILES, {"mocrsm", 27}},   // Melody index
+    {TRACK_ON_CRITICAL_STRATEGIC_MISSILES, {"tocrsm", 27}},    // DFPlayer track index
+    {SOUND_ON_CRITICAL_BALLISTIC_MISSILES, {"socrbm", 1}},     // Play sound on critical ballistic missiles (0/1)
+    {MELODY_ON_CRITICAL_BALLISTIC_MISSILES, {"mocrbm", 28}},   // Melody index
+    {TRACK_ON_CRITICAL_BALLISTIC_MISSILES, {"tocrbm", 28}},    // DFPlayer track index
+    {CRITICAL_NOTIFICATIONS_DISPLAY_TIME, {"crndt", 30}},      // Display time for critical notifications (seconds)
+    {ENABLE_CRITICAL_NOTIFICATIONS, {"ecn", 1}},               // Enable critical notifications (0/1)
     
     // Sound settings: General
     {SOUND_ON_EVERY_HOUR, {"soeh", 0}},                    // Sound on every hour (clock beep) (0/1)
@@ -286,7 +286,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {ANIMATION_ALERT_ON_CYCLE_TIME, {"aacot", 1000}},      // Alert on animation cycle time
     {ANIMATION_ALERT_OFF_CYCLE_TIME, {"aacft", 1000}},     // Alert off animation cycle time
     {ANIMATION_DRONE_CYCLE_TIME, {"adct", 700}},           // Drone animation cycle time
-    {ANIMATION_RECON_DRONE_CYCLE_TIME, {"ardct", 1000}},    // Recon drone animation cycle time
+    {ANIMATION_RECON_DRONE_CYCLE_TIME, {"ardct", 1000}},   // Recon drone animation cycle time
     {ANIMATION_MISSILE_CYCLE_TIME, {"amct", 700}},         // Missile animation cycle time
     {ANIMATION_KAB_CYCLE_TIME, {"akt", 500}},              // KAB animation cycle time
     {ANIMATION_BALLISTIC_CYCLE_TIME, {"abct", 500}},       // Ballistic animation cycle time
@@ -322,7 +322,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_RECON_DRONES, {"rgbcrdr", "#0000FF"}},           // Recon drone color (blue)
     {COLOR_KABS, {"rgbckab", "#FFFF00"}},                   // KAB color (yellow)
     {COLOR_BALLISTIC, {"rgbcbal", "#FFFFFF"}},              // Ballistic color (white)
-    {COLOR_HOME_DISTRICT, {"rgbchd", "#00FFC8"}},           // Home district color (light blue)
+    {COLOR_HOME_DISTRICT, {"rgbchd", "#00FF64"}},           // Home district color (light blue)
     {COLOR_BG, {"rgbcbg", "#00FF00"}},                      // Background color (green)
     {COLOR_LAMP, {"rgbclamp", "#D707D7"}},                  // Lamp mode color (purple)
 };
