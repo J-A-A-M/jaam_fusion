@@ -143,7 +143,7 @@ std::map<Type, SettingItemInt> intSettings = {
     
     // Sound source
     {SOUND_SOURCE, {"ss", 0}},                             // 0 = buzzer, 1 = DFPlayer, 2 = none
-    {SOUND_ON_MIN_OF_SL, {"somos", 0}},                    // Sound on minute of silence (0/1)
+    {SOUND_ON_MIN_OF_SL, {"somos", 1}},                    // Sound on minute of silence (0/1)
     
     // Sound events: Alert
     {SOUND_ON_ALERT, {"soa", 1}},                          // Play sound on alert (0/1)
