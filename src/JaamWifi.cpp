@@ -12,8 +12,8 @@ void JaamWifi::begin(const char* chipId) {
 
     snprintf(apName, sizeof(apName), "JAAM_%s", chipId);
 
-    WiFi.mode(WIFI_STA);
     WiFi.setHostname(settings->getString(BROADCAST_NAME));
+    WiFi.mode(WIFI_STA);
 
     setupWifiEvents();
     migrateFromWifiManager();
@@ -42,7 +42,7 @@ void JaamWifi::process() {
 
     bool currentlyConnected = (WiFi.status() == WL_CONNECTED);
 
-    if (currentlyConnected == connected) return;
+    if (currentlyConnected && connected) return;
 
     if (currentlyConnected) {
         reconnectAttempts = 0;
@@ -86,12 +86,8 @@ void JaamWifi::saveNetworksToNvs(const std::vector<SavedNetwork>& nets) {
     Preferences prefs;
     prefs.begin("wifi_nets", false);
     uint8_t count = (uint8_t)min((size_t)MAX_NETWORKS, nets.size());
-    // When count reaches 0 — remove the key entirely so migration can re-run on next boot
-    if (count == 0) {
-        if (prefs.isKey("count")) prefs.remove("count");
-    } else {
-        prefs.putUChar("count", count);
-    }
+    // 0xFF = sentinel "migration done, intentionally empty" — prevents re-migration on next boot
+    prefs.putUChar("count", count == 0 ? 0xFF : count);
     for (uint8_t i = 0; i < count; i++) {
         String keyS = "ssid" + String(i);
         String keyP = "pass" + String(i);
