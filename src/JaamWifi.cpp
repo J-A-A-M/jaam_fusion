@@ -356,8 +356,6 @@ void JaamWifi::openCaptivePortal() {
     portalActive = true;
 
     if (onPortalStartedCb) onPortalStartedCb(String(apName));
-
-    setupWifiEvents();
 }
 
 void JaamWifi::setupWifiEvents() {
