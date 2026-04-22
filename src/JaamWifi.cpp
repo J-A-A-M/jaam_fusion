@@ -111,18 +111,18 @@ void JaamWifi::saveNetworksToNvs(const std::vector<SavedNetwork>& nets) {
 bool JaamWifi::addNetwork(const String& ssid, const String& pass) {
     if (ssid.length() == 0) return false;
     auto nets = getSavedNetworks();
-    if (nets.size() >= MAX_NETWORKS) {
-        LOG.printf("[WIFI] addNetwork: max networks reached\n");
-        return false;
-    }
     for (auto& n : nets) {
         if (n.ssid == ssid) {
-            // Update password
+            // Update password even when list is full
             n.pass = pass;
             saveNetworksToNvs(nets);
             LOG.printf("[WIFI] Updated password for: %s\n", ssid.c_str());
             return true;
         }
+    }
+    if (nets.size() >= MAX_NETWORKS) {
+        LOG.printf("[WIFI] addNetwork: max networks reached\n");
+        return false;
     }
     nets.push_back({ssid, pass});
     saveNetworksToNvs(nets);
@@ -173,6 +173,37 @@ int8_t JaamWifi::getScanRSSI(int i) {
 
 bool JaamWifi::isScanOpen(int i) {
     return WiFi.encryptionType(i) == WIFI_AUTH_OPEN;
+}
+
+// --- Private helpers ---
+
+static String escapeJson(const String& s) {
+    String out;
+    out.reserve(s.length() + 4);
+    for (size_t i = 0; i < s.length(); i++) {
+        char c = s[i];
+        if      (c == '"')  out += "\\\"";
+        else if (c == '\\') out += "\\\\";
+        else if (c == '\n') out += "\\n";
+        else if (c == '\r') out += "\\r";
+        else                out += c;
+    }
+    return out;
+}
+
+static String escapeHtml(const String& s) {
+    String out;
+    out.reserve(s.length() + 4);
+    for (size_t i = 0; i < s.length(); i++) {
+        char c = s[i];
+        if      (c == '&')  out += "&amp;";
+        else if (c == '<')  out += "&lt;";
+        else if (c == '>')  out += "&gt;";
+        else if (c == '"')  out += "&quot;";
+        else if (c == '\'') out += "&#39;";
+        else                out += c;
+    }
+    return out;
 }
 
 // --- Private ---
@@ -283,7 +314,7 @@ void JaamWifi::openCaptivePortal() {
         String json = "{\"networks\":[";
         for (int i = 0; i < n; i++) {
             if (i > 0) json += ",";
-            json += "{\"ssid\":\"" + WiFi.SSID(i) + "\""
+            json += "{\"ssid\":\"" + escapeJson(WiFi.SSID(i)) + "\""
                   + ",\"rssi\":" + String(WiFi.RSSI(i))
                   + ",\"open\":" + (WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "true" : "false")
                   + "}";
@@ -301,14 +332,18 @@ void JaamWifi::openCaptivePortal() {
             return;
         }
 
-        addNetwork(ssid, pass);
+        if (!addNetwork(ssid, pass)) {
+            portalServer.send(409, "text/html",
+                "<h2>Помилка: досягнуто максимальну кількість мереж</h2>");
+            return;
+        }
         LOG.printf("[WIFI] Network saved via portal: %s\n", ssid.c_str());
         if (onNetworkSavedCb) onNetworkSavedCb(ssid);
 
         String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             "<style>body{font-family:sans-serif;max-width:400px;margin:40px auto;padding:20px;background:#1e1e2e;color:#cdd6f4;text-align:center}</style>"
-            "</head><body><h2>Збережено!</h2><p>Підключення до <b>" + ssid + "</b>...</p>"
+            "</head><body><h2>Збережено!</h2><p>Підключення до <b>" + escapeHtml(ssid) + "</b>...</p>"
             "<p>Пристрій перезавантажується...</p></body></html>";
         portalServer.send(200, "text/html", html);
 

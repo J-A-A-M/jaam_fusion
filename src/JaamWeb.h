@@ -8,7 +8,7 @@
 
 class JaamWeb {
 public:
-    JaamWeb() : server(80), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr), storage(nullptr), wifi(nullptr), chipId(nullptr), fwVersion(nullptr) {}
+    JaamWeb() : server(80), settings(nullptr), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr), storage(nullptr), wifi(nullptr), chipId(nullptr), fwVersion(nullptr) {}
     void setSettings(JaamSettings* settings);
     void setStorage(JaamStorage* storage);
     void setWifi(JaamWifi* wifi);

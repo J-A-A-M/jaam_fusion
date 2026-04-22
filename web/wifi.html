@@ -242,13 +242,21 @@
 
     window.startScan = async function() {
         const btn = document.getElementById('scanBtn');
+        const prevText = btn.textContent;
         btn.textContent = 'Сканування...';
         btn.disabled = true;
         document.getElementById('scanList').innerHTML = '';
         clearTimeout(scanPollTimer);
 
-        await fetch('/api/wifi/scan', {method: 'POST'});
-        pollScan();
+        try {
+            const r = await fetch('/api/wifi/scan', {method: 'POST'});
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            pollScan();
+        } catch (e) {
+            document.getElementById('scanList').innerHTML = '<div class="wifi-empty">Помилка запуску сканування</div>';
+            btn.textContent = prevText;
+            btn.disabled = false;
+        }
     };
 
     function pollScan() {

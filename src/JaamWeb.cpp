@@ -1919,6 +1919,10 @@ void JaamWeb::handleWifiAdd() {
         server.send(400, "application/json", "{\"error\":\"No body\"}");
         return;
     }
+    if (server.arg("plain").length() > 256) {
+        server.send(413, "application/json", "{\"error\":\"Body too large\"}");
+        return;
+    }
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
@@ -1949,6 +1953,10 @@ void JaamWeb::handleWifiRemove() {
         server.send(400, "application/json", "{\"error\":\"No body\"}");
         return;
     }
+    if (server.arg("plain").length() > 128) {
+        server.send(413, "application/json", "{\"error\":\"Body too large\"}");
+        return;
+    }
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
@@ -1969,6 +1977,7 @@ void JaamWeb::handleWifiRemove() {
 
 void JaamWeb::handleWifiScan() {
     setCrossOrigin();
+    if (!validateMutatingRequest()) return;
     if (!wifi) {
         server.send(503, "application/json", "{\"error\":\"WiFi not available\"}");
         return;
