@@ -350,6 +350,15 @@
             ""
         ],
         [
+            "button",
+            "wifi_networks",
+            "Налаштування WiFi",
+            "#17a2b8",
+            "/wifi",
+            "network",
+            ""
+        ],
+        [
             "text",
             "broadcast_name",
             "Ім'я в мережі",

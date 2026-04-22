@@ -2,13 +2,14 @@
 #include <string>
 #include <map>
 #include <set>
-#include <utility> 
+#include <utility>
 #include <vector>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <SPIFFS.h>
 #include "JaamLogs.h"
 #include "JaamSettings.h"
+#include "JaamWifi.h"
 #include "JaamBattery.h"
 #include "JaamStorage.h"
 #include "JaamDisplay.h"
@@ -92,7 +93,6 @@ inline SettingListItem* getSettingItemById(SettingListItem* items, int count, in
 
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
-extern time_t                         lastWifiConnectTime;
 extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
 extern int                              weatherAutoMinTemp;
 extern int                              weatherAutoMaxTemp;
@@ -104,7 +104,7 @@ extern JaamFirmwareUpdate               fwUpdate;
 extern JaamBattery                      battery;
 extern JaamStorage                      storage;
 extern JaamDisplay                      display;
-extern bool                             wifiConnected;
+extern JaamWifi                         wifi;
 extern bool                             websocketConnected;
 extern JaamApi                          api;
 extern JaamHardware                     hardware;
@@ -793,8 +793,8 @@ inline uint32_t getServicePinColor(int type) {
             color = DefaultColors::POWER;
             break;
         case WIFI:
-            LOG.printf("[SERVICE LED] wifiConnected %d\n", wifiConnected);
-            color = wifiConnected ? DefaultColors::WIFI : DefaultColors::OFF;
+            LOG.printf("[SERVICE LED] wifiConnected %d\n", wifi.isConnected());
+            color = wifi.isConnected() ? DefaultColors::WIFI : DefaultColors::OFF;
             break;
         case DATA:
             LOG.printf("[SERVICE LED] websocketConnected %d\n", websocketConnected);
@@ -848,7 +848,7 @@ inline String getSystemInfoJson() {
     }
     
     // WiFi uptime metric (in seconds)
-    uint32_t wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
+    uint32_t wifiUptime = wifi.isConnected() ? (millis() - wifi.getConnectTime()) / 1000 : 0;
 
     JsonDocument doc;
 

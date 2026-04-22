@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAAM — Налаштування WiFi</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .wifi-network-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            margin: 6px 0;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .wifi-network-item:hover { border-color: var(--text-color); }
+        .wifi-network-item.selected { border-color: #17a2b8; background: var(--panel-bg); }
+        .wifi-network-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+        .wifi-ssid {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .wifi-rssi {
+            font-size: 12px;
+            opacity: 0.65;
+            white-space: nowrap;
+        }
+        .wifi-lock { font-size: 14px; opacity: 0.6; }
+        .wifi-empty {
+            text-align: center;
+            opacity: 0.55;
+            padding: 16px 0;
+            font-style: italic;
+        }
+        .wifi-form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .wifi-form-row input {
+            padding: 9px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            font-size: 15px;
+        }
+        .wifi-form-row input:focus {
+            outline: none;
+            border-color: #17a2b8;
+        }
+        .wifi-add-form-btn {
+            background: #17a2b8;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            width: 100%;
+        }
+        .wifi-add-form-btn:hover { background: #138496; }
+        #scanBtn { margin-bottom: 10px; }
+        #scanStatus {
+            text-align: center;
+            font-size: 13px;
+            opacity: 0.65;
+            min-height: 18px;
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header-container">
+        <h1>Налаштування WiFi</h1>
+        <div class="header-buttons">
+            <button class="control-button theme-toggle" onclick="toggleTheme()" title="Перемкнути тему">
+                <svg viewBox="0 0 24 24"><path d="M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>Доступні мережі</h2>
+        <button id="scanBtn" class="control-button" onclick="startScan()">Сканувати</button>
+        <div id="scanStatus"></div>
+        <div id="netList"></div>
+    </div>
+
+    <div class="settings-section">
+        <h2>Підключення</h2>
+        <div class="wifi-form-row">
+            <input id="ssid" type="text" placeholder="SSID (назва мережі)" autocomplete="off">
+            <input id="pass" type="password" placeholder="Пароль (порожньо — відкрита мережа)" autocomplete="new-password">
+            <button class="wifi-add-form-btn" onclick="save()">Зберегти та підключити</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // --- Theme ---
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.cookie = 'jaam_theme=' + encodeURIComponent(next) + '; max-age=31536000; path=/';
+        applyTheme(next);
+    }
+    window.toggleTheme = toggleTheme;
+    applyTheme(getCookie('jaam_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+    // --- Scan ---
+    var selectedEl = null;
+    var pollTimer = null;
+
+    window.startScan = function() {
+        var btn = document.getElementById('scanBtn');
+        btn.textContent = 'Сканування...';
+        btn.disabled = true;
+        document.getElementById('scanStatus').textContent = '';
+        document.getElementById('netList').innerHTML = '';
+        clearTimeout(pollTimer);
+
+        fetch('/scan', { method: 'POST' })
+            .then(function() { poll(); })
+            .catch(function() { scanError(); });
+    };
+
+    function poll() {
+        pollTimer = setTimeout(function() {
+            fetch('/scan-results')
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.status === 'scanning') { poll(); return; }
+                    renderNetworks(d.networks || []);
+                    var btn = document.getElementById('scanBtn');
+                    btn.textContent = 'Сканувати знову';
+                    btn.disabled = false;
+                })
+                .catch(function() { setTimeout(poll, 1500); });
+        }, 1000);
+    }
+
+    function scanError() {
+        document.getElementById('scanStatus').textContent = 'Помилка сканування';
+        var btn = document.getElementById('scanBtn');
+        btn.textContent = 'Сканувати';
+        btn.disabled = false;
+    }
+
+    function renderNetworks(nets) {
+        var el = document.getElementById('netList');
+        if (!nets || !nets.length) {
+            el.innerHTML = '<div class="wifi-empty">Мереж не знайдено</div>';
+            return;
+        }
+        nets.sort(function(a, b) { return b.rssi - a.rssi; });
+        el.innerHTML = '';
+        nets.forEach(function(n) {
+            var item = document.createElement('div');
+            item.className = 'wifi-network-item';
+
+            var info = document.createElement('div');
+            info.className = 'wifi-network-info';
+
+            var ssidSpan = document.createElement('span');
+            ssidSpan.className = 'wifi-ssid';
+            ssidSpan.textContent = n.ssid;
+
+            var rssiSpan = document.createElement('span');
+            rssiSpan.className = 'wifi-rssi';
+            rssiSpan.textContent = n.rssi + ' dBm';
+
+            var lockSpan = document.createElement('span');
+            lockSpan.className = 'wifi-lock';
+            lockSpan.textContent = n.open ? '🔓' : '🔒';
+
+            info.appendChild(ssidSpan);
+            info.appendChild(rssiSpan);
+            info.appendChild(lockSpan);
+            item.appendChild(info);
+
+            item.addEventListener('click', function() {
+                if (selectedEl) selectedEl.classList.remove('selected');
+                item.classList.add('selected');
+                selectedEl = item;
+                document.getElementById('ssid').value = n.ssid;
+                if (n.open) {
+                    document.getElementById('pass').value = '';
+                } else {
+                    document.getElementById('pass').focus();
+                }
+            });
+
+            el.appendChild(item);
+        });
+    }
+
+    // --- Save ---
+    window.save = function() {
+        var ssid = document.getElementById('ssid').value.trim();
+        if (!ssid) { alert('Введіть SSID'); return; }
+
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/save';
+
+        var i1 = document.createElement('input');
+        i1.name = 'ssid'; i1.value = ssid;
+        form.appendChild(i1);
+
+        var i2 = document.createElement('input');
+        i2.name = 'pass';
+        i2.value = document.getElementById('pass').value;
+        form.appendChild(i2);
+
+        document.body.appendChild(form);
+        form.submit();
+    };
+
+    startScan();
+})();
+</script>
+</body>
+</html>

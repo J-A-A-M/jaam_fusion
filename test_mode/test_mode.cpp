@@ -71,7 +71,7 @@ static const char* ssid          = "";   // WiFi SSID for OTA
 static const char* password      = "";   // WiFi password
 static const char* userSsid      = "";   // User WiFi SSID (saved to device)
 static const char* userPassword  = "";   // User WiFi password
-static const char* firmwareUrl   = "https://update.jaam.net.ua/5.0";
+static const char* firmwareUrl   = "https://update.jaam.net.ua/5.0.1";
 static const int   homeDistrict  = 31;   // Default home region ID (31 = Kyiv)
 
 // ─── Module instances ──────────────────────────────────────────────────────────
