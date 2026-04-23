@@ -105,7 +105,7 @@ static const uint32_t SNAKE_STEP_SVC = 80;  // slower to be visually distinct
 static float         svcPos    = 0.0f;
 static unsigned long lastSvcMs = 0;
 
-static const char* STARTUP_MELODY = "Boot:d=16,o=5,b=220:c,e,g,c6";
+static const char* STARTUP_MELODY PROGMEM = "Shchedryk:d=8,o=5,b=180:4a,g#,a,4f#,4a,g#,a,4f#";
 
 // ─── Forward declarations ──────────────────────────────────────────────────────
 void startUpdating();

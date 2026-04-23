@@ -3427,7 +3427,7 @@ void setup() {
 
     wifi.setOnConnected([](const String& ssid, const String& ip) {
         servicePin(WIFI);
-        display.showServiceMessage(ip, ssid, 3000);
+        display.showServiceMessage(ip, ssid, 7000);
         initTime();
         initWeb();
         initApi();
