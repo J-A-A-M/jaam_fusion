@@ -348,6 +348,10 @@ void JaamWeb::setStorage(JaamStorage* storage) {
     this->storage = storage;
 }
 
+void JaamWeb::setWifi(JaamWifi* wifi) {
+    this->wifi = wifi;
+}
+
 void JaamWeb::setDeviceInfo(const char* chipId, const char* fwVersion) {
     this->chipId = chipId;
     this->fwVersion = fwVersion;
@@ -909,6 +913,17 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/settings/reset", HTTP_POST, [this]() { this->handleSettingsReset(); });
     server.on("/settings/reset", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
 
+    server.on("/wifi",              HTTP_GET,     [this]() { this->handleWifiPage(); });
+    server.on("/api/wifi/networks", HTTP_GET,     [this]() { this->handleWifiNetworks(); });
+    server.on("/api/wifi/networks", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/api/wifi/add",      HTTP_POST,    [this]() { this->handleWifiAdd(); });
+    server.on("/api/wifi/add",      HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/api/wifi/remove",   HTTP_POST,    [this]() { this->handleWifiRemove(); });
+    server.on("/api/wifi/remove",   HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/api/wifi/scan",     HTTP_POST,    [this]() { this->handleWifiScan(); });
+    server.on("/api/wifi/scan",     HTTP_GET,     [this]() { this->handleWifiScanResults(); });
+    server.on("/api/wifi/scan",     HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+
     server.on("/favicon.png", HTTP_GET, [this]() { server.send(204); });
     server.onNotFound([this]() { this->handleNotFound(); });
 
@@ -916,7 +931,7 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
 }
 
 void JaamWeb::handleClient() {
-    if (!wifiConnected) {
+    if (!wifi || !wifi->isConnected()) {
         return;
     }
     server.handleClient();
@@ -1854,9 +1869,9 @@ void JaamWeb::handleSettingsReset() {
     
     if (success) {
         LOG.println("[WEB] Settings reset successfully, restarting device...");
-        
+
         server.send(200, "application/json", "{\"success\":true,\"message\":\"Settings reset to defaults, device will restart\"}");
-        
+
         // Give time for response to be sent, then restart
         delay(100);
         requestRebootDevice();
@@ -1864,4 +1879,131 @@ void JaamWeb::handleSettingsReset() {
         LOG.println("[WEB] Failed to reset settings");
         server.send(500, "application/json", "{\"error\":\"Failed to reset settings\"}");
     }
+}
+
+// --- WiFi management handlers ---
+
+void JaamWeb::handleWifiPage() {
+    server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    server.sendHeader("Pragma", "no-cache");
+    server.sendHeader("Expires", "0");
+    server.sendHeader("Content-Encoding", "gzip");
+    server.setContentLength(wifi_html_gz_len);
+    server.send_P(200, "text/html", (const char*)wifi_html_gz, wifi_html_gz_len);
+}
+
+void JaamWeb::handleWifiNetworks() {
+    setCrossOrigin();
+    if (!wifi) {
+        server.send(503, "application/json", "{\"error\":\"WiFi not available\"}");
+        return;
+    }
+    JsonDocument doc;
+    JsonArray arr = doc.to<JsonArray>();
+    for (auto& n : wifi->getSavedNetworks()) {
+        JsonObject obj = arr.add<JsonObject>();
+        obj["ssid"] = n.ssid;
+        obj["hasPassword"] = n.pass.length() > 0;
+    }
+    server.send(200, "application/json", doc.as<String>());
+}
+
+void JaamWeb::handleWifiAdd() {
+    setCrossOrigin();
+    if (!validateMutatingRequest()) return;
+    if (!wifi) {
+        server.send(503, "application/json", "{\"error\":\"WiFi not available\"}");
+        return;
+    }
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"error\":\"No body\"}");
+        return;
+    }
+    if (server.arg("plain").length() > 256) {
+        server.send(413, "application/json", "{\"error\":\"Body too large\"}");
+        return;
+    }
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) {
+        server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    String ssid = doc["ssid"].as<String>();
+    String pass = doc["password"] | doc["pass"] | String("");
+    if (ssid.length() == 0) {
+        server.send(400, "application/json", "{\"error\":\"SSID required\"}");
+        return;
+    }
+    if (!wifi->addNetwork(ssid, pass)) {
+        server.send(409, "application/json", "{\"error\":\"Max networks reached\"}");
+        return;
+    }
+    server.send(200, "application/json", "{\"success\":true}");
+}
+
+void JaamWeb::handleWifiRemove() {
+    setCrossOrigin();
+    if (!validateMutatingRequest()) return;
+    if (!wifi) {
+        server.send(503, "application/json", "{\"error\":\"WiFi not available\"}");
+        return;
+    }
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"error\":\"No body\"}");
+        return;
+    }
+    if (server.arg("plain").length() > 128) {
+        server.send(413, "application/json", "{\"error\":\"Body too large\"}");
+        return;
+    }
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) {
+        server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    String ssid = doc["ssid"].as<String>();
+    if (ssid.length() == 0) {
+        server.send(400, "application/json", "{\"error\":\"SSID required\"}");
+        return;
+    }
+    if (!wifi->removeNetwork(ssid)) {
+        server.send(404, "application/json", "{\"error\":\"Network not found\"}");
+        return;
+    }
+    server.send(200, "application/json", "{\"success\":true}");
+}
+
+void JaamWeb::handleWifiScan() {
+    setCrossOrigin();
+    if (!validateMutatingRequest()) return;
+    if (!wifi) {
+        server.send(503, "application/json", "{\"error\":\"WiFi not available\"}");
+        return;
+    }
+    wifi->startScan();
+    server.send(200, "application/json", "{\"status\":\"scanning\"}");
+}
+
+void JaamWeb::handleWifiScanResults() {
+    setCrossOrigin();
+    if (!wifi) {
+        server.send(503, "application/json", "{\"error\":\"WiFi not available\"}");
+        return;
+    }
+    if (!wifi->isScanDone()) {
+        server.send(202, "application/json", "{\"status\":\"scanning\"}");
+        return;
+    }
+    JsonDocument doc;
+    JsonArray arr = doc["networks"].to<JsonArray>();
+    int n = wifi->getScanCount();
+    for (int i = 0; i < n; i++) {
+        JsonObject obj = arr.add<JsonObject>();
+        obj["ssid"] = wifi->getScanSSID(i);
+        obj["rssi"] = wifi->getScanRSSI(i);
+        obj["open"] = wifi->isScanOpen(i);
+    }
+    server.send(200, "application/json", doc.as<String>());
 }

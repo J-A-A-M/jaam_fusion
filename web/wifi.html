@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAAM — Налаштування WiFi</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .wifi-network-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            margin: 6px 0;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            gap: 10px;
+        }
+        .wifi-network-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+        .wifi-ssid {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .wifi-rssi {
+            font-size: 12px;
+            opacity: 0.65;
+            white-space: nowrap;
+        }
+        .wifi-lock {
+            font-size: 14px;
+            opacity: 0.6;
+        }
+        .wifi-add-btn {
+            background: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .wifi-add-btn:hover { background: #218838; }
+        .wifi-delete-btn {
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .wifi-delete-btn:hover { background: #c82333; }
+        .wifi-empty {
+            text-align: center;
+            opacity: 0.55;
+            padding: 16px 0;
+            font-style: italic;
+        }
+        .wifi-form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .wifi-form-row input {
+            padding: 9px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            font-size: 15px;
+        }
+        .wifi-form-row input:focus {
+            outline: none;
+            border-color: #17a2b8;
+        }
+        .wifi-add-form-btn {
+            background: #17a2b8;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            width: 100%;
+        }
+        .wifi-add-form-btn:hover { background: #138496; }
+        #scanBtn { margin-bottom: 10px; }
+        .badge-saved {
+            font-size: 11px;
+            background: #17a2b8;
+            color: #fff;
+            border-radius: 4px;
+            padding: 2px 6px;
+            flex-shrink: 0;
+        }
+        .status-msg {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .status-ok  { background: rgba(40,167,69,0.2); color: #28a745; border: 1px solid #28a745; }
+        .status-err { background: rgba(220,53,69,0.2); color: #dc3545; border: 1px solid #dc3545; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header-container">
+        <h1>Налаштування WiFi</h1>
+        <div class="header-buttons">
+            <button class="control-button theme-toggle" onclick="toggleTheme()" title="Перемкнути тему">
+                <svg viewBox="0 0 24 24"><path d="M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Saved networks -->
+    <div class="settings-section">
+        <h2>Збережені мережі</h2>
+        <div id="savedList"><div class="wifi-empty">Завантаження...</div></div>
+    </div>
+
+    <!-- Available networks -->
+    <div class="settings-section">
+        <h2>Доступні мережі</h2>
+        <button id="scanBtn" class="control-button" onclick="startScan()">Сканувати</button>
+        <div id="scanList"></div>
+    </div>
+
+    <!-- Add network form -->
+    <div class="settings-section">
+        <h2>Додати мережу вручну</h2>
+        <div class="wifi-form-row">
+            <input id="addSsid" type="text" placeholder="SSID (назва мережі)" autocomplete="off">
+            <input id="addPass" type="password" placeholder="Пароль (порожньо — відкрита мережа)" autocomplete="new-password">
+            <button class="wifi-add-form-btn" onclick="addNetwork(document.getElementById('addSsid').value, document.getElementById('addPass').value)">Додати</button>
+        </div>
+        <div id="addStatus"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // --- Theme (mirrors scripts.js: cookie + data-theme on <html>) ---
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+    function setCookie(name, value) {
+        document.cookie = name + '=' + encodeURIComponent(value) + '; max-age=31536000; path=/';
+    }
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        setCookie('jaam_theme', next);
+        applyTheme(next);
+    }
+    window.toggleTheme = toggleTheme;
+    applyTheme(getCookie('jaam_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+    // --- Saved networks ---
+    let savedSsids = [];
+
+    async function loadSaved() {
+        try {
+            const r = await fetch('/api/wifi/networks');
+            const nets = await r.json();
+            savedSsids = nets.map(n => n.ssid);
+            const el = document.getElementById('savedList');
+            if (nets.length === 0) {
+                el.innerHTML = '<div class="wifi-empty">Немає збережених мереж</div>';
+                return;
+            }
+            el.innerHTML = '';
+            nets.forEach(n => {
+                const item = document.createElement('div');
+                item.className = 'wifi-network-item';
+
+                const info = document.createElement('div');
+                info.className = 'wifi-network-info';
+
+                const ssid = document.createElement('span');
+                ssid.className = 'wifi-ssid';
+                ssid.textContent = n.ssid;
+
+                const lock = document.createElement('span');
+                lock.className = 'wifi-lock';
+                lock.textContent = n.hasPassword ? '🔒' : '🔓';
+
+                info.appendChild(ssid);
+                info.appendChild(lock);
+
+                const btn = document.createElement('button');
+                btn.className = 'wifi-delete-btn';
+                btn.textContent = 'Видалити';
+                btn.onclick = () => removeNetwork(n.ssid);
+
+                item.appendChild(info);
+                item.appendChild(btn);
+                el.appendChild(item);
+            });
+        } catch (e) {
+            document.getElementById('savedList').innerHTML = '<div class="wifi-empty">Помилка завантаження</div>';
+        }
+    }
+
+    window.removeNetwork = async function(ssid) {
+        if (!confirm(`Видалити мережу "${ssid}"?`)) return;
+        const r = await fetch('/api/wifi/remove', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ssid})
+        });
+        if (r.ok) {
+            await loadSaved();
+            renderScanList(lastScanResults);
+        } else {
+            alert('Помилка видалення');
+        }
+    };
+
+    // --- Scan ---
+    let lastScanResults = [];
+    let scanPollTimer = null;
+
+    window.startScan = async function() {
+        const btn = document.getElementById('scanBtn');
+        const prevText = btn.textContent;
+        btn.textContent = 'Сканування...';
+        btn.disabled = true;
+        document.getElementById('scanList').innerHTML = '';
+        clearTimeout(scanPollTimer);
+
+        try {
+            const r = await fetch('/api/wifi/scan', {method: 'POST'});
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            pollScan();
+        } catch (e) {
+            document.getElementById('scanList').innerHTML = '<div class="wifi-empty">Помилка запуску сканування</div>';
+            btn.textContent = prevText;
+            btn.disabled = false;
+        }
+    };
+
+    function pollScan() {
+        scanPollTimer = setTimeout(async () => {
+            try {
+                const r = await fetch('/api/wifi/scan');
+                const data = await r.json();
+                if (data.status === 'scanning') { pollScan(); return; }
+                lastScanResults = data.networks || [];
+                renderScanList(lastScanResults);
+                const btn = document.getElementById('scanBtn');
+                btn.textContent = 'Сканувати знову';
+                btn.disabled = false;
+            } catch (e) {
+                document.getElementById('scanList').innerHTML = '<div class="wifi-empty">Помилка сканування</div>';
+                const btn = document.getElementById('scanBtn');
+                btn.textContent = 'Сканувати';
+                btn.disabled = false;
+            }
+        }, 1000);
+    }
+
+    function renderScanList(nets) {
+        const el = document.getElementById('scanList');
+        if (!nets || nets.length === 0) {
+            el.innerHTML = '<div class="wifi-empty">Мереж не знайдено</div>';
+            return;
+        }
+        el.innerHTML = '';
+        [...nets].sort((a, b) => b.rssi - a.rssi).forEach(n => {
+            const already = savedSsids.includes(n.ssid);
+
+            const item = document.createElement('div');
+            item.className = 'wifi-network-item';
+
+            const info = document.createElement('div');
+            info.className = 'wifi-network-info';
+
+            const ssid = document.createElement('span');
+            ssid.className = 'wifi-ssid';
+            ssid.textContent = n.ssid;
+
+            const rssi = document.createElement('span');
+            rssi.className = 'wifi-rssi';
+            rssi.textContent = n.rssi + ' dBm';
+
+            const lock = document.createElement('span');
+            lock.className = 'wifi-lock';
+            lock.textContent = n.open ? '🔓' : '🔒';
+
+            info.appendChild(ssid);
+            info.appendChild(rssi);
+            info.appendChild(lock);
+            item.appendChild(info);
+
+            if (already) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-saved';
+                badge.textContent = 'Збережено';
+                item.appendChild(badge);
+            } else {
+                const btn = document.createElement('button');
+                btn.className = 'wifi-add-btn';
+                btn.textContent = '+';
+                btn.onclick = () => addFromScan(n.ssid, n.open);
+                item.appendChild(btn);
+            }
+
+            el.appendChild(item);
+        });
+    }
+
+    window.addFromScan = function(ssid, isOpen) {
+        document.getElementById('addSsid').value = ssid;
+        document.getElementById('addPass').value = '';
+        if (!isOpen) {
+            document.getElementById('addPass').focus();
+        } else {
+            addNetwork(ssid, '');
+        }
+    };
+
+    // --- Add network ---
+    window.addNetwork = async function(ssid, pass) {
+        ssid = (ssid || '').trim();
+        if (!ssid) { showStatus('addStatus', 'SSID не може бути порожнім', false); return; }
+        const r = await fetch('/api/wifi/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ssid, password: pass || ''})
+        });
+        if (r.ok) {
+            showStatus('addStatus', `Мережу "${ssid}" збережено`, true);
+            document.getElementById('addSsid').value = '';
+            document.getElementById('addPass').value = '';
+            await loadSaved();
+            renderScanList(lastScanResults);
+        } else {
+            const data = await r.json().catch(() => ({}));
+            showStatus('addStatus', data.error || 'Помилка збереження', false);
+        }
+    };
+
+    // --- Helpers ---
+    function showStatus(elId, msg, ok) {
+        const el = document.getElementById(elId);
+        const div = document.createElement('div');
+        div.className = 'status-msg ' + (ok ? 'status-ok' : 'status-err');
+        div.textContent = msg;
+        el.innerHTML = '';
+        el.appendChild(div);
+        setTimeout(() => { el.innerHTML = ''; }, 4000);
+    }
+
+    loadSaved();
+})();
+</script>
+</body>
+</html>

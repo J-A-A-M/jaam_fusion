@@ -2,15 +2,16 @@
 
 #include <ArduinoJson.h>
 #include <WebServer.h>
-#include <WiFiManager.h>
 #include "JaamSettings.h"
 #include "JaamStorage.h"
+#include "JaamWifi.h"
 
 class JaamWeb {
 public:
-    JaamWeb() : server(80), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr), storage(nullptr), chipId(nullptr), fwVersion(nullptr) {}
+    JaamWeb() : server(80), settings(nullptr), strip_main(nullptr), strip_bg(nullptr), strip_service(nullptr), storage(nullptr), wifi(nullptr), chipId(nullptr), fwVersion(nullptr) {}
     void setSettings(JaamSettings* settings);
     void setStorage(JaamStorage* storage);
+    void setWifi(JaamWifi* wifi);
     void setDeviceInfo(const char* chipId, const char* fwVersion);
     void begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service);
     void setStrips(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service);
@@ -20,6 +21,7 @@ private:
     WebServer server;
     JaamSettings* settings;
     JaamStorage* storage;
+    JaamWifi* wifi;
     const char* chipId;
     const char* fwVersion;
     Adafruit_NeoPixel* strip_main;
@@ -56,6 +58,12 @@ private:
     void handleSettingsBackup();
     void handleSettingsRestore();
     void handleSettingsReset();
+    void handleWifiPage();
+    void handleWifiNetworks();
+    void handleWifiAdd();
+    void handleWifiRemove();
+    void handleWifiScan();
+    void handleWifiScanResults();
     String getMeta();
     void buildUiSchemaDropdownLists(JsonDocument& doc);
     void buildUiSchemaControlsValues(JsonDocument& doc);

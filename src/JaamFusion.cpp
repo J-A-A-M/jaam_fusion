@@ -4,7 +4,7 @@
 #include <sys/time.h>
 #include <algorithm>
 
-#include <WiFiManager.h>
+#include "JaamWifi.h"
 #include <WiFiClientSecure.h>
 #include <NTPtime.h>
 
@@ -128,11 +128,9 @@ int8_t   ledBitCache[MAX_LEDS_STRIP_MAIN];
 static uint8_t s_ledDirty[(MAX_LEDS_STRIP_MAIN + 7) / 8];
 
 // --- WIFI Configuration ---
-WiFiManager         wm;
+JaamWifi            wifi;
 
-time_t              lastWifiConnectTime = 0;  // Track when WiFi was last connected
 uint16_t            alertsHash = 0;
-bool                wifiConnected = false;
 
 
 // --- WEBSOCKET Configuration ---
@@ -175,8 +173,8 @@ SystemInfo getSystemInfo() {
     info.freeMemory = ESP.getFreeHeap();
     info.usedMemory = ESP.getHeapSize() - info.freeMemory;
     info.uptime = millis() / 1000;
-    info.wifiUptime = wifiConnected ? (millis() - lastWifiConnectTime) / 1000 : 0;
-    info.wifiSignal = wifiConnected ? WiFi.RSSI() : 0;
+    info.wifiUptime = wifi.isConnected() ? (millis() - wifi.getConnectTime()) / 1000 : 0;
+    info.wifiSignal = wifi.getRSSI();
     info.websocketStatus = websocket.available();
     info.websocketUptime = websocket.available() ? (millis() - lastWebsocketConnectTime) / 1000 : 0;
     info.cpuTemp = temperatureRead();
@@ -2431,149 +2429,13 @@ void initWeb() {
     }
     web.setSettings(&settings);
     web.setStorage(&storage);
+    web.setWifi(&wifi);
     web.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
-    
+
     web.begin(strip_main, strip_bg, strip_service);
     webInitialized = true;
 }
 
-static void wifiEvents(WiFiEvent_t event) {
-    switch (event) {
-        case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
-            char softApIp[16];
-            strcpy(softApIp, WiFi.softAPIP().toString().c_str());
-            display.showServiceMessage(softApIp, "Введіть у браузері:");
-            WiFi.removeEvent(wifiEvents);
-            break;
-        }
-        default:
-            break;
-    }
-}
-
-void apCallback(WiFiManager* wifiManager) {
-    String ssid = wifiManager->getConfigPortalSSID();
-    display.showServiceMessage(ssid, "Підключіться до WiFi:");
-    WiFi.onEvent(wifiEvents);
-}
-
-void saveConfigCallback() {
-    display.showServiceMessage(wm.getWiFiSSID(true), "Збережено AP:");
-    delay(2000);
-    rebootDevice();
-}
-
-void initWifi() {
-    if (!WiFiConfig::ENABLED) {
-        LOG.printf("[WIFI] WiFi disabled in configuration\n");
-        return;
-    }
-
-    LOG.printf("[WIFI] Initializing WiFi...\n");
-    display.showServiceMessage("підключенння...", "WiFi");
-    wifiConnected = false;
-    servicePin(WIFI);
-
-    // Очищення старих з'єднань
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
-    delay(100);
-    
-    // Встановлюємо режим станції
-    WiFi.mode(WIFI_STA);
-    wm.setHostname(settings.getString(BROADCAST_NAME));
-    wm.setTitle(settings.getString(DEVICE_NAME));
-    wm.setConfigPortalBlocking(true);
-    wm.setConnectTimeout(WiFiConfig::CONNECT_TIMEOUT);
-    wm.setConnectRetries(WiFiConfig::CONNECT_RETRIES);
-    wm.setAPCallback(apCallback);
-    wm.setSaveConfigCallback(saveConfigCallback);
-    wm.setConfigPortalTimeout(WiFiConfig::PORTAL_TIMEOUT);
-    String wifiSSID = wm.getWiFiSSID(true);
-    if (wifiSSID.length() > 0) {
-        display.showServiceMessage(wifiSSID, "Підключення до:");
-    }
-    char apssid[32];
-    snprintf(apssid, sizeof(apssid), "JAAM_%s", chipID);
-    if (!wm.autoConnect(apssid)) {
-        LOG.printf("[WIFI] Reboot\n");
-        rebootDevice(5000);
-        return;
-    }
-    // Connected to WiFi
-    LOG.printf("[WIFI] connected...yeey :)\n");
-    lastWifiConnectTime = millis();
-    wifiConnected = true;
-    servicePin(WIFI);
-    display.showServiceMessage("підключено!", "WiFi", 3000);
-    wm.setHttpPort(WiFiConfig::WEB_PORT);
-    wm.startWebPortal();
-    initTime();
-    initWeb();
-    initApi();
-    initMDNS();
-    
-    // // Спочатку спробуємо підключитися до збереженої мережі без WiFiManager
-    // WiFi.begin();
-    
-    // // Чекаємо підключення 10 секунд
-    // int attempts = 0;
-    // while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    //     delay(500);
-    //     attempts++;
-    //     LOG.printf(".");
-    // }
-    
-    // if (WiFi.status() == WL_CONNECTED) {
-    //     lastWifiConnectTime = millis();
-    //     wifiConnected = true;
-    //     servicePin(WIFI);
-    //     initTime();
-    //     initWeb();
-    //     LOG.printf("[WIFI] Connected to saved WiFi\n");
-    //     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-    //     return;
-    // }
-
-    // LOG.printf("[WIFI] Failed to connect to saved network\n");
-    // LOG.printf("[WIFI] Starting WiFiManager...\n");
-    
-    // // Create local WiFiManager to avoid global memory usage
-    // {
-    //     WiFiManager wm_temp;
-        
-    //     // Мінімальні налаштування для економії пам'яті
-    //     wm_temp.setHostname("jaam_fusion");
-    //     wm_temp.setConfigPortalBlocking(true);
-    //     wm_temp.setConnectTimeout(15);
-    //     wm_temp.setConnectRetries(2);
-    //     wm_temp.setConfigPortalTimeout(120);
-        
-    //     // Простий колбек без додаткових операцій
-    //     wm_temp.setAPCallback([](WiFiManager* myWiFiManager) {
-    //         LOG.printf("[WIFI] Connect to WiFi: %s\n", myWiFiManager->getConfigPortalSSID().c_str());
-    //     });
-        
-    //     // Створюємо ім'я AP з chip ID
-    //     char apName[32];
-    //     snprintf(apName, sizeof(apName), "JAAM_%s", chipID);
-        
-    //     // Спроба підключення
-    //     if (!wm_temp.autoConnect(apName)) {
-    //         LOG.printf("[WIFI] Failed to connect. Rebooting...\n");
-    //         rebootDevice(3000);
-    //         return;
-    //     }
-        
-    //     lastWifiConnectTime = millis();
-    //     LOG.printf("[WIFI] Connected to WiFi via WiFiManager\n");
-    //     LOG.printf("[WIFI] IP address: %s\n", WiFi.localIP().toString().c_str());
-        
-    // } // wm_temp destructor called here, freeing memory
-    
-    LOG.printf("[WIFI] initialization completed\n");
-    LOG.printf("[MEMORY] Free heap after WiFi init: %u bytes\n", ESP.getFreeHeap());
-}
 
 void initWebsocket() {
 #if !defined(TEST_ANIMATION)
@@ -2673,13 +2535,6 @@ void initButtons() {
 //     }
 // }
 
-// void wifiReconnectTask(void* pvParameters) {
-//     const TickType_t xDelay = pdMS_TO_TICKS(WIFI_CHECK_INTERVAL);
-//     while (true) {
-//         wifiProcess();
-//         vTaskDelay(xDelay);
-//     }
-// }
 
 // void websocketProcessTask(void* pvParameters) {
 //     const TickType_t xDelay = pdMS_TO_TICKS(WEBSOCKET_CHECK_INTERVAL);
@@ -2856,8 +2711,8 @@ void checkMinuteOfSilence()
 }
 
 void websocketProcess() {
-    if (!wifiConnected) {
-        LOG.printf("[WEBSOCKET] Reconnecting... wifiConnected == false\n");
+    if (!wifi.isConnected()) {
+        LOG.printf("[WEBSOCKET] Reconnecting... WiFi not connected\n");
         return;
     }
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
@@ -2903,7 +2758,7 @@ void websocketProcess() {
 void memoryProcess() {
     static uint32_t loopCount = 1;
     SystemInfo info = getSystemInfo();
-    String wifiStatus = wifiConnected ? "+" : "-";
+    String wifiStatus = wifi.isConnected() ? "+" : "-";
     String websocketStatus = info.websocketStatus ? "+" : "-";
 
     LOG.printf(
@@ -2931,27 +2786,6 @@ void memoryProcess() {
     loopCount++;
 }
 
-// перевірка статусу wifi
-// Якщо статус не WL_CONNECTED, то перепідключаємося
-void wifiProcess() {
-    static uint8_t reconnectAttempts = 0;
-    const uint8_t MAX_RECONNECT_ATTEMPTS = 5;
-    
-    if (WiFi.status() != WL_CONNECTED) {
-        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            LOG.printf("[WIFI] Reconnect\n");
-            wifiConnected = false;
-            initWifi();
-            reconnectAttempts++;
-        } else {
-            LOG.printf("[WIFI] Max reconnect attempts reached, rebooting...\n");
-            rebootDevice(3000);
-            reconnectAttempts = 0;
-        }
-    } else {
-        reconnectAttempts = 0;
-    }
-}
 
 // Синхронізація часу
 void timeProcess() {
@@ -3312,7 +3146,7 @@ void showTechnicalInfo() {
     uint32_t totalMemory = info.usedMemory + info.freeMemory;
     
     String versionStr = String("v") + version;
-    String ipAddrStr = wifiConnected ? WiFi.localIP().toString() : "Н/А";
+    String ipAddrStr = wifi.isConnected() ? WiFi.localIP().toString() : "Н/А";
     
     char memBuf[30];
     snprintf(memBuf, sizeof(memBuf), "%u/%u KB", info.usedMemory / 1024, totalMemory / 1024);
@@ -3587,19 +3421,39 @@ void setup() {
 
     initSound();
     checkFreeHeap("sound initialization");
-    // initWifi();
-    // checkFreeHeap("WiFi initialization");
 
-    // initWebsocket();
-    // checkFreeHeap("WebSocket initialization");
+    // --- WiFi initialization via JaamWifi ---
+    wifi.setSettings(&settings);
 
-    // initTime();
-    // checkFreeHeap("time initialization");
+    wifi.setOnConnected([](const String& ssid, const String& ip) {
+        servicePin(WIFI);
+        display.showServiceMessage(ip, ssid, 7000);
+        initTime();
+        initWeb();
+        initApi();
+        initMDNS();
+    });
 
-    // Ініціалізація веб-інтерфейсу
-    //initWeb();
-    //web.begin(strip_main, strip_bg, strip_service);
-    //web.setSettings(&settings);
+    wifi.setOnDisconnected([]() {
+        servicePin(WIFI);
+    });
+
+    wifi.setOnPortalStarted([](const String& ssid) {
+        display.showServiceMessage(ssid, "Підключіться до WiFi:");
+    });
+
+    wifi.setOnClientConnected([](const String& ip) {
+        display.showServiceMessage(ip, "Введіть у браузері:");
+    });
+
+    wifi.setOnNetworkSaved([](const String& ssid) {
+        display.showServiceMessage(ssid, "WiFi AP збережено:");
+    });
+
+    display.showServiceMessage("підключення...", "WiFi");
+    servicePin(WIFI);
+    wifi.begin(chipID);
+    checkFreeHeap("WiFi initialization");
 
     // Ініціалізуємо генератор випадкових чисел
     randomSeed(esp_random());
@@ -3618,7 +3472,7 @@ void setup() {
     //async.setInterval(animationsLog, 1000);
     async.setInterval(brightnessProcess, MAIN_THREAD_CHECK_INTERVAL);
     async.setInterval(memoryProcess, MEMORY_CHECK_INTERVAL);
-    async.setInterval(wifiProcess, WIFI_CHECK_INTERVAL);
+    async.setInterval([]{ wifi.process(); }, WIFI_CHECK_INTERVAL);
 #if !defined(TEST_ANIMATION)
     async.setInterval(websocketProcess, WEBSOCKET_CHECK_INTERVAL);;
 #endif
@@ -3638,7 +3492,10 @@ void setup() {
 }
 
 void loop() {
-    wm.process();
+    if (wifi.isPortalActive()) {
+        wifi.process();
+        return;
+    }
 #if !defined(TEST_ANIMATION)
     websocket.poll();
 #endif

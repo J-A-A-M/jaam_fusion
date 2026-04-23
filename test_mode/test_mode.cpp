@@ -71,7 +71,7 @@ static const char* ssid          = "";   // WiFi SSID for OTA
 static const char* password      = "";   // WiFi password
 static const char* userSsid      = "";   // User WiFi SSID (saved to device)
 static const char* userPassword  = "";   // User WiFi password
-static const char* firmwareUrl   = "https://update.jaam.net.ua/5.0";
+static const char* firmwareUrl   = "https://update.jaam.net.ua/5.0.1";
 static const int   homeDistrict  = 31;   // Default home region ID (31 = Kyiv)
 
 // ─── Module instances ──────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ static const uint32_t SNAKE_STEP_SVC = 80;  // slower to be visually distinct
 static float         svcPos    = 0.0f;
 static unsigned long lastSvcMs = 0;
 
-static const char* STARTUP_MELODY = "Boot:d=16,o=5,b=220:c,e,g,c6";
+static const char* STARTUP_MELODY PROGMEM = "Shchedryk:d=8,o=5,b=180:4a,g#,a,4f#,4a,g#,a,4f#";
 
 // ─── Forward declarations ──────────────────────────────────────────────────────
 void startUpdating();

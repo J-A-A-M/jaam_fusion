@@ -6,7 +6,7 @@
 
 JAAM Fusion — це прошивка для ESP32, яка:
 
-- підключається до Wi‑Fi (через WiFiManager)
+- підключається до Wi‑Fi (власний менеджер мереж з підтримкою до 5 збережених мереж і captive portal)
 - піднімає веб‑інтерфейс (HTTP сервер на порту 80)
 - підключається до **серверу даних** через WebSocket і отримує бінарні батчі (тривоги/погода/нотифікації/оновлення)
 - рендерить стан на LED‑стрічки та (опційно) на OLED
@@ -240,7 +240,7 @@ OLED‑дисплей опційний. Реалізація — через **U8
 sequenceDiagram
         participant Boot as Boot
         participant FW as Firmware (JaamFusion)
-        participant WiFi as Wi-Fi (WiFiManager)
+        participant WiFi as Wi-Fi (JaamWifi)
         participant Web as Web UI (HTTP :80)
         participant MDNS as mDNS
         participant DS as Data server (WebSocket)
@@ -249,7 +249,7 @@ sequenceDiagram
 
         Boot->>FW: Power on
         FW->>FW: init settings, mount SPIFFS, init modules
-        FW->>WiFi: connect or start config portal
+        FW->>WiFi: connect or start captive portal
         WiFi->>Web: start HTTP server
         WiFi->>MDNS: start mDNS services
         FW->>DS: connect ws://.../data_fusion_v1
@@ -267,8 +267,8 @@ sequenceDiagram
 Актуальний список — у `platformio.ini`. Ключові бібліотеки, які використовуються в коді:
 
 - Arduino Core for ESP32
-- WiFiManager
 - WebServer (вбудований у Arduino core)
+- DNSServer (вбудований у Arduino core)
 - ArduinoWebsockets
 - ArduinoJson
 - U8g2 (OLED)
