@@ -934,7 +934,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
 }
 
 void updateSirenIfNeeded(int bit) {
-    if (bit >= AlertModes::ALERT && homeAlertFlags==0) {
+    if (bit >= AlertModes::ALERT && homeAlertFlags == 0) {
         siren.setAlert();
     } else if (bit == AlertModes::NO_ALERT) {
         siren.clearAlert();
