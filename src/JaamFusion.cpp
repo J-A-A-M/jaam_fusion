@@ -1171,6 +1171,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
             api.setHomeAlert(homeFlags);
+            homeAlertFlags = homeFlags;
         }
 
         // ── Init-fetch: перший пакет після підключення ────────────────────────
@@ -1201,6 +1202,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             int homeInitIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeInitIdx >= 0) ? alertsFlat[homeInitIdx] : 0;
             api.setHomeAlert(homeFlags);
+            homeAlertFlags = homeFlags;
             uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
             api.setHomeDistrictTemp(decodeTemperature(encodedTemp));
             updateSirenIfNeeded(alertBit);
