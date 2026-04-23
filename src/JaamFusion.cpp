@@ -152,6 +152,7 @@ int                 prevMapMode = 1;
 int                 alertBit = -1;
 time_t              lastHomeAlertChangeTime = 0;
 bool                nightMode = false;
+uint16_t            homeAlertFlags = 0;
 
 // --- CLOCK ---
 bool needDivider = false;
@@ -931,7 +932,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
 }
 
 void updateSirenIfNeeded(int bit) {
-    if (bit == AlertModes::ALERT) {
+    if (bit >= AlertModes::ALERT && homeAlertFlags == 0) {
         siren.setAlert();
     } else if (bit == AlertModes::NO_ALERT) {
         siren.clearAlert();
@@ -1168,6 +1169,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
             api.setHomeAlert(homeFlags);
+            homeAlertFlags = homeFlags;
         }
 
         // ── Init-fetch: перший пакет після підключення ────────────────────────
@@ -1198,6 +1200,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             int homeInitIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeInitIdx >= 0) ? alertsFlat[homeInitIdx] : 0;
             api.setHomeAlert(homeFlags);
+            homeAlertFlags = homeFlags;
             uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
             api.setHomeDistrictTemp(decodeTemperature(encodedTemp));
             updateSirenIfNeeded(alertBit);
@@ -3008,7 +3011,7 @@ void handleUpdateHomeAlertBit() {
     }
     alertBit = localAlertBit;
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
-    uint16_t homeAlertFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
+    homeAlertFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
     LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeAlertFlags);
     api.setHomeAlert(homeAlertFlags);
     uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
