@@ -1163,12 +1163,13 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit,
                            settings.getInt(HOME_DISTRICT), homeIncrease);
-                updateSirenIfNeeded(localAlertBit);
+                
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
             api.setHomeAlert(homeFlags);
+            updateSirenIfNeeded(localAlertBit);
             homeAlertFlags = homeFlags;
         }
 
@@ -1200,11 +1201,10 @@ void onMessageCallback(WebsocketsMessage msg) {
             int homeInitIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeInitIdx >= 0) ? alertsFlat[homeInitIdx] : 0;
             api.setHomeAlert(homeFlags);
+            updateSirenIfNeeded(alertBit);
             homeAlertFlags = homeFlags;
             uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
             api.setHomeDistrictTemp(decodeTemperature(encodedTemp));
-            updateSirenIfNeeded(alertBit);
-
             // скидаємо dirty-прапори (могли бути встановлені в фазі 1)
             memset(s_ledDirty, 0, sizeof(s_ledDirty));
         }
@@ -3007,13 +3007,15 @@ void handleUpdateHomeAlertBit() {
     int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
     if (localAlertBit != alertBit) {
         alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
-        updateSirenIfNeeded(localAlertBit);
+        
     }
     alertBit = localAlertBit;
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
-    homeAlertFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
-    LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeAlertFlags);
-    api.setHomeAlert(homeAlertFlags);
+    uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
+    LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeFlags);
+    api.setHomeAlert(homeFlags);
+    updateSirenIfNeeded(localAlertBit);
+    homeAlertFlags = homeFlags;
     uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
     int homeTemp = decodeTemperature(encodedTemp);
     api.setHomeDistrictTemp(homeTemp);
