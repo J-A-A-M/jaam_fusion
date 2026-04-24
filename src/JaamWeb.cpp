@@ -908,6 +908,19 @@ void JaamWeb::handleLogin() {
 }
 
 void JaamWeb::handleLoginPost() {
+    String recovery = server.arg("recovery");
+    if (recovery.length() > 0) {
+        if (recoveryToken.length() > 0 && recovery == recoveryToken) {
+            sessionToken = generateToken();
+            server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
+            server.sendHeader("Location", "/");
+            server.send(302, "text/plain", "");
+        } else {
+            server.sendHeader("Location", "/login?error=2");
+            server.send(302, "text/plain", "");
+        }
+        return;
+    }
     String login = server.arg("login");
     String pass = server.arg("password");
     String storedLogin = settings->getString(WEB_LOGIN);
@@ -938,6 +951,11 @@ void JaamWeb::setStrips(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_
 
 void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
     setStrips(strip_main, strip_bg, strip_service);
+
+    if (settings->getBool(WEB_AUTH_ENABLED)) {
+        recoveryToken = generateToken();
+        LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
+    }
 
     // Налаштування веб-сервера
     const char* headerKeys[] = {"Cookie"};

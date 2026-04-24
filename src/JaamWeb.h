@@ -28,6 +28,7 @@ private:
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;
     String sessionToken;
+    String recoveryToken;
     bool requireAuth();
     void handleLogin();
     void handleLoginPost();
