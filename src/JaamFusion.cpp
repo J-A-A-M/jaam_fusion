@@ -932,9 +932,11 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
 }
 
 void updateSirenIfNeeded(int bit) {
-    if (bit >= AlertModes::ALERT && homeAlertFlags == 0) {
+    LOG.printf("[SIREN] Check bits: from %d to %d\n", alertBit, bit);
+    if (alertBit == AlertModes::NO_ALERT && bit != AlertModes::NO_ALERT) {
         siren.setAlert();
-    } else if (bit == AlertModes::NO_ALERT && homeAlertFlags != 0) {
+    }
+    if (alertBit != AlertModes::NO_ALERT && bit == AlertModes::NO_ALERT) {
         siren.clearAlert();
     }
 }
@@ -1156,6 +1158,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d increase\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                    updateSirenIfNeeded(localAlertBit);
                 } else {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d decrease\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
@@ -1163,13 +1166,11 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit,
                            settings.getInt(HOME_DISTRICT), homeIncrease);
-                
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
             api.setHomeAlert(homeFlags);
-            updateSirenIfNeeded(localAlertBit);
             homeAlertFlags = homeFlags;
         }
 
@@ -1197,11 +1198,12 @@ void onMessageCallback(WebsocketsMessage msg) {
                     strip->show();
                 });
             }
-            alertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
+            int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
+            updateSirenIfNeeded(localAlertBit);
+            alertBit = localAlertBit;
             int homeInitIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeInitIdx >= 0) ? alertsFlat[homeInitIdx] : 0;
             api.setHomeAlert(homeFlags);
-            updateSirenIfNeeded(alertBit);
             homeAlertFlags = homeFlags;
             uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
             api.setHomeDistrictTemp(decodeTemperature(encodedTemp));
@@ -3007,14 +3009,13 @@ void handleUpdateHomeAlertBit() {
     int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
     if (localAlertBit != alertBit) {
         alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
-        
+        updateSirenIfNeeded(localAlertBit);
     }
     alertBit = localAlertBit;
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
     uint16_t homeFlags = (homeIdx >= 0) ? alertsFlat[homeIdx] : 0;
     LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeFlags);
     api.setHomeAlert(homeFlags);
-    updateSirenIfNeeded(localAlertBit);
     homeAlertFlags = homeFlags;
     uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
     int homeTemp = decodeTemperature(encodedTemp);
