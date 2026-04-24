@@ -38,6 +38,7 @@ void JaamWifi::process() {
         dnsServer.processNextRequest();
         portalServer.handleClient();
         if (millis() - portalStartTime >= PORTAL_TIMEOUT) {
+            portalStartTime = millis();
             LOG.printf("[WIFI] Captive portal timeout, rebooting...\n");
             if (onRebootCb) onRebootCb(5000);
         }
