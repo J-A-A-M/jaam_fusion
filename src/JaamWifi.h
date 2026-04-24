@@ -68,8 +68,8 @@ private:
 
     static const uint8_t  MAX_NETWORKS            = 5;
     static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 5;
-    static const uint32_t MULTI_CONNECT_TIMEOUT   = 15000; // ms при першому start
-    static const uint32_t MULTI_RECONNECT_TIMEOUT = 5000;  // ms при reconnect
+    static const uint32_t MULTI_CONNECT_TIMEOUT   = 30000; // ms при першому start
+    static const uint32_t MULTI_RECONNECT_TIMEOUT = 30000; // ms при reconnect
     static const uint32_t PORTAL_TIMEOUT          = 180000; // 3 хв
 
     StringCb onConnectedCb;
