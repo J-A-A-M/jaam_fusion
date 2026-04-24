@@ -16,9 +16,10 @@ struct SavedNetwork {
 
 class JaamWifi {
 public:
-    using StringCb = std::function<void(const String&, const String&)>; // (a, b)
-    using StrCb    = std::function<void(const String&)>;               // (a)
-    using VoidCb   = std::function<void()>;
+    using StringCb  = std::function<void(const String&, const String&)>; // (a, b)
+    using StrCb     = std::function<void(const String&)>;               // (a)
+    using VoidCb    = std::function<void()>;
+    using RebootCb  = std::function<void(uint32_t)>;                    // (delayMs)
 
     // --- Dependency injection ---
     void setSettings(JaamSettings* s) { settings = s; }
@@ -29,7 +30,7 @@ public:
     void setOnPortalStarted(StrCb cb)    { onPortalStartedCb = cb; }    // (apSsid)
     void setOnClientConnected(StrCb cb)  { onClientConnectedCb = cb; }  // (ip)
     void setOnNetworkSaved(StrCb cb)     { onNetworkSavedCb = cb; }     // (ssid)
-    void setOnReboot(VoidCb cb)          { onRebootCb = cb; }
+    void setOnReboot(RebootCb cb)        { onRebootCb = cb; }
 
     // --- Lifecycle ---
     void begin(const char* chipId);  // блокуючий: підключення або відкриття порталу
@@ -77,7 +78,7 @@ private:
     StrCb    onPortalStartedCb;
     StrCb    onClientConnectedCb;
     StrCb    onNetworkSavedCb;
-    VoidCb   onRebootCb;
+    RebootCb onRebootCb;
 
     void loadNetworksIntoMulti();
     void migrateFromWifiManager();

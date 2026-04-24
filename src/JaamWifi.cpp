@@ -39,7 +39,7 @@ void JaamWifi::process() {
         portalServer.handleClient();
         if (millis() - portalStartTime >= PORTAL_TIMEOUT) {
             LOG.printf("[WIFI] Captive portal timeout, rebooting...\n");
-            if (onRebootCb) onRebootCb();
+            if (onRebootCb) onRebootCb(5000);
         }
         return;
     }
@@ -59,10 +59,14 @@ void JaamWifi::process() {
     reconnectAttempts++;
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
         LOG.printf("[WIFI] Reconnect attempt %d/%d\n", reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
+        delay(100);
+        WiFi.mode(WIFI_STA);
         tryMultiConnect(MULTI_RECONNECT_TIMEOUT);
     } else {
         LOG.printf("[WIFI] Max reconnect attempts reached, rebooting...\n");
-        if (onRebootCb) onRebootCb();
+        if (onRebootCb) onRebootCb(3000);
     }
 }
 
@@ -348,7 +352,7 @@ void JaamWifi::openCaptivePortal() {
         portalServer.send(200, "text/html", html);
 
         delay(2000);
-        if (onRebootCb) onRebootCb();
+        if (onRebootCb) onRebootCb(2000);
     });
 
     portalServer.onNotFound([this]() {
