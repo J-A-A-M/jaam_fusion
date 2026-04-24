@@ -37,6 +37,10 @@ void JaamWifi::process() {
     if (portalActive) {
         dnsServer.processNextRequest();
         portalServer.handleClient();
+        if (millis() - portalStartTime >= PORTAL_TIMEOUT) {
+            LOG.printf("[WIFI] Captive portal timeout, rebooting...\n");
+            if (onRebootCb) onRebootCb();
+        }
         return;
     }
 
@@ -58,7 +62,7 @@ void JaamWifi::process() {
         tryMultiConnect(MULTI_RECONNECT_TIMEOUT);
     } else {
         LOG.printf("[WIFI] Max reconnect attempts reached, rebooting...\n");
-        ESP.restart();
+        if (onRebootCb) onRebootCb();
     }
 }
 
@@ -344,7 +348,7 @@ void JaamWifi::openCaptivePortal() {
         portalServer.send(200, "text/html", html);
 
         delay(2000);
-        ESP.restart();
+        if (onRebootCb) onRebootCb();
     });
 
     portalServer.onNotFound([this]() {
@@ -354,6 +358,7 @@ void JaamWifi::openCaptivePortal() {
 
     portalServer.begin();
     portalActive = true;
+    portalStartTime = millis();
 
     if (onPortalStartedCb) onPortalStartedCb(String(apName));
 }
