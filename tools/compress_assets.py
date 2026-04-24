@@ -34,6 +34,7 @@ ASSETS = {
     "ui_schema_controls_json": os.path.join(WEB_DIR, "controls.json"),
     "wifi_html": os.path.join(WEB_DIR, "wifi.html"),
     "captive_portal_html": os.path.join(WEB_DIR, "captive_portal.html"),
+    "login_html": os.path.join(WEB_DIR, "login.html"),
 }
 
 

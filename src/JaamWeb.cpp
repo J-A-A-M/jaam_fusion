@@ -113,7 +113,10 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"ntp_host", NTP_HOST, TYPE_STRING},
     {"api_enabled", API_ENABLED, TYPE_BOOL},
     {"api_port", API_PORT, TYPE_INT},
-    
+    {"web_auth_enabled", WEB_AUTH_ENABLED, TYPE_BOOL},
+    {"web_login", WEB_LOGIN, TYPE_STRING},
+    {"web_password", WEB_PASSWORD, TYPE_STRING},
+
     // Hardware
     {"main_led_pin", MAIN_LED_PIN, TYPE_INT},
     {"main_led_count", MAIN_LED_COUNT, TYPE_INT},
@@ -852,6 +855,81 @@ void JaamWeb::handleNotFound() {
     server.send(404, "text/plain", "Not found");
 }
 
+// --- Auth ---
+
+static String generateToken() {
+    String token;
+    token.reserve(32);
+    const char chars[] = "0123456789abcdef";
+    for (int i = 0; i < 32; i++) {
+        token += chars[esp_random() % 16];
+    }
+    return token;
+}
+
+bool JaamWeb::requireAuth() {
+    if (!settings->getBool(WEB_AUTH_ENABLED)) return true;
+    if (sessionToken.length() > 0) {
+        String cookie = server.header("Cookie");
+        int idx = cookie.indexOf("session=");
+        if (idx >= 0) {
+            String tok = cookie.substring(idx + 8);
+            int end = tok.indexOf(';');
+            if (end >= 0) tok = tok.substring(0, end);
+            tok.trim();
+            if (tok == sessionToken) return true;
+        }
+    }
+    server.sendHeader("Location", "/login");
+    server.send(302, "text/plain", "");
+    return false;
+}
+
+void JaamWeb::handleLogin() {
+    if (settings->getBool(WEB_AUTH_ENABLED) && sessionToken.length() > 0) {
+        String cookie = server.header("Cookie");
+        int idx = cookie.indexOf("session=");
+        if (idx >= 0) {
+            String tok = cookie.substring(idx + 8);
+            int end = tok.indexOf(';');
+            if (end >= 0) tok = tok.substring(0, end);
+            tok.trim();
+            if (tok == sessionToken) {
+                server.sendHeader("Location", "/");
+                server.send(302, "text/plain", "");
+                return;
+            }
+        }
+    }
+    server.sendHeader("Content-Encoding", "gzip");
+    server.sendHeader("Cache-Control", "no-cache");
+    server.setContentLength(login_html_gz_len);
+    server.send_P(200, "text/html", (const char*)login_html_gz, login_html_gz_len);
+}
+
+void JaamWeb::handleLoginPost() {
+    String login = server.arg("login");
+    String pass = server.arg("password");
+    String storedLogin = settings->getString(WEB_LOGIN);
+    String storedPass = settings->getString(WEB_PASSWORD);
+    if (login == storedLogin && pass == storedPass && pass.length() > 0) {
+        sessionToken = generateToken();
+        server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
+        server.sendHeader("Location", "/");
+        server.send(302, "text/plain", "");
+    } else {
+        server.sendHeader("Location", "/login?error=1");
+        server.send(302, "text/plain", "");
+    }
+}
+
+void JaamWeb::handleLogout() {
+    sessionToken = "";
+    server.sendHeader("Set-Cookie", "session=; HttpOnly; Path=/; Max-Age=0");
+    server.sendHeader("Location", "/login");
+    server.send(302, "text/plain", "");
+}
+
 void JaamWeb::setStrips(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
     this->strip_main = strip_main;
     this->strip_bg = strip_bg;
@@ -862,8 +940,15 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     setStrips(strip_main, strip_bg, strip_service);
 
     // Налаштування веб-сервера
+    const char* headerKeys[] = {"Cookie"};
+    server.collectHeaders(headerKeys, 1);
+
     //server.enableCORS();
-    server.on("/", HTTP_GET, [this]() { this->handleUiPage(); });
+    server.on("/login",  HTTP_GET,  [this]() { this->handleLogin(); });
+    server.on("/login",  HTTP_POST, [this]() { this->handleLoginPost(); });
+    server.on("/logout", HTTP_POST, [this]() { this->handleLogout(); });
+
+    server.on("/", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiPage(); });
     server.on("/", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/styles.css", HTTP_GET, [this]() { this->handleCss(); });
     server.on("/scripts.js", HTTP_GET, [this]() { this->handleJs(); });
@@ -871,57 +956,53 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/map-editor.js", HTTP_GET, [this]() { this->handleMapEditorJs(); });
     server.on("/bg-color-editor.css", HTTP_GET, [this]() { this->handleBgColorEditorCss(); });
     server.on("/bg-color-editor.js", HTTP_GET, [this]() { this->handleBgColorEditorJs(); });
-    server.on("/map-editor", HTTP_GET, [this]() { this->handleMapEditor(); });
-    server.on("/save-map", HTTP_POST, [this]() { this->handleSaveMap(); });
-    server.on("/bg-color-editor", HTTP_GET, [this]() { this->handleBgColorEditor(); });
-    server.on("/bg-colors-data", HTTP_GET, [this]() { this->handleBgColorsData(); });
+    server.on("/map-editor", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleMapEditor(); });
+    server.on("/save-map", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSaveMap(); });
+    server.on("/bg-color-editor", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleBgColorEditor(); });
+    server.on("/bg-colors-data", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleBgColorsData(); });
     server.on("/bg-colors-data", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/save-bg-colors", HTTP_POST, [this]() { this->handleSaveBgColors(); });
-    //server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
-    server.on("/parameter", HTTP_POST, [this]() { this->handleParameter(); });
+    server.on("/save-bg-colors", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSaveBgColors(); });
+    server.on("/parameter", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleParameter(); });
     server.on("/parameter", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    //server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
-    server.on("/color", HTTP_POST, [this]() { this->handleColorParameter(); });
+    server.on("/color", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleColorParameter(); });
     server.on("/color", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    //server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
-    server.on("/text", HTTP_POST, [this]() { this->handleTextParameter(); });
+    server.on("/text", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleTextParameter(); });
     server.on("/text", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/system-info", HTTP_GET, [this]() { this->handleSystemInfo(); });
+    server.on("/system-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleSystemInfo(); });
     server.on("/system-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/alerts-info", HTTP_GET, [this]() { this->handleAlertsInfo(); });
+    server.on("/alerts-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleAlertsInfo(); });
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/logs-info", HTTP_GET, [this]() { this->handleLogsInfo(); });
+    server.on("/logs-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleLogsInfo(); });
     server.on("/logs-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/models", HTTP_GET, [this]() { this->handleUiSchemaModels(); });
+    server.on("/ui-schema/models", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaModels(); });
     server.on("/ui-schema/models", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/sections", HTTP_GET, [this]() { this->handleUiSchemaSections(); });
+    server.on("/ui-schema/sections", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaSections(); });
     server.on("/ui-schema/sections", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/dropdown_lists", HTTP_GET, [this]() { this->handleUiSchemaDropdownLists(); });
+    server.on("/ui-schema/dropdown_lists", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaDropdownLists(); });
     server.on("/ui-schema/dropdown_lists", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/controls", HTTP_GET, [this]() { this->handleUiSchemaControls(); });
+    server.on("/ui-schema/controls", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaControls(); });
     server.on("/ui-schema/controls", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/controls/values", HTTP_GET, [this]() { this->handleUiSchemaControlsValues(); });
+    server.on("/ui-schema/controls/values", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaControlsValues(); });
     server.on("/ui-schema/controls/values", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/map-data", HTTP_GET, [this]() { this->handleMapData(); });
+    server.on("/map-data", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleMapData(); });
     server.on("/map-data", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    // Dynamic UI page that renders based on /ui-schema
 
-    server.on("/settings/backup", HTTP_GET, [this]() { this->handleSettingsBackup(); });
+    server.on("/settings/backup", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleSettingsBackup(); });
     server.on("/settings/backup", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/settings/restore", HTTP_POST, [this]() { this->handleSettingsRestore(); });
+    server.on("/settings/restore", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSettingsRestore(); });
     server.on("/settings/restore", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/settings/reset", HTTP_POST, [this]() { this->handleSettingsReset(); });
+    server.on("/settings/reset", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSettingsReset(); });
     server.on("/settings/reset", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
 
-    server.on("/wifi",              HTTP_GET,     [this]() { this->handleWifiPage(); });
-    server.on("/api/wifi/networks", HTTP_GET,     [this]() { this->handleWifiNetworks(); });
+    server.on("/wifi",              HTTP_GET,     [this]() { if (!requireAuth()) return; this->handleWifiPage(); });
+    server.on("/api/wifi/networks", HTTP_GET,     [this]() { if (!requireAuth()) return; this->handleWifiNetworks(); });
     server.on("/api/wifi/networks", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/api/wifi/add",      HTTP_POST,    [this]() { this->handleWifiAdd(); });
+    server.on("/api/wifi/add",      HTTP_POST,    [this]() { if (!requireAuth()) return; this->handleWifiAdd(); });
     server.on("/api/wifi/add",      HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/api/wifi/remove",   HTTP_POST,    [this]() { this->handleWifiRemove(); });
+    server.on("/api/wifi/remove",   HTTP_POST,    [this]() { if (!requireAuth()) return; this->handleWifiRemove(); });
     server.on("/api/wifi/remove",   HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/api/wifi/scan",     HTTP_POST,    [this]() { this->handleWifiScan(); });
-    server.on("/api/wifi/scan",     HTTP_GET,     [this]() { this->handleWifiScanResults(); });
+    server.on("/api/wifi/scan",     HTTP_POST,    [this]() { if (!requireAuth()) return; this->handleWifiScan(); });
+    server.on("/api/wifi/scan",     HTTP_GET,     [this]() { if (!requireAuth()) return; this->handleWifiScanResults(); });
     server.on("/api/wifi/scan",     HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
 
     server.on("/favicon.png", HTTP_GET, [this]() { server.send(204); });
@@ -1073,7 +1154,18 @@ void JaamWeb::handleUiPage() {
                     <svg viewBox='0 0 24 24'>
                         <path fill='currentColor' fill-rule='evenodd' clip-rule='evenodd' d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
                     </svg>
-                </button>
+                </button>)HTML";
+        if (settings->getBool(WEB_AUTH_ENABLED)) {
+            html += R"HTML(
+                <form method='POST' action='/logout' style='display:inline'>
+                    <button type='submit' class='control-button' title='Вийти'>
+                        <svg viewBox='0 0 24 24'>
+                            <path fill='currentColor' d='M17,17.25V14H10V10H17V6.75L22.25,12L17,17.25M13,2A2,2 0 0,1 15,4V8H13V4H4V20H13V16H15V20A2,2 0 0,1 13,22H4A2,2 0 0,1 2,20V4A2,2 0 0,1 4,2H13Z'/>
+                        </svg>
+                    </button>
+                </form>)HTML";
+        }
+        html += R"HTML(
             </div>
         </div>
 

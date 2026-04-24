@@ -27,6 +27,11 @@ private:
     Adafruit_NeoPixel* strip_main;
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;
+    String sessionToken;
+    bool requireAuth();
+    void handleLogin();
+    void handleLoginPost();
+    void handleLogout();
     void handleNotFound();
     void setCrossOrigin();
     void sendCrossOriginHeader();

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAAM — Вхід</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .login-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .login-card {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px 28px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+        }
+        .login-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0 0 8px;
+            text-align: center;
+        }
+        .login-subtitle {
+            font-size: 13px;
+            color: var(--secondary-text);
+            text-align: center;
+            margin: 0 0 24px;
+        }
+        .login-field {
+            margin-bottom: 14px;
+        }
+        .login-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--secondary-text);
+        }
+        .login-field input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 7px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: border-color 0.15s;
+        }
+        .login-field input:focus {
+            outline: none;
+            border-color: #17a2b8;
+        }
+        .login-field input.invalid {
+            border-color: #dc3545;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 11px;
+            background: #17a2b8;
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: background 0.15s;
+        }
+        .login-btn:hover { background: #138496; }
+        .login-btn:disabled { background: #5a8a94; cursor: default; }
+        .login-error {
+            background: rgba(220,53,69,0.12);
+            color: #dc3545;
+            border: 1px solid rgba(220,53,69,0.4);
+            border-radius: 7px;
+            padding: 9px 12px;
+            font-size: 13px;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .theme-toggle-wrap {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+        }
+        .theme-toggle-wrap button {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+        }
+        .theme-toggle-wrap button svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+<div class="theme-toggle-wrap">
+    <button onclick="toggleTheme()" title="Перемкнути тему">
+        <svg viewBox="0 0 24 24"><path d="M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+    </button>
+</div>
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-title">JAAM</div>
+        <div class="login-subtitle">Введіть дані для входу</div>
+
+        <div class="login-error" id="errorMsg"></div>
+
+        <form id="loginForm" method="POST" action="/login" autocomplete="on">
+            <div class="login-field">
+                <label for="login">Логін</label>
+                <input type="text" id="login" name="login" autocomplete="username" required>
+            </div>
+            <div class="login-field">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="login-btn" id="submitBtn">Увійти</button>
+        </form>
+    </div>
+</div>
+<script>
+(function() {
+    function getCookie(name) {
+        var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+    }
+    window.toggleTheme = function() {
+        var cur = document.documentElement.getAttribute('data-theme') || 'light';
+        var next = cur === 'dark' ? 'light' : 'dark';
+        document.cookie = 'jaam_theme=' + encodeURIComponent(next) + '; max-age=31536000; path=/';
+        applyTheme(next);
+    };
+    applyTheme(getCookie('jaam_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('error') === '1') {
+        var msg = document.getElementById('errorMsg');
+        msg.textContent = 'Невірний логін або пароль';
+        msg.style.display = 'block';
+    }
+
+})();
+</script>
+</body>
+</html>
