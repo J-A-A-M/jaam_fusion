@@ -337,6 +337,30 @@ h1 {
     color: var(--text-color);
 }
 
+.password-wrapper {
+    position: relative;
+}
+.password-wrapper .text-input {
+    padding-right: 40px;
+}
+.password-toggle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--secondary-text);
+}
+.password-toggle:hover { color: var(--text-color); }
+.password-toggle svg { width: 18px; height: 18px; fill: currentColor; }
+
 .form-group {
     margin: 20px 0;
 }

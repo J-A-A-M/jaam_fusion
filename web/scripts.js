@@ -943,6 +943,52 @@ function renderControl(ctrl, lists) {
         return div;
     }
     
+    if (type === 'password') {
+        const [_, name, label, current, placeholder, section, visibility] = ctrl;
+        const div = document.createElement('div');
+        div.className = 'text-input-container';
+
+        const lab = document.createElement('label');
+        lab.htmlFor = name;
+        lab.textContent = label + ':';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'password-wrapper';
+
+        const inp = document.createElement('input');
+        inp.type = 'password';
+        inp.id = name;
+        inp.value = current;
+        inp.placeholder = placeholder || '';
+        inp.className = 'text-input';
+        inp.onchange = (e) => updateTextParameter(name, e.target.value);
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'password-toggle';
+        toggle.title = 'Показати / сховати пароль';
+        toggle.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>';
+        toggle.addEventListener('click', () => {
+            const isHidden = inp.type === 'password';
+            inp.type = isHidden ? 'text' : 'password';
+            toggle.innerHTML = isHidden
+                ? '<svg viewBox="0 0 24 24"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,4.5C17,4.5 21.27,7.61 23,12C22.32,13.76 21.26,15.31 19.93,16.57L18.5,15.14C19.54,14.23 20.39,13.07 20.82,12C19.17,8.64 15.76,6.5 12,6.5C10.91,6.5 9.84,6.68 8.84,7L7.3,5.47C8.74,4.85 10.33,4.5 12,4.5Z"/></svg>'
+                : '<svg viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>';
+        });
+
+        wrapper.appendChild(inp);
+        wrapper.appendChild(toggle);
+        div.appendChild(lab);
+        div.appendChild(wrapper);
+
+        if (visibility && visibility.trim() !== '') {
+            div.setAttribute('data-visibility', visibility);
+            updateElementVisibility(div);
+        }
+
+        return div;
+    }
+
     if (type === 'color') {
         const [_, name, label, current, section, visibility] = ctrl;
         const div = document.createElement('div');
