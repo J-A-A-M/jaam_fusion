@@ -16,9 +16,10 @@ struct SavedNetwork {
 
 class JaamWifi {
 public:
-    using StringCb = std::function<void(const String&, const String&)>; // (a, b)
-    using StrCb    = std::function<void(const String&)>;               // (a)
-    using VoidCb   = std::function<void()>;
+    using StringCb  = std::function<void(const String&, const String&)>; // (a, b)
+    using StrCb     = std::function<void(const String&)>;               // (a)
+    using VoidCb    = std::function<void()>;
+    using RebootCb  = std::function<void(uint32_t)>;                    // (delayMs)
 
     // --- Dependency injection ---
     void setSettings(JaamSettings* s) { settings = s; }
@@ -29,6 +30,7 @@ public:
     void setOnPortalStarted(StrCb cb)    { onPortalStartedCb = cb; }    // (apSsid)
     void setOnClientConnected(StrCb cb)  { onClientConnectedCb = cb; }  // (ip)
     void setOnNetworkSaved(StrCb cb)     { onNetworkSavedCb = cb; }     // (ssid)
+    void setOnReboot(RebootCb cb)        { onRebootCb = cb; }
 
     // --- Lifecycle ---
     void begin(const char* chipId);  // блокуючий: підключення або відкриття порталу
@@ -61,19 +63,22 @@ private:
     bool          connected      = false;
     bool          portalActive   = false;
     unsigned long connectTime    = 0;
+    unsigned long portalStartTime = 0;
     uint8_t       reconnectAttempts = 0;
     char          apName[32]     = {};
 
     static const uint8_t  MAX_NETWORKS            = 5;
     static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 5;
-    static const uint32_t MULTI_CONNECT_TIMEOUT   = 15000; // ms при першому start
-    static const uint32_t MULTI_RECONNECT_TIMEOUT = 5000;  // ms при reconnect
+    static const uint32_t MULTI_CONNECT_TIMEOUT   = 30000; // ms при першому start
+    static const uint32_t MULTI_RECONNECT_TIMEOUT = 30000; // ms при reconnect
+    static const uint32_t PORTAL_TIMEOUT          = 180000; // 3 хв
 
     StringCb onConnectedCb;
     VoidCb   onDisconnectedCb;
     StrCb    onPortalStartedCb;
     StrCb    onClientConnectedCb;
     StrCb    onNetworkSavedCb;
+    RebootCb onRebootCb;
 
     void loadNetworksIntoMulti();
     void migrateFromWifiManager();

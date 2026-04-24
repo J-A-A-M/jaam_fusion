@@ -3454,6 +3454,7 @@ void setup() {
     wifi.setOnNetworkSaved([](const String& ssid) {
         display.showServiceMessage(ssid, "WiFi AP збережено:");
     });
+    wifi.setOnReboot([](uint32_t ms) { rebootDevice(ms); });
 
     display.showServiceMessage("підключення...", "WiFi");
     servicePin(WIFI);
