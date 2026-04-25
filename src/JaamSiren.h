@@ -20,6 +20,8 @@ public:
     // Перевірка стану пінів
     bool isAlertActive() const;
     bool isClearActive() const;
+    bool isAlertActive2() const;
+    bool isClearActive2() const;
     
     // Callback методи для таймерів (викликаються через глобальні функції)
     void onAlertTimeout();
@@ -57,7 +59,7 @@ private:
     void updateConfiguration();
     void setupPins();
     void deactivatePin(int pin, int activeLevel);
-    void activatePin(int pin);
+    void activatePin(int pin, int activeLevel);
     void resetPins();        // Скинути всі піни
     bool shouldRestoreDeviceOnStartup(uint8_t deviceIndex) const;
 

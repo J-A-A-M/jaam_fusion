@@ -235,7 +235,7 @@ void JaamSiren::clearAlert(bool isStartupSync) {
         } else {
         // Імпульсний режим: активуємо CLEAR_PIN
             if (clearPin > 0) {
-                activatePin(clearPin);
+                activatePin(clearPin, activeLevel);
                 clearActive = true;
                 
                 if (clearTimer >= 0) {
@@ -257,7 +257,7 @@ void JaamSiren::clearAlert(bool isStartupSync) {
             }
         } else {
             if (clearPin2 > 0) {
-                digitalWrite(clearPin2, activeLevel2);
+                activatePin(clearPin2, activeLevel2);
                 clearActive2 = true;
                 
                 if (clearTimer2 >= 0) {
@@ -317,7 +317,7 @@ void JaamSiren::resetPins() {
     LOG.printf("[SIREN] All pins reset to inactive level\n");
 }
 
-void JaamSiren::activatePin(int pin) {
+void JaamSiren::activatePin(int pin, int activeLevel) {
     if (pin > 0) {
         digitalWrite(pin, activeLevel);
     }
@@ -336,6 +336,14 @@ bool JaamSiren::isAlertActive() const {
 
 bool JaamSiren::isClearActive() const {
     return clearActive;
+}
+
+bool JaamSiren::isAlertActive2() const {
+    return alertActive2;
+}
+
+bool JaamSiren::isClearActive2() const {
+    return clearActive2;
 }
 
 // Callback методи для таймерів
