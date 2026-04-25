@@ -38,6 +38,8 @@ extern void requestReconfigureAll();
 extern void requestRebootDevice();
 
 
+static String generateToken();
+
 // Допоміжні функції для строгого парсингу
 static bool parseStrictInt(const String& s, int& out) {
     if (s.length() == 0) return false;
@@ -663,6 +665,19 @@ void JaamWeb::handleParameter() {
             
             success = settings->saveBool(settingType, intValue != 0);
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), intValue != 0, success);
+
+            if (success && settingType == WEB_AUTH_ENABLED && intValue != 0) {
+                // Auto-login the current user who just enabled auth
+                if (sessionToken.isEmpty()) {
+                    sessionToken = generateToken();
+                    server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
+                }
+                // Generate recovery token if not yet done
+                if (recoveryToken.isEmpty()) {
+                    recoveryToken = generateToken();
+                    LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
+                }
+            }
             break;
         }
             
