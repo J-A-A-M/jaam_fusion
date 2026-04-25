@@ -1031,11 +1031,22 @@ function renderControl(ctrl, lists) {
         mismatchMsg.className = 'pw-mismatch';
         mismatchMsg.textContent = 'Паролі не збігаються';
 
+        // --- Save button ---
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'control-button';
+        saveBtn.textContent = 'Зберегти пароль';
+        saveBtn.disabled = true;
+        saveBtn.style.marginTop = '10px';
+        saveBtn.style.width = '100%';
+
         const savedMsg = document.createElement('div');
         savedMsg.className = 'pw-saved';
         savedMsg.textContent = 'Пароль збережено';
 
         // --- Logic ---
+        let savedValue = current;
+
         function validate() {
             const val = inp.value;
             const c = checkComplexity(val);
@@ -1044,16 +1055,23 @@ function renderControl(ctrl, lists) {
             });
             const allOk = c.len && c.upper && c.lower && c.digit;
             const match = val === confirmInp.value && confirmInp.value.length > 0;
+            const changed = val !== savedValue;
             mismatchMsg.style.display = (confirmInp.value.length > 0 && !match) ? 'block' : 'none';
-            if (allOk && match) {
-                updateTextParameter(name, val);
-                inp.value = '';
-                confirmInp.value = '';
-                inp.placeholder = '••••••••';
-                savedMsg.style.display = 'block';
-                setTimeout(() => { savedMsg.style.display = 'none'; }, 2500);
-            }
+            saveBtn.disabled = !(allOk && match && changed);
         }
+
+        saveBtn.addEventListener('click', () => {
+            const val = inp.value;
+            updateTextParameter(name, val);
+            savedValue = val;
+            inp.value = '';
+            confirmInp.value = '';
+            inp.placeholder = '••••••••';
+            saveBtn.disabled = true;
+            savedMsg.style.display = 'block';
+            setTimeout(() => { savedMsg.style.display = 'none'; }, 2500);
+            validate();
+        });
 
         inp.addEventListener('input', validate);
         confirmInp.addEventListener('input', validate);
@@ -1064,6 +1082,7 @@ function renderControl(ctrl, lists) {
         div.appendChild(confirmLabel);
         div.appendChild(confirmWrapper);
         div.appendChild(mismatchMsg);
+        div.appendChild(saveBtn);
         div.appendChild(savedMsg);
 
         if (visibility && visibility.trim() !== '') {
