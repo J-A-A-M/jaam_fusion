@@ -61,13 +61,15 @@ std::map<Type, SettingItemInt> intSettings = {
     {ALERT_CLEAR_PIN_MODE, {"acpm", 0}},                   // 0 = pulse, 1 = toggle
     {ALERT_PIN_ACTIVE_LEVEL, {"apal", 1}},                 // 1 = HIGH, 0 = LOW
     {ALERT_CLEAR_PIN_TIME, {"acptm", 1000}},               // Pulse duration in ms
-    
+    {RESTORE_SIREN_STATE_ON_STARTUP, {"srstr", 1}},        // Restore siren state after initial data fetch
+
     // Siren device 2 pins
     {ALERT_PIN_2, {"ap2", -1}},                            // -1 = disabled
     {CLEAR_PIN_2, {"cp2", -1}},                            // -1 = disabled
     {ALERT_CLEAR_PIN_MODE_2, {"acpm2", 0}},                // 0 = pulse, 1 = toggle
     {ALERT_PIN_ACTIVE_LEVEL_2, {"apal2", 1}},              // 1 = HIGH, 0 = LOW
     {ALERT_CLEAR_PIN_TIME_2, {"acptm2", 1000}},            // Pulse duration in ms
+    {RESTORE_SIREN_STATE_ON_STARTUP_2, {"srstr2", 1}},     // Restore siren state after initial data fetch
     
     // Audio pins
     {BUZZER_PIN, {"bzp", -1}},                             // -1 = disabled

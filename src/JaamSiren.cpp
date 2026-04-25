@@ -174,11 +174,20 @@ void JaamSiren::setupPins() {
     }
 }
 
-void JaamSiren::setAlert() {
+bool JaamSiren::shouldRestoreDeviceOnStartup(uint8_t deviceIndex) const {
+    if (!settings) {
+        return true;
+    }
+    return deviceIndex == 1
+        ? settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP)
+        : settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP_2);
+}
+
+void JaamSiren::setAlert(bool isStartupSync) {
     alertInHomeRegion = true; // Встановлюємо прапорець, що в домашньому регіоні тривога
     
     // Перший комплект
-    if (alertPin > 0) {
+    if ((!isStartupSync || shouldRestoreDeviceOnStartup(1)) && alertPin > 0) {
         digitalWrite(alertPin, activeLevel);
         alertActive = true;
         
@@ -195,7 +204,7 @@ void JaamSiren::setAlert() {
     }
     
     // Другий комплект
-    if (alertPin2 > 0) {
+    if ((!isStartupSync || shouldRestoreDeviceOnStartup(2)) && alertPin2 > 0) {
         digitalWrite(alertPin2, activeLevel2);
         alertActive2 = true;
         
@@ -211,48 +220,52 @@ void JaamSiren::setAlert() {
     }
 }
 
-void JaamSiren::clearAlert() {
+void JaamSiren::clearAlert(bool isStartupSync) {
     alertInHomeRegion = false; // Скидаємо прапорець, в домашньому регіоні безпечно
     
     // Перший комплект
-    if (pinModeConfig == 0) {
+    if (!isStartupSync || shouldRestoreDeviceOnStartup(1)) {
+        if (pinModeConfig == 0) {
         // Бістабільний режим: деактивуємо ALERT_PIN
-        if (alertPin > 0) {
-            deactivatePin(alertPin, activeLevel);
-            alertActive = false;
-            LOG.printf("[SIREN 1] Alert deactivated on pin %d (bistable mode)\n", alertPin);
-        }
-    } else {
+            if (alertPin > 0) {
+                deactivatePin(alertPin, activeLevel);
+                alertActive = false;
+                LOG.printf("[SIREN 1] Alert deactivated on pin %d (bistable mode)\n", alertPin);
+            }
+        } else {
         // Імпульсний режим: активуємо CLEAR_PIN
-        if (clearPin > 0) {
-            activatePin(clearPin);
-            clearActive = true;
-            
+            if (clearPin > 0) {
+                activatePin(clearPin);
+                clearActive = true;
+                
                 if (clearTimer >= 0) {
                     async.clearInterval(clearTimer);
                 }
                 clearTimer = async.setTimeout(sirenClearCallback, pinTime);
-            LOG.printf("[SIREN 1] Clear activated on pin %d (pulse mode, %dms)\n", clearPin, pinTime);
+                LOG.printf("[SIREN 1] Clear activated on pin %d (pulse mode, %dms)\n", clearPin, pinTime);
+            }
         }
     }
     
     // Другий комплект
-    if (pinModeConfig2 == 0) {
-        if (alertPin2 > 0) {
-            deactivatePin(alertPin2, activeLevel2);
-            alertActive2 = false;
-            LOG.printf("[SIREN 2] Alert deactivated on pin %d (bistable mode)\n", alertPin2);
-        }
-    } else {
-        if (clearPin2 > 0) {
-            digitalWrite(clearPin2, activeLevel2);
-            clearActive2 = true;
-            
+    if (!isStartupSync || shouldRestoreDeviceOnStartup(2)) {
+        if (pinModeConfig2 == 0) {
+            if (alertPin2 > 0) {
+                deactivatePin(alertPin2, activeLevel2);
+                alertActive2 = false;
+                LOG.printf("[SIREN 2] Alert deactivated on pin %d (bistable mode)\n", alertPin2);
+            }
+        } else {
+            if (clearPin2 > 0) {
+                digitalWrite(clearPin2, activeLevel2);
+                clearActive2 = true;
+                
                 if (clearTimer2 >= 0) {
                     async.clearInterval(clearTimer2);
                 }
                 clearTimer2 = async.setTimeout(sirenClear2Callback, pinTime2);
-            LOG.printf("[SIREN 2] Clear activated on pin %d (pulse mode, %dms)\n", clearPin2, pinTime2);
+                LOG.printf("[SIREN 2] Clear activated on pin %d (pulse mode, %dms)\n", clearPin2, pinTime2);
+            }
         }
     }
 }

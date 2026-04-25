@@ -14,8 +14,8 @@ public:
     void onSettingsChange(Type type, int intValue, float fltValue, const char* strValue);
     
     // Основні методи управління GPIO пінами
-    void setAlert();     // Активувати пін тривоги
-    void clearAlert();   // Активувати пін відбою
+    void setAlert(bool isStartupSync = false);     // Активувати пін тривоги
+    void clearAlert(bool isStartupSync = false);   // Активувати пін відбою
     
     // Перевірка стану пінів
     bool isAlertActive() const;
@@ -59,5 +59,6 @@ private:
     void deactivatePin(int pin, int activeLevel);
     void activatePin(int pin);
     void resetPins();        // Скинути всі піни
+    bool shouldRestoreDeviceOnStartup(uint8_t deviceIndex) const;
 
 };
