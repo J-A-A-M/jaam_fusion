@@ -948,6 +948,33 @@ function renderControl(ctrl, lists) {
         const div = document.createElement('div');
         div.className = 'text-input-container';
 
+        const SVG_EYE_ON = '<svg viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>';
+        const SVG_EYE_OFF = '<svg viewBox="0 0 24 24"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,4.5C17,4.5 21.27,7.61 23,12C22.32,13.76 21.26,15.31 19.93,16.57L18.5,15.14C19.54,14.23 20.39,13.07 20.82,12C19.17,8.64 15.76,6.5 12,6.5C10.91,6.5 9.84,6.68 8.84,7L7.3,5.47C8.74,4.85 10.33,4.5 12,4.5Z"/></svg>';
+
+        function makeToggle(input) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'password-toggle';
+            btn.title = 'Показати / сховати пароль';
+            btn.innerHTML = SVG_EYE_ON;
+            btn.addEventListener('click', () => {
+                const hidden = input.type === 'password';
+                input.type = hidden ? 'text' : 'password';
+                btn.innerHTML = hidden ? SVG_EYE_OFF : SVG_EYE_ON;
+            });
+            return btn;
+        }
+
+        function checkComplexity(val) {
+            return {
+                len:   val.length >= 8,
+                upper: /[A-Z]/.test(val),
+                lower: /[a-z]/.test(val),
+                digit: /[0-9]/.test(val),
+            };
+        }
+
+        // --- Password field ---
         const lab = document.createElement('label');
         lab.htmlFor = name;
         lab.textContent = label + ':';
@@ -958,28 +985,86 @@ function renderControl(ctrl, lists) {
         const inp = document.createElement('input');
         inp.type = 'password';
         inp.id = name;
-        inp.value = current;
-        inp.placeholder = placeholder || '';
+        inp.value = '';
+        inp.placeholder = current ? '••••••••' : (placeholder || '');
         inp.className = 'text-input';
-        inp.onchange = (e) => updateTextParameter(name, e.target.value);
-
-        const toggle = document.createElement('button');
-        toggle.type = 'button';
-        toggle.className = 'password-toggle';
-        toggle.title = 'Показати / сховати пароль';
-        toggle.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>';
-        toggle.addEventListener('click', () => {
-            const isHidden = inp.type === 'password';
-            inp.type = isHidden ? 'text' : 'password';
-            toggle.innerHTML = isHidden
-                ? '<svg viewBox="0 0 24 24"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,4.5C17,4.5 21.27,7.61 23,12C22.32,13.76 21.26,15.31 19.93,16.57L18.5,15.14C19.54,14.23 20.39,13.07 20.82,12C19.17,8.64 15.76,6.5 12,6.5C10.91,6.5 9.84,6.68 8.84,7L7.3,5.47C8.74,4.85 10.33,4.5 12,4.5Z"/></svg>'
-                : '<svg viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>';
-        });
 
         wrapper.appendChild(inp);
-        wrapper.appendChild(toggle);
+        wrapper.appendChild(makeToggle(inp));
+
+        // --- Complexity checklist ---
+        const rules = [
+            { key: 'len',   text: 'Мін. 8 символів' },
+            { key: 'upper', text: 'Велика літера (A–Z)' },
+            { key: 'lower', text: 'Мала літера (a–z)' },
+            { key: 'digit', text: 'Цифра (0–9)' },
+        ];
+        const checklist = document.createElement('ul');
+        checklist.className = 'pw-checklist';
+        const ruleEls = {};
+        rules.forEach(r => {
+            const li = document.createElement('li');
+            li.className = 'pw-rule';
+            li.textContent = r.text;
+            ruleEls[r.key] = li;
+            checklist.appendChild(li);
+        });
+
+        // --- Confirm field ---
+        const confirmLabel = document.createElement('label');
+        confirmLabel.textContent = 'Підтвердження паролю:';
+        confirmLabel.style.marginTop = '10px';
+        confirmLabel.style.display = 'block';
+
+        const confirmWrapper = document.createElement('div');
+        confirmWrapper.className = 'password-wrapper';
+
+        const confirmInp = document.createElement('input');
+        confirmInp.type = 'password';
+        confirmInp.placeholder = 'Повторіть пароль';
+        confirmInp.className = 'text-input';
+
+        confirmWrapper.appendChild(confirmInp);
+        confirmWrapper.appendChild(makeToggle(confirmInp));
+
+        const mismatchMsg = document.createElement('div');
+        mismatchMsg.className = 'pw-mismatch';
+        mismatchMsg.textContent = 'Паролі не збігаються';
+
+        const savedMsg = document.createElement('div');
+        savedMsg.className = 'pw-saved';
+        savedMsg.textContent = 'Пароль збережено';
+
+        // --- Logic ---
+        function validate() {
+            const val = inp.value;
+            const c = checkComplexity(val);
+            rules.forEach(r => {
+                ruleEls[r.key].classList.toggle('pw-rule-ok', c[r.key]);
+            });
+            const allOk = c.len && c.upper && c.lower && c.digit;
+            const match = val === confirmInp.value && confirmInp.value.length > 0;
+            mismatchMsg.style.display = (confirmInp.value.length > 0 && !match) ? 'block' : 'none';
+            if (allOk && match) {
+                updateTextParameter(name, val);
+                inp.value = '';
+                confirmInp.value = '';
+                inp.placeholder = '••••••••';
+                savedMsg.style.display = 'block';
+                setTimeout(() => { savedMsg.style.display = 'none'; }, 2500);
+            }
+        }
+
+        inp.addEventListener('input', validate);
+        confirmInp.addEventListener('input', validate);
+
         div.appendChild(lab);
         div.appendChild(wrapper);
+        div.appendChild(checklist);
+        div.appendChild(confirmLabel);
+        div.appendChild(confirmWrapper);
+        div.appendChild(mismatchMsg);
+        div.appendChild(savedMsg);
 
         if (visibility && visibility.trim() !== '') {
             div.setAttribute('data-visibility', visibility);

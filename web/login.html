@@ -60,6 +60,29 @@
             outline: none;
             border-color: #17a2b8;
         }
+        .login-pw-wrap {
+            position: relative;
+        }
+        .login-pw-wrap input {
+            padding-right: 40px;
+        }
+        .login-pw-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            color: var(--secondary-text);
+        }
+        .login-pw-toggle:hover { color: var(--text-color); }
+        .login-pw-toggle svg { width: 18px; height: 18px; fill: currentColor; }
         .login-btn {
             width: 100%;
             padding: 11px;
@@ -165,7 +188,12 @@
             </div>
             <div class="login-field">
                 <label for="password">Пароль</label>
-                <input type="password" id="password" name="password" autocomplete="current-password" required>
+                <div class="login-pw-wrap">
+                    <input type="password" id="password" name="password" autocomplete="current-password" required>
+                    <button type="button" class="login-pw-toggle" id="pwToggle" title="Показати / сховати пароль">
+                        <svg id="pwEyeIcon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="login-btn">Увійти</button>
         </form>
@@ -199,6 +227,16 @@
         applyTheme(next);
     };
     applyTheme(getCookie('jaam_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+    var pwInput = document.getElementById('password');
+    var pwToggle = document.getElementById('pwToggle');
+    var eyeOn = '<svg viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>';
+    var eyeOff = '<svg viewBox="0 0 24 24"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,4.5C17,4.5 21.27,7.61 23,12C22.32,13.76 21.26,15.31 19.93,16.57L18.5,15.14C19.54,14.23 20.39,13.07 20.82,12C19.17,8.64 15.76,6.5 12,6.5C10.91,6.5 9.84,6.68 8.84,7L7.3,5.47C8.74,4.85 10.33,4.5 12,4.5Z"/></svg>';
+    pwToggle.addEventListener('click', function() {
+        var hidden = pwInput.type === 'password';
+        pwInput.type = hidden ? 'text' : 'password';
+        pwToggle.innerHTML = hidden ? eyeOff : eyeOn;
+    });
 
     var params = new URLSearchParams(window.location.search);
     if (params.get('error') === '1') {

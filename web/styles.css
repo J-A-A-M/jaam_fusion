@@ -361,6 +361,29 @@ h1 {
 .password-toggle:hover { color: var(--text-color); }
 .password-toggle svg { width: 18px; height: 18px; fill: currentColor; }
 
+.pw-checklist {
+    list-style: none;
+    padding: 6px 0 2px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--secondary-text);
+}
+.pw-rule::before { content: '✗ '; color: #dc3545; }
+.pw-rule-ok::before { content: '✓ '; color: #28a745; }
+.pw-rule-ok { color: #28a745; }
+.pw-mismatch {
+    font-size: 12px;
+    color: #dc3545;
+    margin-top: 4px;
+    display: none;
+}
+.pw-saved {
+    font-size: 12px;
+    color: #28a745;
+    margin-top: 4px;
+    display: none;
+}
+
 .form-group {
     margin: 20px 0;
 }
