@@ -1158,14 +1158,14 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d increase\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
-                    updateSirenIfNeeded(localAlertBit);
                 } else {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d decrease\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     if (localAlertBit == -1) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit,
-                           settings.getInt(HOME_DISTRICT), homeIncrease);
+                           settings.getInt(HOME_DISTRICT), homeIncrease); 
+                updateSirenIfNeeded(localAlertBit);
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
