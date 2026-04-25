@@ -921,11 +921,16 @@ void JaamWeb::handleLoginPost() {
         }
         return;
     }
+    String storedPass = settings->getString(WEB_PASSWORD);
+    if (storedPass.length() == 0) {
+        server.sendHeader("Location", "/login?error=3");
+        server.send(302, "text/plain", "");
+        return;
+    }
     String login = server.arg("login");
     String pass = server.arg("password");
     String storedLogin = settings->getString(WEB_LOGIN);
-    String storedPass = settings->getString(WEB_PASSWORD);
-    if (login == storedLogin && pass == storedPass && pass.length() > 0) {
+    if (login == storedLogin && pass == storedPass) {
         sessionToken = generateToken();
         server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
         server.sendHeader("Location", "/");

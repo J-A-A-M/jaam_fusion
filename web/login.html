@@ -244,6 +244,14 @@
         msg.textContent = 'Невірний логін або пароль';
         msg.style.display = 'block';
     }
+    if (params.get('error') === '3') {
+        var msg = document.getElementById('errorMsg');
+        msg.textContent = 'Пароль не встановлено. Скористайтеся токеном відновлення для входу та встановіть пароль у налаштуваннях.';
+        msg.style.display = 'block';
+        document.getElementById('loginForm').style.opacity = '0.4';
+        document.getElementById('loginForm').style.pointerEvents = 'none';
+        document.getElementById('recoverySection').classList.add('visible');
+    }
     if (params.get('error') === '2') {
         var msg = document.getElementById('errorMsg');
         msg.textContent = 'Невірний токен відновлення';
