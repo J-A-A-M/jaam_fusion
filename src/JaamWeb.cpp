@@ -672,11 +672,9 @@ void JaamWeb::handleParameter() {
                     sessionToken = generateToken();
                     server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
                 }
-                // Generate recovery token if not yet done
-                if (recoveryToken.isEmpty()) {
-                    recoveryToken = generateToken();
-                    LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
-                }
+                // Always regenerate recovery token when auth is enabled
+                recoveryToken = generateToken();
+                LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
             }
             break;
         }
