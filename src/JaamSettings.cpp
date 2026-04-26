@@ -331,7 +331,7 @@ std::map<Type, SettingItemString> stringSettings = {
 
     // Web authentication
     {WEB_LOGIN, {"waulg", "admin"}},                         // Web auth login
-    {WEB_PASSWORD, {"waupass", ""}},                         // Web auth password
+    {WEB_PASSWORD, {"waupass", "admin"}},                     // Web auth password
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {
