@@ -6,7 +6,7 @@
 
 ## Вимоги
 
-```
+```bash
 pip install pytest requests
 ```
 
