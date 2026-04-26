@@ -178,9 +178,13 @@ bool JaamSiren::shouldRestoreDeviceOnStartup(uint8_t deviceIndex) const {
     if (!settings) {
         return true;
     }
-    return deviceIndex == 1
-        ? settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP)
-        : settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP_2);
+    switch (deviceIndex) {
+        case 1: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP);
+        case 2: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP_2);
+        default:
+            LOG.printf("[SIREN] shouldRestoreDeviceOnStartup: invalid deviceIndex=%u\n", deviceIndex);
+            return false;
+    }
 }
 
 void JaamSiren::setAlert(bool isStartupSync) {
