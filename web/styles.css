@@ -383,6 +383,11 @@ h1 {
     margin-top: 4px;
     display: none;
 }
+.pw-error {
+    font-size: 12px;
+    color: #dc3545;
+    margin-top: 4px;
+}
 
 .form-group {
     margin: 20px 0;

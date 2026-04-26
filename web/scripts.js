@@ -313,34 +313,17 @@ function updateColor(name, value) {
 }
 
 function updateTextParameter(name, value) {
-    fetch('/text', {
+    return fetch('/text', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'name=' + encodeURIComponent(name) + '&value=' + encodeURIComponent(value)
-    })
-        .then(r => {
-            if (!r.ok) {
-                return r.json().then(data => {
-                    if (data && data.error) {
-                        console.error('Server error:', data.error);
-                    } else {
-                        console.error('Помилка оновлення параметра');
-                    }
-                    throw new Error('Server error');
-                }).catch(jsonErr => {
-                    // Якщо не JSON відповідь
-                    if (jsonErr.message !== 'Server error') {
-                        console.error('Помилка оновлення параметра');
-                    }
-                    throw jsonErr;
-                });
-            }
-        })
-        .catch(e => {
-            if (e.message !== 'Server error') {
-                console.error('Network error:', e);
-            }
-        });
+    }).then(r => {
+        if (!r.ok) {
+            return r.json()
+                .then(data => { throw new Error((data && data.error) || 'Помилка оновлення параметра'); },
+                      ()    => { throw new Error('Помилка оновлення параметра'); });
+        }
+    });
 }
 
 // Settings backup/restore/reset functions
@@ -930,7 +913,7 @@ function renderControl(ctrl, lists) {
         inp.value = current;
         inp.placeholder = placeholder || '';
         inp.className = 'text-input';
-        inp.onchange = (e) => updateTextParameter(name, e.target.value);
+        inp.onchange = (e) => updateTextParameter(name, e.target.value).catch(() => {});
         
         div.appendChild(lab);
         div.appendChild(inp);
@@ -1050,6 +1033,10 @@ function renderControl(ctrl, lists) {
         savedMsg.className = 'pw-saved';
         savedMsg.textContent = 'Пароль збережено';
 
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'pw-error';
+        errorMsg.style.display = 'none';
+
         // --- Logic ---
         let savedValue = current;
 
@@ -1066,17 +1053,25 @@ function renderControl(ctrl, lists) {
             saveBtn.disabled = !(allOk && match && changed);
         }
 
-        saveBtn.addEventListener('click', () => {
+        saveBtn.addEventListener('click', async () => {
             const val = inp.value;
-            updateTextParameter(name, val);
-            savedValue = val;
-            inp.value = '';
-            confirmInp.value = '';
-            inp.placeholder = '••••••••';
             saveBtn.disabled = true;
-            savedMsg.style.display = 'block';
-            setTimeout(() => { savedMsg.style.display = 'none'; }, 2500);
-            validate();
+            errorMsg.style.display = 'none';
+            try {
+                await updateTextParameter(name, val);
+                savedValue = val;
+                inp.value = '';
+                confirmInp.value = '';
+                inp.placeholder = '••••••••';
+                savedMsg.style.display = 'block';
+                setTimeout(() => { savedMsg.style.display = 'none'; }, 2500);
+            } catch (e) {
+                errorMsg.textContent = e.message || 'Помилка збереження пароля';
+                errorMsg.style.display = 'block';
+                setTimeout(() => { errorMsg.style.display = 'none'; }, 4000);
+            } finally {
+                validate();
+            }
         });
 
         inp.addEventListener('input', validate);
@@ -1090,6 +1085,7 @@ function renderControl(ctrl, lists) {
         div.appendChild(mismatchMsg);
         div.appendChild(saveBtn);
         div.appendChild(savedMsg);
+        div.appendChild(errorMsg);
 
         if (visibility && visibility.trim() !== '') {
             div.setAttribute('data-visibility', visibility);

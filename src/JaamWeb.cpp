@@ -754,13 +754,41 @@ void JaamWeb::handleTextParameter() {
         case TYPE_STRING:
             if (settingType == WEB_PASSWORD && value.length() > 0) {
                 bool hasUpper = false, hasLower = false, hasDigit = false;
-                for (char c : value) {
-                    if (isupper(c)) hasUpper = true;
-                    else if (islower(c)) hasLower = true;
-                    else if (isdigit(c)) hasDigit = true;
+                size_t charCount = 0;
+                const char* s = value.c_str();
+                while (*s) {
+                    unsigned char b = (unsigned char)*s;
+                    uint32_t cp;
+                    if (b < 0x80) {
+                        cp = b; s += 1;
+                    } else if (b < 0xE0 && s[1]) {
+                        cp = ((uint32_t)(b & 0x1F) << 6) | ((unsigned char)s[1] & 0x3F);
+                        s += 2;
+                    } else if (b < 0xF0 && s[1] && s[2]) {
+                        cp = ((uint32_t)(b & 0x0F) << 12) | (((unsigned char)s[1] & 0x3F) << 6) | ((unsigned char)s[2] & 0x3F);
+                        s += 3;
+                    } else {
+                        s += (b < 0xF8 && s[1] && s[2] && s[3]) ? 4 : 1;
+                        charCount++; continue;
+                    }
+                    charCount++;
+                    if (cp < 0x80) {
+                        if (isupper((unsigned char)cp)) hasUpper = true;
+                        else if (islower((unsigned char)cp)) hasLower = true;
+                        else if (isdigit((unsigned char)cp)) hasDigit = true;
+                    } else if ((cp >= 0x0400 && cp <= 0x042F) || (cp >= 0x00C0 && cp <= 0x00D6) || (cp >= 0x00D8 && cp <= 0x00DE)) {
+                        hasUpper = true;
+                    } else if ((cp >= 0x0430 && cp <= 0x045F) || (cp >= 0x00E0 && cp <= 0x00F6) || (cp >= 0x00F8 && cp <= 0x00FF)) {
+                        hasLower = true;
+                    }
                 }
-                if (value.length() < 8 || !hasUpper || !hasLower || !hasDigit) {
-                    server.send(400, "application/json", "{\"error\":\"Password too weak\"}");
+                String details = "";
+                if (charCount < 8)  details += (details.isEmpty() ? "" : ",") + String("\"min 8 characters\"");
+                if (!hasUpper)      details += (details.isEmpty() ? "" : ",") + String("\"missing uppercase letter\"");
+                if (!hasLower)      details += (details.isEmpty() ? "" : ",") + String("\"missing lowercase letter\"");
+                if (!hasDigit)      details += (details.isEmpty() ? "" : ",") + String("\"missing digit\"");
+                if (!details.isEmpty()) {
+                    server.send(400, "application/json", "{\"error\":\"Password too weak\",\"details\":[" + details + "]}");
                     return;
                 }
             }
@@ -989,6 +1017,8 @@ void JaamWeb::handleLoginPost() {
 }
 
 void JaamWeb::handleLogout() {
+    if (!requireAuth()) return;
+    if (!validateMutatingRequest()) return;
     sessionToken = "";
     server.sendHeader("Set-Cookie", "session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
     server.sendHeader("Location", "/login");
@@ -1010,8 +1040,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     }
 
     // Налаштування веб-сервера
-    const char* headerKeys[] = {"Cookie"};
-    server.collectHeaders(headerKeys, 1);
+    const char* headerKeys[] = {"Cookie", "Origin", "Referer", "Host", "If-None-Match"};
+    server.collectHeaders(headerKeys, 5);
 
     //server.enableCORS();
     server.on("/login",  HTTP_GET,  [this]() { this->handleLogin(); });
