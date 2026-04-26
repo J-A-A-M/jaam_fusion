@@ -3,6 +3,11 @@
 #include <Arduino.h>
 #include "JaamSettings.h"
 
+enum SirenDevice {
+    PRIMARY = 0,
+    SECONDARY = 1
+};
+
 class JaamSiren {
 public:
     JaamSiren();

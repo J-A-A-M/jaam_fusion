@@ -179,8 +179,8 @@ bool JaamSiren::shouldRestoreDeviceOnStartup(uint8_t deviceIndex) const {
         return true;
     }
     switch (deviceIndex) {
-        case 1: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP);
-        case 2: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP_2);
+        case SirenDevice::PRIMARY: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP);
+        case SirenDevice::SECONDARY: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP_2);
         default:
             LOG.printf("[SIREN] shouldRestoreDeviceOnStartup: invalid deviceIndex=%u\n", deviceIndex);
             return false;
@@ -191,7 +191,7 @@ void JaamSiren::setAlert(bool isStartupSync) {
     alertInHomeRegion = true; // Встановлюємо прапорець, що в домашньому регіоні тривога
     
     // Перший комплект
-    if ((!isStartupSync || shouldRestoreDeviceOnStartup(1)) && alertPin > 0) {
+    if ((!isStartupSync || shouldRestoreDeviceOnStartup(SirenDevice::PRIMARY)) && alertPin > 0) {
         digitalWrite(alertPin, activeLevel);
         alertActive = true;
         
@@ -205,10 +205,12 @@ void JaamSiren::setAlert(bool isStartupSync) {
         } else {
             LOG.printf("[SIREN 1] Alert activated on pin %d (bistable mode)\n", alertPin);
         }
+    } else if (isStartupSync && !shouldRestoreDeviceOnStartup(SirenDevice::PRIMARY)) {
+        LOG.printf("[SIREN 1] Skip restore on startup in JaamSiren::setAlert (restore disabled for siren 1, alertPin=%d, clearPin=%d)\n", alertPin, clearPin);
     }
     
     // Другий комплект
-    if ((!isStartupSync || shouldRestoreDeviceOnStartup(2)) && alertPin2 > 0) {
+    if ((!isStartupSync || shouldRestoreDeviceOnStartup(SirenDevice::SECONDARY)) && alertPin2 > 0) {
         digitalWrite(alertPin2, activeLevel2);
         alertActive2 = true;
         
@@ -221,6 +223,8 @@ void JaamSiren::setAlert(bool isStartupSync) {
         } else {
             LOG.printf("[SIREN 2] Alert activated on pin %d (bistable mode)\n", alertPin2);
         }
+    } else if (isStartupSync && !shouldRestoreDeviceOnStartup(SirenDevice::SECONDARY)) {
+        LOG.printf("[SIREN 2] Skip restore on startup in JaamSiren::setAlert (restore disabled for siren 2, alertPin2=%d, clearPin2=%d)\n", alertPin2, clearPin2);
     }
 }
 
@@ -228,7 +232,7 @@ void JaamSiren::clearAlert(bool isStartupSync) {
     alertInHomeRegion = false; // Скидаємо прапорець, в домашньому регіоні безпечно
     
     // Перший комплект
-    if (!isStartupSync || shouldRestoreDeviceOnStartup(1)) {
+    if (!isStartupSync || shouldRestoreDeviceOnStartup(SirenDevice::PRIMARY)) {
         if (pinModeConfig == 0) {
         // Бістабільний режим: деактивуємо ALERT_PIN
             if (alertPin > 0) {
@@ -249,10 +253,12 @@ void JaamSiren::clearAlert(bool isStartupSync) {
                 LOG.printf("[SIREN 1] Clear activated on pin %d (pulse mode, %dms)\n", clearPin, pinTime);
             }
         }
+    } else {
+        LOG.printf("[SIREN 1] Skip restore on startup in JaamSiren::clearAlert (restore disabled for siren 1, alertPin=%d, clearPin=%d)\n", alertPin, clearPin);
     }
     
     // Другий комплект
-    if (!isStartupSync || shouldRestoreDeviceOnStartup(2)) {
+    if (!isStartupSync || shouldRestoreDeviceOnStartup(SirenDevice::SECONDARY)) {
         if (pinModeConfig2 == 0) {
             if (alertPin2 > 0) {
                 deactivatePin(alertPin2, activeLevel2);
@@ -271,6 +277,8 @@ void JaamSiren::clearAlert(bool isStartupSync) {
                 LOG.printf("[SIREN 2] Clear activated on pin %d (pulse mode, %dms)\n", clearPin2, pinTime2);
             }
         }
+    } else {
+        LOG.printf("[SIREN 2] Skip restore on startup in JaamSiren::clearAlert (restore disabled for siren 2, alertPin2=%d, clearPin2=%d)\n", alertPin2, clearPin2);
     }
 }
 
