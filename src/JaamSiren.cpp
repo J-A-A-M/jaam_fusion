@@ -174,7 +174,7 @@ void JaamSiren::setupPins() {
     }
 }
 
-bool JaamSiren::shouldRestoreDeviceOnStartup(uint8_t deviceIndex) const {
+bool JaamSiren::shouldRestoreDeviceOnStartup(SirenDevice deviceIndex) const {
     if (!settings) {
         return true;
     }

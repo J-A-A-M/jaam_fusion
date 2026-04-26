@@ -3,13 +3,12 @@
 #include <Arduino.h>
 #include "JaamSettings.h"
 
-enum SirenDevice {
-    PRIMARY = 0,
-    SECONDARY = 1
-};
-
 class JaamSiren {
 public:
+    enum class SirenDevice : uint8_t {
+        PRIMARY = 0,
+        SECONDARY = 1
+    };
     JaamSiren();
     
     void setSettings(JaamSettings* settings);
@@ -66,6 +65,6 @@ private:
     void deactivatePin(int pin, int activeLevel);
     void activatePin(int pin, int activeLevel);
     void resetPins();        // Скинути всі піни
-    bool shouldRestoreDeviceOnStartup(uint8_t deviceIndex) const;
+    bool shouldRestoreDeviceOnStartup(SirenDevice deviceIndex) const;
 
 };
