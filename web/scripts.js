@@ -730,9 +730,9 @@ function renderPasswordControl(ctrl) {
     function checkComplexity(val) {
         return {
             len:   val.length >= 8,
-            upper: /[A-Z]/.test(val),
-            lower: /[a-z]/.test(val),
-            digit: /[0-9]/.test(val),
+            upper: /\p{Lu}/u.test(val),
+            lower: /\p{Ll}/u.test(val),
+            digit: /\p{Nd}/u.test(val),
         };
     }
 

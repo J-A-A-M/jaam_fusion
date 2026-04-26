@@ -165,12 +165,14 @@ class TestAuthDisabled:
         assert resp.status_code == 200
 
     def test_login_page_accessible(self, base_url):
-        resp = requests.get(base_url + "/login", timeout=TIMEOUT)
-        assert resp.status_code == 200
+        # /login redirects to / when auth is disabled
+        resp = requests.get(base_url + "/login", allow_redirects=False, timeout=TIMEOUT)
+        assert resp.status_code == 302
+        assert urlparse(resp.headers.get("Location", "")).path == "/"
 
     def test_static_assets_accessible(self, base_url):
         for path in ["/styles.css", "/scripts.js"]:
-            resp = requests.get(base_url + path, timeout=TIMEOUT)
+            resp = requests.get(base_url + path, allow_redirects=False, timeout=TIMEOUT)
             assert resp.status_code == 200, f"{path} should be accessible"
 
 

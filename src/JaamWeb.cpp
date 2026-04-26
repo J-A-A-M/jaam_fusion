@@ -535,6 +535,7 @@ void JaamWeb::handleBgColorEditorJs() {
 
 
 void JaamWeb::handleColorParameter() {
+    if (!validateMutatingRequest()) return;
     if (!server.hasArg("name") || !server.hasArg("value")) {
         server.send(400, "text/plain", "Missing parameters");
         return;
@@ -590,6 +591,7 @@ void JaamWeb::handleColorParameter() {
 }
 
 void JaamWeb::handleParameter() {
+    if (!validateMutatingRequest()) return;
     if (!server.hasArg("name") || !server.hasArg("value")) {
         server.send(400, "text/plain", "Missing parameters");
         return;
@@ -668,15 +670,15 @@ void JaamWeb::handleParameter() {
 
             if (success && settingType == WEB_AUTH_ENABLED) {
                 if (intValue != 0) {
-                    // Auto-login the current user who just enabled auth
-                    if (sessionToken.isEmpty()) {
-                        sessionToken = generateToken();
-                        server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
-                    }
-                    // Always regenerate recovery token when auth is enabled
+                    // Always issue a fresh session so stale cookies from a previous
+                    // auth period cannot be replayed after re-enabling auth
+                    sessionToken = generateToken();
+                    server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
                     recoveryToken = generateToken();
                     LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
                 } else {
+                    sessionToken.clear();
+                    server.sendHeader("Set-Cookie", "session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
                     recoveryToken.clear();
                 }
             }
@@ -716,6 +718,7 @@ void JaamWeb::handleParameter() {
 }
 
 void JaamWeb::handleTextParameter() {
+    if (!validateMutatingRequest()) return;
     if (!server.hasArg("name") || !server.hasArg("value")) {
         server.send(400, "text/plain", "Missing parameters");
         return;
@@ -793,7 +796,8 @@ void JaamWeb::handleTextParameter() {
                 }
             }
             success = settings->saveString(settingType, valuePtr);
-            LOG.printf("[WEB] Setting %s: %s (success: %d)\n", name.c_str(), valuePtr, success);
+            LOG.printf("[WEB] Setting %s: %s (success: %d)\n", name.c_str(),
+                settingType == WEB_PASSWORD ? "<redacted>" : valuePtr, success);
             break;
         case TYPE_FLOAT:
             success = settings->saveFloat(settingType, value.toFloat());
@@ -1332,6 +1336,7 @@ static void appendOptionsList(JsonArray arr, const SettingListItem items[], int 
 }
 
 void JaamWeb::handleSaveMap() {
+    if (!validateMutatingRequest()) return;
     if (storage == nullptr) {
         LOG.printf("[WEB] Storage is not set\n");
         server.send(500, "text/plain", "Storage not initialized");
@@ -1548,6 +1553,7 @@ void JaamWeb::handleBgColorsData() {
 }
 
 void JaamWeb::handleSaveBgColors() {
+    if (!validateMutatingRequest()) return;
     LOG.printf("[WEB] Handling save BG colors request\n");
     if (storage == nullptr) {
         LOG.printf("[WEB] Storage is not set\n");

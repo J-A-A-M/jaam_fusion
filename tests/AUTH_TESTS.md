@@ -36,7 +36,7 @@ pytest tests/test_web_auth.py --ip <ip-пристрою> --login admin --passwor
 | `test_root_accessible` | `GET /` повертає 200 |
 | `test_system_info_accessible` | `GET /system-info` повертає 200 |
 | `test_alerts_info_accessible` | `GET /alerts-info` повертає 200 |
-| `test_login_page_accessible` | `GET /login` повертає 200 |
+| `test_login_page_accessible` | `GET /login` при вимкненій авторизації повертає 302 → `/` |
 | `test_static_assets_accessible` | `/styles.css` і `/scripts.js` повертають 200 |
 
 ### `TestAuthEnabled`
