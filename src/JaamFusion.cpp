@@ -1163,7 +1163,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     if (localAlertBit == -1) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
                 }
-                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease); 
+                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
             }
             alertBit = localAlertBit;
