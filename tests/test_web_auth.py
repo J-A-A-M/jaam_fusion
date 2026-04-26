@@ -43,7 +43,7 @@ def base_url(device_ip):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def ping_device(device_ip, base_url):
+def ping_device(device_ip):
     result = subprocess.run(
         ["ping", "-c", "1", "-W", "2", device_ip],
         stdout=subprocess.DEVNULL,
@@ -51,9 +51,6 @@ def ping_device(device_ip, base_url):
     )
     if result.returncode != 0:
         pytest.skip(f"Device {device_ip} is unreachable (ping failed)")
-    resp = requests.get(base_url + "/", allow_redirects=False, timeout=TIMEOUT)
-    if resp.status_code == 302 and "/login" in resp.headers.get("Location", ""):
-        pytest.skip("Auth is enabled on the device — disable it before running tests")
 
 
 @pytest.fixture(scope="session")
@@ -195,7 +192,7 @@ class TestAuthEnabled:
 
     def test_login_success(self, base_url, ensure_auth_enabled):
         creds = ensure_auth_enabled
-        session, resp = do_login(base_url, creds["login"], creds["password"])
+        _, resp = do_login(base_url, creds["login"], creds["password"])
         assert resp.status_code == 302
         assert "error" not in resp.headers.get("Location", ""), f"Login failed: {resp.headers.get('Location')}"
 
@@ -264,4 +261,4 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python3 tests/test_web_auth.py <ip> [--login <login>] [--password <password>]")
         sys.exit(1)
-    sys.exit(pytest.main([__file__, f"--ip={sys.argv[1]}", "-v"] + sys.argv[2:]))
+    sys.exit(pytest.main([__file__, f"--ip={sys.argv[1]}", "-v", *sys.argv[2:]]))
