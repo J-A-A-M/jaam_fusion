@@ -55,7 +55,7 @@ pytest tests/test_web_auth.py --ip <ip-пристрою> --login admin --passwor
 | `test_login_wrong_login` | Неправильний логін → `error=1` |
 | `test_login_empty_submitted_password` | Порожній пароль → `error=1` |
 | `test_login_invalid_recovery_token` | Невірний токен відновлення → `error=2` |
-| `test_login_empty_recovery_token` | Порожній токен відновлення → `error=` |
+| `test_login_empty_recovery_token_falls_through_to_login` | Порожній recovery-токен → сервер ігнорує recovery і перевіряє логін/пароль → `error=1` |
 | `test_logout_clears_session` | Після виходу сесія більше не дає доступу |
 | `test_login_page_public` | `GET /login` повертає 200 без сесії |
 | `test_static_assets_public` | Статичні файли повертають 200 без сесії |

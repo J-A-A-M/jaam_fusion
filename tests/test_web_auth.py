@@ -80,7 +80,7 @@ def admin_session(base_url, credentials, initial_auth_state):
 
 
 def set_param(session, base_url, name, value):
-    resp = session.post(base_url + "/parameter", data={"name": name, "value": str(value)}, timeout=TIMEOUT)
+    resp = session.post(base_url + "/parameter", data={"name": name, "value": str(value)}, allow_redirects=False, timeout=TIMEOUT)
     assert resp.status_code == 200, f"Failed to set {name}={value}: {resp.status_code}"
 
 
@@ -114,7 +114,12 @@ def ensure_auth_enabled(base_url, admin_session, credentials, initial_auth_state
         assert resp.status_code == 200, "Failed to enable auth"
     yield credentials
     if not initial_auth_state:
-        set_param(admin_session, base_url, "web_auth_enabled", "0")
+        # Re-authenticate: tests may have invalidated admin_session's cookie
+        # because the device uses a single session token (any new login overwrites it)
+        teardown_session, resp = do_login(base_url, credentials["login"], credentials["password"])
+        assert resp.status_code == 302 and "error" not in resp.headers.get("Location", ""), \
+            "Re-auth for teardown failed"
+        set_param(teardown_session, base_url, "web_auth_enabled", "0")
 
 
 # ---------------------------------------------------------------------------
@@ -225,10 +230,11 @@ class TestAuthEnabled:
         assert resp.status_code == 302
         assert "error=2" in resp.headers.get("Location", "")
 
-    def test_login_empty_recovery_token(self, base_url):
+    def test_login_empty_recovery_token_falls_through_to_login(self, base_url):
+        # Server ignores recovery="" and falls through to login/password check → error=1
         _, resp = do_recovery_login(base_url, "")
         assert resp.status_code == 302
-        assert "error=" in resp.headers.get("Location", "")
+        assert "error=1" in resp.headers.get("Location", "")
 
     def test_logout_clears_session(self, base_url, ensure_auth_enabled):
         creds = ensure_auth_enabled
