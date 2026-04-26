@@ -27,8 +27,8 @@ private:
     Adafruit_NeoPixel* strip_main;
     Adafruit_NeoPixel* strip_bg;
     Adafruit_NeoPixel* strip_service;
-    String sessionToken;
-    String recoveryToken;
+    String sessionToken;   // single active session — any new login replaces it (intentional single-user design)
+    String recoveryToken;  // one-time token, regenerated each time auth is enabled, cleared after use
     bool requireAuth();
     void handleLogin();
     void handleLoginPost();

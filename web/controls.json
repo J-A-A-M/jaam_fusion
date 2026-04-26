@@ -427,7 +427,7 @@
             "text",
             "web_login",
             "Логін",
-            "admin",
+            "наприклад: admin",
             "network",
             "web_auth_enabled==1"
         ],

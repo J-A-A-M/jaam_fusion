@@ -95,12 +95,12 @@ h1 {
 .control-button svg {
     width: 18px;
     height: 18px;
-    fill: currentColor;
+    fill: currentcolor;
     transition: fill 0.3s ease;
 }
 
 .control-button.active svg {
-    fill: currentColor;
+    fill: currentcolor;
 }
 
 /* Перемикач теми - залишаємо для зворотної сумісності */
@@ -120,7 +120,7 @@ h1 {
 .theme-toggle svg {
     width: 20px;
     height: 20px;
-    fill: currentColor;
+    fill: currentcolor;
     transition: fill 0.3s ease;
 }
 
@@ -195,7 +195,7 @@ h1 {
     width: 16px;
     height: 16px;
     margin-right: 8px;
-    fill: currentColor;
+    fill: currentcolor;
 }
 
 .metric-label {
@@ -359,7 +359,7 @@ h1 {
     color: var(--secondary-text);
 }
 .password-toggle:hover { color: var(--text-color); }
-.password-toggle svg { width: 18px; height: 18px; fill: currentColor; }
+.password-toggle svg { width: 18px; height: 18px; fill: currentcolor; }
 
 .pw-checklist {
     list-style: none;
@@ -502,7 +502,7 @@ h1 {
 .alert-detail-icon {
     width: 16px;
     height: 16px;
-    fill: currentColor;
+    fill: currentcolor;
     margin-right: 8px;
 }
 
@@ -590,7 +590,7 @@ h1 {
     height: 18px;
     margin-right: 5px;
     flex-shrink: 0;
-    fill: currentColor;
+    fill: currentcolor;
 }
 
 .info-text {

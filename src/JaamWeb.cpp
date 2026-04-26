@@ -666,15 +666,19 @@ void JaamWeb::handleParameter() {
             success = settings->saveBool(settingType, intValue != 0);
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), intValue != 0, success);
 
-            if (success && settingType == WEB_AUTH_ENABLED && intValue != 0) {
-                // Auto-login the current user who just enabled auth
-                if (sessionToken.isEmpty()) {
-                    sessionToken = generateToken();
-                    server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
+            if (success && settingType == WEB_AUTH_ENABLED) {
+                if (intValue != 0) {
+                    // Auto-login the current user who just enabled auth
+                    if (sessionToken.isEmpty()) {
+                        sessionToken = generateToken();
+                        server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
+                    }
+                    // Always regenerate recovery token when auth is enabled
+                    recoveryToken = generateToken();
+                    LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
+                } else {
+                    recoveryToken.clear();
                 }
-                // Always regenerate recovery token when auth is enabled
-                recoveryToken = generateToken();
-                LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
             }
             break;
         }
@@ -748,6 +752,18 @@ void JaamWeb::handleTextParameter() {
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), value.toInt(), success);
             break;
         case TYPE_STRING:
+            if (settingType == WEB_PASSWORD && value.length() > 0) {
+                bool hasUpper = false, hasLower = false, hasDigit = false;
+                for (char c : value) {
+                    if (isupper(c)) hasUpper = true;
+                    else if (islower(c)) hasLower = true;
+                    else if (isdigit(c)) hasDigit = true;
+                }
+                if (value.length() < 8 || !hasUpper || !hasLower || !hasDigit) {
+                    server.send(400, "application/json", "{\"error\":\"Password too weak\"}");
+                    return;
+                }
+            }
             success = settings->saveString(settingType, valuePtr);
             LOG.printf("[WEB] Setting %s: %s (success: %d)\n", name.c_str(), valuePtr, success);
             break;
@@ -880,18 +896,32 @@ static String generateToken() {
     return token;
 }
 
+static String parseCookie(const String& cookieHeader, const String& name) {
+    String prefix = name + "=";
+    int start = 0;
+    while (start <= (int)cookieHeader.length()) {
+        int sep = cookieHeader.indexOf(';', start);
+        String pair = (sep >= 0) ? cookieHeader.substring(start, sep) : cookieHeader.substring(start);
+        pair.trim();
+        if (pair.startsWith(prefix)) return pair.substring(prefix.length());
+        if (sep < 0) break;
+        start = sep + 1;
+    }
+    return "";
+}
+
+static bool constantTimeEquals(const String& a, const String& b) {
+    if (a.length() != b.length()) return false;
+    uint8_t diff = 0;
+    for (size_t i = 0; i < a.length(); i++) diff |= (uint8_t)a[i] ^ (uint8_t)b[i];
+    return diff == 0;
+}
+
 bool JaamWeb::requireAuth() {
     if (!settings->getBool(WEB_AUTH_ENABLED)) return true;
     if (sessionToken.length() > 0) {
-        String cookie = server.header("Cookie");
-        int idx = cookie.indexOf("session=");
-        if (idx >= 0) {
-            String tok = cookie.substring(idx + 8);
-            int end = tok.indexOf(';');
-            if (end >= 0) tok = tok.substring(0, end);
-            tok.trim();
-            if (tok == sessionToken) return true;
-        }
+        String tok = parseCookie(server.header("Cookie"), "session");
+        if (constantTimeEquals(tok, sessionToken)) return true;
     }
     server.sendHeader("Location", "/login");
     server.send(302, "text/plain", "");
@@ -899,19 +929,17 @@ bool JaamWeb::requireAuth() {
 }
 
 void JaamWeb::handleLogin() {
-    if (settings->getBool(WEB_AUTH_ENABLED) && sessionToken.length() > 0) {
-        String cookie = server.header("Cookie");
-        int idx = cookie.indexOf("session=");
-        if (idx >= 0) {
-            String tok = cookie.substring(idx + 8);
-            int end = tok.indexOf(';');
-            if (end >= 0) tok = tok.substring(0, end);
-            tok.trim();
-            if (tok == sessionToken) {
-                server.sendHeader("Location", "/");
-                server.send(302, "text/plain", "");
-                return;
-            }
+    if (!settings->getBool(WEB_AUTH_ENABLED)) {
+        server.sendHeader("Location", "/");
+        server.send(302, "text/plain", "");
+        return;
+    }
+    if (sessionToken.length() > 0) {
+        String tok = parseCookie(server.header("Cookie"), "session");
+        if (constantTimeEquals(tok, sessionToken)) {
+            server.sendHeader("Location", "/");
+            server.send(302, "text/plain", "");
+            return;
         }
     }
     server.sendHeader("Content-Encoding", "gzip");
@@ -921,11 +949,17 @@ void JaamWeb::handleLogin() {
 }
 
 void JaamWeb::handleLoginPost() {
+    if (!settings->getBool(WEB_AUTH_ENABLED)) {
+        server.sendHeader("Location", "/");
+        server.send(302, "text/plain", "");
+        return;
+    }
     String recovery = server.arg("recovery");
     if (recovery.length() > 0) {
-        if (recoveryToken.length() > 0 && recovery == recoveryToken) {
+        if (recoveryToken.length() > 0 && constantTimeEquals(recovery, recoveryToken)) {
+            recoveryToken = "";
             sessionToken = generateToken();
-            server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
+            server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
             server.sendHeader("Location", "/");
             server.send(302, "text/plain", "");
         } else {
@@ -943,9 +977,9 @@ void JaamWeb::handleLoginPost() {
     String login = server.arg("login");
     String pass = server.arg("password");
     String storedLogin = settings->getString(WEB_LOGIN);
-    if (login == storedLogin && pass == storedPass) {
+    if (constantTimeEquals(login, storedLogin) && constantTimeEquals(pass, storedPass)) {
         sessionToken = generateToken();
-        server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; Path=/");
+        server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
         server.sendHeader("Location", "/");
         server.send(302, "text/plain", "");
     } else {
@@ -956,7 +990,7 @@ void JaamWeb::handleLoginPost() {
 
 void JaamWeb::handleLogout() {
     sessionToken = "";
-    server.sendHeader("Set-Cookie", "session=; HttpOnly; Path=/; Max-Age=0");
+    server.sendHeader("Set-Cookie", "session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
     server.sendHeader("Location", "/login");
     server.send(302, "text/plain", "");
 }

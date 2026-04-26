@@ -988,6 +988,8 @@ function renderControl(ctrl, lists) {
         inp.value = '';
         inp.placeholder = current ? '••••••••' : (placeholder || '');
         inp.className = 'text-input';
+        inp.autocomplete = 'new-password';
+        inp.maxLength = 128;
 
         wrapper.appendChild(inp);
         wrapper.appendChild(makeToggle(inp));
@@ -1013,6 +1015,7 @@ function renderControl(ctrl, lists) {
         // --- Confirm field ---
         const confirmLabel = document.createElement('label');
         confirmLabel.textContent = 'Підтвердження паролю:';
+        confirmLabel.htmlFor = name + '_confirm';
         confirmLabel.style.marginTop = '10px';
         confirmLabel.style.display = 'block';
 
@@ -1021,8 +1024,11 @@ function renderControl(ctrl, lists) {
 
         const confirmInp = document.createElement('input');
         confirmInp.type = 'password';
+        confirmInp.id = name + '_confirm';
         confirmInp.placeholder = 'Повторіть пароль';
         confirmInp.className = 'text-input';
+        confirmInp.autocomplete = 'new-password';
+        confirmInp.maxLength = 128;
 
         confirmWrapper.appendChild(confirmInp);
         confirmWrapper.appendChild(makeToggle(confirmInp));
@@ -1034,7 +1040,7 @@ function renderControl(ctrl, lists) {
         // --- Save button ---
         const saveBtn = document.createElement('button');
         saveBtn.type = 'button';
-        saveBtn.className = 'control-button';
+        saveBtn.className = 'form-button';
         saveBtn.textContent = 'Зберегти пароль';
         saveBtn.disabled = true;
         saveBtn.style.marginTop = '10px';
