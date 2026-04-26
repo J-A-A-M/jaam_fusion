@@ -14,6 +14,7 @@ The IP is pinged before any tests — all are skipped if the device is unreachab
 """
 import subprocess
 import sys
+from urllib.parse import urlparse
 import pytest
 import requests
 
@@ -182,13 +183,13 @@ class TestAuthEnabled:
     def test_root_redirects_to_login(self, base_url):
         resp = requests.get(base_url + "/", allow_redirects=False, timeout=TIMEOUT)
         assert resp.status_code == 302
-        assert "/login" in resp.headers.get("Location", "")
+        assert urlparse(resp.headers.get("Location", "")).path == "/login"
 
     def test_protected_endpoints_redirect_without_session(self, base_url):
         for path in ["/system-info", "/alerts-info", "/map-data", "/ui-schema/models"]:
             resp = requests.get(base_url + path, allow_redirects=False, timeout=TIMEOUT)
             assert resp.status_code == 302, f"{path} should redirect without session"
-            assert "/login" in resp.headers.get("Location", "")
+            assert urlparse(resp.headers.get("Location", "")).path == "/login"
 
     def test_login_success(self, base_url, ensure_auth_enabled):
         creds = ensure_auth_enabled
@@ -241,11 +242,11 @@ class TestAuthEnabled:
 
         logout = session.post(base_url + "/logout", allow_redirects=False, timeout=TIMEOUT)
         assert logout.status_code == 302
-        assert "/login" in logout.headers.get("Location", "")
+        assert urlparse(logout.headers.get("Location", "")).path == "/login"
 
         after = session.get(base_url + "/", allow_redirects=False, timeout=TIMEOUT)
         assert after.status_code == 302
-        assert "/login" in after.headers.get("Location", "")
+        assert urlparse(after.headers.get("Location", "")).path == "/login"
 
     def test_login_page_public(self, base_url):
         resp = requests.get(base_url + "/login", timeout=TIMEOUT)
