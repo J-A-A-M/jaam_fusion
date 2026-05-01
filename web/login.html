@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAAM — Вхід</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .login-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .login-card {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px 28px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+        }
+        .login-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0 0 8px;
+            text-align: center;
+        }
+        .login-subtitle {
+            font-size: 13px;
+            color: var(--secondary-text);
+            text-align: center;
+            margin: 0 0 24px;
+        }
+        .login-field {
+            margin-bottom: 14px;
+        }
+        .login-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--secondary-text);
+        }
+        .login-field input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 7px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: border-color 0.15s;
+        }
+        .login-field input:focus {
+            outline: none;
+            border-color: #17a2b8;
+        }
+        .login-pw-wrap {
+            position: relative;
+        }
+        .login-pw-wrap input {
+            padding-right: 40px;
+        }
+        .login-pw-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            color: var(--secondary-text);
+        }
+        .login-pw-toggle:hover { color: var(--text-color); }
+        .login-pw-toggle svg { width: 18px; height: 18px; fill: currentColor; }
+        .login-btn {
+            width: 100%;
+            padding: 11px;
+            background: #17a2b8;
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: background 0.15s;
+        }
+        .login-btn:hover { background: #138496; }
+        .login-error {
+            background: rgba(220,53,69,0.12);
+            color: #dc3545;
+            border: 1px solid rgba(220,53,69,0.4);
+            border-radius: 7px;
+            padding: 9px 12px;
+            font-size: 13px;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .recovery-toggle {
+            display: block;
+            width: 100%;
+            margin-top: 16px;
+            padding: 0;
+            background: none;
+            border: none;
+            color: var(--secondary-text);
+            font-size: 13px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .recovery-toggle:hover { color: var(--text-color); }
+        .recovery-section {
+            display: none;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        .recovery-section.visible { display: block; }
+        .recovery-section .login-field label { color: var(--secondary-text); }
+        .recovery-btn {
+            width: 100%;
+            padding: 11px;
+            background: none;
+            color: var(--secondary-text);
+            border: 1px solid var(--border-color);
+            border-radius: 7px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .recovery-btn:hover { border-color: var(--text-color); color: var(--text-color); }
+        .theme-toggle-wrap {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+        }
+        .theme-toggle-wrap button {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+        }
+        .theme-toggle-wrap button svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+<div class="theme-toggle-wrap">
+    <button onclick="toggleTheme()" title="Перемкнути тему">
+        <svg viewBox="0 0 24 24"><path d="M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+    </button>
+</div>
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-title">JAAM</div>
+        <div class="login-subtitle">Введіть дані для входу</div>
+
+        <div class="login-error" id="errorMsg"></div>
+
+        <form id="loginForm" method="POST" action="/login" autocomplete="on">
+            <div class="login-field">
+                <label for="login">Логін</label>
+                <input type="text" id="login" name="login" autocomplete="username" required>
+            </div>
+            <div class="login-field">
+                <label for="password">Пароль</label>
+                <div class="login-pw-wrap">
+                    <input type="password" id="password" name="password" autocomplete="current-password" required>
+                    <button type="button" class="login-pw-toggle" id="pwToggle" title="Показати / сховати пароль">
+                        <svg id="pwEyeIcon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="login-btn">Увійти</button>
+        </form>
+
+        <button class="recovery-toggle" onclick="toggleRecovery()">Вхід з токеном відновлення</button>
+
+        <div class="recovery-section" id="recoverySection">
+            <form method="POST" action="/login" autocomplete="off">
+                <div class="login-field">
+                    <label for="recoveryToken">Токен відновлення</label>
+                    <input type="text" id="recoveryToken" name="recovery" placeholder="Введіть токен із серійного логу" spellcheck="false" autocorrect="off" autocapitalize="off" required>
+                </div>
+                <button type="submit" class="recovery-btn">Увійти за токеном</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function getCookie(name) {
+        var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+    }
+    window.toggleTheme = function() {
+        var cur = document.documentElement.getAttribute('data-theme') || 'light';
+        var next = cur === 'dark' ? 'light' : 'dark';
+        document.cookie = 'jaam_theme=' + encodeURIComponent(next) + '; max-age=31536000; path=/';
+        applyTheme(next);
+    };
+    applyTheme(getCookie('jaam_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+    var pwInput = document.getElementById('password');
+    var pwToggle = document.getElementById('pwToggle');
+    var eyeOn = '<svg viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>';
+    var eyeOff = '<svg viewBox="0 0 24 24"><path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,4.5C17,4.5 21.27,7.61 23,12C22.32,13.76 21.26,15.31 19.93,16.57L18.5,15.14C19.54,14.23 20.39,13.07 20.82,12C19.17,8.64 15.76,6.5 12,6.5C10.91,6.5 9.84,6.68 8.84,7L7.3,5.47C8.74,4.85 10.33,4.5 12,4.5Z"/></svg>';
+    pwToggle.addEventListener('click', function() {
+        var hidden = pwInput.type === 'password';
+        pwInput.type = hidden ? 'text' : 'password';
+        pwToggle.innerHTML = hidden ? eyeOff : eyeOn;
+    });
+
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('error') === '1') {
+        var msg = document.getElementById('errorMsg');
+        msg.textContent = 'Невірний логін або пароль';
+        msg.style.display = 'block';
+    }
+    if (params.get('error') === '3') {
+        var msg = document.getElementById('errorMsg');
+        msg.textContent = 'Пароль не встановлено. Скористайтеся токеном відновлення для входу та встановіть пароль у налаштуваннях.';
+        msg.style.display = 'block';
+        document.getElementById('loginForm').style.opacity = '0.4';
+        document.getElementById('loginForm').style.pointerEvents = 'none';
+        document.getElementById('recoverySection').classList.add('visible');
+    }
+    if (params.get('error') === '2') {
+        var msg = document.getElementById('errorMsg');
+        msg.textContent = 'Невірний токен відновлення';
+        msg.style.display = 'block';
+        document.getElementById('recoverySection').classList.add('visible');
+    }
+
+    window.toggleRecovery = function() {
+        var s = document.getElementById('recoverySection');
+        s.classList.toggle('visible');
+        if (s.classList.contains('visible')) {
+            document.getElementById('recoveryToken').focus();
+        }
+    };
+})();
+</script>
+</body>
+</html>

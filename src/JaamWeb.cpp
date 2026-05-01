@@ -38,6 +38,8 @@ extern void requestReconfigureAll();
 extern void requestRebootDevice();
 
 
+static String generateToken();
+
 // Допоміжні функції для строгого парсингу
 static bool parseStrictInt(const String& s, int& out) {
     if (s.length() == 0) return false;
@@ -113,7 +115,10 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"ntp_host", NTP_HOST, TYPE_STRING},
     {"api_enabled", API_ENABLED, TYPE_BOOL},
     {"api_port", API_PORT, TYPE_INT},
-    
+    {"web_auth_enabled", WEB_AUTH_ENABLED, TYPE_BOOL},
+    {"web_login", WEB_LOGIN, TYPE_STRING},
+    {"web_password", WEB_PASSWORD, TYPE_STRING},
+
     // Hardware
     {"main_led_pin", MAIN_LED_PIN, TYPE_INT},
     {"main_led_count", MAIN_LED_COUNT, TYPE_INT},
@@ -532,6 +537,7 @@ void JaamWeb::handleBgColorEditorJs() {
 
 
 void JaamWeb::handleColorParameter() {
+    if (!validateMutatingRequest()) return;
     if (!server.hasArg("name") || !server.hasArg("value")) {
         server.send(400, "text/plain", "Missing parameters");
         return;
@@ -587,6 +593,7 @@ void JaamWeb::handleColorParameter() {
 }
 
 void JaamWeb::handleParameter() {
+    if (!validateMutatingRequest()) return;
     if (!server.hasArg("name") || !server.hasArg("value")) {
         server.send(400, "text/plain", "Missing parameters");
         return;
@@ -662,6 +669,21 @@ void JaamWeb::handleParameter() {
             
             success = settings->saveBool(settingType, intValue != 0);
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), intValue != 0, success);
+
+            if (success && settingType == WEB_AUTH_ENABLED) {
+                if (intValue != 0) {
+                    // Always issue a fresh session so stale cookies from a previous
+                    // auth period cannot be replayed after re-enabling auth
+                    sessionToken = generateToken();
+                    server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
+                    recoveryToken = generateToken();
+                    LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
+                } else {
+                    sessionToken.clear();
+                    server.sendHeader("Set-Cookie", "session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+                    recoveryToken.clear();
+                }
+            }
             break;
         }
             
@@ -698,6 +720,7 @@ void JaamWeb::handleParameter() {
 }
 
 void JaamWeb::handleTextParameter() {
+    if (!validateMutatingRequest()) return;
     if (!server.hasArg("name") || !server.hasArg("value")) {
         server.send(400, "text/plain", "Missing parameters");
         return;
@@ -734,8 +757,49 @@ void JaamWeb::handleTextParameter() {
             LOG.printf("[WEB] Setting %s: %d (success: %d)\n", name.c_str(), value.toInt(), success);
             break;
         case TYPE_STRING:
+            if (settingType == WEB_PASSWORD && value.length() > 0) {
+                bool hasUpper = false, hasLower = false, hasDigit = false;
+                size_t charCount = 0;
+                const char* s = value.c_str();
+                while (*s) {
+                    unsigned char b = (unsigned char)*s;
+                    uint32_t cp;
+                    if (b < 0x80) {
+                        cp = b; s += 1;
+                    } else if (b < 0xE0 && s[1]) {
+                        cp = ((uint32_t)(b & 0x1F) << 6) | ((unsigned char)s[1] & 0x3F);
+                        s += 2;
+                    } else if (b < 0xF0 && s[1] && s[2]) {
+                        cp = ((uint32_t)(b & 0x0F) << 12) | (((unsigned char)s[1] & 0x3F) << 6) | ((unsigned char)s[2] & 0x3F);
+                        s += 3;
+                    } else {
+                        s += (b < 0xF8 && s[1] && s[2] && s[3]) ? 4 : 1;
+                        charCount++; continue;
+                    }
+                    charCount++;
+                    if (cp < 0x80) {
+                        if (isupper((unsigned char)cp)) hasUpper = true;
+                        else if (islower((unsigned char)cp)) hasLower = true;
+                        else if (isdigit((unsigned char)cp)) hasDigit = true;
+                    } else if ((cp >= 0x0400 && cp <= 0x042F) || (cp >= 0x00C0 && cp <= 0x00D6) || (cp >= 0x00D8 && cp <= 0x00DE)) {
+                        hasUpper = true;
+                    } else if ((cp >= 0x0430 && cp <= 0x045F) || (cp >= 0x00E0 && cp <= 0x00F6) || (cp >= 0x00F8 && cp <= 0x00FF)) {
+                        hasLower = true;
+                    }
+                }
+                String details = "";
+                if (charCount < 8)  details += (details.isEmpty() ? "" : ",") + String("\"min 8 characters\"");
+                if (!hasUpper)      details += (details.isEmpty() ? "" : ",") + String("\"missing uppercase letter\"");
+                if (!hasLower)      details += (details.isEmpty() ? "" : ",") + String("\"missing lowercase letter\"");
+                if (!hasDigit)      details += (details.isEmpty() ? "" : ",") + String("\"missing digit\"");
+                if (!details.isEmpty()) {
+                    server.send(400, "application/json", "{\"error\":\"Password too weak\",\"details\":[" + details + "]}");
+                    return;
+                }
+            }
             success = settings->saveString(settingType, valuePtr);
-            LOG.printf("[WEB] Setting %s: %s (success: %d)\n", name.c_str(), valuePtr, success);
+            LOG.printf("[WEB] Setting %s: %s (success: %d)\n", name.c_str(),
+                settingType == WEB_PASSWORD ? "<redacted>" : valuePtr, success);
             break;
         case TYPE_FLOAT:
             success = settings->saveFloat(settingType, value.toFloat());
@@ -854,6 +918,119 @@ void JaamWeb::handleNotFound() {
     server.send(404, "text/plain", "Not found");
 }
 
+// --- Auth ---
+
+static String generateToken() {
+    String token;
+    token.reserve(32);
+    const char chars[] = "0123456789abcdef";
+    for (int i = 0; i < 32; i++) {
+        token += chars[esp_random() % 16];
+    }
+    return token;
+}
+
+static String parseCookie(const String& cookieHeader, const String& name) {
+    String prefix = name + "=";
+    int start = 0;
+    while (start <= (int)cookieHeader.length()) {
+        int sep = cookieHeader.indexOf(';', start);
+        String pair = (sep >= 0) ? cookieHeader.substring(start, sep) : cookieHeader.substring(start);
+        pair.trim();
+        if (pair.startsWith(prefix)) return pair.substring(prefix.length());
+        if (sep < 0) break;
+        start = sep + 1;
+    }
+    return "";
+}
+
+static bool constantTimeEquals(const String& a, const String& b) {
+    if (a.length() != b.length()) return false;
+    uint8_t diff = 0;
+    for (size_t i = 0; i < a.length(); i++) diff |= (uint8_t)a[i] ^ (uint8_t)b[i];
+    return diff == 0;
+}
+
+bool JaamWeb::requireAuth() {
+    if (!settings->getBool(WEB_AUTH_ENABLED)) return true;
+    if (sessionToken.length() > 0) {
+        String tok = parseCookie(server.header("Cookie"), "session");
+        if (constantTimeEquals(tok, sessionToken)) return true;
+    }
+    server.sendHeader("Location", "/login");
+    server.send(302, "text/plain", "");
+    return false;
+}
+
+void JaamWeb::handleLogin() {
+    if (!settings->getBool(WEB_AUTH_ENABLED)) {
+        server.sendHeader("Location", "/");
+        server.send(302, "text/plain", "");
+        return;
+    }
+    if (sessionToken.length() > 0) {
+        String tok = parseCookie(server.header("Cookie"), "session");
+        if (constantTimeEquals(tok, sessionToken)) {
+            server.sendHeader("Location", "/");
+            server.send(302, "text/plain", "");
+            return;
+        }
+    }
+    server.sendHeader("Content-Encoding", "gzip");
+    server.sendHeader("Cache-Control", "no-cache");
+    server.setContentLength(login_html_gz_len);
+    server.send_P(200, "text/html", (const char*)login_html_gz, login_html_gz_len);
+}
+
+void JaamWeb::handleLoginPost() {
+    if (!settings->getBool(WEB_AUTH_ENABLED)) {
+        server.sendHeader("Location", "/");
+        server.send(302, "text/plain", "");
+        return;
+    }
+    String recovery = server.arg("recovery");
+    if (recovery.length() > 0) {
+        if (recoveryToken.length() > 0 && constantTimeEquals(recovery, recoveryToken)) {
+            recoveryToken = "";
+            sessionToken = generateToken();
+            server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
+            server.sendHeader("Location", "/");
+            server.send(302, "text/plain", "");
+        } else {
+            server.sendHeader("Location", "/login?error=2");
+            server.send(302, "text/plain", "");
+        }
+        return;
+    }
+    String storedPass = settings->getString(WEB_PASSWORD);
+    if (storedPass.length() == 0) {
+        server.sendHeader("Location", "/login?error=3");
+        server.send(302, "text/plain", "");
+        return;
+    }
+    String login = server.arg("login");
+    String pass = server.arg("password");
+    String storedLogin = settings->getString(WEB_LOGIN);
+    if (constantTimeEquals(login, storedLogin) && constantTimeEquals(pass, storedPass)) {
+        sessionToken = generateToken();
+        server.sendHeader("Set-Cookie", "session=" + sessionToken + "; HttpOnly; SameSite=Lax; Path=/");
+        server.sendHeader("Location", "/");
+        server.send(302, "text/plain", "");
+    } else {
+        server.sendHeader("Location", "/login?error=1");
+        server.send(302, "text/plain", "");
+    }
+}
+
+void JaamWeb::handleLogout() {
+    if (!requireAuth()) return;
+    if (!validateMutatingRequest()) return;
+    sessionToken = "";
+    server.sendHeader("Set-Cookie", "session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+    server.sendHeader("Location", "/login");
+    server.send(302, "text/plain", "");
+}
+
 void JaamWeb::setStrips(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
     this->strip_main = strip_main;
     this->strip_bg = strip_bg;
@@ -863,9 +1040,21 @@ void JaamWeb::setStrips(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_
 void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, Adafruit_NeoPixel* strip_service) {
     setStrips(strip_main, strip_bg, strip_service);
 
+    if (settings->getBool(WEB_AUTH_ENABLED)) {
+        recoveryToken = generateToken();
+        LOG.printf("[WEB] Recovery token: %s\n", recoveryToken.c_str());
+    }
+
     // Налаштування веб-сервера
+    const char* headerKeys[] = {"Cookie", "Origin", "Referer", "Host", "If-None-Match"};
+    server.collectHeaders(headerKeys, 5);
+
     //server.enableCORS();
-    server.on("/", HTTP_GET, [this]() { this->handleUiPage(); });
+    server.on("/login",  HTTP_GET,  [this]() { this->handleLogin(); });
+    server.on("/login",  HTTP_POST, [this]() { this->handleLoginPost(); });
+    server.on("/logout", HTTP_POST, [this]() { this->handleLogout(); });
+
+    server.on("/", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiPage(); });
     server.on("/", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/styles.css", HTTP_GET, [this]() { this->handleCss(); });
     server.on("/scripts.js", HTTP_GET, [this]() { this->handleJs(); });
@@ -873,57 +1062,53 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/map-editor.js", HTTP_GET, [this]() { this->handleMapEditorJs(); });
     server.on("/bg-color-editor.css", HTTP_GET, [this]() { this->handleBgColorEditorCss(); });
     server.on("/bg-color-editor.js", HTTP_GET, [this]() { this->handleBgColorEditorJs(); });
-    server.on("/map-editor", HTTP_GET, [this]() { this->handleMapEditor(); });
-    server.on("/save-map", HTTP_POST, [this]() { this->handleSaveMap(); });
-    server.on("/bg-color-editor", HTTP_GET, [this]() { this->handleBgColorEditor(); });
-    server.on("/bg-colors-data", HTTP_GET, [this]() { this->handleBgColorsData(); });
+    server.on("/map-editor", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleMapEditor(); });
+    server.on("/save-map", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSaveMap(); });
+    server.on("/bg-color-editor", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleBgColorEditor(); });
+    server.on("/bg-colors-data", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleBgColorsData(); });
     server.on("/bg-colors-data", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/save-bg-colors", HTTP_POST, [this]() { this->handleSaveBgColors(); });
-    //server.on("/parameter", HTTP_GET, [this]() { this->handleParameter(); });
-    server.on("/parameter", HTTP_POST, [this]() { this->handleParameter(); });
+    server.on("/save-bg-colors", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSaveBgColors(); });
+    server.on("/parameter", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleParameter(); });
     server.on("/parameter", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    //server.on("/color", HTTP_GET, [this]() { this->handleColorParameter(); });
-    server.on("/color", HTTP_POST, [this]() { this->handleColorParameter(); });
+    server.on("/color", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleColorParameter(); });
     server.on("/color", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    //server.on("/text", HTTP_GET, [this]() { this->handleTextParameter(); });
-    server.on("/text", HTTP_POST, [this]() { this->handleTextParameter(); });
+    server.on("/text", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleTextParameter(); });
     server.on("/text", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/system-info", HTTP_GET, [this]() { this->handleSystemInfo(); });
+    server.on("/system-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleSystemInfo(); });
     server.on("/system-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/alerts-info", HTTP_GET, [this]() { this->handleAlertsInfo(); });
+    server.on("/alerts-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleAlertsInfo(); });
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/logs-info", HTTP_GET, [this]() { this->handleLogsInfo(); });
+    server.on("/logs-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleLogsInfo(); });
     server.on("/logs-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/models", HTTP_GET, [this]() { this->handleUiSchemaModels(); });
+    server.on("/ui-schema/models", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaModels(); });
     server.on("/ui-schema/models", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/sections", HTTP_GET, [this]() { this->handleUiSchemaSections(); });
+    server.on("/ui-schema/sections", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaSections(); });
     server.on("/ui-schema/sections", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/dropdown_lists", HTTP_GET, [this]() { this->handleUiSchemaDropdownLists(); });
+    server.on("/ui-schema/dropdown_lists", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaDropdownLists(); });
     server.on("/ui-schema/dropdown_lists", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/controls", HTTP_GET, [this]() { this->handleUiSchemaControls(); });
+    server.on("/ui-schema/controls", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaControls(); });
     server.on("/ui-schema/controls", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/ui-schema/controls/values", HTTP_GET, [this]() { this->handleUiSchemaControlsValues(); });
+    server.on("/ui-schema/controls/values", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaControlsValues(); });
     server.on("/ui-schema/controls/values", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/map-data", HTTP_GET, [this]() { this->handleMapData(); });
+    server.on("/map-data", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleMapData(); });
     server.on("/map-data", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    // Dynamic UI page that renders based on /ui-schema
 
-    server.on("/settings/backup", HTTP_GET, [this]() { this->handleSettingsBackup(); });
+    server.on("/settings/backup", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleSettingsBackup(); });
     server.on("/settings/backup", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/settings/restore", HTTP_POST, [this]() { this->handleSettingsRestore(); });
+    server.on("/settings/restore", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSettingsRestore(); });
     server.on("/settings/restore", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/settings/reset", HTTP_POST, [this]() { this->handleSettingsReset(); });
+    server.on("/settings/reset", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleSettingsReset(); });
     server.on("/settings/reset", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
 
-    server.on("/wifi",              HTTP_GET,     [this]() { this->handleWifiPage(); });
-    server.on("/api/wifi/networks", HTTP_GET,     [this]() { this->handleWifiNetworks(); });
+    server.on("/wifi",              HTTP_GET,     [this]() { if (!requireAuth()) return; this->handleWifiPage(); });
+    server.on("/api/wifi/networks", HTTP_GET,     [this]() { if (!requireAuth()) return; this->handleWifiNetworks(); });
     server.on("/api/wifi/networks", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/api/wifi/add",      HTTP_POST,    [this]() { this->handleWifiAdd(); });
+    server.on("/api/wifi/add",      HTTP_POST,    [this]() { if (!requireAuth()) return; this->handleWifiAdd(); });
     server.on("/api/wifi/add",      HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/api/wifi/remove",   HTTP_POST,    [this]() { this->handleWifiRemove(); });
+    server.on("/api/wifi/remove",   HTTP_POST,    [this]() { if (!requireAuth()) return; this->handleWifiRemove(); });
     server.on("/api/wifi/remove",   HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
-    server.on("/api/wifi/scan",     HTTP_POST,    [this]() { this->handleWifiScan(); });
-    server.on("/api/wifi/scan",     HTTP_GET,     [this]() { this->handleWifiScanResults(); });
+    server.on("/api/wifi/scan",     HTTP_POST,    [this]() { if (!requireAuth()) return; this->handleWifiScan(); });
+    server.on("/api/wifi/scan",     HTTP_GET,     [this]() { if (!requireAuth()) return; this->handleWifiScanResults(); });
     server.on("/api/wifi/scan",     HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
 
     server.on("/favicon.png", HTTP_GET, [this]() { server.send(204); });
@@ -1075,7 +1260,18 @@ void JaamWeb::handleUiPage() {
                     <svg viewBox='0 0 24 24'>
                         <path fill='currentColor' fill-rule='evenodd' clip-rule='evenodd' d='M12,18C11.11,18 10.26,17.8 9.5,17.46C11.56,16.06 13,13.72 13,11A6.8,6.8 0 0,0 9.5,4.54C10.26,4.2 11.11,4 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/>
                     </svg>
-                </button>
+                </button>)HTML";
+        if (settings->getBool(WEB_AUTH_ENABLED)) {
+            html += R"HTML(
+                <form method='POST' action='/logout' style='display:inline'>
+                    <button type='submit' class='control-button' title='Вийти'>
+                        <svg viewBox='0 0 24 24'>
+                            <path fill='currentColor' d='M17,17.25V14H10V10H17V6.75L22.25,12L17,17.25M13,2A2,2 0 0,1 15,4V8H13V4H4V20H13V16H15V20A2,2 0 0,1 13,22H4A2,2 0 0,1 2,20V4A2,2 0 0,1 4,2H13Z'/>
+                        </svg>
+                    </button>
+                </form>)HTML";
+        }
+        html += R"HTML(
             </div>
         </div>
 
@@ -1142,6 +1338,7 @@ static void appendOptionsList(JsonArray arr, const SettingListItem items[], int 
 }
 
 void JaamWeb::handleSaveMap() {
+    if (!validateMutatingRequest()) return;
     if (storage == nullptr) {
         LOG.printf("[WEB] Storage is not set\n");
         server.send(500, "text/plain", "Storage not initialized");
@@ -1358,6 +1555,7 @@ void JaamWeb::handleBgColorsData() {
 }
 
 void JaamWeb::handleSaveBgColors() {
+    if (!validateMutatingRequest()) return;
     LOG.printf("[WEB] Handling save BG colors request\n");
     if (storage == nullptr) {
         LOG.printf("[WEB] Storage is not set\n");

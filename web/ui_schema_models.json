@@ -3,6 +3,7 @@
   "dropdown_confirm": ["name", "label", "list", "current", "section", "visibility"],
   "bool":     ["name", "label", "current", "section", "visibility"],
   "text":     ["name", "label", "current", "placeholder", "section", "visibility"],
+  "password": ["name", "label", "current", "placeholder", "section", "visibility"],
   "color":    ["name", "label", "current", "section", "visibility"],
   "slider":   ["name", "label", "min", "max", "step", "current", "section", "unit", "visibility"],
   "button":   ["name", "label", "color", "url", "section", "visibility"],

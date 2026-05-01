@@ -562,6 +562,9 @@ enum Type {
     API_PORT,
     BRIGHTNESS_MAX,
     BRIGHTNESS_MAX_ACCEPT,
+    WEB_AUTH_ENABLED,
+    WEB_LOGIN,
+    WEB_PASSWORD,
 };
 
 // --- Адміністративні одиниці України (області + обласні центри + м. Київ + АР Крим) ---
