@@ -158,11 +158,13 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"clear_pin", CLEAR_PIN, TYPE_INT},
     {"alert_clear_pin_time", ALERT_CLEAR_PIN_TIME, TYPE_INT},
     {"alert_pin_active_level", ALERT_PIN_ACTIVE_LEVEL, TYPE_INT},
+    {"restore_siren_state_on_startup", RESTORE_SIREN_STATE_ON_STARTUP, TYPE_BOOL},
     {"alert_clear_pin_mode_2", ALERT_CLEAR_PIN_MODE_2, TYPE_INT},
     {"alert_pin_2", ALERT_PIN_2, TYPE_INT},
     {"clear_pin_2", CLEAR_PIN_2, TYPE_INT},
     {"alert_clear_pin_time_2", ALERT_CLEAR_PIN_TIME_2, TYPE_INT},
     {"alert_pin_active_level_2", ALERT_PIN_ACTIVE_LEVEL_2, TYPE_INT},
+    {"restore_siren_state_on_startup_2", RESTORE_SIREN_STATE_ON_STARTUP_2, TYPE_BOOL},
     
     // Climate
     {"weather_min_temp", WEATHER_MIN_TEMP, TYPE_INT},

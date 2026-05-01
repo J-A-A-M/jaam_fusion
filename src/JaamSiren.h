@@ -5,6 +5,10 @@
 
 class JaamSiren {
 public:
+    enum class SirenDevice : uint8_t {
+        PRIMARY = 0,
+        SECONDARY = 1
+    };
     JaamSiren();
     
     void setSettings(JaamSettings* settings);
@@ -14,12 +18,14 @@ public:
     void onSettingsChange(Type type, int intValue, float fltValue, const char* strValue);
     
     // Основні методи управління GPIO пінами
-    void setAlert();     // Активувати пін тривоги
-    void clearAlert();   // Активувати пін відбою
+    void setAlert(bool isStartupSync = false);     // Активувати пін тривоги
+    void clearAlert(bool isStartupSync = false);   // Активувати пін відбою
     
     // Перевірка стану пінів
     bool isAlertActive() const;
     bool isClearActive() const;
+    bool isAlertActive2() const;
+    bool isClearActive2() const;
     
     // Callback методи для таймерів (викликаються через глобальні функції)
     void onAlertTimeout();
@@ -57,7 +63,8 @@ private:
     void updateConfiguration();
     void setupPins();
     void deactivatePin(int pin, int activeLevel);
-    void activatePin(int pin);
+    void activatePin(int pin, int activeLevel);
     void resetPins();        // Скинути всі піни
+    bool shouldRestoreDeviceOnStartup(SirenDevice deviceIndex) const;
 
 };

@@ -931,13 +931,13 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     }
 }
 
-void updateSirenIfNeeded(int bit) {
-    LOG.printf("[SIREN] Check bits: from %d to %d\n", alertBit, bit);
+void updateSirenIfNeeded(int bit, bool isStartupSync = false) {
+    LOG.printf("[SIREN] Check bits: from %d to %d (%s)\n", alertBit, bit, isStartupSync ? "startup-sync" : "runtime");
     if (alertBit == AlertModes::NO_ALERT && bit != AlertModes::NO_ALERT) {
-        siren.setAlert();
+        siren.setAlert(isStartupSync);
     }
     if (alertBit != AlertModes::NO_ALERT && bit == AlertModes::NO_ALERT) {
-        siren.clearAlert();
+        siren.clearAlert(isStartupSync);
     }
 }
 
@@ -1158,14 +1158,13 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d increase\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
-                    updateSirenIfNeeded(localAlertBit);
                 } else {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d decrease\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     if (localAlertBit == -1) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
                 }
-                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit,
-                           settings.getInt(HOME_DISTRICT), homeIncrease);
+                animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease);
+                updateSirenIfNeeded(localAlertBit);
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -1199,7 +1198,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 });
             }
             int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
-            updateSirenIfNeeded(localAlertBit);
+            updateSirenIfNeeded(localAlertBit, startup);
             alertBit = localAlertBit;
             int homeInitIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
             uint16_t homeFlags = (homeInitIdx >= 0) ? alertsFlat[homeInitIdx] : 0;
