@@ -411,6 +411,35 @@
             "api_enabled==1"
         ],
         [
+            "label",
+            "Автентифікація",
+            "network",
+            ""
+        ],
+        [
+            "bool",
+            "web_auth_enabled",
+            "Увімкнути автентифікацію",
+            "network",
+            ""
+        ],
+        [
+            "text",
+            "web_login",
+            "Логін",
+            "наприклад: admin",
+            "network",
+            "web_auth_enabled==1"
+        ],
+        [
+            "password",
+            "web_password",
+            "Пароль",
+            "",
+            "network",
+            "web_auth_enabled==1"
+        ],
+        [
             "info",
             "Конфігурація апаратних пінів та параметрів LED стрічок",
             "#9C27B0",

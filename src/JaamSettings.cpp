@@ -298,6 +298,9 @@ std::map<Type, SettingItemInt> intSettings = {
     // API settings
     {API_ENABLED, {"apie", 0}},                            // Enable HTTP API (0/1)
     {API_PORT, {"apip", 81}},                              // HTTP API port
+
+    // Web authentication
+    {WEB_AUTH_ENABLED, {"waue", 0}},                       // Enable web auth (0/1)
 };
 
 std::map<Type, SettingItemString> stringSettings = {
@@ -325,6 +328,10 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_HOME_DISTRICT, {"rgbchd", "#00FF64"}},           // Home district color (light blue)
     {COLOR_BG, {"rgbcbg", "#00FF00"}},                      // Background color (green)
     {COLOR_LAMP, {"rgbclamp", "#D707D7"}},                  // Lamp mode color (purple)
+
+    // Web authentication
+    {WEB_LOGIN, {"waulg", "admin"}},                         // Web auth login
+    {WEB_PASSWORD, {"waupass", "admin"}},                     // Web auth password
 };
 
 std::map<Type, SettingItemFloat> floatSettings = {
