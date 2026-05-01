@@ -1872,6 +1872,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Автентифікація веб-інтерфейсу
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Автентифікація веб-інтерфейсу">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Увімкнути автентифікацію
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Логін
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Пароль
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Вихід
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Відновлення доступу
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2812,6 +2884,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Автентифікація веб-інтерфейсу
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Автентифікація веб-інтерфейсу">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Увімкнути автентифікацію
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Логін
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Пароль
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Вихід
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Відновлення доступу
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2984,6 +3128,56 @@
 <p class="admonition-title">Warning</p>
 <p>Порт <code>80</code> зарезервований для веб-інтерфейсу. Використовуйте інший порт (наприклад, <code>81</code>).</p>
 </div>
+<h2 id="-">Автентифікація веб-інтерфейсу<a class="headerlink" href="#-" title="Permanent link">&para;</a></h2>
+<p>За замовчуванням веб-інтерфейс доступний без пароля. Якщо пристрій знаходиться в загальнодоступній мережі, рекомендується увімкнути автентифікацію.</p>
+<h3 id="_3">Увімкнути автентифікацію<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p>Перейдіть: <strong>Мережа → Увімкнути автентифікацію</strong></p>
+<p>Коли опцію увімкнено:</p>
+<ul>
+<li>всі сторінки та API-ендпоінти вимагають активного сеансу</li>
+<li>браузер автоматично перенаправляється на сторінку входу <code>/login</code></li>
+<li>після успішного входу видається сесійний cookie, що зберігається до перезавантаження пристрою</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Статичні ресурси (CSS, JS) залишаються доступними без авторизації — це потрібно для коректного відображення сторінки входу.</p>
+</div>
+<h3 id="_4">Логін<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>Перейдіть: <strong>Мережа → Логін</strong></p>
+<p>Ім'я користувача для входу у веб-інтерфейс.</p>
+<p>Значення за замовчуванням: <code>admin</code>.</p>
+<h3 id="_5">Пароль<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<p>Перейдіть: <strong>Мережа → Пароль</strong></p>
+<p>Пароль для входу у веб-інтерфейс. Поле відображається із прихованими символами, з кнопкою для тимчасового відображення введеного тексту.</p>
+<p>Значення за замовчуванням: <code>admin</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Дефолтні облікові дані (<code>admin</code> / <code>admin</code>) відомі публічно. Обов'язково змініть пароль перед увімкненням автентифікації, якщо пристрій доступний з ненадійної мережі.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Вимоги до пароля: мінімум 8 символів, велика та мала літера, цифра.</p>
+</div>
+<h3 id="_6">Вихід<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<p>Кнопка виходу з'являється у правому верхньому куті веб-інтерфейсу, коли автентифікацію увімкнено. Після виходу сеанс завершується і браузер перенаправляється на сторінку входу.</p>
+<h2 id="_7">Відновлення доступу<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<p>Якщо пароль забутий — використовуйте одноразовий токен відновлення.</p>
+<p><strong>Кроки:</strong></p>
+<ol>
+<li>Підключіть пристрій до комп'ютера через USB</li>
+<li>Відкрийте серійний монітор (115200 baud)</li>
+<li>Перезавантажте пристрій</li>
+<li>Знайдіть у логах рядок:
+   <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>[WEB] Recovery token: &lt;32-символьний токен&gt;
+</span></code></pre></div></li>
+<li>Відкрийте сторінку входу у браузері</li>
+<li>Натисніть <strong>"Вхід з токеном відновлення"</strong></li>
+<li>Введіть токен і натисніть <strong>"Увійти за токеном"</strong></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Токен генерується щоразу при увімкненні автентифікації і є <strong>одноразовим</strong> — після успішного входу за токеном він анулюється. Після входу встановіть новий пароль у налаштуваннях.</p>
+</div>
 
 
 
@@ -3006,7 +3200,7 @@
     <span class="md-icon" title="Востаннє оновлено">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="22 квітня 2026 р. 16:30:45 UTC">22 квітня 2026 р. 16:30:45</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-datetime" title="26 квітня 2026 р. 10:12:28 UTC">26 квітня 2026 р. 10:12:28</span>
   </span>
 
     
