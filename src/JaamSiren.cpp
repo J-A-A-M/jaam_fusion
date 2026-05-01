@@ -182,7 +182,7 @@ bool JaamSiren::shouldRestoreDeviceOnStartup(SirenDevice deviceIndex) const {
         case SirenDevice::PRIMARY: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP);
         case SirenDevice::SECONDARY: return settings->getBool(RESTORE_SIREN_STATE_ON_STARTUP_2);
         default:
-            LOG.printf("[SIREN] shouldRestoreDeviceOnStartup: invalid deviceIndex=%u\n", deviceIndex);
+            LOG.printf("[SIREN] shouldRestoreDeviceOnStartup: invalid deviceIndex=%u\n", static_cast<unsigned>(deviceIndex));
             return false;
     }
 }
