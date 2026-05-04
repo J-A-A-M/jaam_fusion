@@ -4,7 +4,7 @@
 const SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT] PROGMEM = {
   {-1, "Вимкнено", false},
   {0, "Buzzer", false},
-  {1, "DF Player Pro", true, false, true}
+  {1, "DF Player Pro", false}
 };
 
 // --- Other Settings ---
