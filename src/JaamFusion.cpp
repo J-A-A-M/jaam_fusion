@@ -3061,7 +3061,7 @@ void requestPlayTestMelody(int melodyId) {
 
 void requestPlayTestTrack(int trackId) {
     LOG.printf("[TEST] Playing test track %d\n", trackId);
-    // TODO: Реалізувати відтворення треків, якщо потрібно
+    playTrack(sound.getTrackById(trackId));
 }
 
 void requestWebsocketReconnect() {

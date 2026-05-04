@@ -168,7 +168,7 @@ void JaamSound::initDFPlayer() {
     dfplayer.setVol(map(volumeCurrent, 0, 100, 0, dfPlayerMaxVolume));
     LOG.printf("[SOUND] Volume: %d\n", dfplayer.getVol());
 
-    dfplayer.setPlayMode(dfplayer.SINGLECYCLE);
+    dfplayer.setPlayMode(dfplayer.SINGLE);
     LOG.printf("[SOUND] PlayMode: %d\n", dfplayer.getPlayMode());
     delay(500);
 
