@@ -5,7 +5,9 @@
 //   PHASE_UPDATE — write NVS defaults + OTA flash (triggered by BTN1 long press)
 //
 // Build: pio run -e test_mode
-// Set JAAM_VERSION in platformio.ini: 1 = JAAM 1.3, 2 = JAAM 2.1, 3 = JAAM 3.2 (default)
+// Set in platformio.ini build_flags:
+//   -D PLATFORM_ID=<1|2|3|0>   (1=JAAM1, 2=JAAM2, 3=JAAM3, 0=default)
+//   -D PLATFORM_NAME=\"<name>\"  (string used in deviceId, e.g. "JAAM3")
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -35,8 +37,20 @@ SemaphoreHandle_t  stripMutex    = nullptr;
 JaamSettings settings;
 JaamHardware hardwareConfig;
 
-// ─── Hardware config (JAAM_VERSION drives both LED config and NVS defaults) ───
-#if JAAM_VERSION == 3
+// ─── Platform ID constants ─────────────────────────────────────────────────────
+#define PLATFORM_JAAM1 1
+#define PLATFORM_JAAM2 2
+#define PLATFORM_JAAM3 3
+
+#ifndef PLATFORM_ID
+  #define PLATFORM_ID 0
+#endif
+#ifndef PLATFORM_NAME
+  #define PLATFORM_NAME "UNKNOWN"
+#endif
+
+// ─── Hardware config (HARDWARE drives both LED config and NVS defaults) ───
+#if PLATFORM_ID == PLATFORM_JAAM3
   static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_3_2;  // 405
   static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_JAAM_3;       // 39
   static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DEFAULT; // 5
@@ -45,7 +59,7 @@ JaamHardware hardwareConfig;
   static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_JAAM;        // 2
   static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_JAAM_3;      // 4
   static const auto    DISP_TYPE   = JaamDisplayType::SH1106G;
-#elif JAAM_VERSION == 2
+#elif PLATFORM_ID == PLATFORM_JAAM2
   static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_2_1;  // 26
   static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_JAAM_2;       // 44
   static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DEFAULT; // 5
@@ -54,7 +68,7 @@ JaamHardware hardwareConfig;
   static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_JAAM;        // 2
   static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_DISABLED;    // -1
   static const auto    DISP_TYPE   = JaamDisplayType::SH1106G;
-#else  // JAAM_VERSION == 1
+#elif PLATFORM_ID == PLATFORM_JAAM1
   static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_1_3;  // 26
   static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_DISABLED;     // -1
   static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DISABLED;// -1
@@ -63,10 +77,19 @@ JaamHardware hardwareConfig;
   static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_DISABLED;    // -1
   static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_DISABLED;    // -1
   static const auto    DISP_TYPE   = JaamDisplayType::SSD1306;
+#else 
+  static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_1_3;  // 26
+  static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_DISABLED;     // -1
+  static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DISABLED;// -1
+  static const uint8_t MAX_BR      = JaamHardwareLed::BRIGHTNESS_JAAM_1_3_MAX;  // 127
+  static const int     BTN1_PIN    = JaamHardwarePins::BUTTON_1_PIN_JAAM_1;      // 35
+  static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_DISABLED;    // -1
+  static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_DISABLED;    // -1
+  static const auto    DISP_TYPE   = JaamDisplayType::NONE;
 #endif
 
 // ─── Updater config (edit before flashing) ────────────────────────────────────
-static const int   orderNumber   = 0;    // Order number → id = "JAAMx-yyyy"
+static const int   orderNumber   = 0;    // Order number → id = "%PLATFORM_NAME%-yyyy"
 static const char* ssid          = "";   // WiFi SSID for OTA
 static const char* password      = "";   // WiFi password
 static const char* userSsid      = "";   // User WiFi SSID (saved to device)
@@ -207,8 +230,8 @@ void updateIdleDisplay() {
 
 // ─── Updater phase ─────────────────────────────────────────────────────────────
 static void writeNvsDefaults() {
-    char deviceId[12];  // "JAAM3-9999\0"
-    snprintf(deviceId, sizeof(deviceId), "JAAM%d-%04d", JAAM_VERSION, orderNumber);
+    char deviceId[12];  // "%PLATFORM%-9999\0"
+    snprintf(deviceId, sizeof(deviceId), "%s-%04d", PLATFORM_NAME, orderNumber);
 
     Preferences prefs;
     prefs.begin("storage", false);
@@ -216,14 +239,14 @@ static void writeNvsDefaults() {
     prefs.putString("id", deviceId);    // device id
     prefs.putInt("hmd", homeDistrict);  // home district
 
-#if JAAM_VERSION == 1
+#if PLATFORM_ID == PLATFORM_JAAM1
     prefs.putInt("legacy", 0);          // JAAM 1
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
     prefs.putInt("bml",  0);            // button long mode (0 - toggle display and map)
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
     LOG.printf("[UPDATE] NVS: id=%s, JAAM 1 defaults applied\n", deviceId);
-#elif JAAM_VERSION == 2
+#elif PLATFORM_ID == PLATFORM_JAAM2
     prefs.putInt("legacy", 3);          // JAAM 2.1
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
     prefs.putInt("b2m",  2);            // button 2 mode (2 - display mode change)
@@ -233,7 +256,7 @@ static void writeNvsDefaults() {
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
     LOG.printf("[UPDATE] NVS: id=%s, JAAM 2 defaults applied\n", deviceId);
-#else  // JAAM_VERSION == 3
+#elif PLATFORM_ID == PLATFORM_JAAM3
     prefs.putInt("legacy", 6);          // JAAM 3.2
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
     prefs.putInt("b2m",  2);            // button 2 mode (2 - display mode change)
@@ -245,6 +268,8 @@ static void writeNvsDefaults() {
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
     LOG.printf("[UPDATE] NVS: id=%s, JAAM 3 defaults applied\n", deviceId);
+#else
+    prefs.putInt("legacy", 8);          
 #endif
 
     prefs.end();
@@ -418,7 +443,7 @@ void setup() {
     char chipID[13];
     sprintf(chipID, "%04x%04x", (uint32_t)(efuseMac >> 32), (uint32_t)efuseMac);
     char deviceId[12];
-    snprintf(deviceId, sizeof(deviceId), "JAAM%d-%04d", JAAM_VERSION, orderNumber);
+    snprintf(deviceId, sizeof(deviceId), "%s-%04d", PLATFORM_NAME, orderNumber);
     LOG.println("[TEST] Setup complete");
     LOG.printf("[TEST] Chip ID: %s\n", chipID);
     LOG.printf("[TEST] Device ID: %s\n", deviceId);
