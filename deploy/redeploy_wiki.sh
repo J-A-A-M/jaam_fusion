@@ -5,10 +5,11 @@ echo "JAAM WIKI"
 
 # Build documentation
 echo "Installing Python dependencies..."
-pip3 install -r requirements.txt --quiet --break-system-packages
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt --quiet
 
 echo "Building documentation..."
-mkdocs build --clean
+.venv/bin/mkdocs build --clean
 
 # Build Docker image
 echo "Building Docker image..."
