@@ -5,7 +5,7 @@ echo "JAAM WIKI"
 
 # Build documentation
 echo "Installing Python dependencies..."
-pip3 install -r requirements.txt --quiet
+pip3 install -r requirements.txt --quiet --break-system-packages
 
 echo "Building documentation..."
 mkdocs build --clean
