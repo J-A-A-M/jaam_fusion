@@ -16,6 +16,11 @@ on:
     paths:
       - 'wiki/**'
       - 'mkdocs.yml'
+      - 'CHANGELOG.md'
+      - 'requirements.txt'
+      - 'deploy/wiki/**'
+      - 'deploy/redeploy_wiki.sh'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
     inputs:
       server_choice:
