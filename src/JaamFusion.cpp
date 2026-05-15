@@ -2712,6 +2712,10 @@ void checkMinuteOfSilence()
             }
         }
     }
+    // if startup delayed the interval setup, retry on each tick until it succeeds
+    if (minuteOfSilence && clockBeepInterval < 0 && needToPlaySound(MIN_OF_SILINCE)) {
+        clockBeepInterval = async.setInterval(playMinOfSilenceSound, 2000);
+    }
 }
 
 void websocketProcess() {
