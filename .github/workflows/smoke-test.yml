@@ -42,5 +42,5 @@ jobs:
       with:
         token: ${{ secrets.WOKWI_CLI_TOKEN }}
         timeout: 40000
-        expect-text: '[SETUP] Initialization complete'
-        fail-text: 'Guru Meditation'
+        expect_text: '[SETUP] Initialization complete'
+        fail_text: 'Guru Meditation'
