@@ -13,3 +13,7 @@ docs/*
 
 # MkDocs
 site/
+
+# Wokwi generated artifacts
+merged_firmware.bin
+nvs_wifi.bin

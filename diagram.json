@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "author": "jaam_fusion tests",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-v1",
+      "id": "esp32",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel-matrix",
+      "id": "leds_main",
+      "top": -100,
+      "left": 220,
+      "attrs": { "cols": "25", "rows": "1" }
+    },
+    {
+      "type": "wokwi-neopixel-matrix",
+      "id": "leds_service",
+      "top": 60,
+      "left": 220,
+      "attrs": { "cols": "5", "rows": "1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 140,
+      "left": 220,
+      "attrs": { "color": "green", "label": "BTN1 (GPIO5)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 200,
+      "left": 220,
+      "attrs": { "color": "red", "label": "BTN2 (GPIO2)" }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "climate",
+      "top": 280,
+      "left": 220,
+      "attrs": {
+        "temperature": "22.5",
+        "humidity": "55"
+      }
+    }
+  ],
+  "connections": [
+    ["esp32:GND.1", "$serialMonitor:GND", "", []],
+    ["esp32:TX0",   "$serialMonitor:RX",  "", []],
+    ["esp32:RX0",   "$serialMonitor:TX",  "", []],
+
+    ["esp32:D13",   "leds_main:DIN",    "green", []],
+    ["esp32:3V3",   "leds_main:VCC",    "red",   []],
+    ["esp32:GND.1", "leds_main:GND",    "black", []],
+
+    ["esp32:D25",   "leds_service:DIN", "lime",  []],
+    ["esp32:3V3",   "leds_service:VCC", "red",   []],
+    ["esp32:GND.2", "leds_service:GND", "black", []],
+
+    ["esp32:D5",    "btn1:1.l",  "yellow", []],
+    ["esp32:GND.2", "btn1:2.l",  "black",  []],
+    ["esp32:D2",    "btn2:1.l",  "orange", []],
+    ["esp32:GND.2", "btn2:2.l",  "black",  []]
+  ],
+  "dependencies": {}
+}

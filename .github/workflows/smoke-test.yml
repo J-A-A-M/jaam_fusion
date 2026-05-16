@@ -1,0 +1,46 @@
+name: 💨 Smoke Test (Wokwi)
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Setup PlatformIO
+      uses: ./.github/actions/setup-platformio
+
+    - name: Install NVS partition generator
+      run: pip install esp-idf-nvs-partition-gen
+
+    - name: Build firmware
+      run: platformio run -e firmware
+
+    - name: Generate NVS image with WiFi credentials
+      run: |
+        python -m esp_idf_nvs_partition_gen generate \
+          tools/nvs_wifi.csv \
+          nvs_wifi.bin \
+          0x5000
+
+    - name: Merge firmware binaries
+      run: |
+        python -m esptool --chip esp32 merge_bin \
+          --output merged_firmware.bin \
+          0x1000  .pio/build/firmware/bootloader.bin \
+          0x8000  .pio/build/firmware/partitions.bin \
+          0x9000  nvs_wifi.bin \
+          0x10000 .pio/build/firmware/firmware.bin
+
+    - name: Run Wokwi smoke test
+      uses: wokwi/wokwi-ci-action@v1
+      with:
+        token: ${{ secrets.WOKWI_CLI_TOKEN }}
+        timeout: 40000
+        expect-text: '[SETUP] Initialization complete'
+        fail-text: 'Guru Meditation'
