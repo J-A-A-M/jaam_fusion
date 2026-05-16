@@ -1193,7 +1193,13 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     uint8_t brightness = 0;
 
     if (strip == strip_main) {
-        if (isMapOff) {
+        // У режимі кастомного маппінгу світлодіоди, не призначені жодному регіону, вимкнені
+        bool unmappedCustom = false;
+        if (settings->getInt(HARDWARE) == HARDWARE::CUSTOM_MAPPING) {
+            uint16_t region_buf[16];
+            unmappedCustom = (getRegionsForLedStatic(position, region_buf, 16) == 0);
+        }
+        if (isMapOff || unmappedCustom) {
             color = DefaultColors::OFF;
             brightness = 0;
         } else {
