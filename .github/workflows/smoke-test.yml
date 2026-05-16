@@ -15,8 +15,8 @@ jobs:
     - name: Setup PlatformIO
       uses: ./.github/actions/setup-platformio
 
-    - name: Install NVS partition generator
-      run: pip install esp-idf-nvs-partition-gen
+    - name: Install tools
+      run: pip install esptool esp-idf-nvs-partition-gen
 
     - name: Build firmware
       run: platformio run -e firmware
