@@ -39,7 +39,7 @@
       "attrs": { "color": "blue" }
     },
     {
-      "type": "wokwi-ssd1306",
+      "type": "board-ssd1306",
       "id": "display",
       "top": -120,
       "left": 300,
@@ -68,7 +68,7 @@
     ["esp32:D2",    "btn2:1.l",           "blue",   []],
     ["btn2:2.l",    "esp32:GND.2",        "blue",   []],
     ["esp32:D21",   "display:SDA",        "blue",   []],
-    ["esp32:D22",   "display:SCK",        "yellow", []],
+    ["esp32:D22",   "display:SCL",        "yellow", []],
     ["esp32:3V3",   "display:VCC",        "red",    []],
     ["esp32:GND.1", "display:GND",        "black",  []],
     ["esp32:D33",   "buzzer:1",           "orange", []],
