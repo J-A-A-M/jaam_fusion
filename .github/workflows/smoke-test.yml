@@ -30,7 +30,7 @@ jobs:
 
     - name: Merge firmware binaries
       run: |
-        python -m esptool --chip esp32 merge_bin \
+        python -m esptool --chip esp32 merge-bin \
           --output merged_firmware.bin \
           0x1000  .pio/build/firmware/bootloader.bin \
           0x8000  .pio/build/firmware/partitions.bin \
