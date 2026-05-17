@@ -39,6 +39,7 @@ jobs:
           .pio/build/firmware/bootloader.bin
           .pio/build/firmware/partitions.bin
           .pio/build/firmware/firmware.bin
+          .pio/build/firmware/firmware.elf
         retention-days: 1
 
   smoke-test:
@@ -81,3 +82,4 @@ jobs:
         timeout: 40000
         expect_text: '[SETUP] Initialization complete'
         fail_text: 'Guru Meditation'
+        elf: firmware-bins/firmware.elf
