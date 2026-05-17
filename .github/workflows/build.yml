@@ -29,3 +29,55 @@ jobs:
           exit 1
         fi
         ls -lh .pio/build/${{ matrix.environment }}/*.bin
+
+    - name: Upload firmware artifacts
+      if: matrix.environment == 'firmware'
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-bins
+        path: |
+          .pio/build/firmware/bootloader.bin
+          .pio/build/firmware/partitions.bin
+          .pio/build/firmware/firmware.bin
+        retention-days: 1
+
+  smoke-test:
+    name: 💨 Smoke Test (Wokwi)
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Download firmware artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: firmware-bins
+        path: firmware-bins
+
+    - name: Install tools
+      run: pip install esptool esp-idf-nvs-partition-gen
+
+    - name: Generate NVS image with WiFi credentials
+      run: |
+        python -m esp_idf_nvs_partition_gen generate \
+          tools/nvs_wifi.csv \
+          nvs_wifi.bin \
+          0x5000
+
+    - name: Merge firmware binaries
+      run: |
+        python -m esptool --chip esp32 merge-bin \
+          --output merged_firmware.bin \
+          0x1000  firmware-bins/bootloader.bin \
+          0x8000  firmware-bins/partitions.bin \
+          0x9000  nvs_wifi.bin \
+          0x10000 firmware-bins/firmware.bin
+
+    - name: Run Wokwi smoke test
+      uses: wokwi/wokwi-ci-action@v1
+      with:
+        token: ${{ secrets.WOKWI_CLI_TOKEN }}
+        timeout: 40000
+        expect_text: '[SETUP] Initialization complete'
+        fail_text: 'Guru Meditation'
