@@ -11,18 +11,18 @@
       "attrs": {}
     },
     {
-      "type": "wokwi-neopixel-strip",
+      "type": "wokwi-led-strip",
       "id": "main_strip",
       "top": -60,
       "left": -100,
-      "attrs": { "count": "26" }
+      "attrs": { "pixels": "26" }
     },
     {
-      "type": "wokwi-neopixel-strip",
+      "type": "wokwi-led-strip",
       "id": "bg_strip",
       "top": -60,
       "left": 200,
-      "attrs": { "count": "44" }
+      "attrs": { "pixels": "44" }
     },
     {
       "type": "wokwi-pushbutton",
@@ -57,14 +57,20 @@
     ["esp32:GND.1", "$serialMonitor:GND", "", []],
     ["esp32:TX0",   "$serialMonitor:RX",  "", []],
     ["esp32:RX0",   "$serialMonitor:TX",  "", []],
+    ["esp32:3V3",   "main_strip:VDD",     "red",    []],
+    ["esp32:GND.1", "main_strip:VSS",     "black",  []],
     ["esp32:D13",   "main_strip:DIN",     "green",  []],
+    ["esp32:3V3",   "bg_strip:VDD",       "red",    []],
+    ["esp32:GND.1", "bg_strip:VSS",       "black",  []],
     ["esp32:D12",   "bg_strip:DIN",       "blue",   []],
     ["esp32:D4",    "btn1:1.l",           "green",  []],
     ["btn1:2.l",    "esp32:GND.1",        "green",  []],
     ["esp32:D2",    "btn2:1.l",           "blue",   []],
     ["btn2:2.l",    "esp32:GND.2",        "blue",   []],
-    ["esp32:3V3",   "display:3V3",        "red",    []],
-    ["esp32:GND.2", "display:GND",        "black",  []],
+    ["esp32:D21",   "display:SDA",        "blue",   []],
+    ["esp32:D22",   "display:SCK",        "yellow", []],
+    ["esp32:3V3",   "display:VCC",        "red",    []],
+    ["esp32:GND.1", "display:GND",        "black",  []],
     ["esp32:D33",   "buzzer:1",           "orange", []],
     ["esp32:GND.1", "buzzer:2",           "black",  []]
   ],

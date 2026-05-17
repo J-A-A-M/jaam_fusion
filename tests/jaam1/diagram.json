@@ -11,17 +11,19 @@
       "attrs": {}
     },
     {
-      "type": "wokwi-neopixel-strip",
+      "type": "wokwi-led-strip",
       "id": "main_strip",
       "top": -60,
       "left": -100,
-      "attrs": { "count": "26" }
+      "attrs": { "pixels": "26" }
     }
   ],
   "connections": [
     ["esp32:GND.1", "$serialMonitor:GND", "", []],
     ["esp32:TX0",   "$serialMonitor:RX",  "", []],
     ["esp32:RX0",   "$serialMonitor:TX",  "", []],
+    ["esp32:3V3",   "main_strip:VDD",     "red",   []],
+    ["esp32:GND.1", "main_strip:VSS",     "black", []],
     ["esp32:D13",   "main_strip:DIN",     "green", []]
   ],
   "dependencies": {}
