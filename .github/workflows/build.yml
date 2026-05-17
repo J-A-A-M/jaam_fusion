@@ -69,6 +69,6 @@ jobs:
       uses: wokwi/wokwi-ci-action@v1
       with:
         token: ${{ secrets.WOKWI_CLI_TOKEN }}
-        timeout: 40000
-        expect_text: '[WIFI] Connected to Wokwi-GUEST'
+        timeout: 55000
+        scenario: tests/wokwi_boot.yaml
         fail_text: 'Guru Meditation'
