@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "author": "jaam_fusion tests",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp32",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel-strip",
+      "id": "main_strip",
+      "top": -60,
+      "left": -100,
+      "attrs": { "count": "26" }
+    },
+    {
+      "type": "wokwi-neopixel-strip",
+      "id": "bg_strip",
+      "top": -60,
+      "left": 200,
+      "attrs": { "count": "44" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 100,
+      "left": -160,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 160,
+      "left": -160,
+      "attrs": { "color": "blue" }
+    },
+    {
+      "type": "wokwi-ssd1306",
+      "id": "display",
+      "top": -120,
+      "left": 300,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 200,
+      "left": 300,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    ["esp32:GND.1", "$serialMonitor:GND", "", []],
+    ["esp32:TX0",   "$serialMonitor:RX",  "", []],
+    ["esp32:RX0",   "$serialMonitor:TX",  "", []],
+    ["esp32:D13",   "main_strip:DIN",     "green",  []],
+    ["esp32:D12",   "bg_strip:DIN",       "blue",   []],
+    ["esp32:D4",    "btn1:1.l",           "green",  []],
+    ["btn1:2.l",    "esp32:GND.1",        "green",  []],
+    ["esp32:D2",    "btn2:1.l",           "blue",   []],
+    ["btn2:2.l",    "esp32:GND.2",        "blue",   []],
+    ["esp32:3V3",   "display:3V3",        "red",    []],
+    ["esp32:GND.2", "display:GND",        "black",  []],
+    ["esp32:D33",   "buzzer:1",           "orange", []],
+    ["esp32:GND.1", "buzzer:2",           "black",  []]
+  ],
+  "dependencies": {}
+}

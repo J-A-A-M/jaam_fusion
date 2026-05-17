@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "author": "jaam_fusion tests",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp32",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel-strip",
+      "id": "main_strip",
+      "top": -60,
+      "left": -100,
+      "attrs": { "count": "26" }
+    }
+  ],
+  "connections": [
+    ["esp32:GND.1", "$serialMonitor:GND", "", []],
+    ["esp32:TX0",   "$serialMonitor:RX",  "", []],
+    ["esp32:RX0",   "$serialMonitor:TX",  "", []],
+    ["esp32:D13",   "main_strip:DIN",     "green", []]
+  ],
+  "dependencies": {}
+}

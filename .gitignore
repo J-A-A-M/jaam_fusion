@@ -16,4 +16,6 @@ site/
 
 # Wokwi generated artifacts
 merged_firmware.bin
+merged_jaam*.bin
 nvs_wifi.bin
+nvs_jaam*.bin
