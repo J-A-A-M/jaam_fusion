@@ -1193,12 +1193,14 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
     uint8_t brightness = 0;
 
     if (strip == strip_main) {
+        // Один раз отримуємо регіони для цього LED — повторно використовуємо нижче
+        uint16_t region_buf[16];
+        int region_count = getRegionsForLedStatic(position, region_buf, 16);
+
         // У режимі кастомного маппінгу світлодіоди, не призначені жодному регіону, вимкнені
-        bool unmappedCustom = false;
-        if (settings->getInt(HARDWARE) == HARDWARE::CUSTOM_MAPPING) {
-            uint16_t region_buf[16];
-            unmappedCustom = (getRegionsForLedStatic(position, region_buf, 16) == 0);
-        }
+        bool unmappedCustom = (settings->getInt(HARDWARE) == HARDWARE::CUSTOM_MAPPING)
+                              && (region_count == 0);
+
         if (isMapOff || unmappedCustom) {
             color = DefaultColors::OFF;
             brightness = 0;
@@ -1223,9 +1225,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         color = result.first;
                         brightness = result.second;
                     } else {
-                        // Немає тривоги — перевіряємо домашній регіон (без heap)
-                        uint16_t region_buf[16];
-                        int region_count = getRegionsForLedStatic(position, region_buf, 16);
+                        // Немає тривоги — перевіряємо домашній регіон (region_buf уже заповнений вище)
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
                         for (int r = 0; r < region_count; ++r) {
