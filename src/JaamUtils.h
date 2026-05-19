@@ -1031,7 +1031,7 @@ inline String getSystemInfoJson() {
             item.add("DF Player");
             item.add(ICON_DFPLAYER);
             if (sound.isDFPlayerConnected()) {
-                char buf[32];
+                char buf[64];
                 snprintf(buf, sizeof(buf), "Підключено, %d треків", sound.dfTotalFiles);
                 item.add(buf);
             } else {
