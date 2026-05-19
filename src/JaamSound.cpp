@@ -128,15 +128,19 @@ void JaamSound::initDFPlayer() {
         LOG.printf("[SOUND] DFPlayer pins not set, skip init\n");
         return;
     }
-    int8_t attempts = 3;
+    dfConnected = false;
+    int8_t attempts = 5;
     int8_t count = 1;
+    dfSerial.end();
+    delay(50);
     dfSerial.begin(115200, SERIAL_8N1, dfRxPin, dfTxPin); // RX, TX
+    delay(500); // дати модулю час прокинутися після (ре)ініціалізації UART
 
     LOG.printf("[SOUND] rx, tx: %d, %d\n", dfRxPin, dfTxPin);
 
     // Turn off the start prompt
     dfSerial.print("AT+PROMPT=OFF\r\n");
-    delay(100);
+    delay(200);
     while (dfSerial.available()) {
         LOG.printf("%c", dfSerial.read());
     }
