@@ -3,15 +3,7 @@ set -euo pipefail
 
 echo "JAAM WIKI"
 
-# Build documentation
-echo "Installing Python dependencies..."
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt --quiet
-
-echo "Building documentation..."
-.venv/bin/mkdocs build --clean
-
-# Build Docker image
+# Build Docker image (docs are built inside the multistage Dockerfile)
 echo "Building Docker image..."
 docker build -t jaam_wiki -f deploy/wiki/Dockerfile .
 

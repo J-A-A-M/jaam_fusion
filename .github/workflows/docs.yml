@@ -73,15 +73,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
         with:
-          python-version: 3.x
-          cache: 'pip'
+          # Full history is required by the git-revision-date-localized plugin;
+          # a shallow clone would emit a warning that --strict turns into a failure.
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Build documentation
-        run: mkdocs build --strict --verbose
+      - name: Build documentation (strict)
+        run: docker build --build-arg MKDOCS_BUILD_FLAGS="--clean --strict --verbose" -f deploy/wiki/Dockerfile .
