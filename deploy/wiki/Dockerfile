@@ -22,7 +22,7 @@ COPY wiki/ ./wiki/
 # MKDOCS_BUILD_STRICT is only compared, never interpolated into the command, so
 # a build arg from untrusted CI input cannot inject shell.
 ARG MKDOCS_BUILD_STRICT=false
-RUN --mount=type=bind,source=.git,target=.git \
+RUN --mount=type=bind,source=.git,target=.git,ro \
     if [ "$MKDOCS_BUILD_STRICT" = "true" ]; then \
         mkdocs build --clean --strict --verbose; \
     else \
