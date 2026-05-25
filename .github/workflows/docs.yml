@@ -72,7 +72,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Full history with all blobs is required by the
           # git-revision-date-localized plugin: its `git log --follow` needs
