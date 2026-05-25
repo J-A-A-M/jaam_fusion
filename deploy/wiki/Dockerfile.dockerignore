@@ -1,0 +1,9 @@
+# Exclude everything, then re-include only the documentation build inputs.
+# .git is kept because the Dockerfile bind-mounts it for the
+# git-revision-date-localized plugin; the bind mount reads from the build
+# context, so excluding .git here would break the build.
+*
+!mkdocs.yml
+!requirements.txt
+!wiki
+!.git
