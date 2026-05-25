@@ -74,16 +74,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Full history is required by the git-revision-date-localized plugin;
-          # a shallow clone would emit a warning that --strict turns into a failure.
+          # Full history with all blobs is required by the
+          # git-revision-date-localized plugin: its `git log --follow` needs
+          # historical blobs for rename detection. A partial clone (which
+          # sparse-checkout implicitly enables via blob:none) would make git
+          # try to fetch missing blobs from the promisor remote at build time
+          # and fail against the read-only .git bind mount. So fetch everything
+          # and do not narrow the checkout.
           fetch-depth: 0
-          # Only materialize what the build needs (cone mode still includes
-          # root files like mkdocs.yml / requirements.txt), so the repo's
-          # non-docs code isn't checked out to disk on every PR. deploy/wiki
-          # is required because the build step references its Dockerfile.
-          sparse-checkout: |
-            wiki
-            deploy/wiki
 
       - name: Build documentation (strict)
         run: docker build --build-arg MKDOCS_BUILD_STRICT=true -f deploy/wiki/Dockerfile .
