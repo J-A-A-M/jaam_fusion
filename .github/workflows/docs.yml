@@ -84,4 +84,4 @@ jobs:
           fetch-depth: 0
 
       - name: Build documentation (strict)
-        run: docker build --build-arg MKDOCS_BUILD_STRICT=true -f deploy/wiki/Dockerfile .
+        run: docker buildx build --build-arg MKDOCS_BUILD_STRICT=true -f deploy/wiki/Dockerfile .

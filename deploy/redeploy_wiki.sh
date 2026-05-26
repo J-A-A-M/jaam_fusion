@@ -5,7 +5,7 @@ echo "JAAM WIKI"
 
 # Build Docker image (docs are built inside the multistage Dockerfile)
 echo "Building Docker image..."
-docker build -t jaam_wiki -f deploy/wiki/Dockerfile .
+docker buildx build -t jaam_wiki -f deploy/wiki/Dockerfile .
 
 # Stop and remove old container
 echo "Stopping old container..."
