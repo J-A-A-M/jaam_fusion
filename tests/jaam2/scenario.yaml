@@ -1,0 +1,17 @@
+name: JAAM 2.1 boot smoke test
+version: 1
+steps:
+  - wait-serial: '[INIT] Current firmware version'
+  - wait-serial: '[LED] SUCCESS: strip_main'
+  - wait-serial: '[LED] SUCCESS: strip_bg'
+  - wait-serial: '[LED] SUCCESS: strip_service'
+  - wait-serial: '[INIT] Loaded region map'
+  - wait-serial: '[SIREN] Initializing siren'
+  - wait-serial: '[BUTTON] Init buttons'
+  - wait-serial: '[BUTTON] button2 pin: 2'
+  - wait-serial: '[INIT] Init display'
+  - wait-serial: '[DISPLAY] Display successfully initialized'
+  - wait-serial: '[SOUND] Init Buzzer'
+  - wait-serial: '[WIFI] Connected to Wokwi-GUEST'
+  - wait-serial: '[MDNS] Started successfully'
+  - wait-serial: '[SETUP] Initialization complete'

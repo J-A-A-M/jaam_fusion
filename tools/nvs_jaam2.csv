@@ -1,0 +1,8 @@
+key,type,encoding,value
+wifi_nets,namespace,,
+count,data,u8,1
+ssid0,data,string,Wokwi-GUEST
+pass0,data,string,
+storage,namespace,,
+legacy,data,i32,3
+le,data,i32,1

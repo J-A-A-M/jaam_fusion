@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "author": "jaam_fusion tests",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp32",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    ["esp32:GND.1", "$serialMonitor:GND", "", []],
+    ["esp32:TX0",   "$serialMonitor:RX",  "", []],
+    ["esp32:RX0",   "$serialMonitor:TX",  "", []]
+  ],
+  "dependencies": {}
+}
