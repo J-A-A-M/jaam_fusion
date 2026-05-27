@@ -35,53 +35,96 @@ run-name: Deploy Documentation from '${{ github.ref_name }}' branch
 
 permissions:
   contents: read
+  # NOTE: Option A (GHCR push/pull) below also requires `packages: write` here.
+  # packages: write
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    env:
-      SERVER_IP: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_IP || secrets.CLOUD_SERVER_IP }}
-      SERVER_USER: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_USER || secrets.CLOUD_SERVER_USER }}
-      SERVER_SSH_KEY: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_SSH_KEY || secrets.CLOUD_SERVER_SSH_KEY }}
-    steps:
-      - name: Deploy Wiki
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ env.SERVER_IP }}
-          username: ${{ env.SERVER_USER }}
-          key: ${{ env.SERVER_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            TEMP_DIR=$(mktemp -d)
-            trap 'rm -rf "$TEMP_DIR"' EXIT
-            cd "$TEMP_DIR"
-            git clone --branch ${{ github.ref_name }} https://github.com/${{ github.repository }}.git .
-            bash deploy/redeploy_wiki.sh
-      - name: Clear unused images
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ env.SERVER_IP }}
-          username: ${{ env.SERVER_USER }}
-          key: ${{ env.SERVER_SSH_KEY }}
-          script: |
-            docker image prune -f
-
   build:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    env:
+      IMAGE_NAME: jaam_wiki
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/checkout@v6
         with:
-          python-version: 3.x
-          cache: 'pip'
+          # Full history is required by the git-revision-date-localized plugin.
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Build documentation image
+        # Multistage build: squidfunk/mkdocs-material compiles the site, the
+        # final stage is a clean nginx:alpine holding only the static files.
+        # The `mkdocs build --strict` inside the Dockerfile doubles as PR
+        # validation, so this step runs on pull_request too.
+        run: docker build -t "$IMAGE_NAME:latest" -f deploy/wiki/Dockerfile .
 
-      - name: Build documentation
-        run: mkdocs build --strict --verbose
+      # =================================================================
+      # DEPLOY - pick exactly ONE of the two options below (push / dispatch).
+      # Keep one block uncommented and the other commented out.
+      # =================================================================
+
+      # -----------------------------------------------------------------
+      # OPTION A - GHCR push / pull   (cleaner, but needs one-time setup:
+      #   * uncomment `packages: write` in the top-level `permissions:` block
+      #   * GHCR enabled for the org/repo; if the package is private, the
+      #     target host must `docker login ghcr.io` once)
+      # To use: uncomment this whole block and comment OPTION B.
+      # -----------------------------------------------------------------
+      # - name: Log in to GitHub Container Registry
+      #   if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      #   run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      #
+      # - name: Push image to GHCR
+      #   if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      #   run: |
+      #     set -euo pipefail
+      #     REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')   # GHCR path must be lowercase
+      #     IMAGE="ghcr.io/${REPO}/${IMAGE_NAME}"
+      #     docker tag "$IMAGE_NAME:latest" "$IMAGE:latest"
+      #     docker tag "$IMAGE_NAME:latest" "$IMAGE:${{ github.sha }}"
+      #     docker push "$IMAGE:latest"
+      #     docker push "$IMAGE:${{ github.sha }}"
+      #
+      # - name: Pull and (re)create container on host
+      #   if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      #   env:
+      #     SERVER_IP: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_IP || secrets.CLOUD_SERVER_IP }}
+      #     SERVER_USER: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_USER || secrets.CLOUD_SERVER_USER }}
+      #     SERVER_SSH_KEY: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_SSH_KEY || secrets.CLOUD_SERVER_SSH_KEY }}
+      #   run: |
+      #     set -euo pipefail
+      #     REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+      #     IMAGE="ghcr.io/${REPO}/${IMAGE_NAME}:latest"
+      #     mkdir -p ~/.ssh
+      #     printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/id_deploy
+      #     chmod 600 ~/.ssh/id_deploy
+      #     ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
+      #     ssh -i ~/.ssh/id_deploy "$SERVER_USER@$SERVER_IP" \
+      #       "docker pull '$IMAGE' && bash -s -- '$IMAGE'" < deploy/redeploy_wiki.sh
+
+      # -----------------------------------------------------------------
+      # OPTION B - docker save / scp / load   (no GitHub configuration
+      #   required; works out of the box). [ACTIVE]
+      # To use OPTION A instead: comment this block and uncomment OPTION A.
+      # -----------------------------------------------------------------
+      - name: Deploy image to host via save / load over SSH
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          SERVER_IP: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_IP || secrets.CLOUD_SERVER_IP }}
+          SERVER_USER: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_USER || secrets.CLOUD_SERVER_USER }}
+          SERVER_SSH_KEY: ${{ inputs.server_choice == 'Server 2' && secrets.CLOUD_SERVER_2_SSH_KEY || secrets.CLOUD_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          docker save "$IMAGE_NAME:latest" | gzip > jaam_wiki.tar.gz
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
+
+          rsync -az -e "ssh -i ~/.ssh/id_deploy" \
+            jaam_wiki.tar.gz "$SERVER_USER@$SERVER_IP:/tmp/jaam_wiki.tar.gz"
+
+          ssh -i ~/.ssh/id_deploy "$SERVER_USER@$SERVER_IP" \
+            "docker load -i /tmp/jaam_wiki.tar.gz \
+             && rm -f /tmp/jaam_wiki.tar.gz \
+             && bash -s -- '$IMAGE_NAME:latest'" < deploy/redeploy_wiki.sh
