@@ -3,17 +3,12 @@ set -euo pipefail
 
 echo "JAAM WIKI"
 
-# Build documentation
-echo "Installing Python dependencies..."
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt --quiet
-
-echo "Building documentation..."
-.venv/bin/mkdocs build --clean
-
-# Build Docker image
+# Build Docker image (docs are built inside the multistage Dockerfile).
+# --load makes the image available in the local daemon so the docker run
+# below works even when the active buildx builder uses the docker-container
+# driver (which otherwise keeps the result only in the build cache).
 echo "Building Docker image..."
-docker build -t jaam_wiki -f deploy/wiki/Dockerfile .
+docker buildx build --load -t jaam_wiki -f deploy/wiki/Dockerfile .
 
 # Stop and remove old container
 echo "Stopping old container..."
