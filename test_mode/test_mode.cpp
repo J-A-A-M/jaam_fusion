@@ -96,6 +96,7 @@ static const char* userSsid      = "";   // User WiFi SSID (saved to device)
 static const char* userPassword  = "";   // User WiFi password
 static const char* firmwareUrl   = "https://update.jaam.net.ua/5.0.1";
 static const int   homeDistrict  = 31;   // Default home region ID (31 = Kyiv)
+static const char* customDeviceId = "";   // Custom device ID (overrides auto-generated if set)
 
 // ─── Module instances ──────────────────────────────────────────────────────────
 JaamDisplay       display;
@@ -236,7 +237,8 @@ static void writeNvsDefaults() {
     Preferences prefs;
     prefs.begin("storage", false);
     prefs.clear();
-    prefs.putString("id", deviceId);    // device id
+    const char* idToSave = (customDeviceId && customDeviceId[0] != '\0') ? customDeviceId : deviceId;
+    prefs.putString("id", idToSave);    // device id
     prefs.putInt("hmd", homeDistrict);  // home district
 
 #if PLATFORM_ID == PLATFORM_JAAM1
@@ -442,11 +444,17 @@ void setup() {
     uint64_t efuseMac = ESP.getEfuseMac();
     char chipID[13];
     sprintf(chipID, "%04x%04x", (uint32_t)(efuseMac >> 32), (uint32_t)efuseMac);
-    char deviceId[12];
-    snprintf(deviceId, sizeof(deviceId), "%s-%04d", PLATFORM_NAME, orderNumber);
     LOG.println("[TEST] Setup complete");
     LOG.printf("[TEST] Chip ID: %s\n", chipID);
-    LOG.printf("[TEST] Device ID: %s\n", deviceId);
+    Preferences readPrefs;
+    readPrefs.begin("storage", true);
+    String savedId = readPrefs.getString("id", "");
+    readPrefs.end();
+    if (savedId.length() > 0) {
+        LOG.printf("[TEST] Device ID: %s\n", savedId.c_str());
+    } else {
+        LOG.println("[TEST] Device ID: not set");
+    }
 }
 
 void loop() {
