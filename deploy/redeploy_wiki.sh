@@ -1,31 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "JAAM WIKI"
+# Host-side deploy step. The static docs are rsynced to $HTML_DIR by CI;
+# this just (re)creates a stock nginx container that serves them read-only on
+# the jaam network. No build happens on the host.
+HTML_DIR="${1:?usage: redeploy_wiki.sh <html-dir>}"
 
-# Build documentation
-echo "Installing Python dependencies..."
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt --quiet
+echo "Serving JAAM WIKI from ${HTML_DIR}"
 
-echo "Building documentation..."
-.venv/bin/mkdocs build --clean
-
-# Build Docker image
-echo "Building Docker image..."
-docker build -t jaam_wiki -f deploy/wiki/Dockerfile .
-
-# Stop and remove old container
-echo "Stopping old container..."
-docker stop jaam_wiki || true
-docker rm jaam_wiki || true
-
-# Deploy new container
-echo "Deploying new container..."
+docker pull nginx:alpine
+docker rm -f jaam_wiki 2>/dev/null || true
 docker run --name jaam_wiki \
     --restart unless-stopped \
     --network=jaam \
-    -d \
-    jaam_wiki
+    -v "${HTML_DIR}:/usr/share/nginx/html:ro" \
+    -d nginx:alpine
 
-echo "Container deployed successfully!"
+# Drop the now-dangling old nginx image left by the pull above.
+docker image prune -f
+
+echo "Container deployed."
