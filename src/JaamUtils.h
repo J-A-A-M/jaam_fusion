@@ -19,6 +19,7 @@
 #include "JaamApi.h"
 #include "JaamFirmwareUpdate.h"
 #include "JaamConfig.h"
+#include "JaamSound.h"
 
 
 static const char* CUSTOM_MAP_PATH = "/custom_map.json";
@@ -56,6 +57,7 @@ static const char ICON_PRESSURE[] PROGMEM = "<svg class='metric-icon' viewBox='0
 static const char ICON_LIGHT[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M9,21H15V19H9V21M12,2A7,7 0 0,0 5,9C5,11.38 6.19,13.47 8,14.74V17H16V14.74C17.81,13.47 19,11.38 19,9A7,7 0 0,0 12,2Z' /></svg>";
 static const char ICON_USERS[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z' /></svg>";
 static const char ICON_VERSION[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M18,18H6V6H18M18,4H6A2,2 0 0,0 4,6V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18V6A2,2 0 0,0 18,4M8,8H10V10H8M8,12H10V14H8M8,16H10V18H8M16,8V10H12V8M16,12V14H12V12M16,16V18H12V16Z' /></svg>";
+static const char ICON_DFPLAYER[] PROGMEM = "<svg class='metric-icon' viewBox='0 0 24 24'><path d='M21,3V15.5A3.5,3.5 0 0,1 17.5,19A3.5,3.5 0 0,1 14,15.5A3.5,3.5 0 0,1 17.5,12C18.04,12 18.55,12.12 19,12.34V6.47L9,8.6V17.5A3.5,3.5 0 0,1 5.5,21A3.5,3.5 0 0,1 2,17.5A3.5,3.5 0 0,1 5.5,14C6.04,14 6.55,14.12 7,14.34V6L21,3Z' /></svg>";
 
 // Utility function: get event type name for display
 inline const char* getEventTypeName(int8_t eventType) {
@@ -825,6 +827,8 @@ static JsonDocument parseJson(const char* payload) {
 }
 
 
+extern JaamSound sound;
+
 // Function to get system information as JSON string for web interface
 inline String getSystemInfoJson() {
     // Get system information
@@ -1018,6 +1022,23 @@ inline String getSystemInfoJson() {
         item.add(api.isApiRunning() ? api.getClientsCount() : 0);
     }
 
+    // DFPlayer status (only when pins are configured)
+    {
+        if (sound.isDFPlayerEnabled()) {
+            item = system.add<JsonArray>();
+            item.add("text");
+            item.add("dfplayer");
+            item.add("DF Player");
+            item.add(ICON_DFPLAYER);
+            if (sound.isDFPlayerConnected()) {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "Підключено, %d треків", sound.dfTotalFiles);
+                item.add(buf);
+            } else {
+                item.add("Не знайдено");
+            }
+        }
+    }
 
     String response;
     serializeJson(doc, response);

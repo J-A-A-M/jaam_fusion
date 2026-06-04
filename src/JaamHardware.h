@@ -30,8 +30,8 @@ namespace JaamHardwarePins {
     constexpr int BUZZER_PIN_JAAM = 33;
     
     // DFPlayer pins
-    constexpr int DF_RX_PIN_JAAM = 17;
-    constexpr int DF_TX_PIN_JAAM = 16;
+    constexpr int DF_RX_PIN_JAAM = 16;
+    constexpr int DF_TX_PIN_JAAM = 17;
 }
 
 // Hardware LED count constants

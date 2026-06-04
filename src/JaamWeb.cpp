@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include "JaamWeb.h"
 #include "JaamLed.h"
+#include "JaamSound.h"
 #include "JaamLogs.h"
 #include "JaamUtils.h"
 #include "web_assets.h"
@@ -27,6 +28,7 @@ extern JaamHardware                     hardware;
 static const size_t MAX_BACKUP_SIZE = 32768;
 
 // Функції для тестового відтворення та оновлення прошивки
+extern JaamSound                        sound;
 extern void requestPlayTestMelody(int melodyId);
 extern void requestPlayTestTrack(int trackId);
 extern void requestFirmwareUpdate(const char* firmwareId);
@@ -266,6 +268,14 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"melody_on_missiles", MELODY_ON_MISSILES, TYPE_INT},
     {"melody_on_kabs", MELODY_ON_KABS, TYPE_INT},
     {"melody_on_ballistic", MELODY_ON_BALLISTIC, TYPE_INT},
+    {"track_on_alert", TRACK_ON_ALERT, TYPE_INT},
+    {"track_on_alert_end", TRACK_ON_ALERT_END, TYPE_INT},
+    {"track_on_explosion", TRACK_ON_EXPLOSION, TYPE_INT},
+    {"track_on_drones", TRACK_ON_DRONES, TYPE_INT},
+    {"track_on_recon_drones", TRACK_ON_RECON_DRONES, TYPE_INT},
+    {"track_on_missiles", TRACK_ON_MISSILES, TYPE_INT},
+    {"track_on_kabs", TRACK_ON_KABS, TYPE_INT},
+    {"track_on_ballistic", TRACK_ON_BALLISTIC, TYPE_INT},
     
     // Legacy/unused parameters for compatibility
     {"district_mode_kyiv", DISTRICT_MODE_KYIV, TYPE_INT},
@@ -654,6 +664,12 @@ void JaamWeb::handleParameter() {
                 settingType == MELODY_ON_MISSILES || settingType == MELODY_ON_KABS ||
                 settingType == MELODY_ON_BALLISTIC || settingType == MELODY_ON_RECON_DRONES)) {
                 requestPlayTestMelody(intValue);
+            }
+            if (success && (settingType == TRACK_ON_ALERT || settingType == TRACK_ON_ALERT_END ||
+                settingType == TRACK_ON_EXPLOSION || settingType == TRACK_ON_DRONES ||
+                settingType == TRACK_ON_MISSILES || settingType == TRACK_ON_KABS ||
+                settingType == TRACK_ON_BALLISTIC || settingType == TRACK_ON_RECON_DRONES)) {
+                requestPlayTestTrack(intValue);
             }
             break;
         }
@@ -1709,6 +1725,14 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
     {
         JsonArray arr = dropdownLists["melodies"].to<JsonArray>();
         appendOptionsList(arr, MELODY_NAMES, MELODIES_COUNT);
+    }
+    {
+        JsonArray arr = dropdownLists["tracks"].to<JsonArray>();
+        if (sound.isDFPlayerConnected() && sound.dfTotalFiles > 0) {
+            appendOptionsList(arr, sound.dynamicTrackNames, sound.dfTotalFiles);
+        } else {
+            appendOptionsList(arr, TRACK_NAMES, TRACKS_COUNT);
+        }
     }
     {
         JsonArray arr = dropdownLists["button_modes_single_click"].to<JsonArray>();

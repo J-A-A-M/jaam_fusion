@@ -3065,7 +3065,7 @@ void requestPlayTestMelody(int melodyId) {
 
 void requestPlayTestTrack(int trackId) {
     LOG.printf("[TEST] Playing test track %d\n", trackId);
-    // TODO: Реалізувати відтворення треків, якщо потрібно
+    playTrack(sound.getTrackById(trackId));
 }
 
 void requestWebsocketReconnect() {
@@ -3256,11 +3256,15 @@ void showCombined() {
 void displayProcess()
 {
     // Remove UA Anthem playing flag if anthem stopped
-    if (uaAnthemPlaying && (!sound.isBuzzerPlaying() && !sound.isDFPlayerPlaying())) {
-        uaAnthemPlaying = false;
-        // adapt colors on min of silence end
-        adaptStripColorsAndBrightness();
-        handleAdaptAnimationColors();
+    if (uaAnthemPlaying) {
+        bool soundActive = (sound.soundSource == 0 && sound.isBuzzerPlaying()) ||
+                           (sound.soundSource == 1 && sound.isDFPlayerPlaying());
+        if (!soundActive) {
+            uaAnthemPlaying = false;
+            // adapt colors on min of silence end
+            adaptStripColorsAndBrightness();
+            handleAdaptAnimationColors();
+        }
     }
 
     // Turn off display at night if setting enabled (Priority - highest)

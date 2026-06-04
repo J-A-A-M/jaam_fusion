@@ -1869,7 +1869,7 @@
             "Мелодія при тривозі у домашньому регіоні (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_alert==1"
+            "sound_source==0,sound_on_alert==1"
         ],
         [
             "dropdown",
@@ -1877,7 +1877,7 @@
             "Мелодія при скасуванні тривоги у домашньому регіоні (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_alert_end==1"
+            "sound_source==0,sound_on_alert_end==1"
         ],
         [
             "dropdown",
@@ -1885,7 +1885,7 @@
             "Мелодія при вибухах (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_explosion==1"
+            "sound_source==0,sound_on_explosion==1"
         ],
         [
             "dropdown",
@@ -1893,7 +1893,7 @@
             "Мелодія при загрозі ударних БПЛА (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_drones==1"
+            "sound_source==0,sound_on_drones==1"
         ],
         [
             "dropdown",
@@ -1901,7 +1901,7 @@
             "Мелодія при розвідувальних БПЛА (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_recon_drones==1"
+            "sound_source==0,sound_on_recon_drones==1"
         ],
         [
             "dropdown",
@@ -1909,7 +1909,7 @@
             "Мелодія при загрозі крилатих та авіаційних ракет (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_missiles==1"
+            "sound_source==0,sound_on_missiles==1"
         ],
         [
             "dropdown",
@@ -1917,7 +1917,7 @@
             "Мелодія при загрозі КАБ (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_kabs==1"
+            "sound_source==0,sound_on_kabs==1"
         ],
         [
             "dropdown",
@@ -1925,7 +1925,71 @@
             "Мелодія при загрозі балістики (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_ballistic==1"
+            "sound_source==0,sound_on_ballistic==1"
+        ],
+        [
+            "dropdown",
+            "track_on_alert",
+            "Трек при тривозі у домашньому регіоні (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_alert==1"
+        ],
+        [
+            "dropdown",
+            "track_on_alert_end",
+            "Трек при скасуванні тривоги у домашньому регіоні (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_alert_end==1"
+        ],
+        [
+            "dropdown",
+            "track_on_explosion",
+            "Трек при вибухах (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_explosion==1"
+        ],
+        [
+            "dropdown",
+            "track_on_drones",
+            "Трек при загрозі ударних БПЛА (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_drones==1"
+        ],
+        [
+            "dropdown",
+            "track_on_recon_drones",
+            "Трек при розвідувальних БПЛА (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_recon_drones==1"
+        ],
+        [
+            "dropdown",
+            "track_on_missiles",
+            "Трек при загрозі крилатих та авіаційних ракет (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_missiles==1"
+        ],
+        [
+            "dropdown",
+            "track_on_kabs",
+            "Трек при загрозі КАБ (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_kabs==1"
+        ],
+        [
+            "dropdown",
+            "track_on_ballistic",
+            "Трек при загрозі балістики (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_on_ballistic==1"
         ]
     ]
 }

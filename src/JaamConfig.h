@@ -246,7 +246,7 @@ extern const String DF_MARIO;
 extern const String DF_PACMAN;
 extern const String DF_HELLDIVERS;
 
-constexpr int TRACKS_COUNT = 3;
+constexpr int TRACKS_COUNT = 34;
 extern const String TRACKS[TRACKS_COUNT];
 
 extern const SettingListItem TRACK_NAMES[TRACKS_COUNT];
