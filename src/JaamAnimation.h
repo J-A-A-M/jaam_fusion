@@ -134,7 +134,7 @@ class AnimationManager {
         void adaptAllAnimationBrightness();
         void adaptAllAnimationPeriod();
         void adaptAllAnimationType();
-        uint32_t colorFromHex(const char* hex);
+        static uint32_t colorFromHex(const char* hex);
         uint32_t stripActualColor(Adafruit_NeoPixel* strip, bool adapted = true);
         uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = -1);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);

@@ -36,6 +36,37 @@ namespace MapModes {
     static const int FLAG = 3;
     static const int RANDOM_COLORS = 4;
     static const int LAMP = 5;
+    static const int ENERGY = 6;
+    static const int RADIATION = 7;
+}
+
+// --- Radiation map mode (значення нЗв/год приходять з сервера в TYPE_RADIATION_BATCH) ---
+namespace RadiationConfig {
+    static const int MIN_LEVEL = 50;     // нижній рівень шкали кольору (нЗв/год)
+    static const int MAX_LEVEL_MIN = 100;  // мінімально допустиме значення RADIATION_MAX
+    static const int MAX_LEVEL_MAX = 2000; // максимально допустиме значення RADIATION_MAX
+    static const uint32_t COLOR_LOW = 0x1CAFAF;  // колір мінімального рівня (#1cafaf)
+    static const uint32_t COLOR_HIGH = 0xFF00FF; // колір верхнього рівня (#ff00ff)
+}
+
+// --- Energy system statuses (значення приходять з сервера в TYPE_ENERGY_BATCH) ---
+namespace EnergyStatus {
+    static const uint8_t SUFFICIENT = 3;            // достатньо (зелений)
+    static const uint8_t INSUFFICIENT = 4;          // не вистачає (жовтий)
+    static const uint8_t OUTAGE = 9;                // відключення (червоний)
+    static const uint8_t SIGNIFICANT_SHORTAGE = 10; // значно не вистачає (помаранчевий)
+    // будь-яке інше значення → невідомий (білий)
+
+    // Ранг тяжкості для агрегації кількох регіонів на один LED (більше = гірше)
+    static inline int severity(uint8_t status) {
+        switch (status) {
+            case OUTAGE:               return 4;
+            case SIGNIFICANT_SHORTAGE: return 3;
+            case INSUFFICIENT:         return 2;
+            case SUFFICIENT:           return 1;
+            default:                   return 0; // невідомий
+        }
+    }
 }
 
 // --- BG Led Modes ---
@@ -100,6 +131,8 @@ static const uint32_t RAND_COLOR_MOD_ANIM_INTERVAL = 1000;  // 1 second
 static constexpr uint8_t  TYPE_ALERTS_BATCH = 0xA1;
 static constexpr uint8_t  TYPE_NOTIFICATIONS_BATCH = 0xA2;
 static constexpr uint8_t  TYPE_WEATHER_BATCH = 0xA3;
+static constexpr uint8_t  TYPE_ENERGY_BATCH = 0xA4;        // енергосистема: 2B region_id + 1B status (RECORD_LZ)
+static constexpr uint8_t  TYPE_RADIATION_BATCH = 0xA5;     // радіація: 2B region_id + 2B value нЗв/год (RECORD_SZ)
 static constexpr uint8_t  TYPE_FIRMWARE_UPDATE_BETA_BATCH = 0xA6;
 static constexpr uint8_t  TYPE_FIRMWARE_UPDATE_PROD_BATCH = 0xA7;
 static constexpr size_t   HEADER_SZ         = 1;            // лише 1 байт – type
@@ -397,6 +430,12 @@ enum Type {
     COLOR_HOME_DISTRICT,
     COLOR_BG_NEIGHBOR_ALERT,
     COLOR_BG,
+    ENERGY_COLOR_SUFFICIENT,
+    ENERGY_COLOR_INSUFFICIENT,
+    ENERGY_COLOR_OUTAGE,
+    ENERGY_COLOR_SIGNIFICANT_SHORTAGE,
+    ENERGY_COLOR_UNKNOWN,
+    RADIATION_COLOR_UNKNOWN,
     ENABLE_EXPLOSIONS,
     ENABLE_MISSILES,
     ENABLE_DRONES,

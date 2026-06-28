@@ -94,6 +94,8 @@ inline SettingListItem* getSettingItemById(SettingListItem* items, int count, in
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
 extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
+extern std::map<uint16_t, uint8_t>      energyMap;       // energy: region -> status code
+extern std::map<uint16_t, uint16_t>     radiationMap;    // radiation: region -> value (нЗв/год)
 extern int                              weatherAutoMinTemp;
 extern int                              weatherAutoMaxTemp;
 extern bool                             weatherAutoBoundsValid;
@@ -1155,6 +1157,17 @@ inline int getCurrentPeriodIndex(int periodLength, int periodCount, long current
     return 0;
   }
   return (currentSeconds / periodLength) % periodCount;
+}
+
+// Helper: human-readable energy system status name
+static inline const char* energyStatusName(uint8_t status) {
+    switch (status) {
+        case EnergyStatus::SUFFICIENT:           return "Достатньо";
+        case EnergyStatus::INSUFFICIENT:         return "Не вистачає";
+        case EnergyStatus::OUTAGE:               return "Відключення";
+        case EnergyStatus::SIGNIFICANT_SHORTAGE: return "Значно не вистачає";
+        default:                                 return "Невідомий";
+    }
 }
 
 // Helper: decode encoded temperature byte (7 bits value, 1 bit sign: 0=+, 1=-)

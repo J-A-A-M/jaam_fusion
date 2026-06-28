@@ -52,9 +52,9 @@ const SettingListItem LONG_CLICKS[LONG_CLICKS_COUNT] = {
 const SettingListItem MAP_MODES[MAP_MODES_COUNT] = {
   {0, "Вимкнено"},
   {1, "Тривога"},
-  {6, "Енергосистема", true, false, true},
+  {6, "Енергосистема"},
   {2, "Погода"},
-  {7, "Радіація", true, false, true},
+  {7, "Радіація"},
   {3, "Прапор"},
   {4, "Випадкові кольори"},
   {5, "Лампа"},
@@ -153,9 +153,9 @@ const TimezoneInfo TIMEZONE_OFFSETS[TIMEZONES_COUNT] = {
 SettingListItem DISPLAY_MODES[DISPLAY_MODES_COUNT] = {
   {0, "Вимкнено", false},
   {1, "Годинник", false},
-  {5, "Енергосистема", true, false, true},
+  {5, "Енергосистема", false},
   {2, "Погода", false},
-  {6, "Радіація", true, false, true},
+  {6, "Радіація", false},
   {3, "Технічна інформація", false},
   {4, "Мікроклімат", false},
   {9, "Комбінований", false},

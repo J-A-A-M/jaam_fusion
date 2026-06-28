@@ -331,6 +331,16 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_BG, {"rgbcbg", "#00FF00"}},                      // Background color (green)
     {COLOR_LAMP, {"rgbclamp", "#D707D7"}},                  // Lamp mode color (purple)
 
+    // Energy system status colors (#RRGGBB)
+    {ENERGY_COLOR_SUFFICIENT, {"rgbensuf", "#00FF00"}},            // достатньо (green)
+    {ENERGY_COLOR_INSUFFICIENT, {"rgbenins", "#FFFF00"}},         // не вистачає (yellow)
+    {ENERGY_COLOR_OUTAGE, {"rgbenout", "#FF0000"}},              // відключення (red)
+    {ENERGY_COLOR_SIGNIFICANT_SHORTAGE, {"rgbensig", "#FF8C00"}}, // значно не вистачає (orange)
+    {ENERGY_COLOR_UNKNOWN, {"rgbenunk", "#FFFFFF"}},             // невідомий (white)
+
+    // Radiation: color for regions without data
+    {RADIATION_COLOR_UNKNOWN, {"rgbradunk", "#FFFFFF"}},         // немає даних (white)
+
     // Web authentication
     {WEB_LOGIN, {"waulg", "admin"}},                         // Web auth login
     {WEB_PASSWORD, {"waupass", "admin"}},                     // Web auth password
