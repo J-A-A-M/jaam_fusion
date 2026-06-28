@@ -1554,13 +1554,16 @@ void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {
 // Попередній перегляд анімацій
 // ──────────────────────────────────────────────────────
 
-void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness) {
+void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness, uint32_t durationMs, bool checkEnableSetting) {
     if (!settings) return;
-    
-    // Перевірка чи увімкнено попередній перегляд
-    if (!settings->getBool(ENABLE_ANIMATION_PREVIEW)) {
+
+    // Перевірка чи увімкнено попередній перегляд (для home-alert тригера гейт у викликачі)
+    if (checkEnableSetting && !settings->getBool(ENABLE_ANIMATION_PREVIEW)) {
         return;
     }
+
+    // Захист від нульової тривалості
+    if (durationMs == 0) durationMs = 5000;
     
     if (strip_main == nullptr) {
         LOG.printf("[PREVIEW] strip_main is null, skipping preview\n");
@@ -1582,12 +1585,12 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         
         // Налаштування попереднього перегляду
         previewActive = true;
-        previewEndTime = millis() + 5000;  // 5 секунд
+        previewEndTime = millis() + durationMs;
         previewEventType = eventType;
-        
+
         // Створюємо анімацію на всій стрічці
         uint32_t now = millis();
-        uint32_t cycles = (5000 + period - 1) / period;  // Кількість циклів за 5 секунд
+        uint32_t cycles = (durationMs + period - 1) / period;  // Кількість циклів за durationMs
         uint8_t globalStart = led.brightnessRelative(brightness);
         uint8_t globalEnd = led.brightnessRelative(settings->getInt(BRIGHTNESS_ANIMATION_END));
         uint8_t mapMode = getCurrentMapMode();
@@ -1641,7 +1644,7 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         
         xSemaphoreGive(animMutex);
         
-        LOG.printf("[PREVIEW] Preview started on all LEDs for 5 seconds\n");
+        LOG.printf("[PREVIEW] Preview started on all LEDs for %u ms\n", durationMs);
     }
 }
 

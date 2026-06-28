@@ -146,7 +146,7 @@ class AnimationManager {
         void resetAllGlobalTimes();
 
         // Методи попереднього перегляду
-        void startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness);
+        void startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness, uint32_t durationMs = 5000, bool checkEnableSetting = true);
         void stopPreview();
         bool isPreviewActive() const;
 

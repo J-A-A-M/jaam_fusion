@@ -53,6 +53,7 @@ void handleUpdateAnimationsMode();
 void handleAdaptClimate();
 void handleAdaptVolume();
 void handleUpdateHomeAlertBit();
+bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& color, uint32_t& period, uint8_t& brightness);
 void handleUpdateTimezone();
 void handleUpdateNtpHost();
 void handleReconnectWebsocket();
@@ -780,6 +781,64 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     return diff;
 }
 
+// Заповнює параметри анімації (тип/колір/період/яскравість) за типом події (AlertModes).
+// Єдине джерело мапінгу eventType→params для preview та анімації тривоги домашнього регіону.
+// Повертає false, якщо eventType невідомий.
+bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& color, uint32_t& period, uint8_t& brightness) {
+    switch (eventType) {
+        case AlertModes::NO_ALERT:
+            animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
+            period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));
+            brightness = settings.getInt(BRIGHTNESS_CLEAR);
+            return true;
+        case AlertModes::ALERT:
+            animType = settings.getInt(ANIMATION_ALERT_ON_TYPE);
+            period = settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_ALERT));
+            brightness = settings.getInt(BRIGHTNESS_ALERT);
+            return true;
+        case AlertModes::DRONES:
+            animType = settings.getInt(ANIMATION_DRONE_TYPE);
+            period = settings.getInt(ANIMATION_DRONE_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_DRONES));
+            brightness = settings.getInt(BRIGHTNESS_DRONES);
+            return true;
+        case AlertModes::RECON_DRONES:
+            animType = settings.getInt(ANIMATION_RECON_DRONE_TYPE);
+            period = settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
+            brightness = settings.getInt(BRIGHTNESS_RECON_DRONES);
+            return true;
+        case AlertModes::MISSILES:
+            animType = settings.getInt(ANIMATION_MISSILE_TYPE);
+            period = settings.getInt(ANIMATION_MISSILE_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
+            brightness = settings.getInt(BRIGHTNESS_MISSILES);
+            return true;
+        case AlertModes::KABS:
+            animType = settings.getInt(ANIMATION_KAB_TYPE);
+            period = settings.getInt(ANIMATION_KAB_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_KABS));
+            brightness = settings.getInt(BRIGHTNESS_KABS);
+            return true;
+        case AlertModes::BALLISTIC:
+            animType = settings.getInt(ANIMATION_BALLISTIC_TYPE);
+            period = settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
+            brightness = settings.getInt(BRIGHTNESS_BALLISTIC);
+            return true;
+        case AlertModes::EXPLOSION:
+            animType = settings.getInt(ANIMATION_EXPLOSION_TYPE);
+            period = settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
+            brightness = settings.getInt(BRIGHTNESS_EXPLOSION);
+            return true;
+        default:
+            return false;
+    }
+}
+
 void alertAction(int bit, int districtId) {
     // int actualBit = getHighestActualBit(bit);
     // if (actualBit != bit) {
@@ -1201,6 +1260,15 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
+
+                // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
+                if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
+                    uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
+                    if (getEventAnimationParams((int8_t)localAlertBit, haType, haColor, haPeriod, haBright)) {
+                        uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
+                        animation.startPreview((int8_t)localAlertBit, haType, haColor, haPeriod, haBright, durMs, false);
+                    }
+                }
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -2237,8 +2305,9 @@ void initSettings() {
             
             // Увімкнення/вимкнення попереднього перегляду
             case ENABLE_ANIMATION_PREVIEW:
+            case ENABLE_HOME_ALERT_ANIMATION:
                 if (intValue == 0) {
-                    // Зупиняємо попередній перегляд при вимкненні
+                    // Зупиняємо активний оверлей анімації при вимкненні
                     animation.stopPreview();
                 }
                 break;
@@ -2257,116 +2326,48 @@ void initSettings() {
         // Попередній перегляд анімації (якщо увімкнено)
         if (settings.getBool(ENABLE_ANIMATION_PREVIEW)) {
             int8_t eventType = -2;  // -2 означає "не визначено"
-            uint16_t animType = 0;
-            uint32_t period = 1000;
-            uint32_t color = 0xFF0000;
-            uint8_t brightness = 255;
-            bool isAnimationParam = false;
-            
-            // Визначаємо тип події та одразу заповнюємо параметри
+
+            // Визначаємо тип події за зміненим налаштуванням
             switch (type) {
-                // Параметри для ALERT
                 case ANIMATION_ALERT_ON_TYPE:
                 case ANIMATION_ALERT_ON_CYCLE_TIME:
                 case COLOR_ALERT:
-                    eventType = AlertModes::ALERT;
-                    animType = settings.getInt(ANIMATION_ALERT_ON_TYPE);
-                    period = settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_ALERT));
-                    brightness = settings.getInt(BRIGHTNESS_ALERT);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для NO_ALERT (скасування тривоги)
+                    eventType = AlertModes::ALERT; break;
                 case ANIMATION_ALERT_OFF_TYPE:
                 case ANIMATION_ALERT_OFF_CYCLE_TIME:
                 case COLOR_CLEAR:
-                    eventType = AlertModes::NO_ALERT;
-                    animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
-                    period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_CLEAR));
-                    brightness = settings.getInt(BRIGHTNESS_CLEAR);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для EXPLOSION
+                    eventType = AlertModes::NO_ALERT; break;
                 case ANIMATION_EXPLOSION_TYPE:
                 case ANIMATION_EXPLOSION_CYCLE_TIME:
                 case COLOR_EXPLOSION:
-                    eventType = AlertModes::EXPLOSION;
-                    animType = settings.getInt(ANIMATION_EXPLOSION_TYPE);
-                    period = settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
-                    brightness = settings.getInt(BRIGHTNESS_EXPLOSION);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для DRONES
+                    eventType = AlertModes::EXPLOSION; break;
                 case ANIMATION_DRONE_TYPE:
                 case ANIMATION_DRONE_CYCLE_TIME:
                 case COLOR_DRONES:
-                    eventType = AlertModes::DRONES;
-                    animType = settings.getInt(ANIMATION_DRONE_TYPE);
-                    period = settings.getInt(ANIMATION_DRONE_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_DRONES));
-                    brightness = settings.getInt(BRIGHTNESS_DRONES);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для RECON_DRONES
+                    eventType = AlertModes::DRONES; break;
                 case ANIMATION_RECON_DRONE_TYPE:
                 case ANIMATION_RECON_DRONE_CYCLE_TIME:
                 case COLOR_RECON_DRONES:
-                    eventType = AlertModes::RECON_DRONES;
-                    animType = settings.getInt(ANIMATION_RECON_DRONE_TYPE);
-                    period = settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
-                    brightness = settings.getInt(BRIGHTNESS_RECON_DRONES);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для MISSILES
+                    eventType = AlertModes::RECON_DRONES; break;
                 case ANIMATION_MISSILE_TYPE:
                 case ANIMATION_MISSILE_CYCLE_TIME:
                 case COLOR_MISSILES:
-                    eventType = AlertModes::MISSILES;
-                    animType = settings.getInt(ANIMATION_MISSILE_TYPE);
-                    period = settings.getInt(ANIMATION_MISSILE_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
-                    brightness = settings.getInt(BRIGHTNESS_MISSILES);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для KABS
+                    eventType = AlertModes::MISSILES; break;
                 case ANIMATION_KAB_TYPE:
                 case ANIMATION_KAB_CYCLE_TIME:
                 case COLOR_KABS:
-                    eventType = AlertModes::KABS;
-                    animType = settings.getInt(ANIMATION_KAB_TYPE);
-                    period = settings.getInt(ANIMATION_KAB_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_KABS));
-                    brightness = settings.getInt(BRIGHTNESS_KABS);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для BALLISTIC
+                    eventType = AlertModes::KABS; break;
                 case ANIMATION_BALLISTIC_TYPE:
                 case ANIMATION_BALLISTIC_CYCLE_TIME:
                 case COLOR_BALLISTIC:
-                    eventType = AlertModes::BALLISTIC;
-                    animType = settings.getInt(ANIMATION_BALLISTIC_TYPE);
-                    period = settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
-                    brightness = settings.getInt(BRIGHTNESS_BALLISTIC);
-                    isAnimationParam = true;
-                    break;
-                    
+                    eventType = AlertModes::BALLISTIC; break;
                 default:
                     break;
             }
-            
+
             // Запуск попереднього перегляду
-            if (isAnimationParam) {
+            uint16_t animType; uint32_t color; uint32_t period; uint8_t brightness;
+            if (getEventAnimationParams(eventType, animType, color, period, brightness)) {
                 // Показуємо повідомлення на дисплеї
                 display.showServiceMessage(getEventTypeName(eventType), "Анімація:", 5000);
                 animation.startPreview(eventType, animType, color, period, brightness);
@@ -3116,6 +3117,15 @@ void handleUpdateHomeAlertBit() {
     if (localAlertBit != alertBit) {
         alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         updateSirenIfNeeded(localAlertBit);
+
+        // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
+        if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
+            uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
+            if (getEventAnimationParams((int8_t)localAlertBit, haType, haColor, haPeriod, haBright)) {
+                uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
+                animation.startPreview((int8_t)localAlertBit, haType, haColor, haPeriod, haBright, durMs, false);
+            }
+        }
     }
     alertBit = localAlertBit;
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -3270,15 +3280,30 @@ void showRadiation() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
     auto it = radiationMap.find(homeDistrict);
     char radiationInfo[50];
+    const char* statusInfo;
 
     // На екрані — реальне значення нЗв/год (без клампування)
     if (it != radiationMap.end()) {
-        snprintf(radiationInfo, sizeof(radiationInfo), "%u нЗв/год", it->second);
+        uint16_t value = it->second;
+        snprintf(radiationInfo, sizeof(radiationInfo), "%u нЗв/год", value);
+
+        // Тестова градація статусу за рівнем радіації
+        if (value < 300) {
+            statusInfo = "В межах норми";
+        } else if (value < 600) {
+            statusInfo = "Підвищений";
+        } else if (value < 1000) {
+            statusInfo = "Вище норми";
+        } else {
+            statusInfo = "Суттєво вище норми";
+        }
     } else {
         snprintf(radiationInfo, sizeof(radiationInfo), "-- нЗв/год");
+        statusInfo = "Немає даних";
     }
 
-    display.printMessage(radiationInfo, "Рівень радіації");
+    //display.printMessage(radiationInfo, "Рівень радіації");
+    display.printMultilineMessage(radiationInfo, statusInfo, "", "", "Рівень радіації");
 }
 
 void showTechnicalInfo() {

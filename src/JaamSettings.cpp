@@ -103,7 +103,9 @@ std::map<Type, SettingItemInt> intSettings = {
     {ENABLE_BALLISTIC, {"ebal", 1}},                       // Show ballistic missiles
     {ENABLE_SYNC_ANIMATIONS, {"esa", 1}},                  // Sync animations across regions
     {ENABLE_ANIMATION_PREVIEW, {"eap", 1}},                // Show animation preview
-    
+    {ENABLE_HOME_ALERT_ANIMATION, {"ehaa", 1}},            // Run alert animation on home region status change
+    {HOME_ALERT_ANIMATION_TIME, {"haat", 5}},             // Home alert animation duration (seconds)
+
     // Brightness per state (0-100%)
     {BRIGHTNESS_ALERT, {"ba", 100}},                       // Alert state
     {BRIGHTNESS_CLEAR, {"bc", 100}},                       // Clear state

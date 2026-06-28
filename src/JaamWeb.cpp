@@ -180,6 +180,8 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     // Animations
     {"enable_sync_animations", ENABLE_SYNC_ANIMATIONS, TYPE_BOOL},
     {"enable_animation_preview", ENABLE_ANIMATION_PREVIEW, TYPE_BOOL},
+    {"enable_home_alert_animation", ENABLE_HOME_ALERT_ANIMATION, TYPE_BOOL},
+    {"home_alert_animation_time", HOME_ALERT_ANIMATION_TIME, TYPE_INT},
     {"alert_on_animation", ANIMATION_ALERT_ON_TYPE, TYPE_INT},
     {"alert_off_animation", ANIMATION_ALERT_OFF_TYPE, TYPE_INT},
     {"drone_animation", ANIMATION_DRONE_TYPE, TYPE_INT},
