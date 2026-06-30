@@ -103,6 +103,8 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"display_mode", DISPLAY_MODE, TYPE_INT},
     {"display_mode_time", DISPLAY_MODE_TIME, TYPE_INT},
     {"toggle_mode_weather", TOGGLE_MODE_WEATHER, TYPE_BOOL},
+    {"toggle_mode_energy", TOGGLE_MODE_ENERGY, TYPE_BOOL},
+    {"toggle_mode_radiation", TOGGLE_MODE_RADIATION, TYPE_BOOL},
     {"toggle_mode_microclimate", TOGGLE_MODE_MICROCLIMATE, TYPE_BOOL},
     {"display_off_at_night", DISPLAY_OFF_AT_NIGHT, TYPE_BOOL},
     {"clock_font", CLOCK_FONT, TYPE_INT},
@@ -170,6 +172,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"weather_min_temp", WEATHER_MIN_TEMP, TYPE_INT},
     {"weather_max_temp", WEATHER_MAX_TEMP, TYPE_INT},
     {"weather_auto_bounds", WEATHER_AUTO_BOUNDS, TYPE_BOOL},
+    {"radiation_max", RADIATION_MAX, TYPE_INT},
     {"temp_correction", TEMP_CORRECTION, TYPE_FLOAT},
     {"hum_correction", HUM_CORRECTION, TYPE_FLOAT},
     {"pressure_correction", PRESSURE_CORRECTION, TYPE_FLOAT},
@@ -177,6 +180,8 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     // Animations
     {"enable_sync_animations", ENABLE_SYNC_ANIMATIONS, TYPE_BOOL},
     {"enable_animation_preview", ENABLE_ANIMATION_PREVIEW, TYPE_BOOL},
+    {"enable_home_alert_animation", ENABLE_HOME_ALERT_ANIMATION, TYPE_BOOL},
+    {"home_alert_animation_time", HOME_ALERT_ANIMATION_TIME, TYPE_INT},
     {"alert_on_animation", ANIMATION_ALERT_ON_TYPE, TYPE_INT},
     {"alert_off_animation", ANIMATION_ALERT_OFF_TYPE, TYPE_INT},
     {"drone_animation", ANIMATION_DRONE_TYPE, TYPE_INT},
@@ -212,7 +217,15 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"color_home", COLOR_HOME_DISTRICT, TYPE_STRING},
     {"color_bg", COLOR_BG, TYPE_STRING},
     {"color_lamp", COLOR_LAMP, TYPE_STRING},
-    
+
+    // Energy system status colors
+    {"energy_color_sufficient", ENERGY_COLOR_SUFFICIENT, TYPE_STRING},
+    {"energy_color_insufficient", ENERGY_COLOR_INSUFFICIENT, TYPE_STRING},
+    {"energy_color_outage", ENERGY_COLOR_OUTAGE, TYPE_STRING},
+    {"energy_color_significant_shortage", ENERGY_COLOR_SIGNIFICANT_SHORTAGE, TYPE_STRING},
+    {"energy_color_unknown", ENERGY_COLOR_UNKNOWN, TYPE_STRING},
+    {"radiation_color_unknown", RADIATION_COLOR_UNKNOWN, TYPE_STRING},
+
     // Brightness
     {"brightness_mode", BRIGHTNESS_MODE, TYPE_INT},
     {"night_mode_light_threshold", NIGHT_MODE_LIGHT_THRESHOLD, TYPE_INT},

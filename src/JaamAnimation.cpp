@@ -57,6 +57,41 @@ static inline uint32_t colorFromTemperature(int tempC, int minC, int maxC) {
     return hsvToRgb(hue, 1.0f, 1.0f);
 }
 
+// Helper: map energy system status -> configured color (#RRGGBB hex)
+static inline uint32_t colorFromEnergyStatus(JaamSettings* settings, uint8_t status) {
+    Type colorKey;
+    switch (status) {
+        case EnergyStatus::SUFFICIENT:           colorKey = ENERGY_COLOR_SUFFICIENT; break;
+        case EnergyStatus::INSUFFICIENT:         colorKey = ENERGY_COLOR_INSUFFICIENT; break;
+        case EnergyStatus::OUTAGE:               colorKey = ENERGY_COLOR_OUTAGE; break;
+        case EnergyStatus::SIGNIFICANT_SHORTAGE: colorKey = ENERGY_COLOR_SIGNIFICANT_SHORTAGE; break;
+        default:                                 colorKey = ENERGY_COLOR_UNKNOWN; break;
+    }
+    return AnimationManager::colorFromHex(settings->getString(colorKey));
+}
+
+// Helper: map radiation value (нЗв/год) -> color gradient COLOR_LOW..COLOR_HIGH.
+// Значення клампиться в [MIN_LEVEL, maxLevel]; колір лінійно інтерполюється у RGB.
+static inline uint32_t colorFromRadiation(int value, int maxLevel) {
+    int minLevel = RadiationConfig::MIN_LEVEL;
+    if (maxLevel <= minLevel) maxLevel = minLevel + 1;
+    if (value < minLevel) value = minLevel;
+    if (value > maxLevel) value = maxLevel;
+    float factor = (float)(value - minLevel) / (float)(maxLevel - minLevel); // 0..1
+
+    uint8_t r1 = (RadiationConfig::COLOR_LOW >> 16) & 0xFF;
+    uint8_t g1 = (RadiationConfig::COLOR_LOW >> 8) & 0xFF;
+    uint8_t b1 = RadiationConfig::COLOR_LOW & 0xFF;
+    uint8_t r2 = (RadiationConfig::COLOR_HIGH >> 16) & 0xFF;
+    uint8_t g2 = (RadiationConfig::COLOR_HIGH >> 8) & 0xFF;
+    uint8_t b2 = RadiationConfig::COLOR_HIGH & 0xFF;
+
+    uint8_t r = (uint8_t)(r1 + (r2 - r1) * factor + 0.5f);
+    uint8_t g = (uint8_t)(g1 + (g2 - g1) * factor + 0.5f);
+    uint8_t b = (uint8_t)(b1 + (b2 - b1) * factor + 0.5f);
+    return ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+}
+
 static inline void getWeatherTempBounds(JaamSettings* settings, int& minT, int& maxT) {
     if (settings->getBool(WEATHER_AUTO_BOUNDS) && weatherAutoBoundsValid) {
         minT = weatherAutoMinTemp;
@@ -1129,6 +1164,29 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     }
+                    case MapModes::ENERGY: {
+                        uint16_t home = settings->getInt(HOME_DISTRICT);
+                        auto it = energyMap.find(home);
+                        if (it != energyMap.end()) {
+                            color = colorFromEnergyStatus(settings, it->second);
+                        } else {
+                            color = colorFromHex(settings->getString(ENERGY_COLOR_UNKNOWN));
+                        }
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::RADIATION: {
+                        uint16_t home = settings->getInt(HOME_DISTRICT);
+                        auto it = radiationMap.find(home);
+                        if (it != radiationMap.end()) {
+                            color = colorFromRadiation((int)it->second, settings->getInt(RADIATION_MAX));
+                        } else {
+                            // немає даних — налаштовуваний колір
+                            color = colorFromHex(settings->getString(RADIATION_COLOR_UNKNOWN));
+                        }
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
                     case MapModes::FLAG:
                         color = DefaultColors::FLAG_BLUE;
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
@@ -1261,6 +1319,52 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     brightness = led.brightnessRelative(100);
                     break;
                 }
+                case MapModes::ENERGY: {
+                    // Кілька регіонів на один LED → перемагає найгірший статус (worst-severity-wins)
+                    auto regions = getRegionsForLed(position);
+                    bool found = false;
+                    uint8_t worstStatus = 0;
+                    int worstSeverity = -1;
+                    for (uint16_t region_id : regions) {
+                        auto it = energyMap.find(region_id);
+                        if (it != energyMap.end()) {
+                            found = true;
+                            int sev = EnergyStatus::severity(it->second);
+                            if (sev > worstSeverity) {
+                                worstSeverity = sev;
+                                worstStatus = it->second;
+                            }
+                        }
+                    }
+                    if (found) {
+                        color = colorFromEnergyStatus(settings, worstStatus);
+                    } else {
+                        color = colorFromHex(settings->getString(ENERGY_COLOR_UNKNOWN));
+                    }
+                    brightness = led.brightnessRelative(100);
+                    break;
+                }
+                case MapModes::RADIATION: {
+                    auto regions = getRegionsForLed(position);
+                    long sum = 0;
+                    int cnt = 0;
+                    for (uint16_t region_id : regions) {
+                        auto it = radiationMap.find(region_id);
+                        if (it != radiationMap.end()) {
+                            sum += it->second;
+                            cnt++;
+                        }
+                    }
+                    if (cnt > 0) {
+                        int avg = (int)(sum / cnt);
+                        color = colorFromRadiation(avg, settings->getInt(RADIATION_MAX));
+                    } else {
+                        // немає даних — налаштовуваний колір
+                        color = colorFromHex(settings->getString(RADIATION_COLOR_UNKNOWN));
+                    }
+                    brightness = led.brightnessRelative(100);
+                    break;
+                }
                 case MapModes::FLAG: {
                     auto regions = getRegionsForLed(position);
                     if (regions.empty()) {
@@ -1330,6 +1434,29 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                             color = colorFromTemperature(t, minT, maxT);
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
+                        }
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::ENERGY: {
+                        uint16_t home = settings->getInt(HOME_DISTRICT);
+                        auto it = energyMap.find(home);
+                        if (it != energyMap.end()) {
+                            color = colorFromEnergyStatus(settings, it->second);
+                        } else {
+                            color = colorFromHex(settings->getString(ENERGY_COLOR_UNKNOWN));
+                        }
+                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        break;
+                    }
+                    case MapModes::RADIATION: {
+                        uint16_t home = settings->getInt(HOME_DISTRICT);
+                        auto it = radiationMap.find(home);
+                        if (it != radiationMap.end()) {
+                            color = colorFromRadiation((int)it->second, settings->getInt(RADIATION_MAX));
+                        } else {
+                            // немає даних — налаштовуваний колір
+                            color = colorFromHex(settings->getString(RADIATION_COLOR_UNKNOWN));
                         }
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
@@ -1427,13 +1554,16 @@ void AnimationManager::paintStripDefault(Adafruit_NeoPixel* strip) {
 // Попередній перегляд анімацій
 // ──────────────────────────────────────────────────────
 
-void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness) {
+void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_t color, uint32_t period, uint8_t brightness, uint32_t durationMs, bool checkEnableSetting) {
     if (!settings) return;
-    
-    // Перевірка чи увімкнено попередній перегляд
-    if (!settings->getBool(ENABLE_ANIMATION_PREVIEW)) {
+
+    // Перевірка чи увімкнено попередній перегляд (для home-alert тригера гейт у викликачі)
+    if (checkEnableSetting && !settings->getBool(ENABLE_ANIMATION_PREVIEW)) {
         return;
     }
+
+    // Захист від нульової тривалості
+    if (durationMs == 0) durationMs = 5000;
     
     if (strip_main == nullptr) {
         LOG.printf("[PREVIEW] strip_main is null, skipping preview\n");
@@ -1455,12 +1585,12 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         
         // Налаштування попереднього перегляду
         previewActive = true;
-        previewEndTime = millis() + 5000;  // 5 секунд
+        previewEndTime = millis() + durationMs;
         previewEventType = eventType;
-        
+
         // Створюємо анімацію на всій стрічці
         uint32_t now = millis();
-        uint32_t cycles = (5000 + period - 1) / period;  // Кількість циклів за 5 секунд
+        uint32_t cycles = (durationMs + period - 1) / period;  // Кількість циклів за durationMs
         uint8_t globalStart = led.brightnessRelative(brightness);
         uint8_t globalEnd = led.brightnessRelative(settings->getInt(BRIGHTNESS_ANIMATION_END));
         uint8_t mapMode = getCurrentMapMode();
@@ -1514,7 +1644,7 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         
         xSemaphoreGive(animMutex);
         
-        LOG.printf("[PREVIEW] Preview started on all LEDs for 5 seconds\n");
+        LOG.printf("[PREVIEW] Preview started on all LEDs for %u ms\n", durationMs);
     }
 }
 

@@ -53,6 +53,7 @@ void handleUpdateAnimationsMode();
 void handleAdaptClimate();
 void handleAdaptVolume();
 void handleUpdateHomeAlertBit();
+bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& color, uint32_t& period, uint8_t& brightness);
 void handleUpdateTimezone();
 void handleUpdateNtpHost();
 void handleReconnectWebsocket();
@@ -112,6 +113,8 @@ uint16_t                animType;
 
 // --- MAP Configuration ---                       // старий обробник (TYPE_RADIATION_BATCH)
 std::map<uint16_t, uint8_t>     temperatureMap;
+std::map<uint16_t, uint8_t>     energyMap;
+std::map<uint16_t, uint16_t>    radiationMap;
 int                             weatherAutoMinTemp = 0;
 int                             weatherAutoMaxTemp = 0;
 bool                            weatherAutoBoundsValid = false;
@@ -233,6 +236,38 @@ void clearAllWeatherMaps() {
                memReclaimed, memBefore, memAfter);
 }
 
+void clearAllEnergyMaps() {
+    size_t memBefore = ESP.getFreeHeap();
+    LOG.printf("[MEMORY] Free heap before clearing energy maps: %u bytes\n", memBefore);
+
+    energyMap.clear();
+    std::map<uint16_t, uint8_t>().swap(energyMap);
+
+    forceMemoryCleanup("after energy maps clearing");
+    defragmentMemory("after energy maps clearing");
+
+    size_t memAfter = ESP.getFreeHeap();
+    LOG.printf("[MAIN] Clearing all energy maps completed\n");
+    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n",
+               (int)(memAfter - memBefore), memBefore, memAfter);
+}
+
+void clearAllRadiationMaps() {
+    size_t memBefore = ESP.getFreeHeap();
+    LOG.printf("[MEMORY] Free heap before clearing radiation maps: %u bytes\n", memBefore);
+
+    radiationMap.clear();
+    std::map<uint16_t, uint16_t>().swap(radiationMap);
+
+    forceMemoryCleanup("after radiation maps clearing");
+    defragmentMemory("after radiation maps clearing");
+
+    size_t memAfter = ESP.getFreeHeap();
+    LOG.printf("[MAIN] Clearing all radiation maps completed\n");
+    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n",
+               (int)(memAfter - memBefore), memBefore, memAfter);
+}
+
 void rebootDevice(int time = 2000, bool async = false) {
     LOG.printf("[MAIN] Rebooting in %d ms...\n", time);
     display.showServiceMessage("Перезавантаження...", "", time);
@@ -240,6 +275,8 @@ void rebootDevice(int time = 2000, bool async = false) {
     // Clean up all resources before reboot
     clearAllAlertsMaps();
     clearAllWeatherMaps();
+    clearAllEnergyMaps();
+    clearAllRadiationMaps();
     animation.clearAllAnimations();
     
     // Close websocket connection properly
@@ -744,6 +781,64 @@ AlertDiff calculateAlertDiff(uint16_t region_id, uint16_t previous_flags, uint16
     return diff;
 }
 
+// Заповнює параметри анімації (тип/колір/період/яскравість) за типом події (AlertModes).
+// Єдине джерело мапінгу eventType→params для preview та анімації тривоги домашнього регіону.
+// Повертає false, якщо eventType невідомий.
+bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& color, uint32_t& period, uint8_t& brightness) {
+    switch (eventType) {
+        case AlertModes::NO_ALERT:
+            animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
+            period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));
+            brightness = settings.getInt(BRIGHTNESS_CLEAR);
+            return true;
+        case AlertModes::ALERT:
+            animType = settings.getInt(ANIMATION_ALERT_ON_TYPE);
+            period = settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_ALERT));
+            brightness = settings.getInt(BRIGHTNESS_ALERT);
+            return true;
+        case AlertModes::DRONES:
+            animType = settings.getInt(ANIMATION_DRONE_TYPE);
+            period = settings.getInt(ANIMATION_DRONE_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_DRONES));
+            brightness = settings.getInt(BRIGHTNESS_DRONES);
+            return true;
+        case AlertModes::RECON_DRONES:
+            animType = settings.getInt(ANIMATION_RECON_DRONE_TYPE);
+            period = settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
+            brightness = settings.getInt(BRIGHTNESS_RECON_DRONES);
+            return true;
+        case AlertModes::MISSILES:
+            animType = settings.getInt(ANIMATION_MISSILE_TYPE);
+            period = settings.getInt(ANIMATION_MISSILE_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
+            brightness = settings.getInt(BRIGHTNESS_MISSILES);
+            return true;
+        case AlertModes::KABS:
+            animType = settings.getInt(ANIMATION_KAB_TYPE);
+            period = settings.getInt(ANIMATION_KAB_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_KABS));
+            brightness = settings.getInt(BRIGHTNESS_KABS);
+            return true;
+        case AlertModes::BALLISTIC:
+            animType = settings.getInt(ANIMATION_BALLISTIC_TYPE);
+            period = settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
+            brightness = settings.getInt(BRIGHTNESS_BALLISTIC);
+            return true;
+        case AlertModes::EXPLOSION:
+            animType = settings.getInt(ANIMATION_EXPLOSION_TYPE);
+            period = settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
+            brightness = settings.getInt(BRIGHTNESS_EXPLOSION);
+            return true;
+        default:
+            return false;
+    }
+}
+
 void alertAction(int bit, int districtId) {
     // int actualBit = getHighestActualBit(bit);
     // if (actualBit != bit) {
@@ -970,7 +1065,7 @@ void onMessageCallback(WebsocketsMessage msg) {
 
     // 4) Перевіряємо тип пакета
     uint8_t type = data[0];
-    if (type != TYPE_ALERTS_BATCH && type != TYPE_NOTIFICATIONS_BATCH && type != TYPE_WEATHER_BATCH && type != TYPE_FIRMWARE_UPDATE_BETA_BATCH && type != TYPE_FIRMWARE_UPDATE_PROD_BATCH) {
+    if (type != TYPE_ALERTS_BATCH && type != TYPE_NOTIFICATIONS_BATCH && type != TYPE_WEATHER_BATCH && type != TYPE_ENERGY_BATCH && type != TYPE_RADIATION_BATCH && type != TYPE_FIRMWARE_UPDATE_BETA_BATCH && type != TYPE_FIRMWARE_UPDATE_PROD_BATCH) {
         LOG.printf("[ERROR] message type unknown\n");
         return;
     }
@@ -1165,6 +1260,15 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
+
+                // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
+                if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
+                    uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
+                    if (getEventAnimationParams((int8_t)localAlertBit, haType, haColor, haPeriod, haBright)) {
+                        uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
+                        animation.startPreview((int8_t)localAlertBit, haType, haColor, haPeriod, haBright, durMs, false);
+                    }
+                }
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -1306,7 +1410,65 @@ void onMessageCallback(WebsocketsMessage msg) {
         api.setHomeDistrictTemp(homeTemp);
         adaptStripColorsAndBrightness();
     }
-    
+
+    if(type == TYPE_ENERGY_BATCH) {
+        LOG.printf("[WEBSOCKET] TYPE_ENERGY_BATCH received\n");
+        bodyLen = len - HEADER_SZ;
+
+        // payloadLen має ділитися на RECORD_LZ (2B region_id + 1B status)
+        if (bodyLen == 0 || (bodyLen % RECORD_LZ) != 0) {
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen %% RECORD_LZ) != 0\n");
+            requestWebsocketReconnect();
+            return;
+        }
+
+        size_t count = bodyLen / RECORD_LZ;
+        const uint8_t* ptr = data + HEADER_SZ;
+
+        LOG.printf("[WEBSOCKET] TYPE_ENERGY_BATCH data processing\n");
+
+        clearAllEnergyMaps(); // очищаємо попередні дані
+
+        for (size_t i = 0; i < count; ++i) {
+            uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
+            uint8_t status = ptr[2]; // статус займає 1 байт
+            energyMap[region_id] = status;
+            LOG.printf("[WEBSOCKET] energy region %u:\tstatus=%u\n", region_id, status);
+            ptr += RECORD_LZ;
+        }
+
+        adaptStripColorsAndBrightness();
+    }
+
+    if(type == TYPE_RADIATION_BATCH) {
+        LOG.printf("[WEBSOCKET] TYPE_RADIATION_BATCH received\n");
+        bodyLen = len - HEADER_SZ;
+
+        // payloadLen має ділитися на RECORD_SZ (2B region_id + 2B value нЗв/год)
+        if (bodyLen == 0 || (bodyLen % RECORD_SZ) != 0) {
+            LOG.printf("[ERROR] bodyLen == 0 || (bodyLen %% RECORD_SZ) != 0\n");
+            requestWebsocketReconnect();
+            return;
+        }
+
+        size_t count = bodyLen / RECORD_SZ;
+        const uint8_t* ptr = data + HEADER_SZ;
+
+        LOG.printf("[WEBSOCKET] TYPE_RADIATION_BATCH data processing\n");
+
+        clearAllRadiationMaps(); // очищаємо попередні дані
+
+        for (size_t i = 0; i < count; ++i) {
+            uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
+            uint16_t value = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8); // значення займає 2 байти
+            radiationMap[region_id] = value;
+            LOG.printf("[WEBSOCKET] radiation region %u:\tvalue=%u\n", region_id, value);
+            ptr += RECORD_SZ;
+        }
+
+        adaptStripColorsAndBrightness();
+    }
+
     checkFreeHeap("Websockets data processing");
 }
 
@@ -1921,6 +2083,13 @@ void initSettings() {
             case WEATHER_MIN_TEMP:
             case WEATHER_MAX_TEMP:
             case WEATHER_AUTO_BOUNDS:
+            case ENERGY_COLOR_SUFFICIENT:
+            case ENERGY_COLOR_INSUFFICIENT:
+            case ENERGY_COLOR_OUTAGE:
+            case ENERGY_COLOR_SIGNIFICANT_SHORTAGE:
+            case ENERGY_COLOR_UNKNOWN:
+            case RADIATION_MAX:
+            case RADIATION_COLOR_UNKNOWN:
             case ENABLE_KABS:
             case ENABLE_MISSILES:
             case ENABLE_DRONES:
@@ -2136,8 +2305,9 @@ void initSettings() {
             
             // Увімкнення/вимкнення попереднього перегляду
             case ENABLE_ANIMATION_PREVIEW:
+            case ENABLE_HOME_ALERT_ANIMATION:
                 if (intValue == 0) {
-                    // Зупиняємо попередній перегляд при вимкненні
+                    // Зупиняємо активний оверлей анімації при вимкненні
                     animation.stopPreview();
                 }
                 break;
@@ -2156,116 +2326,48 @@ void initSettings() {
         // Попередній перегляд анімації (якщо увімкнено)
         if (settings.getBool(ENABLE_ANIMATION_PREVIEW)) {
             int8_t eventType = -2;  // -2 означає "не визначено"
-            uint16_t animType = 0;
-            uint32_t period = 1000;
-            uint32_t color = 0xFF0000;
-            uint8_t brightness = 255;
-            bool isAnimationParam = false;
-            
-            // Визначаємо тип події та одразу заповнюємо параметри
+
+            // Визначаємо тип події за зміненим налаштуванням
             switch (type) {
-                // Параметри для ALERT
                 case ANIMATION_ALERT_ON_TYPE:
                 case ANIMATION_ALERT_ON_CYCLE_TIME:
                 case COLOR_ALERT:
-                    eventType = AlertModes::ALERT;
-                    animType = settings.getInt(ANIMATION_ALERT_ON_TYPE);
-                    period = settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_ALERT));
-                    brightness = settings.getInt(BRIGHTNESS_ALERT);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для NO_ALERT (скасування тривоги)
+                    eventType = AlertModes::ALERT; break;
                 case ANIMATION_ALERT_OFF_TYPE:
                 case ANIMATION_ALERT_OFF_CYCLE_TIME:
                 case COLOR_CLEAR:
-                    eventType = AlertModes::NO_ALERT;
-                    animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
-                    period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_CLEAR));
-                    brightness = settings.getInt(BRIGHTNESS_CLEAR);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для EXPLOSION
+                    eventType = AlertModes::NO_ALERT; break;
                 case ANIMATION_EXPLOSION_TYPE:
                 case ANIMATION_EXPLOSION_CYCLE_TIME:
                 case COLOR_EXPLOSION:
-                    eventType = AlertModes::EXPLOSION;
-                    animType = settings.getInt(ANIMATION_EXPLOSION_TYPE);
-                    period = settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
-                    brightness = settings.getInt(BRIGHTNESS_EXPLOSION);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для DRONES
+                    eventType = AlertModes::EXPLOSION; break;
                 case ANIMATION_DRONE_TYPE:
                 case ANIMATION_DRONE_CYCLE_TIME:
                 case COLOR_DRONES:
-                    eventType = AlertModes::DRONES;
-                    animType = settings.getInt(ANIMATION_DRONE_TYPE);
-                    period = settings.getInt(ANIMATION_DRONE_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_DRONES));
-                    brightness = settings.getInt(BRIGHTNESS_DRONES);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для RECON_DRONES
+                    eventType = AlertModes::DRONES; break;
                 case ANIMATION_RECON_DRONE_TYPE:
                 case ANIMATION_RECON_DRONE_CYCLE_TIME:
                 case COLOR_RECON_DRONES:
-                    eventType = AlertModes::RECON_DRONES;
-                    animType = settings.getInt(ANIMATION_RECON_DRONE_TYPE);
-                    period = settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
-                    brightness = settings.getInt(BRIGHTNESS_RECON_DRONES);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для MISSILES
+                    eventType = AlertModes::RECON_DRONES; break;
                 case ANIMATION_MISSILE_TYPE:
                 case ANIMATION_MISSILE_CYCLE_TIME:
                 case COLOR_MISSILES:
-                    eventType = AlertModes::MISSILES;
-                    animType = settings.getInt(ANIMATION_MISSILE_TYPE);
-                    period = settings.getInt(ANIMATION_MISSILE_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
-                    brightness = settings.getInt(BRIGHTNESS_MISSILES);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для KABS
+                    eventType = AlertModes::MISSILES; break;
                 case ANIMATION_KAB_TYPE:
                 case ANIMATION_KAB_CYCLE_TIME:
                 case COLOR_KABS:
-                    eventType = AlertModes::KABS;
-                    animType = settings.getInt(ANIMATION_KAB_TYPE);
-                    period = settings.getInt(ANIMATION_KAB_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_KABS));
-                    brightness = settings.getInt(BRIGHTNESS_KABS);
-                    isAnimationParam = true;
-                    break;
-                    
-                // Параметри для BALLISTIC
+                    eventType = AlertModes::KABS; break;
                 case ANIMATION_BALLISTIC_TYPE:
                 case ANIMATION_BALLISTIC_CYCLE_TIME:
                 case COLOR_BALLISTIC:
-                    eventType = AlertModes::BALLISTIC;
-                    animType = settings.getInt(ANIMATION_BALLISTIC_TYPE);
-                    period = settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME);
-                    color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
-                    brightness = settings.getInt(BRIGHTNESS_BALLISTIC);
-                    isAnimationParam = true;
-                    break;
-                    
+                    eventType = AlertModes::BALLISTIC; break;
                 default:
                     break;
             }
-            
+
             // Запуск попереднього перегляду
-            if (isAnimationParam) {
+            uint16_t animType; uint32_t color; uint32_t period; uint8_t brightness;
+            if (getEventAnimationParams(eventType, animType, color, period, brightness)) {
                 // Показуємо повідомлення на дисплеї
                 display.showServiceMessage(getEventTypeName(eventType), "Анімація:", 5000);
                 animation.startPreview(eventType, animType, color, period, brightness);
@@ -2729,6 +2831,8 @@ void websocketProcess() {
         websocketReconnect = true;
         clearAllAlertsMaps();
         clearAllWeatherMaps();
+        clearAllEnergyMaps();
+        clearAllRadiationMaps();
         isFirstDataFetchCompleted = false;
         animation.clearAllAnimations();
         //int positions[] = {}; // not used in RUNNING_LIGHT
@@ -3013,6 +3117,15 @@ void handleUpdateHomeAlertBit() {
     if (localAlertBit != alertBit) {
         alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         updateSirenIfNeeded(localAlertBit);
+
+        // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
+        if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
+            uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
+            if (getEventAnimationParams((int8_t)localAlertBit, haType, haColor, haPeriod, haBright)) {
+                uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
+                animation.startPreview((int8_t)localAlertBit, haType, haColor, haPeriod, haBright, durMs, false);
+            }
+        }
     }
     alertBit = localAlertBit;
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -3042,6 +3155,8 @@ void handleReconnectWebsocket() {
     websocketReconnect = true;
     clearAllAlertsMaps();
     clearAllWeatherMaps();
+    clearAllEnergyMaps();
+    clearAllRadiationMaps();
     isFirstDataFetchCompleted = false;
     alertsHash = 0;
     if (websocket.available()) {
@@ -3149,6 +3264,48 @@ void showWeather() {
     display.printMessage(weatherInfo, regionName);
 }
 
+void showEnergy() {
+    int homeDistrict = settings.getInt(HOME_DISTRICT);
+    auto it = energyMap.find(homeDistrict);
+    const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
+
+    const char* statusInfo = (it != energyMap.end())
+        ? energyStatusName(it->second)
+        : "Невідомий";
+
+    display.printMessage(statusInfo, "Стан енергосистеми");
+}
+
+void showRadiation() {
+    int homeDistrict = settings.getInt(HOME_DISTRICT);
+    auto it = radiationMap.find(homeDistrict);
+    char radiationInfo[50];
+    const char* statusInfo;
+
+    // На екрані — реальне значення нЗв/год (без клампування)
+    if (it != radiationMap.end()) {
+        uint16_t value = it->second;
+        snprintf(radiationInfo, sizeof(radiationInfo), "%u нЗв/год", value);
+
+        // Тестова градація статусу за рівнем радіації
+        if (value < 300) {
+            statusInfo = "В межах норми";
+        } else if (value < 600) {
+            statusInfo = "Підвищений";
+        } else if (value < 1000) {
+            statusInfo = "Вище норми";
+        } else {
+            statusInfo = "Суттєво вище норми";
+        }
+    } else {
+        snprintf(radiationInfo, sizeof(radiationInfo), "-- нЗв/год");
+        statusInfo = "Немає даних";
+    }
+
+    //display.printMessage(radiationInfo, "Рівень радіації");
+    display.printMultilineMessage(radiationInfo, statusInfo, "", "", "Рівень радіації");
+}
+
 void showTechnicalInfo() {
     SystemInfo info = getSystemInfo();
     const char* version = fwUpdate.getCurrentVersion();
@@ -3211,11 +3368,15 @@ void showMicroclimate() {
 void showCombined() {
     // Check what modes are enabled
     bool displayWeather = settings.getBool(TOGGLE_MODE_WEATHER);
+    bool displayEnergy = settings.getBool(TOGGLE_MODE_ENERGY);
+    bool displayRadiation = settings.getBool(TOGGLE_MODE_RADIATION);
     bool displayMicroclimate = climate.isAnySensorAvailable() && settings.getBool(TOGGLE_MODE_MICROCLIMATE);
-    
-    // Calculate number of periods: Clock (always) + Weather (optional) + Microclimate (optional)
+
+    // Calculate number of periods: Clock (always) + Weather + Energy + Radiation + Microclimate (optional)
     int numPeriods = 1; // Always show clock
     if (displayWeather) numPeriods++;
+    if (displayEnergy) numPeriods++;
+    if (displayRadiation) numPeriods++;
     if (displayMicroclimate) numPeriods++;
     
     int periodIndex = getCurrentPeriodIndex(settings.getInt(DISPLAY_MODE_TIME), numPeriods, timeClient.second());
@@ -3238,7 +3399,25 @@ void showCombined() {
         }
         currentPeriod++;
     }
-    
+
+    // Next period: Energy system (if enabled)
+    if (displayEnergy) {
+        if (periodIndex == currentPeriod) {
+            showEnergy();
+            return;
+        }
+        currentPeriod++;
+    }
+
+    // Next period: Radiation (if enabled)
+    if (displayRadiation) {
+        if (periodIndex == currentPeriod) {
+            showRadiation();
+            return;
+        }
+        currentPeriod++;
+    }
+
     // Next period: Microclimate (if enabled and available)
     if (displayMicroclimate) {
         if (periodIndex == currentPeriod) {
@@ -3308,7 +3487,15 @@ void displayProcess()
         case 2: // Погода (Weather)
             showWeather();
             break;
-        
+
+        case 5: // Енергосистема (Energy system)
+            showEnergy();
+            break;
+
+        case 6: // Радіація (Radiation)
+            showRadiation();
+            break;
+
         case 3: // Технічна інформація (Technical Information)
             showTechnicalInfo();
             break;
