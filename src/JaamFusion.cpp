@@ -1152,6 +1152,15 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
                     animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, highestBitRegion, region_id, true);
                     alertAction(actualBitDiff, region_id);
+
+                    // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
+                    if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
+                        uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
+                        if (getEventAnimationParams((int8_t)actualBitDiff, haType, haColor, haPeriod, haBright)) {
+                            uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
+                            animation.startPreview((int8_t)actualBitDiff, haType, haColor, haPeriod, haBright, durMs, false);
+                        }
+                    }
                 }
             }   
         }
@@ -1339,7 +1348,8 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH data processing\n");
 
-        clearAllWeatherMaps(); // очищаємо попередні дані
+        temperatureMap.clear(); // очищаємо попередні дані
+        //clearAllWeatherMaps(); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
@@ -1427,7 +1437,8 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_ENERGY_BATCH data processing\n");
 
-        clearAllEnergyMaps(); // очищаємо попередні дані
+        energyMap.clear();
+        //clearAllEnergyMaps(); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
@@ -1456,7 +1467,8 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_RADIATION_BATCH data processing\n");
 
-        clearAllRadiationMaps(); // очищаємо попередні дані
+        radiationMap.clear();
+        //clearAllRadiationMaps(); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
@@ -3267,7 +3279,7 @@ void showWeather() {
 void showEnergy() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
     auto it = energyMap.find(homeDistrict);
-    const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
+    //const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
 
     const char* statusInfo = (it != energyMap.end())
         ? energyStatusName(it->second)
@@ -3287,7 +3299,7 @@ void showRadiation() {
         uint16_t value = it->second;
         snprintf(radiationInfo, sizeof(radiationInfo), "%u нЗв/год", value);
 
-        // Тестова градація статусу за рівнем радіації
+        // Градація статусу за рівнем радіації
         if (value < 300) {
             statusInfo = "В межах норми";
         } else if (value < 600) {
