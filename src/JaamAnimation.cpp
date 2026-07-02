@@ -1297,10 +1297,11 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     break;
                 }
                 case MapModes::WEATHER: {
-                    auto regions = getRegionsForLed(position);
+                    // region_buf уже заповнений вище
                     long sum = 0;
                     int cnt = 0;
-                    for (uint16_t region_id : regions) {
+                    for (int r = 0; r < region_count; ++r) {
+                        uint16_t region_id = region_buf[r];
                         auto it = temperatureMap.find(region_id);
                         if (it != temperatureMap.end()) {
                             int t = decodeTemperature(it->second);
@@ -1321,11 +1322,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                 }
                 case MapModes::ENERGY: {
                     // Кілька регіонів на один LED → перемагає найгірший статус (worst-severity-wins)
-                    auto regions = getRegionsForLed(position);
+                    // region_buf уже заповнений вище
                     bool found = false;
                     uint8_t worstStatus = 0;
                     int worstSeverity = -1;
-                    for (uint16_t region_id : regions) {
+                    for (int r = 0; r < region_count; ++r) {
+                        uint16_t region_id = region_buf[r];
                         auto it = energyMap.find(region_id);
                         if (it != energyMap.end()) {
                             int sev = EnergyStatus::severity(it->second);
@@ -1345,10 +1347,11 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     break;
                 }
                 case MapModes::RADIATION: {
-                    auto regions = getRegionsForLed(position);
+                    // region_buf уже заповнений вище
                     long sum = 0;
                     int cnt = 0;
-                    for (uint16_t region_id : regions) {
+                    for (int r = 0; r < region_count; ++r) {
+                        uint16_t region_id = region_buf[r];
                         auto it = radiationMap.find(region_id);
                         if (it != radiationMap.end()) {
                             sum += it->second;
@@ -1366,12 +1369,13 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     break;
                 }
                 case MapModes::FLAG: {
-                    auto regions = getRegionsForLed(position);
-                    if (regions.empty()) {
+                    // region_buf уже заповнений вище
+                    if (region_count == 0) {
                         color = DefaultColors::FLAG_BLUE;
                     } else {
                         int blueVotes = 0, yellowVotes = 0;
-                        for (uint16_t region_id : regions) {
+                        for (int r = 0; r < region_count; ++r) {
+                            uint16_t region_id = region_buf[r];
                             uint32_t flagColor = getFlagColorForRegion(region_id);
                             if (flagColor == DefaultColors::FLAG_BLUE) blueVotes++;
                             else yellowVotes++;

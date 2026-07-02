@@ -888,6 +888,9 @@ void alertAction(int bit, int districtId) {
     
     // Показуємо повідомлення на дисплеї для будь-якого типу події
     display.showServiceMessage(getEventTypeName(bit), districtName, settings.getInt(DISPLAY_ALERT_MESSAGE_TIME) * 1000);
+
+    // Сповіщення на всій мапі — запускаємо разом з подією домашнього регіону (початок/відбій)
+    triggerHomeAlertAnimation((int8_t)bit);
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, int initialBit, uint16_t region_id, bool increase = true) {
@@ -1146,7 +1149,6 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
                     animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, highestBitRegion, region_id, true);
                     alertAction(actualBitDiff, region_id);
-                    triggerHomeAlertAnimation((int8_t)actualBitDiff);
                 }
             }   
         }
@@ -1248,7 +1250,6 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d increase\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
-                    triggerHomeAlertAnimation((int8_t)localAlertBit);
                 } else {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d decrease\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
@@ -3106,7 +3107,6 @@ void handleUpdateHomeAlertBit() {
     if (localAlertBit != alertBit) {
         alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         updateSirenIfNeeded(localAlertBit);
-        triggerHomeAlertAnimation((int8_t)localAlertBit);
     }
     alertBit = localAlertBit;
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
