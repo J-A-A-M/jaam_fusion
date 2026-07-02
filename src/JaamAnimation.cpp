@@ -1328,9 +1328,9 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     for (uint16_t region_id : regions) {
                         auto it = energyMap.find(region_id);
                         if (it != energyMap.end()) {
-                            found = true;
                             int sev = EnergyStatus::severity(it->second);
-                            if (sev > worstSeverity) {
+                            if (sev > 0 && sev > worstSeverity) {   // 0 = невідомий → трактуємо як відсутність даних
+                                found = true;
                                 worstSeverity = sev;
                                 worstStatus = it->second;
                             }

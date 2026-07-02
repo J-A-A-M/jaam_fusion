@@ -54,6 +54,7 @@ void handleAdaptClimate();
 void handleAdaptVolume();
 void handleUpdateHomeAlertBit();
 bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& color, uint32_t& period, uint8_t& brightness);
+void triggerHomeAlertAnimation(int8_t bit);
 void handleUpdateTimezone();
 void handleUpdateNtpHost();
 void handleReconnectWebsocket();
@@ -111,7 +112,7 @@ std::vector<int>    allLedsBg;
 AnimationManager        animation;
 uint16_t                animType;
 
-// --- MAP Configuration ---                       // старий обробник (TYPE_RADIATION_BATCH)
+// --- MAP Configuration ---
 std::map<uint16_t, uint8_t>     temperatureMap;
 std::map<uint16_t, uint8_t>     energyMap;
 std::map<uint16_t, uint16_t>    radiationMap;
@@ -839,24 +840,17 @@ bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& col
     }
 }
 
+// Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
+void triggerHomeAlertAnimation(int8_t bit) {
+    if (!settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) return;
+    uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
+    if (getEventAnimationParams(bit, haType, haColor, haPeriod, haBright)) {
+        uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
+        animation.startPreview(bit, haType, haColor, haPeriod, haBright, durMs, false);
+    }
+}
+
 void alertAction(int bit, int districtId) {
-    // int actualBit = getHighestActualBit(bit);
-    // if (actualBit != bit) {
-    //     LOG.printf("[ALERT] actualBit %d != %d. Animation aborted\n", actualBit, bit);
-    //     return;
-    // }
-    // if (bit == alertBit ) {
-    //     LOG.printf("[ALERT] No change in alert status (%d) <-> (%d)\n", bit, alertBit);
-    //     return; // No change in alert status
-    // }
-    // if (!hasHigherPriority(bit, alertBit) && bit != -1) {
-    //     LOG.printf("[ALERT] New alert status %d has lower priority than current %d. Ignored\n", bit, alertBit);
-    //     return; // New alert has lower priority, ignore it
-    // }
-    // if (districtId != settings.getInt(HOME_DISTRICT)) {
-    //     LOG.printf("[ALERT] Alert for district %d ignored, home district is %d\n", districtId, settings.getInt(HOME_DISTRICT));
-    //     return; // Alert is not for home district
-    // }
     const char* districtName = getNameById(DISTRICTS, districtId, MAX_REGIONS);
     LOG.printf("[ALERT] Home district %s status changed from %d to %d\n", districtName, alertBit, bit);
     
@@ -1152,15 +1146,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET]   Animating home district LEDs: region %d, bit %d\n", region_id, actualBitDiff);
                     animateLed(strip_bg, MapModes::ALERT, 0, actualBitDiff, highestBitRegion, region_id, true);
                     alertAction(actualBitDiff, region_id);
-
-                    // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
-                    if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
-                        uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
-                        if (getEventAnimationParams((int8_t)actualBitDiff, haType, haColor, haPeriod, haBright)) {
-                            uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
-                            animation.startPreview((int8_t)actualBitDiff, haType, haColor, haPeriod, haBright, durMs, false);
-                        }
-                    }
+                    triggerHomeAlertAnimation((int8_t)actualBitDiff);
                 }
             }   
         }
@@ -1262,6 +1248,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d increase\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
                     alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                    triggerHomeAlertAnimation((int8_t)localAlertBit);
                 } else {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d decrease\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
@@ -1270,14 +1257,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
 
-                // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
-                if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
-                    uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
-                    if (getEventAnimationParams((int8_t)localAlertBit, haType, haColor, haPeriod, haBright)) {
-                        uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
-                        animation.startPreview((int8_t)localAlertBit, haType, haColor, haPeriod, haBright, durMs, false);
-                    }
-                }
+                
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -1349,7 +1329,6 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH data processing\n");
 
         temperatureMap.clear(); // очищаємо попередні дані
-        //clearAllWeatherMaps(); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
@@ -1438,7 +1417,6 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.printf("[WEBSOCKET] TYPE_ENERGY_BATCH data processing\n");
 
         energyMap.clear();
-        //clearAllEnergyMaps(); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
@@ -1468,7 +1446,6 @@ void onMessageCallback(WebsocketsMessage msg) {
         LOG.printf("[WEBSOCKET] TYPE_RADIATION_BATCH data processing\n");
 
         radiationMap.clear();
-        //clearAllRadiationMaps(); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
@@ -3129,15 +3106,7 @@ void handleUpdateHomeAlertBit() {
     if (localAlertBit != alertBit) {
         alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
         updateSirenIfNeeded(localAlertBit);
-
-        // Анімація тривоги домашнього регіону на всій мапі (якщо увімкнено)
-        if (settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) {
-            uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
-            if (getEventAnimationParams((int8_t)localAlertBit, haType, haColor, haPeriod, haBright)) {
-                uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
-                animation.startPreview((int8_t)localAlertBit, haType, haColor, haPeriod, haBright, durMs, false);
-            }
-        }
+        triggerHomeAlertAnimation((int8_t)localAlertBit);
     }
     alertBit = localAlertBit;
     int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -3279,7 +3248,6 @@ void showWeather() {
 void showEnergy() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
     auto it = energyMap.find(homeDistrict);
-    //const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
 
     const char* statusInfo = (it != energyMap.end())
         ? energyStatusName(it->second)
@@ -3300,6 +3268,7 @@ void showRadiation() {
         snprintf(radiationInfo, sizeof(radiationInfo), "%u нЗв/год", value);
 
         // Градація статусу за рівнем радіації
+        // Значення формуються незалежно від того, яким кольором підсвічується мапа, бо це інформаційний дисплей
         if (value < 300) {
             statusInfo = "В межах норми";
         } else if (value < 600) {
@@ -3314,7 +3283,6 @@ void showRadiation() {
         statusInfo = "Немає даних";
     }
 
-    //display.printMessage(radiationInfo, "Рівень радіації");
     display.printMultilineMessage(radiationInfo, statusInfo, "", "", "Рівень радіації");
 }
 
