@@ -1298,7 +1298,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint8_t flags8 = ptr[2]; // flags8 займає 1 байт
             int idx = getRegionFlatIdx(region_id);
-            if (idx >= 0) temperatureFlat[idx] = flags8; // Зберігаємо температуру для регіону
+            if (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) temperatureFlat[idx] = flags8; // Зберігаємо температуру для регіону
             LOG.printf("[WEBSOCKET] weather region %u:\tflags8=%u\n", region_id, flags8);
             ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
         }
@@ -1389,7 +1389,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint8_t status = ptr[2]; // статус займає 1 байт
             int idx = getRegionFlatIdx(region_id);
-            if (idx >= 0) energyFlat[idx] = status;
+            if (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) energyFlat[idx] = status;
             LOG.printf("[WEBSOCKET] energy region %u:\tstatus=%u\n", region_id, status);
             ptr += RECORD_LZ;
         }
@@ -1419,7 +1419,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint16_t value = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8); // значення займає 2 байти
             int idx = getRegionFlatIdx(region_id);
-            if (idx >= 0) radiationFlat[idx] = value;
+            if (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) radiationFlat[idx] = value;
             LOG.printf("[WEBSOCKET] radiation region %u:\tvalue=%u\n", region_id, value);
             ptr += RECORD_SZ;
         }
