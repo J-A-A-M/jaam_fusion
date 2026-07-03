@@ -1151,10 +1151,9 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
                         break;
                     case MapModes::WEATHER: {
-                        uint16_t home = settings->getInt(HOME_DISTRICT);
-                        auto it = temperatureMap.find(home);
-                        if (it != temperatureMap.end()) {
-                            int t = decodeTemperature(it->second);
+                        int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
+                        if (hidx >= 0 && temperatureFlat[hidx] != TEMP_NO_DATA) {
+                            int t = decodeTemperature(temperatureFlat[hidx]);
                             int minT, maxT;
                             getWeatherTempBounds(settings, minT, maxT);
                             color = colorFromTemperature(t, minT, maxT);
@@ -1165,10 +1164,10 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         break;
                     }
                     case MapModes::ENERGY: {
-                        uint16_t home = settings->getInt(HOME_DISTRICT);
-                        auto it = energyMap.find(home);
-                        if (it != energyMap.end()) {
-                            color = colorFromEnergyStatus(settings, it->second);
+                        int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
+                        uint8_t status = (hidx >= 0) ? energyFlat[hidx] : 0;
+                        if (status != 0) {
+                            color = colorFromEnergyStatus(settings, status);
                         } else {
                             color = colorFromHex(settings->getString(ENERGY_COLOR_UNKNOWN));
                         }
@@ -1176,10 +1175,10 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         break;
                     }
                     case MapModes::RADIATION: {
-                        uint16_t home = settings->getInt(HOME_DISTRICT);
-                        auto it = radiationMap.find(home);
-                        if (it != radiationMap.end()) {
-                            color = colorFromRadiation((int)it->second, settings->getInt(RADIATION_MAX));
+                        int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
+                        uint16_t value = (hidx >= 0) ? radiationFlat[hidx] : 0;
+                        if (value != 0) {
+                            color = colorFromRadiation((int)value, settings->getInt(RADIATION_MAX));
                         } else {
                             // немає даних — налаштовуваний колір
                             color = colorFromHex(settings->getString(RADIATION_COLOR_UNKNOWN));
@@ -1301,13 +1300,11 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     long sum = 0;
                     int cnt = 0;
                     for (int r = 0; r < region_count; ++r) {
-                        uint16_t region_id = region_buf[r];
-                        auto it = temperatureMap.find(region_id);
-                        if (it != temperatureMap.end()) {
-                            int t = decodeTemperature(it->second);
-                            sum += t;
-                            cnt++;
-                        }
+                        int fidx = getRegionFlatIdx(region_buf[r]);
+                        if (fidx < 0 || temperatureFlat[fidx] == TEMP_NO_DATA) continue;
+                        int t = decodeTemperature(temperatureFlat[fidx]);
+                        sum += t;
+                        cnt++;
                     }
                     if (cnt > 0) {
                         int avg = (int)(sum / cnt);
@@ -1327,15 +1324,14 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     uint8_t worstStatus = 0;
                     int worstSeverity = -1;
                     for (int r = 0; r < region_count; ++r) {
-                        uint16_t region_id = region_buf[r];
-                        auto it = energyMap.find(region_id);
-                        if (it != energyMap.end()) {
-                            int sev = EnergyStatus::severity(it->second);
-                            if (sev > 0 && sev > worstSeverity) {   // 0 = невідомий → трактуємо як відсутність даних
-                                found = true;
-                                worstSeverity = sev;
-                                worstStatus = it->second;
-                            }
+                        int fidx = getRegionFlatIdx(region_buf[r]);
+                        if (fidx < 0) continue;
+                        uint8_t status = energyFlat[fidx];
+                        int sev = EnergyStatus::severity(status);
+                        if (sev > 0 && sev > worstSeverity) {   // 0 = невідомий → трактуємо як відсутність даних
+                            found = true;
+                            worstSeverity = sev;
+                            worstStatus = status;
                         }
                     }
                     if (found) {
@@ -1351,10 +1347,11 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     long sum = 0;
                     int cnt = 0;
                     for (int r = 0; r < region_count; ++r) {
-                        uint16_t region_id = region_buf[r];
-                        auto it = radiationMap.find(region_id);
-                        if (it != radiationMap.end()) {
-                            sum += it->second;
+                        int fidx = getRegionFlatIdx(region_buf[r]);
+                        if (fidx < 0) continue;
+                        uint16_t value = radiationFlat[fidx];
+                        if (value != 0) {
+                            sum += value;
                             cnt++;
                         }
                     }
@@ -1429,10 +1426,9 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         break;
                     }
                     case MapModes::WEATHER: {
-                        uint16_t home = settings->getInt(HOME_DISTRICT);
-                        auto it = temperatureMap.find(home);
-                        if (it != temperatureMap.end()) {
-                            int t = decodeTemperature(it->second);
+                        int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
+                        if (hidx >= 0 && temperatureFlat[hidx] != TEMP_NO_DATA) {
+                            int t = decodeTemperature(temperatureFlat[hidx]);
                             int minT, maxT;
                             getWeatherTempBounds(settings, minT, maxT);
                             color = colorFromTemperature(t, minT, maxT);
@@ -1443,10 +1439,10 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         break;
                     }
                     case MapModes::ENERGY: {
-                        uint16_t home = settings->getInt(HOME_DISTRICT);
-                        auto it = energyMap.find(home);
-                        if (it != energyMap.end()) {
-                            color = colorFromEnergyStatus(settings, it->second);
+                        int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
+                        uint8_t status = (hidx >= 0) ? energyFlat[hidx] : 0;
+                        if (status != 0) {
+                            color = colorFromEnergyStatus(settings, status);
                         } else {
                             color = colorFromHex(settings->getString(ENERGY_COLOR_UNKNOWN));
                         }
@@ -1454,10 +1450,10 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         break;
                     }
                     case MapModes::RADIATION: {
-                        uint16_t home = settings->getInt(HOME_DISTRICT);
-                        auto it = radiationMap.find(home);
-                        if (it != radiationMap.end()) {
-                            color = colorFromRadiation((int)it->second, settings->getInt(RADIATION_MAX));
+                        int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
+                        uint16_t value = (hidx >= 0) ? radiationFlat[hidx] : 0;
+                        if (value != 0) {
+                            color = colorFromRadiation((int)value, settings->getInt(RADIATION_MAX));
                         } else {
                             // немає даних — налаштовуваний колір
                             color = colorFromHex(settings->getString(RADIATION_COLOR_UNKNOWN));

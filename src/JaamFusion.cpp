@@ -113,9 +113,9 @@ AnimationManager        animation;
 uint16_t                animType;
 
 // --- MAP Configuration ---
-std::map<uint16_t, uint8_t>     temperatureMap;
-std::map<uint16_t, uint8_t>     energyMap;
-std::map<uint16_t, uint16_t>    radiationMap;
+// weather: flat-масив encoded-температур по позиції в currentMap.meta.
+// TEMP_NO_DATA (0x80, encoded −0) = немає даних; сервер його не надсилає (+0 = 0x00).
+uint8_t                         temperatureFlat[MAX_REGIONS + 1];
 int                             weatherAutoMinTemp = 0;
 int                             weatherAutoMaxTemp = 0;
 bool                            weatherAutoBoundsValid = false;
@@ -126,6 +126,10 @@ uint32_t                        bgLedColors[MAX_LEDS_STRIP_BG];
 // --- Alerts flat storage (новий обробник TYPE_ALERTS_BATCH) ---
 // ~340 B BSS: region_id → flags16 (0 = немає тривоги)
 uint16_t alertsFlat[MAX_REGIONS + 1] = {};
+// energy: flat-масив по позиції в currentMap.meta (0 = немає даних/невідомо)
+uint8_t  energyFlat[MAX_REGIONS + 1] = {};
+// radiation: flat-масив нЗв/год по позиції в currentMap.meta (0 = немає даних)
+uint16_t radiationFlat[MAX_REGIONS + 1] = {};
 // ~500 B BSS: led_pos → поточний найвищий alert-bit (-1 = немає тривоги)
 int8_t   ledBitCache[MAX_LEDS_STRIP_MAIN];
 // ~63 B BSS: бітсет — які LED змінились у поточному пакеті
@@ -208,65 +212,22 @@ void clearAllAlertsMaps() {
 }
 
 void clearAllWeatherMaps() {
-    // Логування стану пам'яті перед очищенням
-    size_t memBefore = ESP.getFreeHeap();
-    LOG.printf("[MEMORY] Free heap before clearing weather maps: %u bytes\n", memBefore);
-    
-    // Очищаємо всі map'и
-    temperatureMap.clear();
-
-    // Скидаємо кеш авто-меж температури
+    // flat-сторедж у BSS — heap не звільняється, просто скидаємо в TEMP_NO_DATA
+    memset(temperatureFlat, TEMP_NO_DATA, sizeof(temperatureFlat));
     weatherAutoBoundsValid = false;
-    
-    // Додаткове очищення пам'яті після clear()
-    // Для std::map викликаємо shrink_to_fit через swap з пустими контейнерами
-    std::map<uint16_t, uint8_t>().swap(temperatureMap);
-
-    // Принудове очищення пам'яті
-    forceMemoryCleanup("after weather maps clearing");
-    
-    // Дефрагментація пам'яті
-    defragmentMemory("after weather maps clearing");
-    
-    // Логування результату
-    size_t memAfter = ESP.getFreeHeap();
-    int memReclaimed = (int)(memAfter - memBefore);
-    
     LOG.printf("[MAIN] Clearing all weather maps completed\n");
-    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n", 
-               memReclaimed, memBefore, memAfter);
 }
 
 void clearAllEnergyMaps() {
-    size_t memBefore = ESP.getFreeHeap();
-    LOG.printf("[MEMORY] Free heap before clearing energy maps: %u bytes\n", memBefore);
-
-    energyMap.clear();
-    std::map<uint16_t, uint8_t>().swap(energyMap);
-
-    forceMemoryCleanup("after energy maps clearing");
-    defragmentMemory("after energy maps clearing");
-
-    size_t memAfter = ESP.getFreeHeap();
+    // flat-сторедж у BSS — heap не звільняється, просто обнуляємо
+    memset(energyFlat, 0, sizeof(energyFlat));
     LOG.printf("[MAIN] Clearing all energy maps completed\n");
-    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n",
-               (int)(memAfter - memBefore), memBefore, memAfter);
 }
 
 void clearAllRadiationMaps() {
-    size_t memBefore = ESP.getFreeHeap();
-    LOG.printf("[MEMORY] Free heap before clearing radiation maps: %u bytes\n", memBefore);
-
-    radiationMap.clear();
-    std::map<uint16_t, uint16_t>().swap(radiationMap);
-
-    forceMemoryCleanup("after radiation maps clearing");
-    defragmentMemory("after radiation maps clearing");
-
-    size_t memAfter = ESP.getFreeHeap();
+    // flat-сторедж у BSS — heap не звільняється, просто обнуляємо
+    memset(radiationFlat, 0, sizeof(radiationFlat));
     LOG.printf("[MAIN] Clearing all radiation maps completed\n");
-    LOG.printf("[MEMORY] Memory reclaimed: %+d bytes (before: %u, after: %u)\n",
-               (int)(memAfter - memBefore), memBefore, memAfter);
 }
 
 void rebootDevice(int time = 2000, bool async = false) {
@@ -1298,7 +1259,9 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t homeFlags = (homeInitIdx >= 0) ? alertsFlat[homeInitIdx] : 0;
             api.setHomeAlert(homeFlags);
             homeAlertFlags = homeFlags;
-            uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
+            int homeTempIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
+            uint8_t encodedTemp = (homeTempIdx >= 0 && temperatureFlat[homeTempIdx] != TEMP_NO_DATA)
+                                  ? temperatureFlat[homeTempIdx] : 0x00;
             api.setHomeDistrictTemp(decodeTemperature(encodedTemp));
             // скидаємо dirty-прапори (могли бути встановлені в фазі 1)
             memset(s_ledDirty, 0, sizeof(s_ledDirty));
@@ -1329,73 +1292,76 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH data processing\n");
 
-        temperatureMap.clear(); // очищаємо попередні дані
+        memset(temperatureFlat, TEMP_NO_DATA, sizeof(temperatureFlat)); // очищаємо попередні дані
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint8_t flags8 = ptr[2]; // flags8 займає 1 байт
-            temperatureMap[region_id] = flags8; // Зберігаємо температуру для регіону
+            int idx = getRegionFlatIdx(region_id);
+            if (idx >= 0) temperatureFlat[idx] = flags8; // Зберігаємо температуру для регіону
             LOG.printf("[WEBSOCKET] weather region %u:\tflags8=%u\n", region_id, flags8);
             ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
         }
 
         // Оновлюємо кеш авто-меж температури (медіана + вікно 20°C з якорями)
-        if (!temperatureMap.empty()) {
-            size_t size = temperatureMap.size();
-            if (size == 1) {
-                // Один регіон — вікно ±10°C
-                int t = decodeTemperature(temperatureMap.begin()->second);
-                weatherAutoMinTemp = constrain(t - 10, -40, 40);
-                weatherAutoMaxTemp = constrain(t + 10, -40, 40);
-            } else {
-                // 1. Копіюємо температури у тимчасовий буфер та знаходимо екстремуми
-                int tempBuffer[size];
-                int actualMin = 1000;
-                int actualMax = -1000;
-                size_t idx = 0;
-                for (const auto& kv : temperatureMap) {
-                    int t = decodeTemperature(kv.second);
-                    tempBuffer[idx++] = t;
-                    if (t < actualMin) actualMin = t;
-                    if (t > actualMax) actualMax = t;
-                }
-                // 2. Сортуємо для знаходження медіани
-                std::sort(tempBuffer, tempBuffer + size);
-                int median = tempBuffer[size / 2];
-                // 3. Формуємо асиметричне вікно залежно від діапазону медіани
-                int windowDown, windowUp;
-                if (median < 0) {
-                    // Мороз: менше вниз, більше вгору → фактичні температури в холодному спектрі
-                    windowDown = 5;
-                    windowUp = 15;
-                } else if (median > 20) {
-                    // Спека: більше вниз, менше вгору → фактичні температури в теплому спектрі
-                    windowDown = 15;
-                    windowUp = 5;
-                } else {
-                    // Помірний діапазон: симетрично ±10°C
-                    windowDown = 10;
-                    windowUp = 10;
-                }
-                int targetMin = median - windowDown;
-                int targetMax = median + windowUp;
-                // 4. Якорі: розширюємо вікно, якщо реальні дані виходять за нього
-                if (actualMin < targetMin) targetMin = actualMin;
-                if (actualMax > targetMax) targetMax = actualMax;
-                // 5. Запобіжник: якщо всі температури однакові
-                if (targetMax == targetMin) {
-                    targetMax += 1;
-                    targetMin -= 1;
-                }
-                weatherAutoMinTemp = constrain(targetMin, -40, 40);
-                weatherAutoMaxTemp = constrain(targetMax, -40, 40);
-            }
-            weatherAutoBoundsValid = true;
-        } else {
-            weatherAutoBoundsValid = false;
+        // Збираємо наявні температури зі flat-масиву (пропускаємо TEMP_NO_DATA)
+        int tempBuffer[MAX_REGIONS];
+        int present = 0;
+        int actualMin = 1000;
+        int actualMax = -1000;
+        for (size_t i = 0; i < currentMap.size; ++i) {
+            if (temperatureFlat[i] == TEMP_NO_DATA) continue;
+            int t = decodeTemperature(temperatureFlat[i]);
+            tempBuffer[present++] = t;
+            if (t < actualMin) actualMin = t;
+            if (t > actualMax) actualMax = t;
         }
 
-        uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
+        if (present == 0) {
+            weatherAutoBoundsValid = false;
+        } else if (present == 1) {
+            // Один регіон — вікно ±10°C
+            int t = tempBuffer[0];
+            weatherAutoMinTemp = constrain(t - 10, -40, 40);
+            weatherAutoMaxTemp = constrain(t + 10, -40, 40);
+            weatherAutoBoundsValid = true;
+        } else {
+            // Сортуємо для знаходження медіани
+            std::sort(tempBuffer, tempBuffer + present);
+            int median = tempBuffer[present / 2];
+            // Асиметричне вікно залежно від діапазону медіани
+            int windowDown, windowUp;
+            if (median < 0) {
+                // Мороз: менше вниз, більше вгору → фактичні температури в холодному спектрі
+                windowDown = 5;
+                windowUp = 15;
+            } else if (median > 20) {
+                // Спека: більше вниз, менше вгору → фактичні температури в теплому спектрі
+                windowDown = 15;
+                windowUp = 5;
+            } else {
+                // Помірний діапазон: симетрично ±10°C
+                windowDown = 10;
+                windowUp = 10;
+            }
+            int targetMin = median - windowDown;
+            int targetMax = median + windowUp;
+            // Якорі: розширюємо вікно, якщо реальні дані виходять за нього
+            if (actualMin < targetMin) targetMin = actualMin;
+            if (actualMax > targetMax) targetMax = actualMax;
+            // Запобіжник: якщо всі температури однакові
+            if (targetMax == targetMin) {
+                targetMax += 1;
+                targetMin -= 1;
+            }
+            weatherAutoMinTemp = constrain(targetMin, -40, 40);
+            weatherAutoMaxTemp = constrain(targetMax, -40, 40);
+            weatherAutoBoundsValid = true;
+        }
+
+        int homeTempIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
+        uint8_t encodedTemp = (homeTempIdx >= 0 && temperatureFlat[homeTempIdx] != TEMP_NO_DATA)
+                              ? temperatureFlat[homeTempIdx] : 0x00;
         int homeTemp = decodeTemperature(encodedTemp);
         api.setHomeDistrictTemp(homeTemp);
         adaptStripColorsAndBrightness();
@@ -1417,12 +1383,13 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_ENERGY_BATCH data processing\n");
 
-        energyMap.clear();
+        memset(energyFlat, 0, sizeof(energyFlat));
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint8_t status = ptr[2]; // статус займає 1 байт
-            energyMap[region_id] = status;
+            int idx = getRegionFlatIdx(region_id);
+            if (idx >= 0) energyFlat[idx] = status;
             LOG.printf("[WEBSOCKET] energy region %u:\tstatus=%u\n", region_id, status);
             ptr += RECORD_LZ;
         }
@@ -1446,12 +1413,13 @@ void onMessageCallback(WebsocketsMessage msg) {
 
         LOG.printf("[WEBSOCKET] TYPE_RADIATION_BATCH data processing\n");
 
-        radiationMap.clear();
+        memset(radiationFlat, 0, sizeof(radiationFlat));
 
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint16_t value = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8); // значення займає 2 байти
-            radiationMap[region_id] = value;
+            int idx = getRegionFlatIdx(region_id);
+            if (idx >= 0) radiationFlat[idx] = value;
             LOG.printf("[WEBSOCKET] radiation region %u:\tvalue=%u\n", region_id, value);
             ptr += RECORD_SZ;
         }
@@ -3114,7 +3082,9 @@ void handleUpdateHomeAlertBit() {
     LOG.printf("[SETTINGS] homeAlertFlags: %u\n", homeFlags);
     api.setHomeAlert(homeFlags);
     homeAlertFlags = homeFlags;
-    uint8_t encodedTemp = temperatureMap[settings.getInt(HOME_DISTRICT)];
+    int homeTempIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
+    uint8_t encodedTemp = (homeTempIdx >= 0 && temperatureFlat[homeTempIdx] != TEMP_NO_DATA)
+                          ? temperatureFlat[homeTempIdx] : 0x00;
     int homeTemp = decodeTemperature(encodedTemp);
     api.setHomeDistrictTemp(homeTemp);
 }
@@ -3231,12 +3201,12 @@ void batteryProcess() {
 // --- Display Show Methods ---
 void showWeather() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
-    auto it = temperatureMap.find(homeDistrict);
+    int idx = getRegionFlatIdx(homeDistrict);
     const char* regionName = getNameById(DISTRICTS, homeDistrict, MAX_REGIONS);
     char weatherInfo[50];
-    
-    if (it != temperatureMap.end()) {
-        int homeTemp = decodeTemperature(it->second);
+
+    if (idx >= 0 && temperatureFlat[idx] != TEMP_NO_DATA) {
+        int homeTemp = decodeTemperature(temperatureFlat[idx]);
         snprintf(weatherInfo, sizeof(weatherInfo), "%d℃", homeTemp);
     } else {
         snprintf(weatherInfo, sizeof(weatherInfo), "--℃");
@@ -3247,10 +3217,11 @@ void showWeather() {
 
 void showEnergy() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
-    auto it = energyMap.find(homeDistrict);
+    int idx = getRegionFlatIdx(homeDistrict);
+    uint8_t status = (idx >= 0) ? energyFlat[idx] : 0;
 
-    const char* statusInfo = (it != energyMap.end())
-        ? energyStatusName(it->second)
+    const char* statusInfo = (status != 0)
+        ? energyStatusName(status)
         : "Невідомий";
 
     display.printMessage(statusInfo, "Стан енергосистеми");
@@ -3258,13 +3229,13 @@ void showEnergy() {
 
 void showRadiation() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
-    auto it = radiationMap.find(homeDistrict);
+    int idx = getRegionFlatIdx(homeDistrict);
+    uint16_t value = (idx >= 0) ? radiationFlat[idx] : 0;
     char radiationInfo[50];
     const char* statusInfo;
 
     // На екрані — реальне значення нЗв/год (без клампування)
-    if (it != radiationMap.end()) {
-        uint16_t value = it->second;
+    if (value != 0) {
         snprintf(radiationInfo, sizeof(radiationInfo), "%u нЗв/год", value);
 
         // Градація статусу за рівнем радіації
@@ -3541,6 +3512,7 @@ void rebuildSensorsListItems() {
 void setup() {
     memset(ledBitCache, -1, sizeof(ledBitCache));
     memset(s_ledDirty,   0, sizeof(s_ledDirty));
+    memset(temperatureFlat, TEMP_NO_DATA, sizeof(temperatureFlat));
 
     LOG.begin(115200);
     logsManager.begin();  // Initialize logs capture system
