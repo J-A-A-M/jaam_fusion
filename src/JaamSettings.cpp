@@ -324,7 +324,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_NEW_ALERT, {"rgbcna", "#FF3C00"}},               // New alert color (orange)
     {COLOR_ALERT_OVER, {"rgbcao", "#00FF3C"}},              // Alert over color (yellow-green)
     {COLOR_EXPLOSION, {"rgbcex", "#00FFFF"}},               // Explosion color (cyan)
-    {COLOR_MISSILES, {"rgbcmi", "#9600FF"}},                // Missile color (purple)
+    {COLOR_MISSILES, {"rgbcmi", "#FFFFFF"}},                // Missile color (white)
     {COLOR_DRONES, {"rgbcdr", "#FF00FF"}},                  // Drone color (magenta)
     {COLOR_RECON_DRONES, {"rgbcrdr", "#0000FF"}},           // Recon drone color (blue)
     {COLOR_KABS, {"rgbckab", "#FFFF00"}},                   // KAB color (yellow)
