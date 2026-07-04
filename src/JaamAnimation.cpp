@@ -72,11 +72,11 @@ static inline uint32_t colorFromEnergyStatus(JaamSettings* settings, uint8_t sta
 
 // Helper: map radiation value (нЗв/год) -> color gradient COLOR_LOW..COLOR_HIGH.
 // Значення клампиться в [MIN_LEVEL, maxLevel]; колір лінійно інтерполюється у RGB.
-static inline uint32_t colorFromRadiation(int value, int maxLevel) {
+static inline uint32_t colorFromRadiation(int value, int radMax) {
     int minLevel = RadiationConfig::MIN_LEVEL;
-    if (maxLevel <= minLevel) maxLevel = minLevel + 1;
-    if (value < minLevel) value = minLevel;
-    if (value > maxLevel) value = maxLevel;
+    int maxLevel = constrain(radMax,
+                       RadiationConfig::MAX_LEVEL_MIN,
+                       RadiationConfig::MAX_LEVEL_MAX);
     float factor = (float)(value - minLevel) / (float)(maxLevel - minLevel); // 0..1
 
     uint8_t r1 = (RadiationConfig::COLOR_LOW >> 16) & 0xFF;
@@ -1152,7 +1152,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         break;
                     case MapModes::WEATHER: {
                         int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
-                        if (hidx >= 0 && temperatureFlat[hidx] != TEMP_NO_DATA) {
+                        if (hidx >= 0 && hidx < (int)(MAX_REGIONS + 1) && temperatureFlat[hidx] != TEMP_NO_DATA) {
                             int t = decodeTemperature(temperatureFlat[hidx]);
                             int minT, maxT;
                             getWeatherTempBounds(settings, minT, maxT);
@@ -1165,7 +1165,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                     }
                     case MapModes::ENERGY: {
                         int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
-                        uint8_t status = (hidx >= 0) ? energyFlat[hidx] : 0;
+                        uint8_t status = (hidx >= 0 && hidx < (int)(MAX_REGIONS + 1)) ? energyFlat[hidx] : 0;
                         if (status != 0) {
                             color = colorFromEnergyStatus(settings, status);
                         } else {
@@ -1176,7 +1176,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                     }
                     case MapModes::RADIATION: {
                         int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
-                        uint16_t value = (hidx >= 0) ? radiationFlat[hidx] : 0;
+                        uint16_t value = (hidx >= 0 && hidx < (int)(MAX_REGIONS + 1)) ? radiationFlat[hidx] : 0;
                         if (value != 0) {
                             color = colorFromRadiation((int)value, settings->getInt(RADIATION_MAX));
                         } else {
@@ -1301,7 +1301,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     int cnt = 0;
                     for (int r = 0; r < region_count; ++r) {
                         int fidx = getRegionFlatIdx(region_buf[r]);
-                        if (fidx < 0 || temperatureFlat[fidx] == TEMP_NO_DATA) continue;
+                        if (fidx < 0 || fidx >= (int)(MAX_REGIONS + 1) || temperatureFlat[fidx] == TEMP_NO_DATA) continue;
                         int t = decodeTemperature(temperatureFlat[fidx]);
                         sum += t;
                         cnt++;
@@ -1325,7 +1325,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     int worstSeverity = -1;
                     for (int r = 0; r < region_count; ++r) {
                         int fidx = getRegionFlatIdx(region_buf[r]);
-                        if (fidx < 0) continue;
+                        if (fidx < 0 || fidx >= (int)(MAX_REGIONS + 1)) continue;
                         uint8_t status = energyFlat[fidx];
                         int sev = EnergyStatus::severity(status);
                         if (sev > 0 && sev > worstSeverity) {   // 0 = невідомий → трактуємо як відсутність даних
@@ -1348,7 +1348,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     int cnt = 0;
                     for (int r = 0; r < region_count; ++r) {
                         int fidx = getRegionFlatIdx(region_buf[r]);
-                        if (fidx < 0) continue;
+                        if (fidx < 0 || fidx >= (int)(MAX_REGIONS + 1)) continue;
                         uint16_t value = radiationFlat[fidx];
                         if (value != 0) {
                             sum += value;

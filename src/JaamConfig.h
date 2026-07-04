@@ -67,6 +67,17 @@ namespace EnergyStatus {
             default:                   return 0; // невідомий
         }
     }
+
+    // Human-readable статус енергосистеми (укр.)
+    static inline const char* name(uint8_t status) {
+        switch (status) {
+            case SUFFICIENT:           return "Достатньо";
+            case INSUFFICIENT:         return "Не вистачає";
+            case OUTAGE:               return "Відключення";
+            case SIGNIFICANT_SHORTAGE: return "Значно не вистачає";
+            default:                   return "Невідомий";
+        }
+    }
 }
 
 // --- BG Led Modes ---

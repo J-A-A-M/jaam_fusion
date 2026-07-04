@@ -115,6 +115,9 @@ uint16_t                animType;
 // --- MAP Configuration ---
 // weather: flat-масив encoded-температур по позиції в currentMap.meta.
 // TEMP_NO_DATA (0x80, encoded −0) = немає даних; сервер його не надсилає (+0 = 0x00).
+// НАВМИСНО без = {}: 0x00 (BSS) == валідний +0°C, а не сентинел, тож брейс-init
+// давав би хибне «немає даних». Реальний init — memset(TEMP_NO_DATA) у setup()
+// перед першим читанням (WS-дані приходять пізніше).
 uint8_t                         temperatureFlat[MAX_REGIONS + 1];
 int                             weatherAutoMinTemp = 0;
 int                             weatherAutoMaxTemp = 0;
@@ -1218,8 +1221,6 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);
-
-                
             }
             alertBit = localAlertBit;
             int homeIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
@@ -1260,7 +1261,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             api.setHomeAlert(homeFlags);
             homeAlertFlags = homeFlags;
             int homeTempIdx = getRegionFlatIdx(settings.getInt(HOME_DISTRICT));
-            uint8_t encodedTemp = (homeTempIdx >= 0 && temperatureFlat[homeTempIdx] != TEMP_NO_DATA)
+            uint8_t encodedTemp = (homeTempIdx >= 0 && homeTempIdx < (int)(MAX_REGIONS + 1) && temperatureFlat[homeTempIdx] != TEMP_NO_DATA)
                                   ? temperatureFlat[homeTempIdx] : 0x00;
             api.setHomeDistrictTemp(decodeTemperature(encodedTemp));
             // скидаємо dirty-прапори (могли бути встановлені в фазі 1)
@@ -3218,10 +3219,10 @@ void showWeather() {
 void showEnergy() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
     int idx = getRegionFlatIdx(homeDistrict);
-    uint8_t status = (idx >= 0) ? energyFlat[idx] : 0;
+    uint8_t status = (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) ? energyFlat[idx] : 0;
 
     const char* statusInfo = (status != 0)
-        ? energyStatusName(status)
+        ? EnergyStatus::name(status)
         : "Невідомий";
 
     display.printMessage(statusInfo, "Стан енергосистеми");
@@ -3230,7 +3231,7 @@ void showEnergy() {
 void showRadiation() {
     int homeDistrict = settings.getInt(HOME_DISTRICT);
     int idx = getRegionFlatIdx(homeDistrict);
-    uint16_t value = (idx >= 0) ? radiationFlat[idx] : 0;
+    uint16_t value = (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) ? radiationFlat[idx] : 0;
     char radiationInfo[50];
     const char* statusInfo;
 

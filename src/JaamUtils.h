@@ -1159,17 +1159,6 @@ inline int getCurrentPeriodIndex(int periodLength, int periodCount, long current
   return (currentSeconds / periodLength) % periodCount;
 }
 
-// Helper: human-readable energy system status name
-static inline const char* energyStatusName(uint8_t status) {
-    switch (status) {
-        case EnergyStatus::SUFFICIENT:           return "Достатньо";
-        case EnergyStatus::INSUFFICIENT:         return "Не вистачає";
-        case EnergyStatus::OUTAGE:               return "Відключення";
-        case EnergyStatus::SIGNIFICANT_SHORTAGE: return "Значно не вистачає";
-        default:                                 return "Невідомий";
-    }
-}
-
 // Sentinel: немає даних температури для регіону (encoded −0; сервер шле +0 як 0x00)
 static const uint8_t TEMP_NO_DATA = 0x80;
 
