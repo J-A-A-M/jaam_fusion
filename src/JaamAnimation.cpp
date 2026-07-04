@@ -77,6 +77,7 @@ static inline uint32_t colorFromRadiation(int value, int radMax) {
     int maxLevel = constrain(radMax,
                        RadiationConfig::MAX_LEVEL_MIN,
                        RadiationConfig::MAX_LEVEL_MAX);
+    value = constrain(value, minLevel, maxLevel); // насичення країв шкали (без цього uint8_t каст переповнюється)
     float factor = (float)(value - minLevel) / (float)(maxLevel - minLevel); // 0..1
 
     uint8_t r1 = (RadiationConfig::COLOR_LOW >> 16) & 0xFF;

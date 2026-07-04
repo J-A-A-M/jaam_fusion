@@ -130,7 +130,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {WEATHER_MIN_TEMP, {"mintemp", -10}},                  // Min temperature for color scale (°C)
     {WEATHER_MAX_TEMP, {"maxtemp", 30}},                   // Max temperature for color scale (°C)
     {WEATHER_AUTO_BOUNDS, {"wtab", 1}},                    // Auto-calculate temperature bounds from forecast (0/1)
-    {RADIATION_MAX, {"maxrad", 2000}},                     // Max radiation for visualization (nSv/h)
+    {RADIATION_MAX, {"maxrad", 1000}},                     // Max radiation for visualization (nSv/h)
     
     // Regional settings
     {ALARMS_AUTO_SWITCH, {"aas", 1}},                      // Auto-switch to alarm map mode (0/1)

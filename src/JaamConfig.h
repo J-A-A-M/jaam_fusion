@@ -44,9 +44,25 @@ namespace MapModes {
 namespace RadiationConfig {
     static const int MIN_LEVEL = 50;     // нижній рівень шкали кольору (нЗв/год)
     static const int MAX_LEVEL_MIN = 100;  // мінімально допустиме значення RADIATION_MAX
-    static const int MAX_LEVEL_MAX = 2000; // максимально допустиме значення RADIATION_MAX
+    static const int MAX_LEVEL_MAX = 1000; // максимально допустиме значення RADIATION_MAX
     static const uint32_t COLOR_LOW = 0x1CAFAF;  // колір мінімального рівня (#1cafaf)
     static const uint32_t COLOR_HIGH = 0xFF00FF; // колір верхнього рівня (#ff00ff)
+
+    // Пороги градації статусу для інформаційного дисплея (нЗв/год).
+    // Значення 300-600-1000 обрано на основі даних про безпечні рівні радіації.
+    static const int LEVEL_NORMAL   = 300;   // < 300  — в межах норми
+    static const int LEVEL_ELEVATED = 600;   // < 600  — підвищений
+    static const int LEVEL_HIGH     = 1000;  // < 1000 — вище норми
+                                                 // >= 1000 — суттєво вище норми
+
+    // Human-readable статус рівня радіації (укр.). Кейс "немає даних" (value==0)
+    // обробляється у caller окремо.
+    static inline const char* name(int value) {
+        if (value < LEVEL_NORMAL)   return "В межах норми";
+        if (value < LEVEL_ELEVATED) return "Підвищений";
+        if (value < LEVEL_HIGH)     return "Вище норми";
+        return "Суттєво вище норми";
+    }
 }
 
 // --- Energy system statuses (значення приходять з сервера в TYPE_ENERGY_BATCH) ---

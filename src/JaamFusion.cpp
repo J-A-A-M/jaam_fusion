@@ -3236,18 +3236,9 @@ void showRadiation() {
     if (value != 0) {
         snprintf(radiationInfo, sizeof(radiationInfo), "%u нЗв/год", value);
 
-        // Градація статусу за рівнем радіації
-        // Значення формуються незалежно від того, яким кольором підсвічується мапа, бо це інформаційний дисплей
-        // Значення 300-600-1000 вибрано як межі для інформування користувача про стан радіації на основі даних про безпечні рівні радіації.
-        if (value < 300) {
-            statusInfo = "В межах норми";
-        } else if (value < 600) {
-            statusInfo = "Підвищений";
-        } else if (value < 1000) {
-            statusInfo = "Вище норми";
-        } else {
-            statusInfo = "Суттєво вище норми";
-        }
+        // Градація статусу за рівнем радіації (пороги+назви в RadiationConfig::name).
+        // Значення формуються незалежно від того, яким кольором підсвічується мапа, бо це інформаційний дисплей.
+        statusInfo = RadiationConfig::name(value);
     } else {
         snprintf(radiationInfo, sizeof(radiationInfo), "-- нЗв/год");
         statusInfo = "Немає даних";
