@@ -470,7 +470,7 @@ const SettingListItem DISTRICTS[MAX_REGIONS] = {
     {77, "Фастівський район", false, true},
     // Міста без можливості вибору як домашній регіон (ignore=true, showDisabled=false)
     {750, "м. Славутич", true, true},        // реальний regionId з uaapi.json
-    {8888, "м. Прип'ять", true, true},       // кастомний regionId
+    {8888, "м. Припʼять", true, true},       // кастомний regionId
 
     // Кіровоградська область та її райони
     {15, "Кіровоградська обл.", false, false},
