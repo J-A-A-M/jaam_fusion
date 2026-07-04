@@ -169,7 +169,7 @@ static constexpr size_t   RECORD_FW         = 5;            // 1B major + 1B min
 static constexpr size_t   HASH_SZ           = 4;            // 2B actual + 2B prev
 
 // --- Region to LED mapping (fixed, задається один раз) ---
-constexpr int MAX_REGIONS = 169;                            // Кількість регіонів
+constexpr int MAX_REGIONS = 171;                            // Кількість регіонів
 constexpr int MAX_LEDS_STRIP_MAIN = 500;                    // Максимальна кількість LED на strip_main
 constexpr int MAX_LEDS_PER_REGION = 25;                      // Максимум LED на регіон
 
