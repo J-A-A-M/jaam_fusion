@@ -5,6 +5,8 @@
   {"id": "hardware", "name": "Апаратне забезпечення", "color": "#6f42c1"},
   {"id": "siren", "name": "Сирена", "color": "#e83e8c"},
   {"id": "climate", "name": "Клімат", "color": "#34f396"},
+  {"id": "energy", "name": "Енергосистема", "color": "#f9a825"},
+  {"id": "radiation", "name": "Радіація", "color": "#661caf"},
   {"id": "animations", "name": "Анімації", "color": "#fd7e14"},
   {"id": "brightness", "name": "Яскравість", "color": "#ffc107"},
   {"id": "alerts", "name": "Тривоги", "color": "#6c757d"},

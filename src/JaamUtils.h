@@ -93,7 +93,9 @@ inline SettingListItem* getSettingItemById(SettingListItem* items, int count, in
 
 // External variables declarations
 extern time_t                         lastWebsocketConnectTime;
-extern std::map<uint16_t, uint8_t>      temperatureMap; // weather: region -> temperature (int8 encoded)
+extern uint8_t                          temperatureFlat[]; // weather: encoded temp по позиції в currentMap.meta (TEMP_NO_DATA = немає)
+extern uint8_t                          energyFlat[];    // energy: flat по позиції в currentMap.meta (0 = немає даних)
+extern uint16_t                         radiationFlat[]; // radiation: flat нЗв/год по позиції в currentMap.meta (0 = немає даних)
 extern int                              weatherAutoMinTemp;
 extern int                              weatherAutoMaxTemp;
 extern bool                             weatherAutoBoundsValid;
@@ -1156,6 +1158,9 @@ inline int getCurrentPeriodIndex(int periodLength, int periodCount, long current
   }
   return (currentSeconds / periodLength) % periodCount;
 }
+
+// Sentinel: немає даних температури для регіону (encoded −0; сервер шле +0 як 0x00)
+static const uint8_t TEMP_NO_DATA = 0x80;
 
 // Helper: decode encoded temperature byte (7 bits value, 1 bit sign: 0=+, 1=-)
 static inline int decodeTemperature(uint8_t enc) {
