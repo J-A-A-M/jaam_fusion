@@ -150,6 +150,8 @@ nav:
           - Апаратне забезпечення: web-interface/sections/hardware.md
           - Сирена: web-interface/sections/siren.md
           - Клімат: web-interface/sections/climate.md
+          - Енергосистема: web-interface/sections/energy.md
+          - Радіація: web-interface/sections/radiation.md
           - Анімації: web-interface/sections/animations.md
           - Яскравість: web-interface/sections/brightness.md
           - Тривоги: web-interface/sections/alerts.md

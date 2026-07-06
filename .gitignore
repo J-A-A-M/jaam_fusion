@@ -13,3 +13,6 @@ docs/*
 
 # MkDocs
 site/
+
+# graphify
+graphify-out/

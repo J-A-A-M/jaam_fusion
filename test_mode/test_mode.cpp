@@ -5,7 +5,9 @@
 //   PHASE_UPDATE — write NVS defaults + OTA flash (triggered by BTN1 long press)
 //
 // Build: pio run -e test_mode
-// Set JAAM_VERSION in platformio.ini: 1 = JAAM 1.3, 2 = JAAM 2.1, 3 = JAAM 3.2 (default)
+// Set in platformio.ini build_flags:
+//   -D PLATFORM_ID=<1|2|3|0>   (1=JAAM1, 2=JAAM2, 3=JAAM3, 0=default)
+//   -D PLATFORM_NAME=\"<name>\"  (string used in deviceId, e.g. "JAAM3")
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -35,8 +37,20 @@ SemaphoreHandle_t  stripMutex    = nullptr;
 JaamSettings settings;
 JaamHardware hardwareConfig;
 
-// ─── Hardware config (JAAM_VERSION drives both LED config and NVS defaults) ───
-#if JAAM_VERSION == 3
+// ─── Platform ID constants ─────────────────────────────────────────────────────
+#define PLATFORM_JAAM1 1
+#define PLATFORM_JAAM2 2
+#define PLATFORM_JAAM3 3
+
+#ifndef PLATFORM_ID
+  #define PLATFORM_ID 0
+#endif
+#ifndef PLATFORM_NAME
+  #define PLATFORM_NAME "UNKNOWN"
+#endif
+
+// ─── Hardware config (HARDWARE drives both LED config and NVS defaults) ───
+#if PLATFORM_ID == PLATFORM_JAAM3
   static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_3_2;  // 405
   static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_JAAM_3;       // 39
   static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DEFAULT; // 5
@@ -45,7 +59,7 @@ JaamHardware hardwareConfig;
   static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_JAAM;        // 2
   static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_JAAM_3;      // 4
   static const auto    DISP_TYPE   = JaamDisplayType::SH1106G;
-#elif JAAM_VERSION == 2
+#elif PLATFORM_ID == PLATFORM_JAAM2
   static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_2_1;  // 26
   static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_JAAM_2;       // 44
   static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DEFAULT; // 5
@@ -54,7 +68,7 @@ JaamHardware hardwareConfig;
   static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_JAAM;        // 2
   static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_DISABLED;    // -1
   static const auto    DISP_TYPE   = JaamDisplayType::SH1106G;
-#else  // JAAM_VERSION == 1
+#elif PLATFORM_ID == PLATFORM_JAAM1
   static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_1_3;  // 26
   static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_DISABLED;     // -1
   static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DISABLED;// -1
@@ -63,16 +77,34 @@ JaamHardware hardwareConfig;
   static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_DISABLED;    // -1
   static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_DISABLED;    // -1
   static const auto    DISP_TYPE   = JaamDisplayType::SSD1306;
+#else 
+  static const int     MAIN_COUNT  = JaamHardwareLed::MAIN_LED_COUNT_JAAM_1_3;  // 26
+  static const int     BG_COUNT    = JaamHardwareLed::BG_LED_COUNT_DISABLED;     // -1
+  static const int     SVC_COUNT   = JaamHardwareLed::SERVICE_LED_COUNT_DISABLED;// -1
+  static const uint8_t MAX_BR      = JaamHardwareLed::BRIGHTNESS_JAAM_1_3_MAX;  // 127
+  static const int     BTN1_PIN    = JaamHardwarePins::BUTTON_1_PIN_JAAM_1;      // 35
+  static const int     BTN2_PIN    = JaamHardwarePins::BUTTON_2_PIN_DISABLED;    // -1
+  static const int     BTN3_PIN    = JaamHardwarePins::BUTTON_3_PIN_DISABLED;    // -1
+  static const auto    DISP_TYPE   = JaamDisplayType::NONE;
 #endif
 
+// ─── Animation config (edit before flashing) ──────────────────────────────────
+//   ANIM_SNAKE         — running comet trail
+//   ANIM_COLOR_BREATHE — breathe red → blue → green → white, looping
+enum AnimType { ANIM_SNAKE, ANIM_COLOR_BREATHE };
+static AnimType mainAnim = ANIM_COLOR_BREATHE;   // strip_main animation
+static AnimType bgAnim   = ANIM_COLOR_BREATHE;   // strip_bg animation
+static AnimType svcAnim  = ANIM_COLOR_BREATHE;   // strip_service animation
+
 // ─── Updater config (edit before flashing) ────────────────────────────────────
-static const int   orderNumber   = 0;    // Order number → id = "JAAMx-yyyy"
+static const int   orderNumber   = 0;    // Order number → id = "%PLATFORM_NAME%-yyyy"
 static const char* ssid          = "";   // WiFi SSID for OTA
 static const char* password      = "";   // WiFi password
 static const char* userSsid      = "";   // User WiFi SSID (saved to device)
 static const char* userPassword  = "";   // User WiFi password
 static const char* firmwareUrl   = "https://update.jaam.net.ua/5.0.1";
 static const int   homeDistrict  = 31;   // Default home region ID (31 = Kyiv)
+static const char* customDeviceId = "";   // Custom device ID (overrides auto-generated if set)
 
 // ─── Module instances ──────────────────────────────────────────────────────────
 JaamDisplay       display;
@@ -89,21 +121,21 @@ static unsigned long btnEventTime    = 0;
 static unsigned long lastDisplayUpd  = 0;
 
 // ─── Snake animation state ─────────────────────────────────────────────────────
-static const int     SNAKE_LEN   = 9;
-static const uint32_t SNAKE_STEP = 25;   // ms per step (~40 fps)
-static float         snakePos    = 0.0f;
-static unsigned long lastSnakeMs = 0;
+struct SnakeState { float pos; unsigned long lastMs; };
+static SnakeState    mainSnake = {0.0f, 0};
+static SnakeState    bgSnake   = {0.0f, 0};
+static SnakeState    svcSnake  = {0.0f, 0};
+static const int      SNAKE_LEN      = 9;
+static const uint32_t SNAKE_STEP     = 25;   // ms per step (~40 fps)
+static const int      SNAKE_LEN_SVC  = 3;    // shorter trail for 5-LED strip
+static const uint32_t SNAKE_STEP_SVC = 80;   // slower to be visually distinct
 
-// ─── Bg breathing state ────────────────────────────────────────────────────────
-static uint8_t       bgBr    = 0;
-static int8_t        bgDir   = 1;
-static unsigned long lastBgMs = 0;
-
-// ─── Service snake state ───────────────────────────────────────────────────────
-static const int     SNAKE_LEN_SVC  = 3;   // shorter trail for 5-LED strip
-static const uint32_t SNAKE_STEP_SVC = 80;  // slower to be visually distinct
-static float         svcPos    = 0.0f;
-static unsigned long lastSvcMs = 0;
+// ─── Color Breathe state (breathe R → B → G → W, tests each LED channel) ────────
+struct BreatheState { uint8_t br; int8_t dir; uint8_t colorIdx; unsigned long lastMs; };
+static BreatheState  mainBreathe = {0, 1, 0, 0};
+static BreatheState  bgBreathe   = {0, 1, 0, 0};
+static BreatheState  svcBreathe  = {0, 1, 0, 0};
+static const uint32_t BREATHE_STEP = 20;     // ms per brightness step
 
 static const char* STARTUP_MELODY PROGMEM = "Shchedryk:d=8,o=5,b=180:4a,g#,a,4f#,4a,g#,a,4f#";
 
@@ -126,65 +158,82 @@ static void onBtn2LongClick() { showBtnEvent("BTN 2", "Long Click"); }
 static void onBtn3Click()     { showBtnEvent("BTN 3", "Click"); }
 static void onBtn3LongClick() { showBtnEvent("BTN 3", "Long Click"); }
 
-// ─── LED: snake on strip_main ──────────────────────────────────────────────────
-static void updateSnake() {
-    if (!strip_main) return;
-    if (millis() - lastSnakeMs < SNAKE_STEP) return;
-    lastSnakeMs = millis();
+// ─── LED: generic snake (comet trail) ──────────────────────────────────────────
+static void applySnake(Adafruit_NeoPixel* strip, SnakeState& st, int len,
+                       uint32_t stepMs, float speed, uint8_t maxBr,
+                       uint8_t cr, uint8_t cg, uint8_t cb) {
+    if (!strip) return;
+    if (millis() - st.lastMs < stepMs) return;
+    st.lastMs = millis();
 
-    const int n = strip_main->numPixels();
-    const int head = (int)snakePos % n;
+    const int n = strip->numPixels();
+    if (n <= 0) return;
+    const int head = (int)st.pos % n;
 
-    strip_main->clear();
-    for (int i = 0; i < SNAKE_LEN; i++) {
+    strip->clear();
+    for (int i = 0; i < len; i++) {
         int pos = (head - i + n) % n;
-        // Brightness fades from head to tail: 255 → ~28
-        uint8_t br = (uint8_t)((SNAKE_LEN - i) * 255 / SNAKE_LEN);
-        // Scale by hardware max brightness
-        br = (uint8_t)((uint32_t)br * MAX_BR / 255);
-        strip_main->setPixelColor(pos, 0, 0, br);  // blue
+        // Fade from head to tail, scaled by hardware max brightness
+        uint32_t fv = (uint32_t)(len - i) * maxBr / len;
+        uint8_t r = (uint8_t)((uint32_t)cr * fv / 255);
+        uint8_t g = (uint8_t)((uint32_t)cg * fv / 255);
+        uint8_t b = (uint8_t)((uint32_t)cb * fv / 255);
+        strip->setPixelColor(pos, r, g, b);
     }
-    strip_main->show();
+    strip->show();
 
-    snakePos += 0.5f;
-    if (snakePos >= (float)n) snakePos -= (float)n;
+    st.pos += speed;
+    if (st.pos >= (float)n) st.pos -= (float)n;
 }
 
-// ─── LED: green breathing on strip_bg ─────────────────────────────────────────
-static void updateBgBreathing() {
-    if (!strip_bg) return;
-    if (millis() - lastBgMs < 20) return;
-    lastBgMs = millis();
+// ─── LED: color breathe — whole strip pulses R → B → G → W, looping ────────────
+//   Lights one channel at a time so each LED channel (R/G/B) can be verified.
+static void applyColorBreathe(Adafruit_NeoPixel* strip, BreatheState& st,
+                              uint8_t maxBr, uint32_t stepMs) {
+    if (!strip) return;
+    if (millis() - st.lastMs < stepMs) return;
+    st.lastMs = millis();
 
-    bgBr = (uint8_t)constrain((int)bgBr + bgDir * 2, 0, MAX_BR);
-    if (bgBr >= MAX_BR) bgDir = -1;
-    if (bgBr == 0)      bgDir =  1;
-
-    for (int i = 0; i < strip_bg->numPixels(); i++) {
-        strip_bg->setPixelColor(i, 0, bgBr, 0);  // green
+    st.br = (uint8_t)constrain((int)st.br + st.dir * 2, 0, (int)maxBr);
+    if (st.br >= maxBr) st.dir = -1;
+    if (st.br == 0) {
+        st.dir = 1;
+        st.colorIdx = (uint8_t)((st.colorIdx + 1) % 4);  // next channel at cycle end
     }
-    strip_bg->show();
+
+    uint8_t r = 0, g = 0, b = 0;
+    switch (st.colorIdx) {
+        case 0: r = st.br; break;               // red
+        case 1: b = st.br; break;               // blue
+        case 2: g = st.br; break;               // green
+        case 3: r = g = b = st.br; break;       // white
+    }
+    for (int i = 0; i < strip->numPixels(); i++) {
+        strip->setPixelColor(i, r, g, b);
+    }
+    strip->show();
 }
 
-// ─── LED: red snake on strip_service ──────────────────────────────────────────
-static void updateServiceSnake() {
-    if (!strip_service) return;
-    if (millis() - lastSvcMs < SNAKE_STEP_SVC) return;
-    lastSvcMs = millis();
+// ─── LED dispatch (per configured AnimType) ────────────────────────────────────
+static void updateMainLed() {
+    if (mainAnim == ANIM_SNAKE)
+        applySnake(strip_main, mainSnake, SNAKE_LEN, SNAKE_STEP, 0.5f, MAX_BR, 0, 0, 255);
+    else
+        applyColorBreathe(strip_main, mainBreathe, MAX_BR, BREATHE_STEP);
+}
 
-    const int n = strip_service->numPixels();
-    const int head = (int)svcPos % n;
+static void updateBgLed() {
+    if (bgAnim == ANIM_SNAKE)
+        applySnake(strip_bg, bgSnake, SNAKE_LEN, SNAKE_STEP, 0.5f, MAX_BR, 0, 0, 255);
+    else
+        applyColorBreathe(strip_bg, bgBreathe, MAX_BR, BREATHE_STEP);
+}
 
-    strip_service->clear();
-    for (int i = 0; i < SNAKE_LEN_SVC; i++) {
-        int pos = (head - i + n) % n;
-        uint8_t br = (uint8_t)((SNAKE_LEN_SVC - i) * MAX_BR / SNAKE_LEN_SVC);
-        strip_service->setPixelColor(pos, br, 0, 0);  // red
-    }
-    strip_service->show();
-
-    svcPos += 1.0f;
-    if (svcPos >= (float)n) svcPos -= (float)n;
+static void updateServiceLed() {
+    if (svcAnim == ANIM_SNAKE)
+        applySnake(strip_service, svcSnake, SNAKE_LEN_SVC, SNAKE_STEP_SVC, 1.0f, MAX_BR, 255, 0, 0);
+    else
+        applyColorBreathe(strip_service, svcBreathe, MAX_BR, BREATHE_STEP);
 }
 
 // ─── Idle display (sensor readings) ───────────────────────────────────────────
@@ -207,23 +256,24 @@ void updateIdleDisplay() {
 
 // ─── Updater phase ─────────────────────────────────────────────────────────────
 static void writeNvsDefaults() {
-    char deviceId[12];  // "JAAM3-9999\0"
-    snprintf(deviceId, sizeof(deviceId), "JAAM%d-%04d", JAAM_VERSION, orderNumber);
+    char deviceId[12];  // "%PLATFORM%-9999\0"
+    snprintf(deviceId, sizeof(deviceId), "%s-%04d", PLATFORM_NAME, orderNumber);
 
     Preferences prefs;
     prefs.begin("storage", false);
     prefs.clear();
-    prefs.putString("id", deviceId);    // device id
+    const char* idToSave = (customDeviceId && customDeviceId[0] != '\0') ? customDeviceId : deviceId;
+    prefs.putString("id", idToSave);    // device id
     prefs.putInt("hmd", homeDistrict);  // home district
 
-#if JAAM_VERSION == 1
+#if PLATFORM_ID == PLATFORM_JAAM1
     prefs.putInt("legacy", 0);          // JAAM 1
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
     prefs.putInt("bml",  0);            // button long mode (0 - toggle display and map)
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
     LOG.printf("[UPDATE] NVS: id=%s, JAAM 1 defaults applied\n", deviceId);
-#elif JAAM_VERSION == 2
+#elif PLATFORM_ID == PLATFORM_JAAM2
     prefs.putInt("legacy", 3);          // JAAM 2.1
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
     prefs.putInt("b2m",  2);            // button 2 mode (2 - display mode change)
@@ -233,7 +283,7 @@ static void writeNvsDefaults() {
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
     LOG.printf("[UPDATE] NVS: id=%s, JAAM 2 defaults applied\n", deviceId);
-#else  // JAAM_VERSION == 3
+#elif PLATFORM_ID == PLATFORM_JAAM3
     prefs.putInt("legacy", 6);          // JAAM 3.2
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
     prefs.putInt("b2m",  2);            // button 2 mode (2 - display mode change)
@@ -245,6 +295,8 @@ static void writeNvsDefaults() {
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
     LOG.printf("[UPDATE] NVS: id=%s, JAAM 3 defaults applied\n", deviceId);
+#else
+    prefs.putInt("legacy", 8);          
 #endif
 
     prefs.end();
@@ -417,20 +469,26 @@ void setup() {
     uint64_t efuseMac = ESP.getEfuseMac();
     char chipID[13];
     sprintf(chipID, "%04x%04x", (uint32_t)(efuseMac >> 32), (uint32_t)efuseMac);
-    char deviceId[12];
-    snprintf(deviceId, sizeof(deviceId), "JAAM%d-%04d", JAAM_VERSION, orderNumber);
     LOG.println("[TEST] Setup complete");
     LOG.printf("[TEST] Chip ID: %s\n", chipID);
-    LOG.printf("[TEST] Device ID: %s\n", deviceId);
+    Preferences readPrefs;
+    readPrefs.begin("storage", true);
+    String savedId = readPrefs.getString("id", "");
+    readPrefs.end();
+    if (savedId.length() > 0) {
+        LOG.printf("[TEST] Device ID: %s\n", savedId.c_str());
+    } else {
+        LOG.println("[TEST] Device ID: not set");
+    }
 }
 
 void loop() {
     if (currentPhase != PHASE_TEST) return;
 
     buttons.tick();
-    updateSnake();
-    updateBgBreathing();
-    updateServiceSnake();
+    updateMainLed();
+    updateBgLed();
+    updateServiceLed();
 
     // Clear button event label after 2 s, then refresh sensor display
     if (btnEventPending && millis() - btnEventTime > 2000) {

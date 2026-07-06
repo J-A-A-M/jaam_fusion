@@ -103,7 +103,9 @@ std::map<Type, SettingItemInt> intSettings = {
     {ENABLE_BALLISTIC, {"ebal", 1}},                       // Show ballistic missiles
     {ENABLE_SYNC_ANIMATIONS, {"esa", 1}},                  // Sync animations across regions
     {ENABLE_ANIMATION_PREVIEW, {"eap", 1}},                // Show animation preview
-    
+    {ENABLE_HOME_ALERT_ANIMATION, {"ehaa", 1}},            // Run alert animation on home region status change
+    {HOME_ALERT_ANIMATION_TIME, {"haat", 5}},             // Home alert animation duration (seconds)
+
     // Brightness per state (0-100%)
     {BRIGHTNESS_ALERT, {"ba", 100}},                       // Alert state
     {BRIGHTNESS_CLEAR, {"bc", 100}},                       // Clear state
@@ -128,7 +130,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {WEATHER_MIN_TEMP, {"mintemp", -10}},                  // Min temperature for color scale (°C)
     {WEATHER_MAX_TEMP, {"maxtemp", 30}},                   // Max temperature for color scale (°C)
     {WEATHER_AUTO_BOUNDS, {"wtab", 1}},                    // Auto-calculate temperature bounds from forecast (0/1)
-    {RADIATION_MAX, {"maxrad", 2000}},                     // Max radiation for visualization (nSv/h)
+    {RADIATION_MAX, {"maxrad", 1000}},                     // Max radiation for visualization (nSv/h)
     
     // Regional settings
     {ALARMS_AUTO_SWITCH, {"aas", 1}},                      // Auto-switch to alarm map mode (0/1)
@@ -322,7 +324,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_NEW_ALERT, {"rgbcna", "#FF3C00"}},               // New alert color (orange)
     {COLOR_ALERT_OVER, {"rgbcao", "#00FF3C"}},              // Alert over color (yellow-green)
     {COLOR_EXPLOSION, {"rgbcex", "#00FFFF"}},               // Explosion color (cyan)
-    {COLOR_MISSILES, {"rgbcmi", "#9600FF"}},                // Missile color (purple)
+    {COLOR_MISSILES, {"rgbcmi", "#FFFFFF"}},                // Missile color (white)
     {COLOR_DRONES, {"rgbcdr", "#FF00FF"}},                  // Drone color (magenta)
     {COLOR_RECON_DRONES, {"rgbcrdr", "#0000FF"}},           // Recon drone color (blue)
     {COLOR_KABS, {"rgbckab", "#FFFF00"}},                   // KAB color (yellow)
@@ -330,6 +332,16 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_HOME_DISTRICT, {"rgbchd", "#00FF64"}},           // Home district color (light blue)
     {COLOR_BG, {"rgbcbg", "#00FF00"}},                      // Background color (green)
     {COLOR_LAMP, {"rgbclamp", "#D707D7"}},                  // Lamp mode color (purple)
+
+    // Energy system status colors (#RRGGBB)
+    {ENERGY_COLOR_SUFFICIENT, {"rgbensuf", "#00FF00"}},            // достатньо (green)
+    {ENERGY_COLOR_INSUFFICIENT, {"rgbenins", "#FFFF00"}},         // не вистачає (yellow)
+    {ENERGY_COLOR_OUTAGE, {"rgbenout", "#FF0000"}},              // відключення (red)
+    {ENERGY_COLOR_SIGNIFICANT_SHORTAGE, {"rgbensig", "#FF8C00"}}, // значно не вистачає (orange)
+    {ENERGY_COLOR_UNKNOWN, {"rgbenunk", "#FFFFFF"}},             // невідомий (white)
+
+    // Radiation: color for regions without data
+    {RADIATION_COLOR_UNKNOWN, {"rgbradunk", "#FFFFFF"}},         // немає даних (white)
 
     // Web authentication
     {WEB_LOGIN, {"waulg", "admin"}},                         // Web auth login
