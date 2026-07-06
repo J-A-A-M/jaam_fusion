@@ -88,6 +88,14 @@ JaamHardware hardwareConfig;
   static const auto    DISP_TYPE   = JaamDisplayType::NONE;
 #endif
 
+// ─── Animation config (edit before flashing) ──────────────────────────────────
+//   ANIM_SNAKE         — running comet trail
+//   ANIM_COLOR_BREATHE — breathe red → blue → green → white, looping
+enum AnimType { ANIM_SNAKE, ANIM_COLOR_BREATHE };
+static AnimType mainAnim = ANIM_COLOR_BREATHE;   // strip_main animation
+static AnimType bgAnim   = ANIM_COLOR_BREATHE;   // strip_bg animation
+static AnimType svcAnim  = ANIM_COLOR_BREATHE;   // strip_service animation
+
 // ─── Updater config (edit before flashing) ────────────────────────────────────
 static const int   orderNumber   = 0;    // Order number → id = "%PLATFORM_NAME%-yyyy"
 static const char* ssid          = "";   // WiFi SSID for OTA
@@ -113,21 +121,21 @@ static unsigned long btnEventTime    = 0;
 static unsigned long lastDisplayUpd  = 0;
 
 // ─── Snake animation state ─────────────────────────────────────────────────────
-static const int     SNAKE_LEN   = 9;
-static const uint32_t SNAKE_STEP = 25;   // ms per step (~40 fps)
-static float         snakePos    = 0.0f;
-static unsigned long lastSnakeMs = 0;
+struct SnakeState { float pos; unsigned long lastMs; };
+static SnakeState    mainSnake = {0.0f, 0};
+static SnakeState    bgSnake   = {0.0f, 0};
+static SnakeState    svcSnake  = {0.0f, 0};
+static const int      SNAKE_LEN      = 9;
+static const uint32_t SNAKE_STEP     = 25;   // ms per step (~40 fps)
+static const int      SNAKE_LEN_SVC  = 3;    // shorter trail for 5-LED strip
+static const uint32_t SNAKE_STEP_SVC = 80;   // slower to be visually distinct
 
-// ─── Bg breathing state ────────────────────────────────────────────────────────
-static uint8_t       bgBr    = 0;
-static int8_t        bgDir   = 1;
-static unsigned long lastBgMs = 0;
-
-// ─── Service snake state ───────────────────────────────────────────────────────
-static const int     SNAKE_LEN_SVC  = 3;   // shorter trail for 5-LED strip
-static const uint32_t SNAKE_STEP_SVC = 80;  // slower to be visually distinct
-static float         svcPos    = 0.0f;
-static unsigned long lastSvcMs = 0;
+// ─── Color Breathe state (breathe R → B → G → W, tests each LED channel) ────────
+struct BreatheState { uint8_t br; int8_t dir; uint8_t colorIdx; unsigned long lastMs; };
+static BreatheState  mainBreathe = {0, 1, 0, 0};
+static BreatheState  bgBreathe   = {0, 1, 0, 0};
+static BreatheState  svcBreathe  = {0, 1, 0, 0};
+static const uint32_t BREATHE_STEP = 20;     // ms per brightness step
 
 static const char* STARTUP_MELODY PROGMEM = "Shchedryk:d=8,o=5,b=180:4a,g#,a,4f#,4a,g#,a,4f#";
 
@@ -150,65 +158,82 @@ static void onBtn2LongClick() { showBtnEvent("BTN 2", "Long Click"); }
 static void onBtn3Click()     { showBtnEvent("BTN 3", "Click"); }
 static void onBtn3LongClick() { showBtnEvent("BTN 3", "Long Click"); }
 
-// ─── LED: snake on strip_main ──────────────────────────────────────────────────
-static void updateSnake() {
-    if (!strip_main) return;
-    if (millis() - lastSnakeMs < SNAKE_STEP) return;
-    lastSnakeMs = millis();
+// ─── LED: generic snake (comet trail) ──────────────────────────────────────────
+static void applySnake(Adafruit_NeoPixel* strip, SnakeState& st, int len,
+                       uint32_t stepMs, float speed, uint8_t maxBr,
+                       uint8_t cr, uint8_t cg, uint8_t cb) {
+    if (!strip) return;
+    if (millis() - st.lastMs < stepMs) return;
+    st.lastMs = millis();
 
-    const int n = strip_main->numPixels();
-    const int head = (int)snakePos % n;
+    const int n = strip->numPixels();
+    if (n <= 0) return;
+    const int head = (int)st.pos % n;
 
-    strip_main->clear();
-    for (int i = 0; i < SNAKE_LEN; i++) {
+    strip->clear();
+    for (int i = 0; i < len; i++) {
         int pos = (head - i + n) % n;
-        // Brightness fades from head to tail: 255 → ~28
-        uint8_t br = (uint8_t)((SNAKE_LEN - i) * 255 / SNAKE_LEN);
-        // Scale by hardware max brightness
-        br = (uint8_t)((uint32_t)br * MAX_BR / 255);
-        strip_main->setPixelColor(pos, 0, 0, br);  // blue
+        // Fade from head to tail, scaled by hardware max brightness
+        uint32_t fv = (uint32_t)(len - i) * maxBr / len;
+        uint8_t r = (uint8_t)((uint32_t)cr * fv / 255);
+        uint8_t g = (uint8_t)((uint32_t)cg * fv / 255);
+        uint8_t b = (uint8_t)((uint32_t)cb * fv / 255);
+        strip->setPixelColor(pos, r, g, b);
     }
-    strip_main->show();
+    strip->show();
 
-    snakePos += 0.5f;
-    if (snakePos >= (float)n) snakePos -= (float)n;
+    st.pos += speed;
+    if (st.pos >= (float)n) st.pos -= (float)n;
 }
 
-// ─── LED: green breathing on strip_bg ─────────────────────────────────────────
-static void updateBgBreathing() {
-    if (!strip_bg) return;
-    if (millis() - lastBgMs < 20) return;
-    lastBgMs = millis();
+// ─── LED: color breathe — whole strip pulses R → B → G → W, looping ────────────
+//   Lights one channel at a time so each LED channel (R/G/B) can be verified.
+static void applyColorBreathe(Adafruit_NeoPixel* strip, BreatheState& st,
+                              uint8_t maxBr, uint32_t stepMs) {
+    if (!strip) return;
+    if (millis() - st.lastMs < stepMs) return;
+    st.lastMs = millis();
 
-    bgBr = (uint8_t)constrain((int)bgBr + bgDir * 2, 0, MAX_BR);
-    if (bgBr >= MAX_BR) bgDir = -1;
-    if (bgBr == 0)      bgDir =  1;
-
-    for (int i = 0; i < strip_bg->numPixels(); i++) {
-        strip_bg->setPixelColor(i, 0, bgBr, 0);  // green
+    st.br = (uint8_t)constrain((int)st.br + st.dir * 2, 0, (int)maxBr);
+    if (st.br >= maxBr) st.dir = -1;
+    if (st.br == 0) {
+        st.dir = 1;
+        st.colorIdx = (uint8_t)((st.colorIdx + 1) % 4);  // next channel at cycle end
     }
-    strip_bg->show();
+
+    uint8_t r = 0, g = 0, b = 0;
+    switch (st.colorIdx) {
+        case 0: r = st.br; break;               // red
+        case 1: b = st.br; break;               // blue
+        case 2: g = st.br; break;               // green
+        case 3: r = g = b = st.br; break;       // white
+    }
+    for (int i = 0; i < strip->numPixels(); i++) {
+        strip->setPixelColor(i, r, g, b);
+    }
+    strip->show();
 }
 
-// ─── LED: red snake on strip_service ──────────────────────────────────────────
-static void updateServiceSnake() {
-    if (!strip_service) return;
-    if (millis() - lastSvcMs < SNAKE_STEP_SVC) return;
-    lastSvcMs = millis();
+// ─── LED dispatch (per configured AnimType) ────────────────────────────────────
+static void updateMainLed() {
+    if (mainAnim == ANIM_SNAKE)
+        applySnake(strip_main, mainSnake, SNAKE_LEN, SNAKE_STEP, 0.5f, MAX_BR, 0, 0, 255);
+    else
+        applyColorBreathe(strip_main, mainBreathe, MAX_BR, BREATHE_STEP);
+}
 
-    const int n = strip_service->numPixels();
-    const int head = (int)svcPos % n;
+static void updateBgLed() {
+    if (bgAnim == ANIM_SNAKE)
+        applySnake(strip_bg, bgSnake, SNAKE_LEN, SNAKE_STEP, 0.5f, MAX_BR, 0, 0, 255);
+    else
+        applyColorBreathe(strip_bg, bgBreathe, MAX_BR, BREATHE_STEP);
+}
 
-    strip_service->clear();
-    for (int i = 0; i < SNAKE_LEN_SVC; i++) {
-        int pos = (head - i + n) % n;
-        uint8_t br = (uint8_t)((SNAKE_LEN_SVC - i) * MAX_BR / SNAKE_LEN_SVC);
-        strip_service->setPixelColor(pos, br, 0, 0);  // red
-    }
-    strip_service->show();
-
-    svcPos += 1.0f;
-    if (svcPos >= (float)n) svcPos -= (float)n;
+static void updateServiceLed() {
+    if (svcAnim == ANIM_SNAKE)
+        applySnake(strip_service, svcSnake, SNAKE_LEN_SVC, SNAKE_STEP_SVC, 1.0f, MAX_BR, 255, 0, 0);
+    else
+        applyColorBreathe(strip_service, svcBreathe, MAX_BR, BREATHE_STEP);
 }
 
 // ─── Idle display (sensor readings) ───────────────────────────────────────────
@@ -461,9 +486,9 @@ void loop() {
     if (currentPhase != PHASE_TEST) return;
 
     buttons.tick();
-    updateSnake();
-    updateBgBreathing();
-    updateServiceSnake();
+    updateMainLed();
+    updateBgLed();
+    updateServiceLed();
 
     // Clear button event label after 2 s, then refresh sensor display
     if (btnEventPending && millis() - btnEventTime > 2000) {
