@@ -1033,8 +1033,9 @@ inline String getSystemInfoJson() {
             item.add("DF Player");
             item.add(ICON_DFPLAYER);
             if (sound.isDFPlayerConnected()) {
+                const char* backendName = sound.getDFBackend() == DFBackend::MINI ? "Mini" : "PRO";
                 char buf[64];
-                snprintf(buf, sizeof(buf), "Підключено, %d треків", sound.dfTotalFiles);
+                snprintf(buf, sizeof(buf), "Підключено (%s), %d треків", backendName, sound.dfTotalFiles);
                 item.add(buf);
             } else {
                 item.add("Не знайдено");

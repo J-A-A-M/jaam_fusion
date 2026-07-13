@@ -260,6 +260,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"sound_source", SOUND_SOURCE, TYPE_INT},
     {"melody_volume_day", MELODY_VOLUME_DAY, TYPE_INT},
     {"melody_volume_night", MELODY_VOLUME_NIGHT, TYPE_INT},
+    {"df_max_volume", DF_MAX_VOLUME, TYPE_INT},
     {"sound_on_alert", SOUND_ON_ALERT, TYPE_BOOL},
     {"sound_on_alert_end", SOUND_ON_ALERT_END, TYPE_BOOL},
     {"sound_on_explosion", SOUND_ON_EXPLOSION, TYPE_BOOL},
@@ -289,7 +290,10 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"track_on_missiles", TRACK_ON_MISSILES, TYPE_INT},
     {"track_on_kabs", TRACK_ON_KABS, TYPE_INT},
     {"track_on_ballistic", TRACK_ON_BALLISTIC, TYPE_INT},
-    
+    {"track_clock_beep", TRACK_CLOCK_BEEP, TYPE_INT},
+    {"track_clock_tick", TRACK_CLOCK_TICK, TYPE_INT},
+    {"track_ua_anthem", TRACK_UA_ANTHEM, TYPE_INT},
+
     // Legacy/unused parameters for compatibility
     {"district_mode_kyiv", DISTRICT_MODE_KYIV, TYPE_INT},
     {"district_mode_kharkiv", DISTRICT_MODE_KHARKIV, TYPE_INT},
@@ -1732,19 +1736,38 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         appendOptionsList(arr, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
     }
     {
+        // DF Player PRO/Mini (id 1, 2) розблоковуються лише для того бекенду, який реально знайдено при ініті
         JsonArray arr = dropdownLists["sound_sources"].to<JsonArray>();
-        appendOptionsList(arr, SOUND_SOURCES, SOUND_SOURCES_COUNT);
+        int detectedBackend = DFBackend::NONE;
+#if DFPLAYER_ENABLED
+        detectedBackend = sound.getDFBackend();
+#endif
+        for (int i = 0; i < SOUND_SOURCES_COUNT; ++i) {
+            const SettingListItem& item = SOUND_SOURCES[i];
+            if (item.ignore) continue;
+            bool disabled = false;
+            if (item.id == 1) disabled = detectedBackend != DFBackend::PRO;
+            if (item.id == 2) disabled = detectedBackend != DFBackend::MINI;
+            JsonArray opt = arr.add<JsonArray>();
+            opt.add(item.id);
+            opt.add(item.name);
+            opt.add(item.sub ? 1 : 0);
+            opt.add(disabled ? 1 : 0);
+        }
     }
     {
         JsonArray arr = dropdownLists["melodies"].to<JsonArray>();
         appendOptionsList(arr, MELODY_NAMES, MELODIES_COUNT);
     }
     {
+        // Треки не мають назв - лише порядковий номер файла на носії DFPlayer (1..dfTotalFiles)
         JsonArray arr = dropdownLists["tracks"].to<JsonArray>();
-        if (sound.isDFPlayerConnected() && sound.dfTotalFiles > 0) {
-            appendOptionsList(arr, sound.dynamicTrackNames, sound.dfTotalFiles);
-        } else {
-            appendOptionsList(arr, TRACK_NAMES, TRACKS_COUNT);
+        for (int i = 1; i <= sound.dfTotalFiles; i++) {
+            JsonArray opt = arr.add<JsonArray>();
+            opt.add(i);
+            opt.add("Трек " + String(i));
+            opt.add(0);
+            opt.add(0);
         }
     }
     {

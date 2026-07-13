@@ -3,17 +3,24 @@
 #include <melody_player.h>
 #include <melody_factory.h>
 #endif
-#if DFPLAYER_PRO_ENABLED
+#if DFPLAYER_ENABLED
 #include <DFRobot_DF1201S.h>
+#include <DFRobotDFPlayerMini.h>
 #include <HardwareSerial.h>
 #endif
 #include "JaamConfig.h"
 
+// DF Player backend, selected at runtime by SOUND_SOURCE (only one physical module is ever wired up)
+namespace DFBackend {
+    constexpr int NONE = 0;
+    constexpr int PRO = 1;
+    constexpr int MINI = 2;
+}
 
 class JaamSound {
     private:
-    #if BUZZER_ENABLED
-        MelodyPlayer* player;
+        // Перцептивна (степенева, gamma≈2) шкала гучності: людський слух сприймає гучність
+        // логарифмічно, лінійний map() на низьких % дає завелику гучність
         int expMap(int x, int in_min, int in_max, int out_min, int out_max) {
             if (in_max == in_min) return out_min;
             float normalized = (float)(x - in_min) / (float)(in_max - in_min);
@@ -22,45 +29,44 @@ class JaamSound {
             float scaled = normalized * normalized; // gamma≈2
             return (int)(scaled * (out_max - out_min) + out_min);
         }
+    #if BUZZER_ENABLED
+        MelodyPlayer* player;
     #endif
-    #if DFPLAYER_PRO_ENABLED
+    #if DFPLAYER_ENABLED
         HardwareSerial dfSerial;
-        DFRobot_DF1201S dfplayer;
+        DFRobot_DF1201S dfplayerPro;
+        DFRobotDFPlayerMini dfplayerMini;
         int dfPlayerMaxVolume;
+        int dfBackend; // DFBackend::NONE / PRO / MINI - which module is currently initialised
+        bool dfMiniPlaying;
     #endif
         int buzzerPin;
-        bool dfConnected; 
+        bool dfConnected;
         int dfRxPin;
         int dfTxPin;
-        
+
     public:
-    #if DFPLAYER_PRO_ENABLED
-        int maxFilesCount;
-    #endif
         int dfTotalFiles;
         int volumeCurrent;
         int volumeDay;
         int volumeNight;
-        int soundSource;// 0 - Buzzer  1 - DFPlayer  2 - Any
+        int soundSource;// -1 Вимкнено, 0 Buzzer, 1 DF Player PRO, 2 DF Player Mini
         int beepHour;
-        String* dynamicTracks;
-        SettingListItem* dynamicTrackNames;
 
-        JaamSound() : 
-        #if DFPLAYER_PRO_ENABLED
-            dfSerial(2), 
-            dfPlayerMaxVolume(30),
-            maxFilesCount(50), 
+        JaamSound() :
+        #if DFPLAYER_ENABLED
+            dfSerial(2),
+            dfPlayerMaxVolume(15),
+            dfBackend(DFBackend::NONE),
+            dfMiniPlaying(false),
         #endif
             dfConnected(false),
             dfTotalFiles(0),
-            buzzerPin(-1), 
-            dfRxPin(-1), 
+            buzzerPin(-1),
+            dfRxPin(-1),
             dfTxPin(-1),
             beepHour(-1),
-            soundSource(2) /* Any */,
-            dynamicTracks(nullptr),
-            dynamicTrackNames(nullptr)
+            soundSource(-1)
         {};
         void init(int buzzerPin, int rxPin, int txPin, int volCurrent, int volDay, int volNight);
         void setVolumeCurrent(int volume);
@@ -68,20 +74,21 @@ class JaamSound {
         void setVolumeNight(int volume);
         void setSoundSource(int source);
         void setBeepHour(int hour);
+    #if DFPLAYER_ENABLED
+        void setDFMaxVolume(int maxVolume);
+    #endif
     #if BUZZER_ENABLED
         void initBuzzer();
         void playBuzzer(const char* melodyRtttl);
         void setBuzzerVolume(int volume);
     #endif
-    #if DFPLAYER_PRO_ENABLED
-        void initDFPlayer();
-        void playDFPlayer(String trackPath);
+    #if DFPLAYER_ENABLED
+        void initDFPlayer(int backend);
+        void playDFPlayer(int trackNumber);
         void setDFPlayerVolume(int volume);
         int getDFPlayerFilesCount();
-        bool isDFPlayerFilesLimitReached(int dfTotalFiles);
+        int getDFBackend(); // DFBackend::NONE / PRO / MINI - what is currently connected
     #endif
-        String getTrackById(int id);
-        int findTrackIndex(int number);
         bool isBuzzerEnabled();
         bool isBuzzerPlaying();
         bool isDFPlayerEnabled();

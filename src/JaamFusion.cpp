@@ -310,18 +310,18 @@ void displayMinuteOfSilence() {
 // --- SOUND Functions ---
 void playMelody(const char* melodyRtttl) {
 #if BUZZER_ENABLED
-  if (sound.isBuzzerEnabled() && (sound.soundSource == 0 || sound.soundSource == 2)) {
+  if (sound.isBuzzerEnabled() && sound.soundSource == 0) {
     sound.playBuzzer(melodyRtttl);
   } else {
-    LOG.printf("Buzzer not enabled or sound source not valid (need 0 or 2): %d\n", sound.soundSource);
+    LOG.printf("Buzzer not enabled or sound source not valid (need 0): %d\n", sound.soundSource);
   }
 #endif
 }
 
-void playTrack(String track) {
-#if DFPLAYER_PRO_ENABLED
-  if (track != "" && (sound.soundSource == 1 || sound.soundSource == 2)) {
-    sound.playDFPlayer(track);
+void playTrack(int trackNumber) {
+#if DFPLAYER_ENABLED
+  if (trackNumber > 0 && (sound.soundSource == 1 || sound.soundSource == 2)) {
+    sound.playDFPlayer(trackNumber);
   } else {
     LOG.printf("DFPlayer not enabled or sound source not valid (need 1 or 2): %d\n", sound.soundSource);
   }
@@ -329,86 +329,86 @@ void playTrack(String track) {
 }
 
 void playMelody(SoundType type) {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+#if BUZZER_ENABLED || DFPLAYER_ENABLED
   switch (type) {
   case MIN_OF_SILINCE:
     playMelody(MOS_BEEP);
-    playTrack(DF_CLOCK_TICK);
+    playTrack(settings.getInt(TRACK_CLOCK_TICK));
     break;
   case MIN_OF_SILINCE_END:
     playMelody(UA_ANTHEM);
-    playTrack(DF_UA_ANTHEM);
+    playTrack(settings.getInt(TRACK_UA_ANTHEM));
     break;
   case ALERT_ON:
     playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT)));
+    playTrack(settings.getInt(TRACK_ON_ALERT));
     break;
   case ALERT_OFF:
     playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT_END)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT_END)));
+    playTrack(settings.getInt(TRACK_ON_ALERT_END));
     break;
   case EXPLOSIONS:
     playMelody(MELODIES[settings.getInt(MELODY_ON_EXPLOSION)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_EXPLOSION)));
+    playTrack(settings.getInt(TRACK_ON_EXPLOSION));
     break;
   case DRONES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_DRONES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_DRONES)));
+    playTrack(settings.getInt(TRACK_ON_DRONES));
     break;
   case MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_MISSILES));
     break;
   case KABS:
     playMelody(MELODIES[settings.getInt(MELODY_ON_KABS)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_KABS)));
+    playTrack(settings.getInt(TRACK_ON_KABS));
     break;
   case BALLISTIC:
     playMelody(MELODIES[settings.getInt(MELODY_ON_BALLISTIC)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_BALLISTIC)));
+    playTrack(settings.getInt(TRACK_ON_BALLISTIC));
     break;
   case RECON_DRONES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_RECON_DRONES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_RECON_DRONES)));
+    playTrack(settings.getInt(TRACK_ON_RECON_DRONES));
     break;
   case CRITICAL_MIG:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG)));
-    break; 
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_MIG));
+    break;
   case CRITICAL_STRATEGIC:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC));
     break;
   case CRITICAL_MIG_MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_MIG_MISSILES));
     break;
   case CRITICAL_BALLISTIC_MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_BALLISTIC_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_BALLISTIC_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_BALLISTIC_MISSILES));
     break;
   case CRITICAL_STRATEGIC_MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC_MISSILES));
     break;
   case REGULAR:
     playMelody(CLOCK_BEEP);
-    playTrack(DF_CLOCK_BEEP);
+    playTrack(settings.getInt(TRACK_CLOCK_BEEP));
     break;
   case SINGLE_CLICK:
     playMelody(SINGLE_CLICK_SOUND);
-    playTrack(DF_CLOCK_TICK);
+    playTrack(settings.getInt(TRACK_CLOCK_TICK));
     break;
   case LONG_CLICK:
     playMelody(LONG_CLICK_SOUND);
-    playTrack(DF_CLOCK_TICK);
+    playTrack(settings.getInt(TRACK_CLOCK_TICK));
     break;
   }
 #endif
 }
 
 bool needToPlaySound(SoundType type) {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+#if BUZZER_ENABLED || DFPLAYER_ENABLED
   // do not play any sound before websocket connection and startup
   if (startup || !isFirstDataFetchCompleted) return false;
 
@@ -2201,6 +2201,7 @@ void initSettings() {
             case BUZZER_PIN:
             case DF_RX_PIN:
             case DF_TX_PIN:
+            case DF_MAX_VOLUME:
                 handleReconfigureSound();
                 break;
             
@@ -2381,7 +2382,7 @@ void initSensors() {
 }
 
 void initSound() {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+#if BUZZER_ENABLED || DFPLAYER_ENABLED
   sound.init(
     hardwareConfig.getBuzzerPin(), 
     hardwareConfig.getDfRxPin(), 
@@ -2390,6 +2391,9 @@ void initSound() {
     settings.getInt(MELODY_VOLUME_DAY),
     settings.getInt(MELODY_VOLUME_NIGHT)
   );
+#endif
+#if DFPLAYER_ENABLED
+  sound.setDFMaxVolume(settings.getInt(DF_MAX_VOLUME));
 #endif
 
   int soundSource = settings.getInt(SOUND_SOURCE);
@@ -2401,18 +2405,26 @@ void initSound() {
     sound.initBuzzer();
   }
 #endif
-#if DFPLAYER_PRO_ENABLED
-  // Only initialize DFPlayer if SOUND_SOURCE is 1 (DFPlayer) and DFPlayer is enabled
-  if (sound.isDFPlayerEnabled() && soundSource == 1) {
-    sound.initDFPlayer();
+#if DFPLAYER_ENABLED
+  // Ініціалізуємо DFPlayer, щойно задані піни — незалежно від активного SOUND_SOURCE
+  if (sound.isDFPlayerEnabled()) {
+    if (soundSource == 1 || soundSource == 2) {
+      sound.initDFPlayer(soundSource);
+    } else {
+      // Джерело явно не обране (Buzzer/Вимкнено) — автовизначення модуля: спершу Mini, потім PRO
+      sound.initDFPlayer(DFBackend::MINI);
+      if (!sound.isDFPlayerConnected()) {
+        sound.initDFPlayer(DFBackend::PRO);
+      }
+    }
   }
 #endif
 
   // Set the actual sound source based on what was initialized
   if (soundSource == 0 && sound.isBuzzerEnabled()) {
     sound.setSoundSource(0);
-  } else if (soundSource == 1 && sound.isDFPlayerConnected()) {
-    sound.setSoundSource(1);
+  } else if ((soundSource == 1 || soundSource == 2) && sound.isDFPlayerConnected()) {
+    sound.setSoundSource(soundSource);
   } else {
     sound.setSoundSource(-1);
   }
@@ -3129,7 +3141,7 @@ void requestPlayTestMelody(int melodyId) {
 
 void requestPlayTestTrack(int trackId) {
     LOG.printf("[TEST] Playing test track %d\n", trackId);
-    playTrack(sound.getTrackById(trackId));
+    playTrack(trackId);
 }
 
 void requestWebsocketReconnect() {
@@ -3378,7 +3390,7 @@ void displayProcess()
     // Remove UA Anthem playing flag if anthem stopped
     if (uaAnthemPlaying) {
         bool soundActive = (sound.soundSource == 0 && sound.isBuzzerPlaying()) ||
-                           (sound.soundSource == 1 && sound.isDFPlayerPlaying());
+                           ((sound.soundSource == 1 || sound.soundSource == 2) && sound.isDFPlayerPlaying());
         if (!soundActive) {
             uaAnthemPlaying = false;
             // adapt colors on min of silence end
@@ -3470,9 +3482,9 @@ void volumeProcess() {
       sound.setBuzzerVolume(volumeLocal); 
     }
     #endif
-    #if DFPLAYER_PRO_ENABLED
+    #if DFPLAYER_ENABLED
     if (sound.isDFPlayerConnected()) {
-      sound.setDFPlayerVolume(volumeLocal); 
+      sound.setDFPlayerVolume(volumeLocal);
     }
     #endif
     LOG.printf("Set volume to: %d\n", volumeLocal);

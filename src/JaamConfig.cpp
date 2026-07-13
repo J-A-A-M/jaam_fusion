@@ -4,7 +4,8 @@
 const SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT] PROGMEM = {
   {-1, "Вимкнено", false},
   {0, "Buzzer", false},
-  {1, "DF Player Pro", false}
+  {1, "DF Player PRO", false},
+  {2, "DF Player Mini", false}
 };
 
 // --- Other Settings ---
@@ -292,93 +293,6 @@ const SettingListItem MELODY_NAMES[MELODIES_COUNT] PROGMEM = {
   {19, "Squid Game", false},
   {21, "ПТН ХЙЛ", false},
   {22, "Helldivers 2 - A cup of Liber-Tea", false}
-};
-
-// --- DF Player Track Paths ---
-const String DF_CLOCK_BEEP = "/01.mp3";
-const String DF_CLOCK_TICK = "/02.mp3";
-const String DF_UA_ANTHEM = "/03.mp3";
-const String DF_SIREN_1 = "/04.mp3";
-const String DF_SIREN_2 = "/05.mp3";
-const String DF_SIREN_3 = "/06.mp3";
-const String DF_SIREN_4 = "/07.mp3";
-const String DF_SIREN_5 = "/08.mp3";
-const String DF_SIREN_6 = "/09.mp3";
-const String DF_SIREN_7 = "/10.mp3";
-const String DF_SIREN_8 = "/11.mp3";
-const String DF_SIREN_9 = "/12.mp3";
-const String DF_SIREN_10 = "/13.mp3";
-const String DF_THE_HOBBIT = "/14.mp3";
-const String DF_THE_MATRIX = "/15.mp3";
-const String DF_AVENGERS = "/16.mp3";
-const String DF_TERMINATOR_SHORT = "/17.mp3";
-const String DF_PIRATES_OF_THE_CARRIBEAN = "/18.mp3";
-const String DF_SIREN_11 = "/19.mp3";
-const String DF_NOTIFICATION_NEWS = "/20.mp3";
-const String DF_GOOD_MORNING_VIETNAM = "/21.mp3";
-const String DF_NOTIFICATION_R2D2 = "/22.mp3";
-const String DF_NOTIFICATION_STARTREK = "/23.mp3";
-const String DF_AIR_RAID_1 = "/24.mp3";
-const String DF_CAROL_OF_THE_BELLS = "/25.mp3";
-const String DF_NOTIFICATION_BACK_TO_THE_FUTURE = "/26.mp3";
-const String DF_IMPERIAL_MARCH = "/27.mp3";
-const String DF_GOOD_BAD_UGLY = "/28.mp3";
-const String DF_HARRY_POTTER = "/29.mp3";
-const String DF_MARCH = "/30.mp3";
-const String DF_MANDALORIAN_CALL = "/31.mp3";
-const String DF_MARIO = "/32.mp3";
-const String DF_PACMAN = "/33.mp3";
-const String DF_HELLDIVERS = "/34.mp3";
-
-const String TRACKS[TRACKS_COUNT] = {
-  DF_CLOCK_TICK, DF_CLOCK_BEEP, DF_UA_ANTHEM,
-  DF_SIREN_1, DF_SIREN_2, DF_SIREN_3, DF_SIREN_4, DF_SIREN_5,
-  DF_SIREN_6, DF_SIREN_7, DF_SIREN_8, DF_SIREN_9, DF_SIREN_10,
-  DF_THE_HOBBIT, DF_THE_MATRIX, DF_AVENGERS, DF_TERMINATOR_SHORT,
-  DF_PIRATES_OF_THE_CARRIBEAN, DF_SIREN_11,
-  DF_NOTIFICATION_NEWS, DF_GOOD_MORNING_VIETNAM,
-  DF_NOTIFICATION_R2D2, DF_NOTIFICATION_STARTREK,
-  DF_AIR_RAID_1, DF_CAROL_OF_THE_BELLS,
-  DF_NOTIFICATION_BACK_TO_THE_FUTURE, DF_IMPERIAL_MARCH,
-  DF_GOOD_BAD_UGLY, DF_HARRY_POTTER, DF_MARCH,
-  DF_MANDALORIAN_CALL, DF_MARIO, DF_PACMAN, DF_HELLDIVERS
-};
-
-const SettingListItem TRACK_NAMES[TRACKS_COUNT] PROGMEM = {
-  {0,  "Годинникова стрілка",      false},
-  {1,  "Годинник",                 false},
-  {2,  "Гімн України",             false},
-  {3,  "Сирена 1",                 false},
-  {4,  "Сирена 2",                 false},
-  {5,  "Сирена 3",                 false},
-  {6,  "Сирена 4",                 false},
-  {7,  "Сирена 5",                 false},
-  {8,  "Сирена 6",                 false},
-  {9,  "Сирена 7",                 false},
-  {10, "Сирена 8",                 false},
-  {11, "Сирена 9",                 false},
-  {12, "Сирена 10",                false},
-  {13, "Хоббіт",                   false},
-  {14, "Матриця",                  false},
-  {15, "Месники",                  false},
-  {16, "Термінатор (коротка)",      false},
-  {17, "Пірати Карибського моря",  false},
-  {18, "Сирена 11",                false},
-  {19, "Новини",                   false},
-  {20, "Доброго ранку, В'єтнаме!", false},
-  {21, "R2D2",                     false},
-  {22, "Star Trek",                false},
-  {23, "Повітряна тривога",        false},
-  {24, "Щедрик",                   false},
-  {25, "Назад у майбутнє",         false},
-  {26, "Імперський марш",          false},
-  {27, "Хороший, поганий, злий",   false},
-  {28, "Гаррі Поттер",             false},
-  {29, "Марш",                     false},
-  {30, "Мандалорець",              false},
-  {31, "Маріо",                    false},
-  {32, "Пак-Ман",                  false},
-  {33, "Helldivers",               false},
 };
 
 // --- Administrative Units ---
