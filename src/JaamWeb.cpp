@@ -1736,16 +1736,10 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         appendOptionsList(arr, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
     }
     {
-        // PRO/Mini вибирані лише коли задані обидва піни (RX і TX) — без пінів немає що ініціалізувати
+        // PRO/Mini вибирані лише коли задані обидва піни (RX і TX) — це керується живо на клієнті
+        // через updateSoundSourceOptions() (scripts.js), тож тут статичний список без розрахунку
         JsonArray arr = dropdownLists["sound_sources"].to<JsonArray>();
-        SettingListItem items[SOUND_SOURCES_COUNT];
-        for (int i = 0; i < SOUND_SOURCES_COUNT; ++i) {
-            items[i] = SOUND_SOURCES[i];
-            if (DFBackend::isDFPlayerSource(items[i].id)) {
-                items[i].showDisabled = !sound.isDFPlayerEnabled();
-            }
-        }
-        appendOptionsList(arr, items, SOUND_SOURCES_COUNT);
+        appendOptionsList(arr, SOUND_SOURCES, SOUND_SOURCES_COUNT);
     }
     {
         JsonArray arr = dropdownLists["melodies"].to<JsonArray>();

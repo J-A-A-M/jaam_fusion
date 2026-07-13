@@ -46,7 +46,7 @@ void handleRecalculateLeds();
 void handleReconnectStrips(bool main, bool bg, bool service);
 void handleUpdateBatteryPin();
 void handleReconfigureDisplay();
-void handleReconfigureSound();
+void handleReconfigureSound(bool reinitDFPlayer = true);
 void handleReconfigureSensors();
 void handleReconfigureButtons();
 void handleUpdateAnimationsMode();
@@ -2197,12 +2197,16 @@ void initSettings() {
                 handleAdaptClimate();
                 break;
             
-            // Звукова конфігурація (джерело + піни) — потребує повної переініціалізації модуля
+            // Джерело/DF-піни — потребує реініціалізації DFPlayer
             case SOUND_SOURCE:
-            case BUZZER_PIN:
             case DF_RX_PIN:
             case DF_TX_PIN:
                 handleReconfigureSound();
+                break;
+
+            // Лише пін буzzer-а — DFPlayer не чіпаємо, щоб не ре-пробувати вже підключений модуль
+            case BUZZER_PIN:
+                handleReconfigureSound(false);
                 break;
 
             // Стеля гучності DFPlayer — лише перерахунок поточної гучності, без реініту UART
@@ -2386,7 +2390,7 @@ void initSensors() {
 
 }
 
-void initSound() {
+void initSound(bool reinitDFPlayer = true) {
 #if BUZZER_ENABLED || DFPLAYER_ENABLED
   sound.init(
     hardwareConfig.getBuzzerPin(), 
@@ -2411,14 +2415,18 @@ void initSound() {
   }
 #endif
 #if DFPLAYER_ENABLED
-  // Пробуємо DFPlayer лише коли реально обрано DF-джерело — без спекулятивної проби
-  // при Buzzer/Вимкнено, і лише обраний бекенд, без fallback на інший
-  if (sound.isDFPlayerEnabled() && DFBackend::isDFPlayerSource(soundSource)) {
-    sound.initDFPlayer(soundSource);
-  } else {
-    // DFPlayer цього циклу не пробується (піни знято або джерело не DF) —
-    // скидаємо стан, інакше isDFPlayerConnected()/getDFBackend() лишать stale PRO/MINI
-    sound.resetDFPlayerState();
+  // reinitDFPlayer=false — змінився лише BUZZER_PIN, DFPlayer не чіпаємо
+  // (інакше кожен сейв буzzer-піна ре-пробує вже підключений DFPlayer, до ~5с блокування)
+  if (reinitDFPlayer) {
+    // Пробуємо DFPlayer лише коли реально обрано DF-джерело — без спекулятивної проби
+    // при Buzzer/Вимкнено, і лише обраний бекенд, без fallback на інший
+    if (sound.isDFPlayerEnabled() && DFBackend::isDFPlayerSource(soundSource)) {
+      sound.initDFPlayer(soundSource);
+    } else {
+      // DFPlayer цього циклу не пробується (піни знято або джерело не DF) —
+      // скидаємо стан, інакше isDFPlayerConnected()/getDFBackend() лишать stale PRO/MINI
+      sound.resetDFPlayerState();
+    }
   }
 #endif
 
@@ -3002,9 +3010,9 @@ void handleReconfigureDisplay() {
     initDisplay();
 }
 
-void handleReconfigureSound() {
+void handleReconfigureSound(bool reinitDFPlayer) {
     LOG.printf("[SETTINGS] Reconfiguring sound\n");
-    initSound();
+    initSound(reinitDFPlayer);
 }
 
 void handleReconfigureSensors() {

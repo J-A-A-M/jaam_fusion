@@ -1389,39 +1389,48 @@ function evaluateCondition(condition) {
 function setupVisibilityListeners() {
     // Get all elements that have data-visibility or are select/input elements that affect visibility
     const triggerElements = document.querySelectorAll('select, input[type="checkbox"]');
-    
+
     triggerElements.forEach(el => {
         el.addEventListener('change', () => {
-            updateAllVisibilities();
+            updateAllVisibilities(el.id);
         });
     });
-    
+
     // Also listen to input events for text fields
     const textInputs = document.querySelectorAll('input[type="text"]');
     textInputs.forEach(el => {
         el.addEventListener('input', () => {
-            updateAllVisibilities();
+            updateAllVisibilities(el.id);
         });
     });
 }
 
-function updateAllVisibilities() {
+// changedFieldId - id поля, яке реально змінив юзер; null при первинному рендері сторінки
+function updateAllVisibilities(changedFieldId = null) {
     const elements = document.querySelectorAll('[data-visibility]');
     elements.forEach(el => updateElementVisibility(el));
-    updateSoundSourceOptions();
+    updateSoundSourceOptions(changedFieldId);
 }
 
-// DF Player PRO/Mini вибирані лише коли задані обидва піни (RX і TX)
-function updateSoundSourceOptions() {
+// DF Player PRO/Mini (значення '1'/'2' - мають збігатись з DFBackend::PRO/MINI в JaamSound.h)
+// вибирані лише коли задані обидва піни (RX і TX)
+function updateSoundSourceOptions(changedFieldId = null) {
     const sel = document.getElementById('sound_source');
     if (!sel) return;
-    const rx = document.getElementById('df_rx_pin');
-    const tx = document.getElementById('df_tx_pin');
-    const pinsSet = rx && tx && rx.value !== '-1' && tx.value !== '-1';
+    const pinsSet = evaluateCondition('df_rx_pin!=-1') && evaluateCondition('df_tx_pin!=-1');
+    let selectedNowDisabled = false;
     for (const opt of sel.options) {
         if (opt.value === '1' || opt.value === '2') {
             opt.disabled = !pinsSet;
+            if (opt.disabled && opt.selected) selectedNowDisabled = true;
         }
+    }
+    // Скидаємо збережене значення лише коли сам юзер щойно змінив df_rx_pin/df_tx_pin -
+    // не на первинному рендері сторінки і не на редагування інших полів
+    const pinFieldChanged = changedFieldId === 'df_rx_pin' || changedFieldId === 'df_tx_pin';
+    if (pinFieldChanged && selectedNowDisabled) {
+        sel.value = '0';
+        updateParameter('sound_source', '0');
     }
 }
 

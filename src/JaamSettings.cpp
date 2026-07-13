@@ -146,7 +146,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {NEW_FW_NOTIFICATION, {"nfwn", 1}},                    // Show new firmware notification (0/1)
     
     // Sound source
-    {SOUND_SOURCE, {"ss", 0}},                             // 0 = buzzer, 1 = DFPlayer, 2 = none
+    {SOUND_SOURCE, {"ss", 0}},                             // -1 = вимкнено, 0 = buzzer, 1 = DF Player PRO, 2 = DF Player Mini
     {SOUND_ON_MIN_OF_SL, {"somos", 1}},                    // Sound on minute of silence (0/1)
     
     // Sound events: Alert
@@ -480,6 +480,9 @@ bool JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         }
         
         SettingItemInt setting = intSettings[type];
+        if (setting.value == value) {
+            return true; // без змін - не тригерити callback (DFPlayer reinit тощо) на холостий ресейв
+        }
         if (saveToPrefs) {
             preferences.begin(PREFS_NAME, false);
             preferences.putInt(setting.key, value);

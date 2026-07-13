@@ -103,14 +103,12 @@ class JaamSound {
         void playDFPlayer(int trackNumber);
         void setDFPlayerVolume(int volume);
         int getDFPlayerFilesCount();
-        int getDFBackend(); // DFBackend::NONE / PRO / MINI - what is currently connected
     #endif
         bool isBuzzerEnabled();
         bool isBuzzerPlaying();
         bool isDFPlayerEnabled();
         bool isDFPlayerPlaying();
         bool isDFPlayerConnected();
-    #if DFPLAYER_ENABLED
-        bool wasDFPlayerInitAttempted() { return dfInitAttempted; }
-    #endif
+        int getDFBackend(); // DFBackend::NONE / PRO / MINI - what is currently connected
+        bool wasDFPlayerInitAttempted();
 };

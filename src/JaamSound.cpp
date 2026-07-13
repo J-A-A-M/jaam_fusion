@@ -118,10 +118,8 @@ void JaamSound::initDFPlayer(int backend) {
         LOG.printf("[SOUND] DFPlayer pins not set, skip init\n");
         return;
     }
+    resetDFPlayerState();
     dfInitAttempted = true;
-    dfBackend = DFBackend::NONE;
-    dfMiniPlaying = false;
-    dfTotalFiles = 0;
     dfSerial.end();
     delay(50);
     LOG.printf("[SOUND] rx, tx: %d, %d\n", dfRxPin, dfTxPin);
@@ -189,10 +187,10 @@ void JaamSound::playDFPlayer(int trackNumber) {
         return;
     }
     if (dfBackend == DFBackend::PRO) {
-        char path[16];
-        snprintf(path, sizeof(path), "/%02d.mp3", trackNumber);
-        dfplayerPro.playSpecFile(path);
-        LOG.printf("[SOUND] Track played: %s (%s)\n", path, dfplayerPro.getFileName());
+        // playFileNum адресує по порядку копіювання на диск - та сама семантика, що й dfplayerMini.play(n),
+        // щоб одне і те саме TRACK_ON_* число грало однаковий трек незалежно від backend
+        dfplayerPro.playFileNum(trackNumber);
+        LOG.printf("[SOUND] Track played: #%d (%s)\n", trackNumber, dfplayerPro.getFileName());
     } else if (dfBackend == DFBackend::MINI) {
         dfplayerMini.play(trackNumber);
         dfMiniPlaying = true;
@@ -229,9 +227,6 @@ int JaamSound::getDFPlayerFilesCount() {
     return filesCount;
 }
 
-int JaamSound::getDFBackend() {
-    return dfBackend;
-}
 #endif
 
 bool JaamSound::isDFPlayerEnabled() {
@@ -264,6 +259,22 @@ bool JaamSound::isDFPlayerPlaying() {
 bool JaamSound::isDFPlayerConnected() {
 #if DFPLAYER_ENABLED
     return dfBackend != DFBackend::NONE;
+#else
+    return false;
+#endif
+}
+
+int JaamSound::getDFBackend() {
+#if DFPLAYER_ENABLED
+    return dfBackend;
+#else
+    return DFBackend::NONE;
+#endif
+}
+
+bool JaamSound::wasDFPlayerInitAttempted() {
+#if DFPLAYER_ENABLED
+    return dfInitAttempted;
 #else
     return false;
 #endif
