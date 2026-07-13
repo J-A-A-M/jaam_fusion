@@ -52,6 +52,8 @@ class JaamSound {
         int dfPlayerMaxVolume;
         int dfBackend; // DFBackend::NONE / PRO / MINI - which module is currently initialised
         bool dfMiniPlaying;
+        unsigned long dfMiniPlayStartedAt; // millis() коли стартував play() на MINI - для fallback-таймауту
+        unsigned long dfMiniLastStateCheckAt; // millis() останньої readState() перевірки - троттлінг блокуючого запиту
         bool dfInitAttempted; // true, якщо initDFPlayer() вже викликався (щоб відрізнити "ще не пробували" від "не знайдено")
     #endif
         int buzzerPin;
@@ -72,6 +74,8 @@ class JaamSound {
             dfPlayerMaxVolume(15),
             dfBackend(DFBackend::NONE),
             dfMiniPlaying(false),
+            dfMiniPlayStartedAt(0),
+            dfMiniLastStateCheckAt(0),
             dfInitAttempted(false),
         #endif
             dfTotalFiles(0),

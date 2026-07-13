@@ -1407,9 +1407,9 @@ function setupVisibilityListeners() {
 
 // changedFieldId - id поля, яке реально змінив юзер; null при первинному рендері сторінки
 function updateAllVisibilities(changedFieldId = null) {
+    updateSoundSourceOptions(changedFieldId);
     const elements = document.querySelectorAll('[data-visibility]');
     elements.forEach(el => updateElementVisibility(el));
-    updateSoundSourceOptions(changedFieldId);
 }
 
 // DF Player PRO/Mini (значення '1'/'2' - мають збігатись з DFBackend::PRO/MINI в JaamSound.h)

@@ -1,6 +1,14 @@
 #include "JaamSound.h"
 #include "JaamLogs.h"
 
+#if DFPLAYER_ENABLED
+// MINI: скільки часу тримати dfMiniPlaying=true без підтвердження, перш ніж примусово скинути
+// (запобіжник на випадок, якщо і DFPlayerPlayFinished, і readState() мовчать) - з запасом більше за будь-який трек
+static constexpr unsigned long DF_MINI_PLAY_TIMEOUT_MS = 3UL * 60UL * 1000UL;
+// MINI: readState() - блокуючий запит-відповідь по UART, тому не питаємо частіше цього інтервалу
+static constexpr unsigned long DF_MINI_STATE_CHECK_INTERVAL_MS = 2000;
+#endif
+
 #if BUZZER_ENABLED || DFPLAYER_ENABLED
 void JaamSound::init(int bPin, int rxPin, int txPin, int volCurrent, int volDay, int volNight) {
     volumeCurrent = volCurrent;
@@ -107,6 +115,11 @@ bool JaamSound::retryDFBegin(std::function<bool()> begin, const char* name) {
 }
 
 void JaamSound::resetDFPlayerState() {
+    if (dfBackend == DFBackend::PRO) {
+        dfplayerPro.pause();
+    } else if (dfBackend == DFBackend::MINI) {
+        dfplayerMini.stop();
+    }
     dfInitAttempted = false;
     dfBackend = DFBackend::NONE;
     dfMiniPlaying = false;
@@ -186,6 +199,10 @@ void JaamSound::playDFPlayer(int trackNumber) {
         LOG.printf("[SOUND] DFPlayer not connected, cannot play track\n");
         return;
     }
+    if (trackNumber < 1 || trackNumber > dfTotalFiles) {
+        LOG.printf("[SOUND] Invalid track number: %d (available: 1..%d), not playing\n", trackNumber, dfTotalFiles);
+        return;
+    }
     if (dfBackend == DFBackend::PRO) {
         // playFileNum адресує по порядку копіювання на диск - та сама семантика, що й dfplayerMini.play(n),
         // щоб одне і те саме TRACK_ON_* число грало однаковий трек незалежно від backend
@@ -194,6 +211,8 @@ void JaamSound::playDFPlayer(int trackNumber) {
     } else if (dfBackend == DFBackend::MINI) {
         dfplayerMini.play(trackNumber);
         dfMiniPlaying = true;
+        dfMiniPlayStartedAt = millis();
+        dfMiniLastStateCheckAt = 0;
         LOG.printf("[SOUND] Track played: #%d\n", trackNumber);
     }
 }
@@ -247,6 +266,26 @@ bool JaamSound::isDFPlayerPlaying() {
         // a missed/garbled UART byte can leave this stuck true until the next play() call.
         if (dfplayerMini.available() && dfplayerMini.readType() == DFPlayerPlayFinished) {
             dfMiniPlaying = false;
+        }
+        if (dfMiniPlaying) {
+            unsigned long now = millis();
+            // fallback #1: якщо повідомлення DFPlayerPlayFinished втрачено, періодично питаємо стан
+            // напряму командою readState() (0x42): 0 - зупинено, 1 - грає, 2 - на паузі.
+            // Запит блокуючий (чекає відповідь по UART), тож троттлимо виклики
+            if (now - dfMiniLastStateCheckAt >= DF_MINI_STATE_CHECK_INTERVAL_MS) {
+                dfMiniLastStateCheckAt = now;
+                int state = dfplayerMini.readState();
+                if (state != -1 && state != 1) {
+                    LOG.printf("[SOUND] DFPlayer Mini readState() fallback: state %d (not busy), clearing stuck playing flag\n", state);
+                    dfMiniPlaying = false;
+                }
+            }
+            // fallback #2: якщо навіть readState() не відповідає (обрив/шум на UART), не тримати
+            // стан "грає" вічно - обмежуємо його жорстким тайм-аутом
+            if (dfMiniPlaying && now - dfMiniPlayStartedAt >= DF_MINI_PLAY_TIMEOUT_MS) {
+                LOG.printf("[SOUND] DFPlayer Mini playing state timed out, forcing reset\n");
+                dfMiniPlaying = false;
+            }
         }
         return dfMiniPlaying;
     }
