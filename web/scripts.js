@@ -1412,25 +1412,35 @@ function updateAllVisibilities(changedFieldId = null) {
     elements.forEach(el => updateElementVisibility(el));
 }
 
-// DF Player PRO/Mini (значення '1'/'2' - мають збігатись з DFBackend::PRO/MINI в JaamSound.h)
-// вибирані лише коли задані обидва піни (RX і TX)
+// Buzzer (значення '0') та DF Player PRO/Mini (значення '1'/'2' - мають збігатись з
+// DFBackend::PRO/MINI в JaamSound.h) вибирані лише коли задані відповідні піни
 function updateSoundSourceOptions(changedFieldId = null) {
     const sel = document.getElementById('sound_source');
     if (!sel) return;
-    const pinsSet = evaluateCondition('df_rx_pin!=-1') && evaluateCondition('df_tx_pin!=-1');
+    const buzzerPinSet = evaluateCondition('buzzer_pin!=-1');
+    const dfPinsSet = evaluateCondition('df_rx_pin!=-1') && evaluateCondition('df_tx_pin!=-1');
     let selectedNowDisabled = false;
     for (const opt of sel.options) {
-        if (opt.value === '1' || opt.value === '2') {
-            opt.disabled = !pinsSet;
-            if (opt.disabled && opt.selected) selectedNowDisabled = true;
+        if (opt.value === '0') {
+            opt.disabled = !buzzerPinSet;
+        } else if (opt.value === '1' || opt.value === '2') {
+            opt.disabled = !dfPinsSet;
+        } else {
+            continue;
         }
+        if (opt.disabled && opt.selected) selectedNowDisabled = true;
     }
-    // Скидаємо збережене значення лише коли сам юзер щойно змінив df_rx_pin/df_tx_pin -
-    // не на первинному рендері сторінки і не на редагування інших полів
-    const pinFieldChanged = changedFieldId === 'df_rx_pin' || changedFieldId === 'df_tx_pin';
-    if (pinFieldChanged && selectedNowDisabled) {
-        sel.value = '0';
-        updateParameter('sound_source', '0');
+    if (selectedNowDisabled) {
+        // Візуально завжди підправляємо <select>, інакше на первинному рендері (збережено джерело,
+        // а пінів вже нема) юзер бачить "вибрано ..." на disabled-опції - плутанина
+        sel.value = '-1';
+        // На бекенд шлемо лише коли сам юзер щойно змінив пін-поле - не на первинному рендері
+        // сторінки, щоб самим лише відкриттям сторінки не перезаписувати збережений NVS
+        const pinFieldChanged = changedFieldId === 'buzzer_pin' ||
+            changedFieldId === 'df_rx_pin' || changedFieldId === 'df_tx_pin';
+        if (pinFieldChanged) {
+            updateParameter('sound_source', '-1');
+        }
     }
 }
 

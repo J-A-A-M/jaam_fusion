@@ -7,6 +7,9 @@
 static constexpr unsigned long DF_MINI_PLAY_TIMEOUT_MS = 3UL * 60UL * 1000UL;
 // MINI: readState() - блокуючий запит-відповідь по UART, тому не питаємо частіше цього інтервалу
 static constexpr unsigned long DF_MINI_STATE_CHECK_INTERVAL_MS = 2000;
+// Верхня межа кількості файлів, якій довіряємо з getTotalFile()/readFileCounts() - захист від
+// сміттєвого значення при глюку UART/пошкодженій таблиці SD-карти (звідти й будується tracks-dropdown у web UI)
+static constexpr int DF_MAX_TRUSTED_FILES_COUNT = 50;
 #endif
 
 #if BUZZER_ENABLED || DFPLAYER_ENABLED
@@ -115,11 +118,6 @@ bool JaamSound::retryDFBegin(std::function<bool()> begin, const char* name) {
 }
 
 void JaamSound::resetDFPlayerState() {
-    if (dfBackend == DFBackend::PRO) {
-        dfplayerPro.pause();
-    } else if (dfBackend == DFBackend::MINI) {
-        dfplayerMini.stop();
-    }
     dfInitAttempted = false;
     dfBackend = DFBackend::NONE;
     dfMiniPlaying = false;
@@ -190,6 +188,11 @@ void JaamSound::initDFPlayer(int backend) {
     dfTotalFiles = getDFPlayerFilesCount();
     if (dfTotalFiles <= 0) {
         LOG.printf("[SOUND] DFPlayer has no playable files\n");
+    } else if (dfTotalFiles > DF_MAX_TRUSTED_FILES_COUNT) {
+        // Захист від сміттєвого значення з getTotalFile()/readFileCounts() (глюк UART, пошкоджена
+        // таблиця SD) - інакше tracks-dropdown у web UI намагається побудувати JsonArray на це число
+        LOG.printf("[SOUND] DFPlayer files count %d exceeds trusted limit %d, clamping\n", dfTotalFiles, DF_MAX_TRUSTED_FILES_COUNT);
+        dfTotalFiles = DF_MAX_TRUSTED_FILES_COUNT;
     }
     LOG.printf("[SOUND] DFPlayer files found: %d\n", dfTotalFiles);
 }
@@ -212,7 +215,10 @@ void JaamSound::playDFPlayer(int trackNumber) {
         dfplayerMini.play(trackNumber);
         dfMiniPlaying = true;
         dfMiniPlayStartedAt = millis();
-        dfMiniLastStateCheckAt = 0;
+        // не 0 - інакше перший isDFPlayerPlaying() відразу після play() вже пройде поріг
+        // DF_MINI_STATE_CHECK_INTERVAL_MS і зробить блокуючий readState() до того, як модуль
+        // встигне повідомити "грає"; передчасний stopped-стан скине dfMiniPlaying занадто рано
+        dfMiniLastStateCheckAt = dfMiniPlayStartedAt;
         LOG.printf("[SOUND] Track played: #%d\n", trackNumber);
     }
 }

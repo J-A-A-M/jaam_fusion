@@ -47,6 +47,7 @@ void handleReconnectStrips(bool main, bool bg, bool service);
 void handleUpdateBatteryPin();
 void handleReconfigureDisplay();
 void handleReconfigureSound(bool reinitDFPlayer = true);
+void handleReconfigureSoundAsync(); // wrapper без аргументів для async.setTimeout (void(*)(void))
 void handleReconfigureSensors();
 void handleReconfigureButtons();
 void handleUpdateAnimationsMode();
@@ -2197,11 +2198,13 @@ void initSettings() {
                 handleAdaptClimate();
                 break;
             
-            // Джерело/DF-піни — потребує реініціалізації DFPlayer
+            // Джерело/DF-піни — потребує реініціалізації DFPlayer. Відкладаємо через async.setTimeout:
+            // initDFPlayer() блокує до ~5.5с (retryDFBegin), а цей callback виконується на Core0
+            // (HTTP request thread) - синхронний виклик тут підвісив би веб-сервер/WS на весь час ретраїв
             case SOUND_SOURCE:
             case DF_RX_PIN:
             case DF_TX_PIN:
-                handleReconfigureSound();
+                async.setTimeout(handleReconfigureSoundAsync, 100);
                 break;
 
             // Лише пін буzzer-а — DFPlayer не чіпаємо, щоб не ре-пробувати вже підключений модуль
@@ -3013,6 +3016,12 @@ void handleReconfigureDisplay() {
 void handleReconfigureSound(bool reinitDFPlayer) {
     LOG.printf("[SETTINGS] Reconfiguring sound\n");
     initSound(reinitDFPlayer);
+}
+
+// DFPlayer (re)init блокує до ~5.5с (retryDFBegin) - викликається з changeCallback на Core0
+// (HTTP request thread), тож відкладаємо через async.setTimeout на Core1, як reconfigureAll/updateFirmware
+void handleReconfigureSoundAsync() {
+    handleReconfigureSound(true);
 }
 
 void handleReconfigureSensors() {
