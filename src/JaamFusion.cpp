@@ -52,6 +52,7 @@ void handleReconfigureButtons();
 void handleUpdateAnimationsMode();
 void handleAdaptClimate();
 void handleAdaptVolume();
+void handleAdaptDFMaxVolume();
 void handleUpdateHomeAlertBit();
 bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& color, uint32_t& period, uint8_t& brightness);
 void triggerHomeAlertAnimation(int8_t bit);
@@ -320,7 +321,7 @@ void playMelody(const char* melodyRtttl) {
 
 void playTrack(int trackNumber) {
 #if DFPLAYER_ENABLED
-  if (trackNumber > 0 && (sound.soundSource == 1 || sound.soundSource == 2)) {
+  if (trackNumber > 0 && DFBackend::isDFPlayerSource(sound.soundSource)) {
     sound.playDFPlayer(trackNumber);
   } else {
     LOG.printf("DFPlayer not enabled or sound source not valid (need 1 or 2): %d\n", sound.soundSource);
@@ -2196,15 +2197,19 @@ void initSettings() {
                 handleAdaptClimate();
                 break;
             
-            // Звукова конфігурація (джерело + піни)
+            // Звукова конфігурація (джерело + піни) — потребує повної переініціалізації модуля
             case SOUND_SOURCE:
             case BUZZER_PIN:
             case DF_RX_PIN:
             case DF_TX_PIN:
-            case DF_MAX_VOLUME:
                 handleReconfigureSound();
                 break;
-            
+
+            // Стеля гучності DFPlayer — лише перерахунок поточної гучності, без реініту UART
+            case DF_MAX_VOLUME:
+                handleAdaptDFMaxVolume();
+                break;
+
             // Гучність мелодій
             case MELODY_VOLUME_DAY:
             case MELODY_VOLUME_NIGHT:
@@ -2406,24 +2411,21 @@ void initSound() {
   }
 #endif
 #if DFPLAYER_ENABLED
-  // Ініціалізуємо DFPlayer, щойно задані піни — незалежно від активного SOUND_SOURCE
-  if (sound.isDFPlayerEnabled()) {
-    if (soundSource == 1 || soundSource == 2) {
-      sound.initDFPlayer(soundSource);
-    } else {
-      // Джерело явно не обране (Buzzer/Вимкнено) — автовизначення модуля: спершу Mini, потім PRO
-      sound.initDFPlayer(DFBackend::MINI);
-      if (!sound.isDFPlayerConnected()) {
-        sound.initDFPlayer(DFBackend::PRO);
-      }
-    }
+  // Пробуємо DFPlayer лише коли реально обрано DF-джерело — без спекулятивної проби
+  // при Buzzer/Вимкнено, і лише обраний бекенд, без fallback на інший
+  if (sound.isDFPlayerEnabled() && DFBackend::isDFPlayerSource(soundSource)) {
+    sound.initDFPlayer(soundSource);
+  } else {
+    // DFPlayer цього циклу не пробується (піни знято або джерело не DF) —
+    // скидаємо стан, інакше isDFPlayerConnected()/getDFBackend() лишать stale PRO/MINI
+    sound.resetDFPlayerState();
   }
 #endif
 
   // Set the actual sound source based on what was initialized
   if (soundSource == 0 && sound.isBuzzerEnabled()) {
     sound.setSoundSource(0);
-  } else if ((soundSource == 1 || soundSource == 2) && sound.isDFPlayerConnected()) {
+  } else if (DFBackend::isDFPlayerSource(soundSource) && sound.isDFPlayerConnected()) {
     sound.setSoundSource(soundSource);
   } else {
     sound.setSoundSource(-1);
@@ -3079,6 +3081,14 @@ void handleAdaptVolume() {
     sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
 }
 
+void handleAdaptDFMaxVolume() {
+#if DFPLAYER_ENABLED
+    LOG.printf("[SETTINGS] Adapting DFPlayer max volume\n");
+    sound.setDFMaxVolume(settings.getInt(DF_MAX_VOLUME));
+    sound.setDFPlayerVolume(sound.volumeCurrent);
+#endif
+}
+
 void handleUpdateHomeAlertBit() {
     LOG.printf("[SETTINGS] Updating home alert bit\n");
     int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
@@ -3390,7 +3400,7 @@ void displayProcess()
     // Remove UA Anthem playing flag if anthem stopped
     if (uaAnthemPlaying) {
         bool soundActive = (sound.soundSource == 0 && sound.isBuzzerPlaying()) ||
-                           ((sound.soundSource == 1 || sound.soundSource == 2) && sound.isDFPlayerPlaying());
+                           (DFBackend::isDFPlayerSource(sound.soundSource) && sound.isDFPlayerPlaying());
         if (!soundActive) {
             uaAnthemPlaying = false;
             // adapt colors on min of silence end

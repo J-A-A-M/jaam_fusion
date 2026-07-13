@@ -1,4 +1,7 @@
 #pragma once
+#if DFPLAYER_ENABLED
+#include <functional>
+#endif
 #if BUZZER_ENABLED
 #include <melody_player.h>
 #include <melody_factory.h>
@@ -11,10 +14,16 @@
 #include "JaamConfig.h"
 
 // DF Player backend, selected at runtime by SOUND_SOURCE (only one physical module is ever wired up)
+// SOUND_SOURCES table in JaamConfig.cpp uses these same constants as its item ids, so the two
+// enumerations can never drift apart.
 namespace DFBackend {
     constexpr int NONE = 0;
     constexpr int PRO = 1;
     constexpr int MINI = 2;
+
+    inline bool isDFPlayerSource(int source) {
+        return source == PRO || source == MINI;
+    }
 }
 
 class JaamSound {
@@ -29,6 +38,10 @@ class JaamSound {
             float scaled = normalized * normalized; // gamma≈2
             return (int)(scaled * (out_max - out_min) + out_min);
         }
+    #if DFPLAYER_ENABLED
+        // Повторює begin() до 5 разів з паузою 1с; спільна для DFPlayer PRO/Mini, які мають різні begin()
+        bool retryDFBegin(std::function<bool()> begin, const char* name);
+    #endif
     #if BUZZER_ENABLED
         MelodyPlayer* player;
     #endif
@@ -39,9 +52,9 @@ class JaamSound {
         int dfPlayerMaxVolume;
         int dfBackend; // DFBackend::NONE / PRO / MINI - which module is currently initialised
         bool dfMiniPlaying;
+        bool dfInitAttempted; // true, якщо initDFPlayer() вже викликався (щоб відрізнити "ще не пробували" від "не знайдено")
     #endif
         int buzzerPin;
-        bool dfConnected;
         int dfRxPin;
         int dfTxPin;
 
@@ -59,8 +72,8 @@ class JaamSound {
             dfPlayerMaxVolume(15),
             dfBackend(DFBackend::NONE),
             dfMiniPlaying(false),
+            dfInitAttempted(false),
         #endif
-            dfConnected(false),
             dfTotalFiles(0),
             buzzerPin(-1),
             dfRxPin(-1),
@@ -84,6 +97,9 @@ class JaamSound {
     #endif
     #if DFPLAYER_ENABLED
         void initDFPlayer(int backend);
+        // Скидає стан з'єднання без спроби ініціалізації - коли DFPlayer не пробується цього циклу
+        // (піни знято або джерело не DF), щоб isDFPlayerConnected()/getDFBackend() не лишали stale PRO/MINI
+        void resetDFPlayerState();
         void playDFPlayer(int trackNumber);
         void setDFPlayerVolume(int volume);
         int getDFPlayerFilesCount();
@@ -94,4 +110,7 @@ class JaamSound {
         bool isDFPlayerEnabled();
         bool isDFPlayerPlaying();
         bool isDFPlayerConnected();
+    #if DFPLAYER_ENABLED
+        bool wasDFPlayerInitAttempted() { return dfInitAttempted; }
+    #endif
 };

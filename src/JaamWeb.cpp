@@ -1736,32 +1736,31 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         appendOptionsList(arr, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
     }
     {
-        // DF Player PRO/Mini (id 1, 2) розблоковуються лише для того бекенду, який реально знайдено при ініті
+        // PRO/Mini вибирані лише коли задані обидва піни (RX і TX) — без пінів немає що ініціалізувати
         JsonArray arr = dropdownLists["sound_sources"].to<JsonArray>();
-        int detectedBackend = DFBackend::NONE;
-#if DFPLAYER_ENABLED
-        detectedBackend = sound.getDFBackend();
-#endif
+        SettingListItem items[SOUND_SOURCES_COUNT];
         for (int i = 0; i < SOUND_SOURCES_COUNT; ++i) {
-            const SettingListItem& item = SOUND_SOURCES[i];
-            if (item.ignore) continue;
-            bool disabled = false;
-            if (item.id == 1) disabled = detectedBackend != DFBackend::PRO;
-            if (item.id == 2) disabled = detectedBackend != DFBackend::MINI;
-            JsonArray opt = arr.add<JsonArray>();
-            opt.add(item.id);
-            opt.add(item.name);
-            opt.add(item.sub ? 1 : 0);
-            opt.add(disabled ? 1 : 0);
+            items[i] = SOUND_SOURCES[i];
+            if (DFBackend::isDFPlayerSource(items[i].id)) {
+                items[i].showDisabled = !sound.isDFPlayerEnabled();
+            }
         }
+        appendOptionsList(arr, items, SOUND_SOURCES_COUNT);
     }
     {
         JsonArray arr = dropdownLists["melodies"].to<JsonArray>();
         appendOptionsList(arr, MELODY_NAMES, MELODIES_COUNT);
     }
     {
-        // Треки не мають назв - лише порядковий номер файла на носії DFPlayer (1..dfTotalFiles)
+        // Треки не мають назв - лише порядковий номер файла на носії DFPlayer (1..dfTotalFiles).
+        // "0" - дефолтне значення TRACK_ON_* - має свій пункт, інакше <select> без відповідного
+        // option візуально показує перший трек як обраний.
         JsonArray arr = dropdownLists["tracks"].to<JsonArray>();
+        JsonArray none = arr.add<JsonArray>();
+        none.add(0);
+        none.add("Не вибрано");
+        none.add(0);
+        none.add(0);
         for (int i = 1; i <= sound.dfTotalFiles; i++) {
             JsonArray opt = arr.add<JsonArray>();
             opt.add(i);

@@ -434,6 +434,14 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
         }
     }
     
+    // Перевірка DF_MAX_VOLUME: апаратна межа модуля DFPlayer — [0..30]
+    if (type == DF_MAX_VOLUME) {
+        if (value < 0 || value > 30) {
+            LOG.printf("[SETTINGS] DF_MAX_VOLUME %d exceeds hardware range [0..30]\n", value);
+            return false;
+        }
+    }
+
     // Для JAAM2: піни сирени не можуть бути BH1750_POWER_PIN (керуючий пін живлення для сенсора освітлення)
     if (getInt(HARDWARE) == HARDWARE::JAAM_2_1) { // JAAM2
         if ((type == ALERT_PIN || type == CLEAR_PIN || type == ALERT_PIN_2 || type == CLEAR_PIN_2) && value == BH1750_POWER_PIN) {

@@ -1024,9 +1024,9 @@ inline String getSystemInfoJson() {
         item.add(api.isApiRunning() ? api.getClientsCount() : 0);
     }
 
-    // DFPlayer status (only when pins are configured)
+    // DFPlayer status (тільки після реальної спроби ініціалізації, не просто "піни задані")
     {
-        if (sound.isDFPlayerEnabled()) {
+        if (sound.isDFPlayerEnabled() && sound.wasDFPlayerInitAttempted()) {
             item = system.add<JsonArray>();
             item.add("text");
             item.add("dfplayer");

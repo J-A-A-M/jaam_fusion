@@ -1,11 +1,14 @@
 #include "JaamConfig.h"
+#include "JaamSound.h"
 
 // --- Sound Settings ---
+// id для DF Player PRO/Mini навмисно рівні DFBackend::PRO/MINI (JaamSound.h) — та ж числова
+// константа, а не випадковий збіг, щоб soundSource / DFBackend не могли розійтись
 const SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT] PROGMEM = {
   {-1, "Вимкнено", false},
   {0, "Buzzer", false},
-  {1, "DF Player PRO", false},
-  {2, "DF Player Mini", false}
+  {DFBackend::PRO, "DF Player PRO", false},
+  {DFBackend::MINI, "DF Player Mini", false}
 };
 
 // --- Other Settings ---

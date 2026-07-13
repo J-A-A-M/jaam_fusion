@@ -923,18 +923,19 @@ function renderControl(ctrl, lists) {
     
     if (type === 'dropdown') {
         const [_, name, label, list, current, section, visibility] = ctrl;
+        const opts = lists[list] || [];
+
         const div = groupDiv();
-        
+
         const lab = document.createElement('label');
         lab.htmlFor = name;
         lab.textContent = label + ':';
-        
+
         const sel = document.createElement('select');
         sel.className = 'form-control';
         sel.id = name;
         sel.name = name;
-        
-        const opts = lists[list] || [];
+
         for (const o of opts) {
             const el = optionEl(o[0], o[1], o[2], o[3]);
             if (String(o[0]) === String(current)) el.selected = true;
@@ -1407,6 +1408,21 @@ function setupVisibilityListeners() {
 function updateAllVisibilities() {
     const elements = document.querySelectorAll('[data-visibility]');
     elements.forEach(el => updateElementVisibility(el));
+    updateSoundSourceOptions();
+}
+
+// DF Player PRO/Mini вибирані лише коли задані обидва піни (RX і TX)
+function updateSoundSourceOptions() {
+    const sel = document.getElementById('sound_source');
+    if (!sel) return;
+    const rx = document.getElementById('df_rx_pin');
+    const tx = document.getElementById('df_tx_pin');
+    const pinsSet = rx && tx && rx.value !== '-1' && tx.value !== '-1';
+    for (const opt of sel.options) {
+        if (opt.value === '1' || opt.value === '2') {
+            opt.disabled = !pinsSet;
+        }
+    }
 }
 
 async function renderUI() {
