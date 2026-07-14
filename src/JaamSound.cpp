@@ -43,7 +43,7 @@ void JaamSound::setBeepHour(int hour) {
 #if BUZZER_ENABLED
 void JaamSound::initBuzzer() {
     LOG.printf("[SOUND] Init Buzzer\n");
-    if (!isBuzzerEnabled()) {
+    if (!isBuzzerConnected()) {
         LOG.printf("[SOUND] Buzzer pin is not set, skip init\n");
         return;
     }
@@ -74,6 +74,15 @@ void JaamSound::setBuzzerVolume(int volume) {
 #endif
 
 bool JaamSound::isBuzzerEnabled() {
+#if BUZZER_ENABLED
+    if (soundSource == 0) {
+        return true;
+    }
+#endif
+    return false;
+}
+
+bool JaamSound::isBuzzerConnected() {
 #if BUZZER_ENABLED
     if (buzzerPin > 0) {
         return true;
@@ -125,7 +134,7 @@ void JaamSound::resetDFPlayerState() {
 }
 
 void JaamSound::initDFPlayer(int backend) {
-    if (!isDFPlayerEnabled()) {
+    if (!isDFPlayerConnected()) {
         LOG.printf("[SOUND] DFPlayer pins not set, skip init\n");
         return;
     }
@@ -198,8 +207,8 @@ void JaamSound::initDFPlayer(int backend) {
 }
 
 void JaamSound::playDFPlayer(int trackNumber) {
-    if (!isDFPlayerConnected()) {
-        LOG.printf("[SOUND] DFPlayer not connected, cannot play track\n");
+    if (!isDFPlayerEnabled()) {
+        LOG.printf("[SOUND] DFPlayer not enabled, cannot play track\n");
         return;
     }
     if (trackNumber < 1 || trackNumber > dfTotalFiles) {
@@ -224,8 +233,8 @@ void JaamSound::playDFPlayer(int trackNumber) {
 }
 
 void JaamSound::setDFPlayerVolume(int volume) {
-    if (!isDFPlayerConnected()) {
-        LOG.printf("[SOUND] DFPlayer not connected, cannot set volume\n");
+    if (!isDFPlayerEnabled()) {
+        LOG.printf("[SOUND] DFPlayer not enabled, cannot set volume\n");
         return;
     }
     int mapped = expMap(volume, 0, 100, 0, dfPlayerMaxVolume);
@@ -238,8 +247,8 @@ void JaamSound::setDFPlayerVolume(int volume) {
 }
 
 int JaamSound::getDFPlayerFilesCount() {
-    if (!isDFPlayerConnected()) {
-        LOG.printf("[SOUND] DFPlayer not connected, cannot get files count\n");
+    if (!isDFPlayerEnabled()) {
+        LOG.printf("[SOUND] DFPlayer not enabled, cannot get files count\n");
         return 0;
     }
     int filesCount = 0;
@@ -254,14 +263,14 @@ int JaamSound::getDFPlayerFilesCount() {
 
 #endif
 
-bool JaamSound::isDFPlayerEnabled() {
+bool JaamSound::isDFPlayerConnected() {
     return dfRxPin > -1 && dfTxPin > -1;
 }
 
 bool JaamSound::isDFPlayerPlaying() {
 #if DFPLAYER_ENABLED
-    if (!isDFPlayerConnected()) {
-        LOG.printf("[SOUND] DFPlayer not connected, cannot check if playing\n");
+    if (!isDFPlayerEnabled()) {
+        LOG.printf("[SOUND] DFPlayer not enabled, cannot check if playing\n");
         return false;
     }
     if (dfBackend == DFBackend::PRO) {
@@ -301,7 +310,7 @@ bool JaamSound::isDFPlayerPlaying() {
 #endif
 }
 
-bool JaamSound::isDFPlayerConnected() {
+bool JaamSound::isDFPlayerEnabled() {
 #if DFPLAYER_ENABLED
     return dfBackend != DFBackend::NONE;
 #else

@@ -312,7 +312,7 @@ void displayMinuteOfSilence() {
 // --- SOUND Functions ---
 void playMelody(const char* melodyRtttl) {
 #if BUZZER_ENABLED
-  if (sound.isBuzzerEnabled() && sound.soundSource == 0) {
+  if (sound.isBuzzerEnabled()) {
     sound.playBuzzer(melodyRtttl);
   } else {
     LOG.printf("Buzzer not enabled or sound source not valid (need 0): %d\n", sound.soundSource);
@@ -2412,8 +2412,8 @@ void initSound(bool reinitDFPlayer = true) {
   LOG.printf("[SOUND] source setting: %d\n", soundSource);
 
 #if BUZZER_ENABLED
-  // Only initialize buzzer if SOUND_SOURCE is 0 (Buzzer) and buzzer is enabled
-  if (sound.isBuzzerEnabled() && soundSource == 0) {
+  // Only initialize buzzer if SOUND_SOURCE is 0 (Buzzer) and buzzer pin is set
+  if (soundSource == 0 && sound.isBuzzerConnected()) {
     sound.initBuzzer();
   }
 #endif
@@ -2423,20 +2423,20 @@ void initSound(bool reinitDFPlayer = true) {
   if (reinitDFPlayer) {
     // Пробуємо DFPlayer лише коли реально обрано DF-джерело — без спекулятивної проби
     // при Buzzer/Вимкнено, і лише обраний бекенд, без fallback на інший
-    if (sound.isDFPlayerEnabled() && DFBackend::isDFPlayerSource(soundSource)) {
+    if (sound.isDFPlayerConnected() && DFBackend::isDFPlayerSource(soundSource)) {
       sound.initDFPlayer(soundSource);
     } else {
       // DFPlayer цього циклу не пробується (піни знято або джерело не DF) —
-      // скидаємо стан, інакше isDFPlayerConnected()/getDFBackend() лишать stale PRO/MINI
+      // скидаємо стан, інакше isDFPlayerEnabled()/getDFBackend() лишать stale PRO/MINI
       sound.resetDFPlayerState();
     }
   }
 #endif
 
   // Set the actual sound source based on what was initialized
-  if (soundSource == 0 && sound.isBuzzerEnabled()) {
+  if (soundSource == 0 && sound.isBuzzerConnected()) {
     sound.setSoundSource(0);
-  } else if (DFBackend::isDFPlayerSource(soundSource) && sound.isDFPlayerConnected()) {
+  } else if (sound.isDFPlayerEnabled()) {
     sound.setSoundSource(soundSource);
   } else {
     sound.setSoundSource(-1);
@@ -3510,7 +3510,7 @@ void volumeProcess() {
     }
     #endif
     #if DFPLAYER_ENABLED
-    if (sound.isDFPlayerConnected()) {
+    if (sound.isDFPlayerEnabled()) {
       sound.setDFPlayerVolume(volumeLocal);
     }
     #endif

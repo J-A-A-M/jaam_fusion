@@ -102,17 +102,18 @@ class JaamSound {
     #if DFPLAYER_ENABLED
         void initDFPlayer(int backend);
         // Скидає стан з'єднання без спроби ініціалізації - коли DFPlayer не пробується цього циклу
-        // (піни знято або джерело не DF), щоб isDFPlayerConnected()/getDFBackend() не лишали stale PRO/MINI
+        // (піни знято або джерело не DF), щоб isDFPlayerEnabled()/getDFBackend() не лишали stale PRO/MINI
         void resetDFPlayerState();
         void playDFPlayer(int trackNumber);
         void setDFPlayerVolume(int volume);
         int getDFPlayerFilesCount();
     #endif
+        bool isBuzzerConnected();
         bool isBuzzerEnabled();
         bool isBuzzerPlaying();
-        bool isDFPlayerEnabled();
-        bool isDFPlayerPlaying();
         bool isDFPlayerConnected();
+        bool isDFPlayerPlaying();
+        bool isDFPlayerEnabled();
         int getDFBackend(); // DFBackend::NONE / PRO / MINI - what is currently connected
         bool wasDFPlayerInitAttempted();
 };
