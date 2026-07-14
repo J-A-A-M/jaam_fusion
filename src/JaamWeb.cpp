@@ -1747,14 +1747,10 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
     }
     {
         // Треки не мають назв - лише порядковий номер файла на носії DFPlayer (1..dfTotalFiles).
-        // "0" - дефолтне значення TRACK_ON_* - має свій пункт, інакше <select> без відповідного
-        // option візуально показує перший трек як обраний.
+        // Дефолтне значення - 1, а не 0, бо DFPlayer не підтримує 0 як номер треку. 
+        // Тому в опціі, яка не вибрана - по замовчюванню буде гратися перший трек (1). 
+        // Якщо на носії немає файлів - список буде порожнім.
         JsonArray arr = dropdownLists["tracks"].to<JsonArray>();
-        JsonArray none = arr.add<JsonArray>();
-        none.add(0);
-        none.add("Не вибрано");
-        none.add(0);
-        none.add(0);
         for (int i = 1; i <= sound.dfTotalFiles; i++) {
             JsonArray opt = arr.add<JsonArray>();
             opt.add(i);
