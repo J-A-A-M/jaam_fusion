@@ -1956,9 +1956,20 @@ uint8_t getCurrentBrightnes() {
     if (settings.getInt(BRIGHTNESS_MODE) == 2 && lightSensor.isLightSensorAvailable()) {
         float lightLevel = lightSensor.getLightLevel();
         int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
+        // Гістерезис відносно порогу, щоб дрейф показань сенсора біля межі не смикав яскравість туди-сюди;
+        // мінімум в 1 люкс окремо, бо поріг може бути виставлений дуже низьким
+        int margin = max(1, threshold / 5);
+        int lowThreshold = max(0, threshold - margin);
+        int highThreshold = threshold + margin;
+        static bool sensorNightActive = false;
         // Визначаємо день/ніч за рівнем освітлення
         if (!isnan(lightLevel)) {
-            return lightLevel < threshold ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+            if (sensorNightActive) {
+                if (lightLevel > highThreshold) sensorNightActive = false;
+            } else {
+                if (lightLevel < lowThreshold) sensorNightActive = true;
+            }
+            return sensorNightActive ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
         }
     }
     // За замовчуванням повертаємо основну яскравість
