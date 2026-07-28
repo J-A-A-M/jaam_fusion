@@ -1955,16 +1955,23 @@ uint8_t getCurrentBrightnes() {
     // режим яскравості 2: використовувати денну або нічну яскравість залежно від рівня освітлення (якщо є датчик освітлення)
     if (settings.getInt(BRIGHTNESS_MODE) == 2 && lightSensor.isLightSensorAvailable()) {
         float lightLevel = lightSensor.getLightLevel();
-        int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
-        // Гістерезис відносно порогу, щоб дрейф показань сенсора біля межі не смикав яскравість туди-сюди;
-        // мінімум в 1 люкс окремо, бо поріг може бути виставлений дуже низьким
-        int margin = max(1, threshold / 5);
+        // Захист від від'ємного порогу (може бути збережений в обхід валідації налаштувань напряму через API)
+        int threshold = max(0, settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD));
+        // Гістерезис відносно порогу, щоб дрейф показань сенсора біля межі не смикав яскравість туди-сюди.
+        // Запас не повинен перевищувати сам поріг, інакше нижня межа завжди зʼїжджає в 0 і низький поріг стає недосяжним
+        int margin = threshold > 0 ? max(1, threshold / 5) : 0;
+        if (margin >= threshold) margin = max(0, threshold - 1);
         int lowThreshold = max(0, threshold - margin);
         int highThreshold = threshold + margin;
         static bool sensorNightActive = false;
+        static bool sensorNightActiveInitialized = false;
         // Визначаємо день/ніч за рівнем освітлення
         if (!isnan(lightLevel)) {
-            if (sensorNightActive) {
+            if (!sensorNightActiveInitialized) {
+                // При першому валідному вимірі (старт пристрою або перехід у цей режим) визначаємо стан без гістерезису
+                sensorNightActive = lightLevel < threshold;
+                sensorNightActiveInitialized = true;
+            } else if (sensorNightActive) {
                 if (lightLevel > highThreshold) sensorNightActive = false;
             } else {
                 if (lightLevel < lowThreshold) sensorNightActive = true;
