@@ -1957,24 +1957,19 @@ uint8_t getCurrentBrightnes() {
         float lightLevel = lightSensor.getLightLevel();
         // Захист від від'ємного порогу (може бути збережений в обхід валідації налаштувань напряму через API)
         int threshold = max(0, settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD));
-        // Гістерезис відносно порогу, щоб дрейф показань сенсора біля межі не смикав яскравість туди-сюди.
-        // Запас не повинен перевищувати сам поріг, інакше нижня межа завжди зʼїжджає в 0 і низький поріг стає недосяжним
+        // Односторонній гістерезис, щоб дрейф показань сенсора біля межі не смикав яскравість туди-сюди:
+        // в ніч переходимо рівно за порогом (як налаштував користувач), а назад у день - із запасом 20% (мінімум 1 люкс).
+        // Смуга росте тільки вгору, тому гістерезис працює і на малих порогах (в тому числі 1 люкс)
         int margin = threshold > 0 ? max(1, threshold / 5) : 0;
-        if (margin >= threshold) margin = max(0, threshold - 1);
-        int lowThreshold = max(0, threshold - margin);
-        int highThreshold = threshold + margin;
+        int dayThreshold = threshold + margin;
+        // Стан зберігається між викликами; початкове значення (день) коригується на першому ж вимірі нижче порогу
         static bool sensorNightActive = false;
-        static bool sensorNightActiveInitialized = false;
         // Визначаємо день/ніч за рівнем освітлення
         if (!isnan(lightLevel)) {
-            if (!sensorNightActiveInitialized) {
-                // При першому валідному вимірі (старт пристрою або перехід у цей режим) визначаємо стан без гістерезису
-                sensorNightActive = lightLevel < threshold;
-                sensorNightActiveInitialized = true;
-            } else if (sensorNightActive) {
-                if (lightLevel > highThreshold) sensorNightActive = false;
+            if (sensorNightActive) {
+                if (lightLevel > dayThreshold) sensorNightActive = false;
             } else {
-                if (lightLevel < lowThreshold) sensorNightActive = true;
+                if (lightLevel < threshold) sensorNightActive = true;
             }
             return sensorNightActive ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
         }
