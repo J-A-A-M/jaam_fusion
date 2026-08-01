@@ -1313,6 +1313,7 @@ void JaamWeb::handleUiPage() {
                 <h3>Логи пристрою</h3>
                 <div class='logs-buttons'>
                     <button class='logs-control-btn' id='logsToggleBtn' onclick='toggleLogStream()'>Показати</button>
+                    <button class='logs-control-btn' onclick='downloadLogs()' title='Зберегти логи у файл'>⤓</button>
                     <button class='logs-control-btn logs-clear-btn' onclick='clearLogs()' title='Очистити логи'>✕</button>
                 </div>
             </div>
