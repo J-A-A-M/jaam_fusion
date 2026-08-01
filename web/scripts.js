@@ -1795,11 +1795,43 @@ function buildLogsFileName() {
     return `jaam-logs-${stamp}.log`;
 }
 
-function buildLogsText(logs) {
+function fetchJsonOrNull(url) {
+    // Device info is a nice-to-have in the header: never let it block the export
+    return fetch(url).then(r => r.json()).catch(() => null);
+}
+
+function fetchDeviceInfo() {
+    // Firmware version and hardware type make an exported log self-contained in a bug report.
+    // Both come from endpoints the page already uses; dropdown_lists (which holds the human
+    // readable board name) is deliberately not requested - it also carries districts, timezones
+    // and melodies, too heavy to pull for a single label
+    return Promise.all([
+        fetchJsonOrNull('/system-info'),
+        fetchJsonOrNull('/ui-schema/controls/values')
+    ]).then(([systemInfo, controlsValues]) => {
+        const info = { version: null, hardware: null };
+
+        if (systemInfo && Array.isArray(systemInfo.system)) {
+            // Item layout for the text model: [type, key, label, iconSvg, value]
+            const versionItem = systemInfo.system.find(item => item[0] === 'text' && item[1] === 'version');
+            if (versionItem) info.version = versionItem[4];
+        }
+        if (controlsValues && Array.isArray(controlsValues.values)) {
+            const hardwareValue = controlsValues.values.find(pair => pair[0] === 'hardware');
+            if (hardwareValue) info.hardware = hardwareValue[1];
+        }
+        return info;
+    });
+}
+
+function buildLogsText(logs, deviceInfo) {
     // Same layout as the serial output, so exported logs can be compared with the flasher log
+    const info = deviceInfo || {};
     const header = [
         `# JAAM device logs`,
         `# Host: ${location.hostname || 'unknown'}`,
+        `# Firmware: ${info.version || 'unknown'}`,
+        `# Hardware: ${info.hardware !== null && info.hardware !== undefined ? info.hardware : 'unknown'} (HARDWARE setting id)`,
         `# Exported: ${formatLogTimestampFull(Math.floor(Date.now() / 1000))} (browser time)`,
         `# Entries: ${logs.length}`,
         ''
@@ -1823,15 +1855,17 @@ function downloadLogs() {
                 return;
             }
 
-            const blob = new Blob([buildLogsText(data.logs)], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = buildLogsFileName();
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            return fetchDeviceInfo().then(deviceInfo => {
+                const blob = new Blob([buildLogsText(data.logs, deviceInfo)], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = buildLogsFileName();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
         })
         .catch(err => {
             console.error('Error downloading logs:', err);
