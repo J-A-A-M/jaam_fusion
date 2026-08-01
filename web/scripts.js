@@ -1846,7 +1846,17 @@ function downloadLogs() {
     // Always fetch a fresh copy: the panel may be collapsed or the stream stopped,
     // in that case the DOM holds nothing to export
     fetch('/logs-info?limit=500')
-        .then(response => response.json())
+        .then(response => {
+            // requireAuth() answers with 302 to /login: fetch follows it and returns 200 with HTML,
+            // so response.ok alone would not catch an expired session
+            if (response.redirected) {
+                throw new Error('SESSION_EXPIRED');
+            }
+            if (!response.ok) {
+                throw new Error('Failed to fetch logs: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (!data.logs || !Array.isArray(data.logs) || data.logs.length === 0) {
                 if (logsContent) {
@@ -1870,7 +1880,10 @@ function downloadLogs() {
         .catch(err => {
             console.error('Error downloading logs:', err);
             if (logsContent) {
-                logsContent.innerHTML = '<div class="logs-error">Помилка при збереженні логів</div>';
+                const message = (err && err.message === 'SESSION_EXPIRED')
+                    ? 'Сесія закінчилась, увійдіть знову'
+                    : 'Помилка при збереженні логів';
+                logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
             }
         });
 }
