@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include "JaamWeb.h"
 #include "JaamLed.h"
+#include "JaamSound.h"
 #include "JaamLogs.h"
 #include "JaamUtils.h"
 #include "web_assets.h"
@@ -27,6 +28,7 @@ extern JaamHardware                     hardware;
 static const size_t MAX_BACKUP_SIZE = 32768;
 
 // Функції для тестового відтворення та оновлення прошивки
+extern JaamSound                        sound;
 extern void requestPlayTestMelody(int melodyId);
 extern void requestPlayTestTrack(int trackId);
 extern void requestFirmwareUpdate(const char* firmwareId);
@@ -258,6 +260,7 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"sound_source", SOUND_SOURCE, TYPE_INT},
     {"melody_volume_day", MELODY_VOLUME_DAY, TYPE_INT},
     {"melody_volume_night", MELODY_VOLUME_NIGHT, TYPE_INT},
+    {"df_max_volume", DF_MAX_VOLUME, TYPE_INT},
     {"sound_on_alert", SOUND_ON_ALERT, TYPE_BOOL},
     {"sound_on_alert_end", SOUND_ON_ALERT_END, TYPE_BOOL},
     {"sound_on_explosion", SOUND_ON_EXPLOSION, TYPE_BOOL},
@@ -279,7 +282,18 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"melody_on_missiles", MELODY_ON_MISSILES, TYPE_INT},
     {"melody_on_kabs", MELODY_ON_KABS, TYPE_INT},
     {"melody_on_ballistic", MELODY_ON_BALLISTIC, TYPE_INT},
-    
+    {"track_on_alert", TRACK_ON_ALERT, TYPE_INT},
+    {"track_on_alert_end", TRACK_ON_ALERT_END, TYPE_INT},
+    {"track_on_explosion", TRACK_ON_EXPLOSION, TYPE_INT},
+    {"track_on_drones", TRACK_ON_DRONES, TYPE_INT},
+    {"track_on_recon_drones", TRACK_ON_RECON_DRONES, TYPE_INT},
+    {"track_on_missiles", TRACK_ON_MISSILES, TYPE_INT},
+    {"track_on_kabs", TRACK_ON_KABS, TYPE_INT},
+    {"track_on_ballistic", TRACK_ON_BALLISTIC, TYPE_INT},
+    {"track_clock_beep", TRACK_CLOCK_BEEP, TYPE_INT},
+    {"track_clock_tick", TRACK_CLOCK_TICK, TYPE_INT},
+    {"track_ua_anthem", TRACK_UA_ANTHEM, TYPE_INT},
+
     // Legacy/unused parameters for compatibility
     {"district_mode_kyiv", DISTRICT_MODE_KYIV, TYPE_INT},
     {"district_mode_kharkiv", DISTRICT_MODE_KHARKIV, TYPE_INT},
@@ -667,6 +681,12 @@ void JaamWeb::handleParameter() {
                 settingType == MELODY_ON_MISSILES || settingType == MELODY_ON_KABS ||
                 settingType == MELODY_ON_BALLISTIC || settingType == MELODY_ON_RECON_DRONES)) {
                 requestPlayTestMelody(intValue);
+            }
+            if (success && (settingType == TRACK_ON_ALERT || settingType == TRACK_ON_ALERT_END ||
+                settingType == TRACK_ON_EXPLOSION || settingType == TRACK_ON_DRONES ||
+                settingType == TRACK_ON_MISSILES || settingType == TRACK_ON_KABS ||
+                settingType == TRACK_ON_BALLISTIC || settingType == TRACK_ON_RECON_DRONES)) {
+                requestPlayTestTrack(intValue);
             }
             break;
         }
@@ -1716,12 +1736,28 @@ void JaamWeb::buildUiSchemaDropdownLists(JsonDocument& doc) {
         appendOptionsList(arr, AUTO_BRIGHTNESS_MODES, AUTO_BRIGHTNESS_OPTIONS_COUNT);
     }
     {
+        // PRO/Mini вибирані лише коли задані обидва піни (RX і TX) — це керується живо на клієнті
+        // через updateSoundSourceOptions() (scripts.js), тож тут статичний список без розрахунку
         JsonArray arr = dropdownLists["sound_sources"].to<JsonArray>();
         appendOptionsList(arr, SOUND_SOURCES, SOUND_SOURCES_COUNT);
     }
     {
         JsonArray arr = dropdownLists["melodies"].to<JsonArray>();
         appendOptionsList(arr, MELODY_NAMES, MELODIES_COUNT);
+    }
+    {
+        // Треки не мають назв - лише порядковий номер файла на носії DFPlayer (1..dfTotalFiles).
+        // Дефолтне значення - 1, а не 0, бо DFPlayer не підтримує 0 як номер треку. 
+        // Тому в опціі, яка не вибрана - по замовчюванню буде гратися перший трек (1). 
+        // Якщо на носії немає файлів - список буде порожнім.
+        JsonArray arr = dropdownLists["tracks"].to<JsonArray>();
+        for (int i = 1; i <= sound.dfTotalFiles; i++) {
+            JsonArray opt = arr.add<JsonArray>();
+            opt.add(i);
+            opt.add("Трек " + String(i));
+            opt.add(0);
+            opt.add(0);
+        }
     }
     {
         JsonArray arr = dropdownLists["button_modes_single_click"].to<JsonArray>();

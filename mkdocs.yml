@@ -129,6 +129,7 @@ nav:
         - Огляд: hardware/sound.md
         - Buzzer: hardware/sound/buzzer.md
         - DF Player Pro: hardware/sound/df-player-pro.md
+        - DF Player Mini: hardware/sound/df-player-mini.md
       - LED Mapping: hardware/led-mapping.md
   - Функціонал:
       - Повітряні тривоги: features/air-alerts.md

@@ -923,18 +923,19 @@ function renderControl(ctrl, lists) {
     
     if (type === 'dropdown') {
         const [_, name, label, list, current, section, visibility] = ctrl;
+        const opts = lists[list] || [];
+
         const div = groupDiv();
-        
+
         const lab = document.createElement('label');
         lab.htmlFor = name;
         lab.textContent = label + ':';
-        
+
         const sel = document.createElement('select');
         sel.className = 'form-control';
         sel.id = name;
         sel.name = name;
-        
-        const opts = lists[list] || [];
+
         for (const o of opts) {
             const el = optionEl(o[0], o[1], o[2], o[3]);
             if (String(o[0]) === String(current)) el.selected = true;
@@ -1388,25 +1389,59 @@ function evaluateCondition(condition) {
 function setupVisibilityListeners() {
     // Get all elements that have data-visibility or are select/input elements that affect visibility
     const triggerElements = document.querySelectorAll('select, input[type="checkbox"]');
-    
+
     triggerElements.forEach(el => {
         el.addEventListener('change', () => {
-            updateAllVisibilities();
+            updateAllVisibilities(el.id);
         });
     });
-    
+
     // Also listen to input events for text fields
     const textInputs = document.querySelectorAll('input[type="text"]');
     textInputs.forEach(el => {
         el.addEventListener('input', () => {
-            updateAllVisibilities();
+            updateAllVisibilities(el.id);
         });
     });
 }
 
-function updateAllVisibilities() {
+// changedFieldId - id поля, яке реально змінив юзер; null при первинному рендері сторінки
+function updateAllVisibilities(changedFieldId = null) {
+    updateSoundSourceOptions(changedFieldId);
     const elements = document.querySelectorAll('[data-visibility]');
     elements.forEach(el => updateElementVisibility(el));
+}
+
+// Buzzer (значення '0') та DF Player PRO/Mini (значення '1'/'2' - мають збігатись з
+// DFBackend::PRO/MINI в JaamSound.h) вибирані лише коли задані відповідні піни
+function updateSoundSourceOptions(changedFieldId = null) {
+    const sel = document.getElementById('sound_source');
+    if (!sel) return;
+    const buzzerPinSet = evaluateCondition('buzzer_pin!=-1');
+    const dfPinsSet = evaluateCondition('df_rx_pin!=-1') && evaluateCondition('df_tx_pin!=-1');
+    let selectedNowDisabled = false;
+    for (const opt of sel.options) {
+        if (opt.value === '0') {
+            opt.disabled = !buzzerPinSet;
+        } else if (opt.value === '1' || opt.value === '2') {
+            opt.disabled = !dfPinsSet;
+        } else {
+            continue;
+        }
+        if (opt.disabled && opt.selected) selectedNowDisabled = true;
+    }
+    if (selectedNowDisabled) {
+        // Візуально завжди підправляємо <select>, інакше на первинному рендері (збережено джерело,
+        // а пінів вже нема) юзер бачить "вибрано ..." на disabled-опції - плутанина
+        sel.value = '-1';
+        // На бекенд шлемо лише коли сам юзер щойно змінив пін-поле - не на первинному рендері
+        // сторінки, щоб самим лише відкриттям сторінки не перезаписувати збережений NVS
+        const pinFieldChanged = changedFieldId === 'buzzer_pin' ||
+            changedFieldId === 'df_rx_pin' || changedFieldId === 'df_tx_pin';
+        if (pinFieldChanged) {
+            updateParameter('sound_source', '-1');
+        }
+    }
 }
 
 async function renderUI() {

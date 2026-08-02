@@ -753,6 +753,25 @@
             "hardware!=4,hardware!=6,hardware!=9"
         ],
         [
+            "info",
+            "Збільшення максимальної гучності може призвести до пошкодження плати, плеера або динаміка через високий струм. Змінюйте це значення лише якщо ваше обладнання має достатньо потужне живлення. Ви берете на себе всю відповідальність за можливі пошкодження.",
+            "#FF9800",
+            "M1,21H23L12,2L1,21M12,18A1,1 0 0,1 11,17A1,1 0 0,1 12,16A1,1 0 0,1 13,17A1,1 0 0,1 12,18M13,15H11V11H13V15Z",
+            "hardware",
+            "df_rx_pin!=-1,df_tx_pin!=-1,sound_source==1,sound_source==2"
+        ],
+        [
+            "slider",
+            "df_max_volume",
+            "Максимальна гучність DFPlayer (апаратна)",
+            1,
+            30,
+            1,
+            "hardware",
+            "",
+            "df_rx_pin!=-1,df_tx_pin!=-1,sound_source==1,sound_source==2"
+        ],
+        [
             "label",
             "Батарея",
             "hardware",
@@ -1990,7 +2009,7 @@
             "Мелодія при тривозі у домашньому регіоні (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_alert==1"
+            "sound_source==0,sound_on_alert==1"
         ],
         [
             "dropdown",
@@ -1998,7 +2017,7 @@
             "Мелодія при скасуванні тривоги у домашньому регіоні (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_alert_end==1"
+            "sound_source==0,sound_on_alert_end==1"
         ],
         [
             "dropdown",
@@ -2006,7 +2025,7 @@
             "Мелодія при вибухах (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_explosion==1"
+            "sound_source==0,sound_on_explosion==1"
         ],
         [
             "dropdown",
@@ -2014,7 +2033,7 @@
             "Мелодія при загрозі ударних БПЛА (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_drones==1"
+            "sound_source==0,sound_on_drones==1"
         ],
         [
             "dropdown",
@@ -2022,7 +2041,7 @@
             "Мелодія при розвідувальних БПЛА (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_recon_drones==1"
+            "sound_source==0,sound_on_recon_drones==1"
         ],
         [
             "dropdown",
@@ -2030,7 +2049,7 @@
             "Мелодія при загрозі крилатих та авіаційних ракет (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_missiles==1"
+            "sound_source==0,sound_on_missiles==1"
         ],
         [
             "dropdown",
@@ -2038,7 +2057,7 @@
             "Мелодія при загрозі КАБ (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_kabs==1"
+            "sound_source==0,sound_on_kabs==1"
         ],
         [
             "dropdown",
@@ -2046,7 +2065,95 @@
             "Мелодія при загрозі балістики (буззер)",
             "melodies",
             "sound",
-            "sound_source!=-1,sound_on_ballistic==1"
+            "sound_source==0,sound_on_ballistic==1"
+        ],
+        [
+            "dropdown",
+            "track_on_alert",
+            "Трек при тривозі у домашньому регіоні (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_alert==1"
+        ],
+        [
+            "dropdown",
+            "track_on_alert_end",
+            "Трек при скасуванні тривоги у домашньому регіоні (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_alert_end==1"
+        ],
+        [
+            "dropdown",
+            "track_on_explosion",
+            "Трек при вибухах (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_explosion==1"
+        ],
+        [
+            "dropdown",
+            "track_on_drones",
+            "Трек при загрозі ударних БПЛА (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_drones==1"
+        ],
+        [
+            "dropdown",
+            "track_on_recon_drones",
+            "Трек при розвідувальних БПЛА (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_recon_drones==1"
+        ],
+        [
+            "dropdown",
+            "track_on_missiles",
+            "Трек при загрозі крилатих та авіаційних ракет (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_missiles==1"
+        ],
+        [
+            "dropdown",
+            "track_on_kabs",
+            "Трек при загрозі КАБ (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_kabs==1"
+        ],
+        [
+            "dropdown",
+            "track_on_ballistic",
+            "Трек при загрозі балістики (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2,sound_on_ballistic==1"
+        ],
+        [
+            "dropdown",
+            "track_clock_beep",
+            "Трек звичайного сигналу годинника (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2"
+        ],
+        [
+            "dropdown",
+            "track_clock_tick",
+            "Трек цокання годинника / хвилини мовчання (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2"
+        ],
+        [
+            "dropdown",
+            "track_ua_anthem",
+            "Трек гімну України (DF Player)",
+            "tracks",
+            "sound",
+            "sound_source==1,sound_source==2"
         ]
     ]
 }

@@ -46,12 +46,14 @@ void handleRecalculateLeds();
 void handleReconnectStrips(bool main, bool bg, bool service);
 void handleUpdateBatteryPin();
 void handleReconfigureDisplay();
-void handleReconfigureSound();
+void handleReconfigureSound(bool reinitDFPlayer = true);
+void handleReconfigureSoundAsync(); // wrapper без аргументів для async.setTimeout (void(*)(void))
 void handleReconfigureSensors();
 void handleReconfigureButtons();
 void handleUpdateAnimationsMode();
 void handleAdaptClimate();
 void handleAdaptVolume();
+void handleAdaptDFMaxVolume();
 void handleUpdateHomeAlertBit();
 bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& color, uint32_t& period, uint8_t& brightness);
 void triggerHomeAlertAnimation(int8_t bit);
@@ -310,18 +312,18 @@ void displayMinuteOfSilence() {
 // --- SOUND Functions ---
 void playMelody(const char* melodyRtttl) {
 #if BUZZER_ENABLED
-  if (sound.isBuzzerEnabled() && (sound.soundSource == 0 || sound.soundSource == 2)) {
+  if (sound.isBuzzerEnabled()) {
     sound.playBuzzer(melodyRtttl);
   } else {
-    LOG.printf("Buzzer not enabled or sound source not valid (need 0 or 2): %d\n", sound.soundSource);
+    LOG.printf("Buzzer not enabled or sound source not valid (need 0): %d\n", sound.soundSource);
   }
 #endif
 }
 
-void playTrack(String track) {
-#if DFPLAYER_PRO_ENABLED
-  if (track != "" && (sound.soundSource == 1 || sound.soundSource == 2)) {
-    sound.playDFPlayer(track);
+void playTrack(int trackNumber) {
+#if DFPLAYER_ENABLED
+  if (trackNumber > 0 && DFBackend::isDFPlayerSource(sound.soundSource)) {
+    sound.playDFPlayer(trackNumber);
   } else {
     LOG.printf("DFPlayer not enabled or sound source not valid (need 1 or 2): %d\n", sound.soundSource);
   }
@@ -329,86 +331,86 @@ void playTrack(String track) {
 }
 
 void playMelody(SoundType type) {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+#if BUZZER_ENABLED || DFPLAYER_ENABLED
   switch (type) {
   case MIN_OF_SILINCE:
     playMelody(MOS_BEEP);
-    playTrack(DF_CLOCK_TICK);
+    playTrack(settings.getInt(TRACK_CLOCK_TICK));
     break;
   case MIN_OF_SILINCE_END:
     playMelody(UA_ANTHEM);
-    playTrack(DF_UA_ANTHEM);
+    playTrack(settings.getInt(TRACK_UA_ANTHEM));
     break;
   case ALERT_ON:
     playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT)));
+    playTrack(settings.getInt(TRACK_ON_ALERT));
     break;
   case ALERT_OFF:
     playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT_END)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT_END)));
+    playTrack(settings.getInt(TRACK_ON_ALERT_END));
     break;
   case EXPLOSIONS:
     playMelody(MELODIES[settings.getInt(MELODY_ON_EXPLOSION)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_EXPLOSION)));
+    playTrack(settings.getInt(TRACK_ON_EXPLOSION));
     break;
   case DRONES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_DRONES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_DRONES)));
+    playTrack(settings.getInt(TRACK_ON_DRONES));
     break;
   case MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_MISSILES));
     break;
   case KABS:
     playMelody(MELODIES[settings.getInt(MELODY_ON_KABS)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_KABS)));
+    playTrack(settings.getInt(TRACK_ON_KABS));
     break;
   case BALLISTIC:
     playMelody(MELODIES[settings.getInt(MELODY_ON_BALLISTIC)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_BALLISTIC)));
+    playTrack(settings.getInt(TRACK_ON_BALLISTIC));
     break;
   case RECON_DRONES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_RECON_DRONES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_RECON_DRONES)));
+    playTrack(settings.getInt(TRACK_ON_RECON_DRONES));
     break;
   case CRITICAL_MIG:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG)));
-    break; 
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_MIG));
+    break;
   case CRITICAL_STRATEGIC:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC));
     break;
   case CRITICAL_MIG_MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_MIG_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_MIG_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_MIG_MISSILES));
     break;
   case CRITICAL_BALLISTIC_MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_BALLISTIC_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_BALLISTIC_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_BALLISTIC_MISSILES));
     break;
   case CRITICAL_STRATEGIC_MISSILES:
     playMelody(MELODIES[settings.getInt(MELODY_ON_CRITICAL_STRATEGIC_MISSILES)]);
-    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC_MISSILES)));
+    playTrack(settings.getInt(TRACK_ON_CRITICAL_STRATEGIC_MISSILES));
     break;
   case REGULAR:
     playMelody(CLOCK_BEEP);
-    playTrack(DF_CLOCK_BEEP);
+    playTrack(settings.getInt(TRACK_CLOCK_BEEP));
     break;
   case SINGLE_CLICK:
     playMelody(SINGLE_CLICK_SOUND);
-    playTrack(DF_CLOCK_TICK);
+    playTrack(settings.getInt(TRACK_CLOCK_TICK));
     break;
   case LONG_CLICK:
     playMelody(LONG_CLICK_SOUND);
-    playTrack(DF_CLOCK_TICK);
+    playTrack(settings.getInt(TRACK_CLOCK_TICK));
     break;
   }
 #endif
 }
 
 bool needToPlaySound(SoundType type) {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+#if BUZZER_ENABLED || DFPLAYER_ENABLED
   // do not play any sound before websocket connection and startup
   if (startup || !isFirstDataFetchCompleted) return false;
 
@@ -2196,14 +2198,25 @@ void initSettings() {
                 handleAdaptClimate();
                 break;
             
-            // Звукова конфігурація (джерело + піни)
+            // Джерело/DF-піни — потребує реініціалізації DFPlayer. Відкладаємо через async.setTimeout:
+            // initDFPlayer() блокує до ~5.5с (retryDFBegin), а цей callback виконується на Core0
+            // (HTTP request thread) - синхронний виклик тут підвісив би веб-сервер/WS на весь час ретраїв
             case SOUND_SOURCE:
-            case BUZZER_PIN:
             case DF_RX_PIN:
             case DF_TX_PIN:
-                handleReconfigureSound();
+                async.setTimeout(handleReconfigureSoundAsync, 100);
                 break;
-            
+
+            // Лише пін буzzer-а — DFPlayer не чіпаємо, щоб не ре-пробувати вже підключений модуль
+            case BUZZER_PIN:
+                handleReconfigureSound(false);
+                break;
+
+            // Стеля гучності DFPlayer — лише перерахунок поточної гучності, без реініту UART
+            case DF_MAX_VOLUME:
+                handleAdaptDFMaxVolume();
+                break;
+
             // Гучність мелодій
             case MELODY_VOLUME_DAY:
             case MELODY_VOLUME_NIGHT:
@@ -2380,8 +2393,8 @@ void initSensors() {
 
 }
 
-void initSound() {
-#if BUZZER_ENABLED || DFPLAYER_PRO_ENABLED
+void initSound(bool reinitDFPlayer = true) {
+#if BUZZER_ENABLED || DFPLAYER_ENABLED
   sound.init(
     hardwareConfig.getBuzzerPin(), 
     hardwareConfig.getDfRxPin(), 
@@ -2391,28 +2404,40 @@ void initSound() {
     settings.getInt(MELODY_VOLUME_NIGHT)
   );
 #endif
+#if DFPLAYER_ENABLED
+  sound.setDFMaxVolume(settings.getInt(DF_MAX_VOLUME));
+#endif
 
   int soundSource = settings.getInt(SOUND_SOURCE);
   LOG.printf("[SOUND] source setting: %d\n", soundSource);
 
 #if BUZZER_ENABLED
-  // Only initialize buzzer if SOUND_SOURCE is 0 (Buzzer) and buzzer is enabled
-  if (sound.isBuzzerEnabled() && soundSource == 0) {
+  // Only initialize buzzer if SOUND_SOURCE is 0 (Buzzer) and buzzer pin is set
+  if (soundSource == 0 && sound.isBuzzerConnected()) {
     sound.initBuzzer();
   }
 #endif
-#if DFPLAYER_PRO_ENABLED
-  // Only initialize DFPlayer if SOUND_SOURCE is 1 (DFPlayer) and DFPlayer is enabled
-  if (sound.isDFPlayerEnabled() && soundSource == 1) {
-    sound.initDFPlayer();
+#if DFPLAYER_ENABLED
+  // reinitDFPlayer=false — змінився лише BUZZER_PIN, DFPlayer не чіпаємо
+  // (інакше кожен сейв буzzer-піна ре-пробує вже підключений DFPlayer, до ~5с блокування)
+  if (reinitDFPlayer) {
+    // Пробуємо DFPlayer лише коли реально обрано DF-джерело — без спекулятивної проби
+    // при Buzzer/Вимкнено, і лише обраний бекенд, без fallback на інший
+    if (sound.isDFPlayerConnected() && DFBackend::isDFPlayerSource(soundSource)) {
+      sound.initDFPlayer(soundSource);
+    } else {
+      // DFPlayer цього циклу не пробується (піни знято або джерело не DF) —
+      // скидаємо стан, інакше isDFPlayerEnabled()/getDFBackend() лишать stale PRO/MINI
+      sound.resetDFPlayerState();
+    }
   }
 #endif
 
   // Set the actual sound source based on what was initialized
-  if (soundSource == 0 && sound.isBuzzerEnabled()) {
+  if (soundSource == 0 && sound.isBuzzerConnected()) {
     sound.setSoundSource(0);
-  } else if (soundSource == 1 && sound.isDFPlayerConnected()) {
-    sound.setSoundSource(1);
+  } else if (sound.isDFPlayerEnabled()) {
+    sound.setSoundSource(soundSource);
   } else {
     sound.setSoundSource(-1);
   }
@@ -2988,9 +3013,15 @@ void handleReconfigureDisplay() {
     initDisplay();
 }
 
-void handleReconfigureSound() {
+void handleReconfigureSound(bool reinitDFPlayer) {
     LOG.printf("[SETTINGS] Reconfiguring sound\n");
-    initSound();
+    initSound(reinitDFPlayer);
+}
+
+// DFPlayer (re)init блокує до ~5.5с (retryDFBegin) - викликається з changeCallback на Core0
+// (HTTP request thread), тож відкладаємо через async.setTimeout на Core1, як reconfigureAll/updateFirmware
+void handleReconfigureSoundAsync() {
+    handleReconfigureSound(true);
 }
 
 void handleReconfigureSensors() {
@@ -3067,6 +3098,14 @@ void handleAdaptVolume() {
     sound.setVolumeDay(settings.getInt(MELODY_VOLUME_DAY));
 }
 
+void handleAdaptDFMaxVolume() {
+#if DFPLAYER_ENABLED
+    LOG.printf("[SETTINGS] Adapting DFPlayer max volume\n");
+    sound.setDFMaxVolume(settings.getInt(DF_MAX_VOLUME));
+    sound.setDFPlayerVolume(sound.volumeCurrent);
+#endif
+}
+
 void handleUpdateHomeAlertBit() {
     LOG.printf("[SETTINGS] Updating home alert bit\n");
     int localAlertBit = findHighestBitForRegionFlat(settings.getInt(HOME_DISTRICT));
@@ -3129,7 +3168,7 @@ void requestPlayTestMelody(int melodyId) {
 
 void requestPlayTestTrack(int trackId) {
     LOG.printf("[TEST] Playing test track %d\n", trackId);
-    // TODO: Реалізувати відтворення треків, якщо потрібно
+    playTrack(trackId);
 }
 
 void requestWebsocketReconnect() {
@@ -3376,11 +3415,15 @@ void showCombined() {
 void displayProcess()
 {
     // Remove UA Anthem playing flag if anthem stopped
-    if (uaAnthemPlaying && (!sound.isBuzzerPlaying() && !sound.isDFPlayerPlaying())) {
-        uaAnthemPlaying = false;
-        // adapt colors on min of silence end
-        adaptStripColorsAndBrightness();
-        handleAdaptAnimationColors();
+    if (uaAnthemPlaying) {
+        bool soundActive = (sound.soundSource == 0 && sound.isBuzzerPlaying()) ||
+                           (DFBackend::isDFPlayerSource(sound.soundSource) && sound.isDFPlayerPlaying());
+        if (!soundActive) {
+            uaAnthemPlaying = false;
+            // adapt colors on min of silence end
+            adaptStripColorsAndBrightness();
+            handleAdaptAnimationColors();
+        }
     }
 
     // Turn off display at night if setting enabled (Priority - highest)
@@ -3466,9 +3509,9 @@ void volumeProcess() {
       sound.setBuzzerVolume(volumeLocal); 
     }
     #endif
-    #if DFPLAYER_PRO_ENABLED
-    if (sound.isDFPlayerConnected()) {
-      sound.setDFPlayerVolume(volumeLocal); 
+    #if DFPLAYER_ENABLED
+    if (sound.isDFPlayerEnabled()) {
+      sound.setDFPlayerVolume(volumeLocal);
     }
     #endif
     LOG.printf("Set volume to: %d\n", volumeLocal);

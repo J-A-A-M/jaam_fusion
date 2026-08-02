@@ -1,10 +1,14 @@
 #include "JaamConfig.h"
+#include "JaamSound.h"
 
 // --- Sound Settings ---
+// id для DF Player PRO/Mini навмисно рівні DFBackend::PRO/MINI (JaamSound.h) — та ж числова
+// константа, а не випадковий збіг, щоб soundSource / DFBackend не могли розійтись
 const SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT] PROGMEM = {
   {-1, "Вимкнено", false},
   {0, "Buzzer", false},
-  {1, "DF Player Pro", true, false, true}
+  {DFBackend::PRO, "DF Player PRO", false},
+  {DFBackend::MINI, "DF Player Mini", false}
 };
 
 // --- Other Settings ---
@@ -292,54 +296,6 @@ const SettingListItem MELODY_NAMES[MELODIES_COUNT] PROGMEM = {
   {19, "Squid Game", false},
   {21, "ПТН ХЙЛ", false},
   {22, "Helldivers 2 - A cup of Liber-Tea", false}
-};
-
-// --- DF Player Track Paths ---
-const String DF_CLOCK_BEEP = "/01.mp3";
-const String DF_CLOCK_TICK = "/02.mp3";
-const String DF_UA_ANTHEM = "/03.mp3";
-const String DF_SIREN_1 = "/04.mp3";
-const String DF_SIREN_2 = "/05.mp3";
-const String DF_SIREN_3 = "/06.mp3";
-const String DF_SIREN_4 = "/07.mp3";
-const String DF_SIREN_5 = "/08.mp3";
-const String DF_SIREN_6 = "/09.mp3";
-const String DF_SIREN_7 = "/10.mp3";
-const String DF_SIREN_8 = "/11.mp3";
-const String DF_SIREN_9 = "/12.mp3";
-const String DF_SIREN_10 = "/13.mp3";
-const String DF_THE_HOBBIT = "/14.mp3";
-const String DF_THE_MATRIX = "/15.mp3";
-const String DF_AVENGERS = "/16.mp3";
-const String DF_TERMINATOR_SHORT = "/17.mp3";
-const String DF_PIRATES_OF_THE_CARRIBEAN = "/18.mp3";
-const String DF_SIREN_11 = "/19.mp3";
-const String DF_NOTIFICATION_NEWS = "/20.mp3";
-const String DF_GOOD_MORNING_VIETNAM = "/21.mp3";
-const String DF_NOTIFICATION_R2D2 = "/22.mp3";
-const String DF_NOTIFICATION_STARTREK = "/23.mp3";
-const String DF_AIR_RAID_1 = "/24.mp3";
-const String DF_CAROL_OF_THE_BELLS = "/25.mp3";
-const String DF_NOTIFICATION_BACK_TO_THE_FUTURE = "/26.mp3";
-const String DF_IMPERIAL_MARCH = "/27.mp3";
-const String DF_GOOD_BAD_UGLY = "/28.mp3";
-const String DF_HARRY_POTTER = "/29.mp3";
-const String DF_MARCH = "/30.mp3";
-const String DF_MANDALORIAN_CALL = "/31.mp3";
-const String DF_MARIO = "/32.mp3";
-const String DF_PACMAN = "/33.mp3";
-const String DF_HELLDIVERS = "/34.mp3";
-
-const String TRACKS[TRACKS_COUNT] = {
-  DF_CLOCK_TICK,
-  DF_CLOCK_BEEP,
-  DF_UA_ANTHEM
-};
-
-const SettingListItem TRACK_NAMES[TRACKS_COUNT] PROGMEM = {
-  {0, "Годинникова стрілка", false},
-  {1, "Годинник", false},
-  {2, "Гімн України", false}
 };
 
 // --- Administrative Units ---

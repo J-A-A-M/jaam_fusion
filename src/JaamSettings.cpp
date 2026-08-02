@@ -146,53 +146,56 @@ std::map<Type, SettingItemInt> intSettings = {
     {NEW_FW_NOTIFICATION, {"nfwn", 1}},                    // Show new firmware notification (0/1)
     
     // Sound source
-    {SOUND_SOURCE, {"ss", 0}},                             // 0 = buzzer, 1 = DFPlayer, 2 = none
+    {SOUND_SOURCE, {"ss", 0}},                             // -1 = вимкнено, 0 = buzzer, 1 = DF Player PRO, 2 = DF Player Mini
     {SOUND_ON_MIN_OF_SL, {"somos", 1}},                    // Sound on minute of silence (0/1)
     
     // Sound events: Alert
     {SOUND_ON_ALERT, {"soa", 1}},                          // Play sound on alert (0/1)
     {MELODY_ON_ALERT, {"moa", 4}},                         // Melody index: 4 = Siren
-    {TRACK_ON_ALERT, {"toa", 0}},                          // DFPlayer track index
+    {TRACK_ON_ALERT, {"toa", 1}},                          // DFPlayer track index
     {SOUND_ON_ALERT_END, {"soae", 1}},                     // Play sound on alert end (0/1)
     {MELODY_ON_ALERT_END, {"moae", 15}},                   // Melody index: 15 = Shedryk
-    {TRACK_ON_ALERT_END, {"toae", 5}},                     // DFPlayer track index
+    {TRACK_ON_ALERT_END, {"toae", 1}},                     // DFPlayer track index
     
     // Sound events: Threats
     {SOUND_ON_EXPLOSION, {"soex", 1}},                     // Play sound on explosion (0/1)
     {MELODY_ON_EXPLOSION, {"moex", 18}},                   // Melody index
-    {TRACK_ON_EXPLOSION, {"toex", 18}},                    // DFPlayer track index
+    {TRACK_ON_EXPLOSION, {"toex", 1}},                    // DFPlayer track index
     {SOUND_ON_DRONES, {"sodr", 1}},                        // Play sound on drones (0/1)
     {MELODY_ON_DRONES, {"modr", 23}},                      // Melody index
-    {TRACK_ON_DRONES, {"todr", 23}},                       // DFPlayer track index
+    {TRACK_ON_DRONES, {"todr", 1}},                       // DFPlayer track index
     {SOUND_ON_MISSILES, {"somi", 1}},                      // Play sound on missiles (0/1)
     {MELODY_ON_MISSILES, {"momi", 24}},                    // Melody index
-    {TRACK_ON_MISSILES, {"tomi", 24}},                     // DFPlayer track index
+    {TRACK_ON_MISSILES, {"tomi", 1}},                     // DFPlayer track index
     {SOUND_ON_KABS, {"sokb", 1}},                          // Play sound on KABs (0/1)
     {MELODY_ON_KABS, {"mokb", 25}},                        // Melody index
-    {TRACK_ON_KABS, {"tokb", 25}},                         // DFPlayer track index
+    {TRACK_ON_KABS, {"tokb", 1}},                         // DFPlayer track index
     {SOUND_ON_BALLISTIC, {"sobl", 1}},                     // Play sound on ballistic (0/1)
     {MELODY_ON_BALLISTIC, {"mobl", 26}},                   // Melody index
-    {TRACK_ON_BALLISTIC, {"tobl", 26}},                    // DFPlayer track index
+    {TRACK_ON_BALLISTIC, {"tobl", 1}},                    // DFPlayer track index
     {SOUND_ON_RECON_DRONES, {"sord", 1}},                  // Play sound on recon drones (0/1)
     {MELODY_ON_RECON_DRONES, {"mord", 27}},                // Melody index
-    {TRACK_ON_RECON_DRONES, {"tord", 27}},                 // DFPlayer track index
-    
+    {TRACK_ON_RECON_DRONES, {"tord", 1}},                 // DFPlayer track index
+    {TRACK_CLOCK_BEEP, {"tcb", 1}},                        // DFPlayer track index
+    {TRACK_CLOCK_TICK, {"tct", 2}},                        // DFPlayer track index
+    {TRACK_UA_ANTHEM, {"tua", 3}},                          // DFPlayer track index
+
     // Sound events: Critical threats
     {SOUND_ON_CRITICAL_MIG, {"socrm", 1}},                     // Play sound on critical MiG (0/1)
     {MELODY_ON_CRITICAL_MIG, {"mocrm", 24}},                   // Melody index
-    {TRACK_ON_CRITICAL_MIG, {"tocrm", 24}},                    // DFPlayer track index
+    {TRACK_ON_CRITICAL_MIG, {"tocrm", 1}},                    // DFPlayer track index
     {SOUND_ON_CRITICAL_STRATEGIC, {"socrs", 1}},               // Play sound on critical strategic (0/1)
     {MELODY_ON_CRITICAL_STRATEGIC, {"mocrs", 25}},             // Melody index
-    {TRACK_ON_CRITICAL_STRATEGIC, {"tocrs", 25}},              // DFPlayer track index
+    {TRACK_ON_CRITICAL_STRATEGIC, {"tocrs", 1}},              // DFPlayer track index
     {SOUND_ON_CRITICAL_MIG_MISSILES, {"socrmm", 1}},           // Play sound on critical MiG missiles (0/1)
     {MELODY_ON_CRITICAL_MIG_MISSILES, {"mocrmm", 26}},         // Melody index
-    {TRACK_ON_CRITICAL_MIG_MISSILES, {"tocrmm", 26}},          // DFPlayer track index
+    {TRACK_ON_CRITICAL_MIG_MISSILES, {"tocrmm", 1}},          // DFPlayer track index
     {SOUND_ON_CRITICAL_STRATEGIC_MISSILES, {"socrsm", 1}},     // Play sound on critical strategic missiles (0/1)
     {MELODY_ON_CRITICAL_STRATEGIC_MISSILES, {"mocrsm", 27}},   // Melody index
-    {TRACK_ON_CRITICAL_STRATEGIC_MISSILES, {"tocrsm", 27}},    // DFPlayer track index
+    {TRACK_ON_CRITICAL_STRATEGIC_MISSILES, {"tocrsm", 1}},    // DFPlayer track index
     {SOUND_ON_CRITICAL_BALLISTIC_MISSILES, {"socrbm", 1}},     // Play sound on critical ballistic missiles (0/1)
     {MELODY_ON_CRITICAL_BALLISTIC_MISSILES, {"mocrbm", 28}},   // Melody index
-    {TRACK_ON_CRITICAL_BALLISTIC_MISSILES, {"tocrbm", 28}},    // DFPlayer track index
+    {TRACK_ON_CRITICAL_BALLISTIC_MISSILES, {"tocrbm", 1}},    // DFPlayer track index
     {CRITICAL_NOTIFICATIONS_DISPLAY_TIME, {"crndt", 30}},      // Display time for critical notifications (seconds)
     {ENABLE_CRITICAL_NOTIFICATIONS, {"ecn", 1}},               // Enable critical notifications (0/1)
     
@@ -203,6 +206,7 @@ std::map<Type, SettingItemInt> intSettings = {
     {MELODY_VOLUME_DAY, {"mv", 100}},                      // Sound volume during day (0-100%)
     {MELODY_VOLUME_NIGHT, {"mvn", 30}},                    // Sound volume at night (0-100%)
     {MELODY_VOLUME_CURRENT, {"mvc", 100}},                 // Current sound volume (0-100%)
+    {DF_MAX_VOLUME, {"dfmv", 15}},                         // DFPlayer max hardware volume (0-30)
     {IGNORE_MUTE_ON_ALERT, {"imoa", 0}},                   // Ignore mute on alert (0/1)
     {IGNORE_MUTE_ON_ALERT, {"imoa", 0}},                   // Ignore mute on alert (0/1)
     
@@ -430,6 +434,14 @@ bool JaamSettings::validateIntSetting(Type type, int value) {
         }
     }
     
+    // Перевірка DF_MAX_VOLUME: апаратна межа модуля DFPlayer — [0..30]
+    if (type == DF_MAX_VOLUME) {
+        if (value < 0 || value > 30) {
+            LOG.printf("[SETTINGS] DF_MAX_VOLUME %d exceeds hardware range [0..30]\n", value);
+            return false;
+        }
+    }
+
     // Для JAAM2: піни сирени не можуть бути BH1750_POWER_PIN (керуючий пін живлення для сенсора освітлення)
     if (getInt(HARDWARE) == HARDWARE::JAAM_2_1) { // JAAM2
         if ((type == ALERT_PIN || type == CLEAR_PIN || type == ALERT_PIN_2 || type == CLEAR_PIN_2) && value == BH1750_POWER_PIN) {
@@ -468,6 +480,9 @@ bool JaamSettings::saveInt(Type type, int value, bool saveToPrefs) {
         }
         
         SettingItemInt setting = intSettings[type];
+        if (setting.value == value) {
+            return true; // без змін - не тригерити callback (DFPlayer reinit тощо) на холостий ресейв
+        }
         if (saveToPrefs) {
             preferences.begin(PREFS_NAME, false);
             preferences.putInt(setting.key, value);

@@ -270,48 +270,7 @@ extern const char* MELODIES[MELODIES_COUNT];
 
 extern const SettingListItem MELODY_NAMES[MELODIES_COUNT];
 
-// --- DF Player Track Paths ---
-extern const String DF_CLOCK_BEEP;
-extern const String DF_CLOCK_TICK;
-extern const String DF_UA_ANTHEM;
-extern const String DF_SIREN_1;
-extern const String DF_SIREN_2;
-extern const String DF_SIREN_3;
-extern const String DF_SIREN_4;
-extern const String DF_SIREN_5;
-extern const String DF_SIREN_6;
-extern const String DF_SIREN_7;
-extern const String DF_SIREN_8;
-extern const String DF_SIREN_9;
-extern const String DF_SIREN_10;
-extern const String DF_THE_HOBBIT;
-extern const String DF_THE_MATRIX;
-extern const String DF_AVENGERS;
-extern const String DF_TERMINATOR_SHORT;
-extern const String DF_PIRATES_OF_THE_CARRIBEAN;
-extern const String DF_SIREN_11;
-extern const String DF_NOTIFICATION_NEWS;
-extern const String DF_GOOD_MORNING_VIETNAM;
-extern const String DF_NOTIFICATION_R2D2;
-extern const String DF_NOTIFICATION_STARTREK;
-extern const String DF_AIR_RAID_1;
-extern const String DF_CAROL_OF_THE_BELLS;
-extern const String DF_NOTIFICATION_BACK_TO_THE_FUTURE;
-extern const String DF_IMPERIAL_MARCH;
-extern const String DF_GOOD_BAD_UGLY;
-extern const String DF_HARRY_POTTER;
-extern const String DF_MARCH;
-extern const String DF_MANDALORIAN_CALL;
-extern const String DF_MARIO;
-extern const String DF_PACMAN;
-extern const String DF_HELLDIVERS;
-
-constexpr int TRACKS_COUNT = 3;
-extern const String TRACKS[TRACKS_COUNT];
-
-extern const SettingListItem TRACK_NAMES[TRACKS_COUNT];
-
-constexpr int SOUND_SOURCES_COUNT = 3;
+constexpr int SOUND_SOURCES_COUNT = 4;
 extern const SettingListItem SOUND_SOURCES[SOUND_SOURCES_COUNT];
 
 // --- Other Settings ---
@@ -535,6 +494,7 @@ enum Type {
     MELODY_VOLUME_NIGHT,
     MELODY_VOLUME_DAY,
     MELODY_VOLUME_CURRENT,
+    DF_MAX_VOLUME,
     INVERT_DISPLAY,
     DIM_DISPLAY_ON_NIGHT,
     MAP_MODE,
@@ -624,6 +584,9 @@ enum Type {
     SOUND_ON_RECON_DRONES,
     MELODY_ON_RECON_DRONES,
     TRACK_ON_RECON_DRONES,
+    TRACK_CLOCK_BEEP,
+    TRACK_CLOCK_TICK,
+    TRACK_UA_ANTHEM,
     COLOR_LAMP,
     BRIGHTNESS_LAMP,
     API_ENABLED,
