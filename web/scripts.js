@@ -1765,6 +1765,129 @@ function clearLogs() {
     }
 }
 
+function formatLogTimestampFull(unixTimestamp) {
+    // Full date and time for the exported file: YYYY-MM-DD HH:MM:SS
+    // Device clock is set from NTP, so before sync timestamp is 0 - do not print 1970
+    if (!unixTimestamp) {
+        return '<no time>'.padEnd(19); // same width as YYYY-MM-DD HH:MM:SS, keeps columns aligned
+    }
+    const date = new Date(unixTimestamp * 1000);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function buildLogsFileName() {
+    const now = new Date();
+    const stamp = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+        '-',
+        String(now.getHours()).padStart(2, '0'),
+        String(now.getMinutes()).padStart(2, '0'),
+        String(now.getSeconds()).padStart(2, '0')
+    ].join('');
+    return `jaam-logs-${stamp}.log`;
+}
+
+function fetchJsonOrNull(url) {
+    // Device info is a nice-to-have in the header: never let it block the export
+    return fetch(url).then(r => r.json()).catch(() => null);
+}
+
+function fetchDeviceInfo() {
+    // Firmware version and hardware type make an exported log self-contained in a bug report.
+    // Both come from endpoints the page already uses; dropdown_lists (which holds the human
+    // readable board name) is deliberately not requested - it also carries districts, timezones
+    // and melodies, too heavy to pull for a single label
+    return Promise.all([
+        fetchJsonOrNull('/system-info'),
+        fetchJsonOrNull('/ui-schema/controls/values')
+    ]).then(([systemInfo, controlsValues]) => {
+        const info = { version: null, hardware: null };
+
+        if (systemInfo && Array.isArray(systemInfo.system)) {
+            // Item layout for the text model: [type, key, label, iconSvg, value]
+            const versionItem = systemInfo.system.find(item => item[0] === 'text' && item[1] === 'version');
+            if (versionItem) info.version = versionItem[4];
+        }
+        if (controlsValues && Array.isArray(controlsValues.values)) {
+            const hardwareValue = controlsValues.values.find(pair => pair[0] === 'hardware');
+            if (hardwareValue) info.hardware = hardwareValue[1];
+        }
+        return info;
+    });
+}
+
+function buildLogsText(logs, deviceInfo) {
+    // Same layout as the serial output, so exported logs can be compared with the flasher log
+    const info = deviceInfo || {};
+    const header = [
+        `# JAAM device logs`,
+        `# Host: ${location.hostname || 'unknown'}`,
+        `# Firmware: ${info.version || 'unknown'}`,
+        `# Hardware: ${info.hardware !== null && info.hardware !== undefined ? info.hardware : 'unknown'} (HARDWARE setting id)`,
+        `# Exported: ${formatLogTimestampFull(Math.floor(Date.now() / 1000))} (browser time)`,
+        `# Entries: ${logs.length}`,
+        ''
+    ];
+    const lines = logs.map(log => `${formatLogTimestampFull(log.timestamp)}  [${log.tag}]  ${log.message}`);
+    return header.concat(lines).join('\n') + '\n';
+}
+
+function downloadLogs() {
+    const logsContent = document.getElementById('logsContent');
+
+    // Always fetch a fresh copy: the panel may be collapsed or the stream stopped,
+    // in that case the DOM holds nothing to export
+    fetch('/logs-info?limit=500')
+        .then(response => {
+            // requireAuth() answers with 302 to /login: fetch follows it and returns 200 with HTML,
+            // so response.ok alone would not catch an expired session
+            if (response.redirected) {
+                throw new Error('SESSION_EXPIRED');
+            }
+            if (!response.ok) {
+                throw new Error('Failed to fetch logs: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.logs || !Array.isArray(data.logs) || data.logs.length === 0) {
+                if (logsContent) {
+                    logsContent.innerHTML = '<div class="logs-empty">Немає логів для збереження</div>';
+                }
+                return;
+            }
+
+            return fetchDeviceInfo().then(deviceInfo => {
+                const blob = new Blob([buildLogsText(data.logs, deviceInfo)], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = buildLogsFileName();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
+        })
+        .catch(err => {
+            console.error('Error downloading logs:', err);
+            if (logsContent) {
+                const message = (err && err.message === 'SESSION_EXPIRED')
+                    ? 'Сесія закінчилась, увійдіть знову'
+                    : 'Помилка при збереженні логів';
+                logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
+            }
+        });
+}
+
 function toggleSystemPanel() {
     const panel = document.getElementById('systemPanel');
     const button = document.getElementById('systemPanelToggle');
