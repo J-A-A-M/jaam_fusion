@@ -1950,15 +1950,54 @@ uint8_t getCurrentBrightnes() {
     }
     // режим яскравості 1: використовувати денну або нічну яскравість залежно від часу доби
     if (settings.getInt(BRIGHTNESS_MODE) == 1) {
-        return isItNightNow() ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+        bool isNight = isItNightNow();
+        // Логуємо визначений стан один раз і далі тільки самі переходи, а не кожну перевірку
+        static int timeNightActive = -1; // -1 - стан ще не визначався
+        if (timeNightActive != (int)isNight) {
+            LOG.printf("[BRIGHTNESS] %s %s mode by time (current hour: %d, night from %d, day from %d)\n",
+                       timeNightActive < 0 ? "Initial" : "Switched to", isNight ? "night" : "day",
+                       timeClient.hour(), settings.getInt(NIGHT_START), settings.getInt(DAY_START));
+            timeNightActive = isNight;
+        }
+        return isNight ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
     }
     // режим яскравості 2: використовувати денну або нічну яскравість залежно від рівня освітлення (якщо є датчик освітлення)
     if (settings.getInt(BRIGHTNESS_MODE) == 2 && lightSensor.isLightSensorAvailable()) {
         float lightLevel = lightSensor.getLightLevel();
-        int threshold = settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD);
+        // Захист від від'ємного порогу (може бути збережений в обхід валідації налаштувань напряму через API)
+        int threshold = max(0, settings.getInt(NIGHT_MODE_LIGHT_THRESHOLD));
+        // Односторонній гістерезис, щоб дрейф показань сенсора біля межі не смикав яскравість туди-сюди:
+        // в ніч переходимо рівно за порогом (як налаштував користувач), а назад у день - із запасом 20% (мінімум 1 люкс).
+        // Смуга росте тільки вгору, тому гістерезис працює і на малих порогах (в тому числі 1 люкс)
+        int margin = threshold > 0 ? max(1, threshold / 5) : 0;
+        int dayThreshold = threshold + margin;
+        // Стан зберігається між викликами; початкове значення (день) коригується на першому ж вимірі нижче порогу
+        static bool sensorNightActive = false;
+        static bool sensorStateLogged = false;
+        static bool sensorInvalidLogged = false;
         // Визначаємо день/ніч за рівнем освітлення
         if (!isnan(lightLevel)) {
-            return lightLevel < threshold ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+            sensorInvalidLogged = false;
+            bool wasNight = sensorNightActive;
+            if (sensorNightActive) {
+                if (lightLevel > dayThreshold) sensorNightActive = false;
+            } else {
+                if (lightLevel < threshold) sensorNightActive = true;
+            }
+            // Логуємо визначений стан один раз і далі тільки самі переходи, а не кожну перевірку
+            if (!sensorStateLogged || wasNight != sensorNightActive) {
+                LOG.printf("[BRIGHTNESS] %s %s mode by light sensor: %.1f lux (night below %d lux, day above %d lux)\n",
+                           sensorStateLogged ? "Switched to" : "Initial", sensorNightActive ? "night" : "day",
+                           lightLevel, threshold, dayThreshold);
+                sensorStateLogged = true;
+            }
+            return sensorNightActive ? settings.getInt(BRIGHTNESS_NIGHT) : settings.getInt(BRIGHTNESS_DAY);
+        }
+        // Датчик визначився, але показання невалідне - інакше мовчки віддали б основну яскравість.
+        // Логуємо один раз, а не двічі на секунду, і знову дозволяємо лог після відновлення сенсора
+        if (!sensorInvalidLogged) {
+            sensorInvalidLogged = true;
+            LOG.printf("[BRIGHTNESS] Light sensor gave no valid reading, falling back to main brightness\n");
         }
     }
     // За замовчуванням повертаємо основну яскравість
