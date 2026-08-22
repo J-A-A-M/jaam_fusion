@@ -52,6 +52,10 @@ class JaamClimateSensor {
         bool sht2xInitialized = false;
         bool sht3xInitialized = false;
         bool ahtxxInitialized = false;
+        // true only for the BMP280+AHT20/AHT21 combo case: a bare BMP280 has no
+        // humidity sensor and self-heats, so prefer the co-located AHT for both
+        // temperature and humidity there; BMP280 stays pressure-only.
+        bool useAhtForAmbient = false;
         float localTemp = NAN;
         float localHum = NAN;
         float localPressure = NAN;

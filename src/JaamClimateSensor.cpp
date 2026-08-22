@@ -112,6 +112,9 @@ bool JaamClimateSensor::begin() {
     LOG.printf("[SENSORS] Not found AHT2x/AHT3x temp/hum sensor!\n");
   }
 #endif
+#if AHTXX_ENABLED
+  useAhtForAmbient = bmp280Initialized && !bme280Initialized && ahtxxInitialized;
+#endif
 return bme280Initialized || bmp280Initialized || sht2xInitialized || sht3xInitialized || ahtxxInitialized;
 }
 
@@ -121,27 +124,24 @@ void JaamClimateSensor::read() {
     bme280->takeForcedMeasurement();
 
     localPressure = bme280->getPressureAsFloat() * 0.75006157584566;  //mmHg
+    localTemp = bme280->getTemperatureCelsiusAsFloat();
 
     if (bme280Initialized) {
-      localTemp = bme280->getTemperatureCelsiusAsFloat();
       localHum = bme280->getRelativeHumidityAsFloat();
     }
+
 #if AHTXX_ENABLED
-    else if (ahtxxInitialized) {
-      // BMP280 has no humidity sensor and tends to read a bit warm from
-      // self-heating, so on combo boards prefer the co-located AHT20/AHT21
-      // for both temperature and humidity; BMP280 stays pressure-only.
+    if (useAhtForAmbient) {
       float tempReading = ahtxx->readTemperature();
       float humReading = ahtxx->readHumidity();
-      localTemp = (tempReading != AHTXX_ERROR) ? tempReading : bme280->getTemperatureCelsiusAsFloat();
+      if (tempReading != AHTXX_ERROR) {
+        localTemp = tempReading;
+      }
       if (humReading != AHTXX_ERROR) {
         localHum = humReading;
       }
     }
 #endif
-    else {
-      localTemp = bme280->getTemperatureCelsiusAsFloat();
-    }
 
     // LOG.printf("[CLIMATE] BME280! Temp: %.2f°C  Humidity: %.2f%%  Pressure: %.2fmmHg\n", localTemp, localHum, localPressure);
     return;
