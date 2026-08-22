@@ -47,8 +47,14 @@ bool JaamClimateSensor::begin() {
   }
   bme280Initialized = false;
   bmp280Initialized = false;
-  bme280 = new ForcedBME280Float();
+  bme280 = new ForcedBME280Float(Wire, BMX280_I2C_ADDR);
   bme280->begin();
+  if (bme280->getChipID() != CHIP_ID_BME280 && bme280->getChipID() != CHIP_ID_BMP280) {
+    // not found at the standard address, retry at the alternate address (common on AHT20+BMP280 combo boards)
+    delete bme280;
+    bme280 = new ForcedBME280Float(Wire, BMX280_I2C_ALT_ADDR);
+    bme280->begin();
+  }
   switch (bme280->getChipID()) {
     case CHIP_ID_BME280:
       bme280Initialized = true;
@@ -114,11 +120,27 @@ void JaamClimateSensor::read() {
   if (bme280Initialized || bmp280Initialized) {
     bme280->takeForcedMeasurement();
 
-    localTemp = bme280->getTemperatureCelsiusAsFloat();
     localPressure = bme280->getPressureAsFloat() * 0.75006157584566;  //mmHg
 
     if (bme280Initialized) {
+      localTemp = bme280->getTemperatureCelsiusAsFloat();
       localHum = bme280->getRelativeHumidityAsFloat();
+    }
+#if AHTXX_ENABLED
+    else if (ahtxxInitialized) {
+      // BMP280 has no humidity sensor and tends to read a bit warm from
+      // self-heating, so on combo boards prefer the co-located AHT20/AHT21
+      // for both temperature and humidity; BMP280 stays pressure-only.
+      float tempReading = ahtxx->readTemperature();
+      float humReading = ahtxx->readHumidity();
+      localTemp = (tempReading != AHTXX_ERROR) ? tempReading : bme280->getTemperatureCelsiusAsFloat();
+      if (humReading != AHTXX_ERROR) {
+        localHum = humReading;
+      }
+    }
+#endif
+    else {
+      localTemp = bme280->getTemperatureCelsiusAsFloat();
     }
 
     // LOG.printf("[CLIMATE] BME280! Temp: %.2f°C  Humidity: %.2f%%  Pressure: %.2fmmHg\n", localTemp, localHum, localPressure);
@@ -190,7 +212,7 @@ String JaamClimateSensor::getSensorModel() {
     return "BME280";
   }
   if (bmp280Initialized) {
-    return "BMP280";
+    return ahtxxInitialized ? "BMP280+AHTxx" : "BMP280";
   }
   if (sht3xInitialized) {
     return "SHT3X";
