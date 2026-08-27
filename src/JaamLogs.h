@@ -22,6 +22,10 @@ struct LogEntry {
     uint8_t level;         // 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR
 };
 
+// Keeps the RAM estimate next to MAX_LOGS honest: every extra byte here costs
+// MAX_LOGS bytes of static RAM
+static_assert(sizeof(LogEntry) <= 160, "LogEntry grew - revisit the logBuffer RAM estimate");
+
 class JaamLogsManager;
 
 // Custom Print wrapper that intercepts all log output
@@ -97,7 +101,10 @@ public:
     // Get the logging print wrapper
     LoggingPrint* getLoggingPrint() { return loggingPrint; }
     
-    static const int MAX_LOGS = 100;  // Circular buffer size (~6KB total)
+    // Circular buffer capacity - upper bound for any limit a client may ask for.
+    // logBuffer lives in static RAM and sizeof(LogEntry) is 152 bytes on esp32,
+    // esp32s3 and esp32c3 (tag and message alone take 144), so it costs ~15KB
+    static const int MAX_LOGS = 100;
     
 private:
     LogEntry logBuffer[MAX_LOGS];     // Static circular buffer
