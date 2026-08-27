@@ -1093,6 +1093,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/logs-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleLogsInfo(); });
     server.on("/logs-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/logs-clear", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleLogsClear(); });
+    server.on("/logs-clear", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/models", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaModels(); });
     server.on("/ui-schema/models", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/sections", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaSections(); });
@@ -1167,6 +1169,17 @@ void JaamWeb::handleLogsInfo() {
     String response = logsManager.getLogsJson(limit);
     sendCompressedJson(&server, response);
     response.clear();
+}
+
+void JaamWeb::handleLogsClear() {
+    if (!validateMutatingRequest()) return;
+    setCrossOrigin();
+
+    // Log before clearing: LOG is captured into the very buffer being cleared, so
+    // logging afterwards would leave the confirmation as its only entry
+    LOG.printf("[WEB] Clearing logs buffer\n");
+    logsManager.clearLogs();
+    server.send(200, "application/json", "{\"success\":true}");
 }
 
 void JaamWeb::handleMapData() {

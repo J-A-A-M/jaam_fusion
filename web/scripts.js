@@ -1703,6 +1703,12 @@ function updateLogsInfo() {
             const logsContent = document.getElementById('logsContent');
             if (!logsContent) return;
             
+            if (data.logs.length === 0) {
+                // Without this the panel goes blank, e.g. on the poll right after a clear
+                logsContent.innerHTML = '<div class="logs-empty">Логи порожні</div>';
+                return;
+            }
+            
             // Clear and rebuild from scratch (circular buffer may overwrite old entries)
             logsContent.innerHTML = '';
             
@@ -1760,9 +1766,32 @@ function updateLogsInfo() {
 
 function clearLogs() {
     const logsContent = document.getElementById('logsContent');
-    if (logsContent) {
-        logsContent.innerHTML = '<div class="logs-empty">Логи очищені</div>';
-    }
+
+    // The ring buffer lives on the device, so wiping only the DOM would be undone
+    // by the next poll of /logs-info while the stream is running
+    fetch('/logs-clear', { method: 'POST' })
+        .then(response => {
+            // requireAuth() answers with 302 to /login: fetch follows it and returns 200 with HTML,
+            // so response.ok alone would not catch an expired session
+            if (response.redirected) {
+                throw new Error('SESSION_EXPIRED');
+            }
+            if (!response.ok) {
+                throw new Error('Failed to clear logs: ' + response.status);
+            }
+            if (logsContent) {
+                logsContent.innerHTML = '<div class="logs-empty">Логи очищені</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Error clearing logs:', err);
+            if (logsContent) {
+                const message = (err && err.message === 'SESSION_EXPIRED')
+                    ? 'Сесія закінчилась, увійдіть знову'
+                    : 'Помилка при очищенні логів';
+                logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
+            }
+        });
 }
 
 function formatLogTimestampFull(unixTimestamp) {
