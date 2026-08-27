@@ -83,7 +83,7 @@ public:
     void addLog(const char* tag, const char* message, uint8_t level = 1);
     
     // Get recent logs as JSON array (limit: max number of logs to return)
-    String getLogsJson(int limit = 100);
+    String getLogsJson(int limit = MAX_LOGS);
     
     // Get total number of logs captured
     int getLogCount() const {
@@ -97,8 +97,9 @@ public:
     // Get the logging print wrapper
     LoggingPrint* getLoggingPrint() { return loggingPrint; }
     
-private:
     static const int MAX_LOGS = 100;  // Circular buffer size (~6KB total)
+    
+private:
     LogEntry logBuffer[MAX_LOGS];     // Static circular buffer
     int writeIndex = 0;               // Where next log will be written
     int logCount = 0;                 // Number of logs currently stored (0 to MAX_LOGS)

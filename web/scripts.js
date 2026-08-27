@@ -1547,6 +1547,9 @@ let logsPanelVisible = true;
 let logsStreamActive = false;
 let logsUpdateInterval = null;
 let logsRequestPending = false;
+// Device ring buffer capacity - keep in sync with MAX_LOGS in src/JaamLogs.h.
+// /logs-info clamps anything larger, so asking for more only misleads the reader
+const LOGS_MAX_ENTRIES = 100;
 
 // Tag color mapping for different log types
 const logTagColors = {
@@ -1690,10 +1693,9 @@ function updateLogsInfo() {
         return;
     }
     
-    const limit = logsStreamActive ? 200 : 100;
     logsRequestPending = true;
     
-    fetch(`/logs-info?limit=${limit}`)
+    fetch(`/logs-info?limit=${LOGS_MAX_ENTRIES}`)
         .then(response => response.json())
         .then(data => {
             if (!data.logs || !Array.isArray(data.logs)) {
@@ -1874,7 +1876,7 @@ function downloadLogs() {
 
     // Always fetch a fresh copy: the panel may be collapsed or the stream stopped,
     // in that case the DOM holds nothing to export
-    fetch('/logs-info?limit=500')
+    fetch(`/logs-info?limit=${LOGS_MAX_ENTRIES}`)
         .then(response => {
             // requireAuth() answers with 302 to /login: fetch follows it and returns 200 with HTML,
             // so response.ok alone would not catch an expired session
