@@ -1717,7 +1717,7 @@ function updateLogsInfo() {
     // No limit: /logs-info defaults to the whole ring buffer, so the client never
     // has to carry its own copy of MAX_LOGS and drift away from the firmware
     fetch('/logs-info')
-        .then(response => response.json())
+        .then(response => checkLogsResponse(response, 'Failed to fetch logs').json())
         .then(data => {
             // A clear that landed while this request was in flight already emptied the
             // device buffer, so these entries are stale and would repaint the panel
@@ -1783,9 +1783,14 @@ function updateLogsInfo() {
         })
         .catch(err => {
             console.error('Error fetching logs:', err);
+            if (err && err.message === 'SESSION_EXPIRED' && logsStreamActive) {
+                // The poll runs once a second and every run would hit the same redirect
+                stopLogStream();
+            }
             const logsContent = document.getElementById('logsContent');
             if (logsContent) {
-                logsContent.innerHTML = '<div class="logs-error">Помилка при завантаженні логів</div>';
+                const message = logsErrorMessage(err, 'Помилка при завантаженні логів');
+                logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
             }
         })
         .finally(() => {
