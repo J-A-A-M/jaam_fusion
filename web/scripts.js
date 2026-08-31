@@ -1684,6 +1684,25 @@ function stopLogStream() {
     logsRequestPending = false;
 }
 
+// Shared by every /logs-* request: requireAuth() answers with 302 to /login, fetch
+// follows it and returns 200 with HTML, so response.ok alone would not catch an
+// expired session
+function checkLogsResponse(response, failure) {
+    if (response.redirected) {
+        throw new Error('SESSION_EXPIRED');
+    }
+    if (!response.ok) {
+        throw new Error(failure + ': ' + response.status);
+    }
+    return response;
+}
+
+function logsErrorMessage(err, fallback) {
+    return (err && err.message === 'SESSION_EXPIRED')
+        ? 'Сесія закінчилась, увійдіть знову'
+        : fallback;
+}
+
 function updateLogsInfo() {
     // Skip if previous request is still pending
     if (logsRequestPending) {
@@ -1772,14 +1791,7 @@ function clearLogs() {
     // by the next poll of /logs-info while the stream is running
     fetch('/logs-clear', { method: 'POST' })
         .then(response => {
-            // requireAuth() answers with 302 to /login: fetch follows it and returns 200 with HTML,
-            // so response.ok alone would not catch an expired session
-            if (response.redirected) {
-                throw new Error('SESSION_EXPIRED');
-            }
-            if (!response.ok) {
-                throw new Error('Failed to clear logs: ' + response.status);
-            }
+            checkLogsResponse(response, 'Failed to clear logs');
             if (logsContent) {
                 logsContent.innerHTML = '<div class="logs-empty">Логи очищені</div>';
             }
@@ -1787,9 +1799,7 @@ function clearLogs() {
         .catch(err => {
             console.error('Error clearing logs:', err);
             if (logsContent) {
-                const message = (err && err.message === 'SESSION_EXPIRED')
-                    ? 'Сесія закінчилась, увійдіть знову'
-                    : 'Помилка при очищенні логів';
+                const message = logsErrorMessage(err, 'Помилка при очищенні логів');
                 logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
             }
         });
@@ -1876,17 +1886,7 @@ function downloadLogs() {
     // Always fetch a fresh copy: the panel may be collapsed or the stream stopped,
     // in that case the DOM holds nothing to export
     fetch('/logs-info')
-        .then(response => {
-            // requireAuth() answers with 302 to /login: fetch follows it and returns 200 with HTML,
-            // so response.ok alone would not catch an expired session
-            if (response.redirected) {
-                throw new Error('SESSION_EXPIRED');
-            }
-            if (!response.ok) {
-                throw new Error('Failed to fetch logs: ' + response.status);
-            }
-            return response.json();
-        })
+        .then(response => checkLogsResponse(response, 'Failed to fetch logs').json())
         .then(data => {
             if (!data.logs || !Array.isArray(data.logs) || data.logs.length === 0) {
                 if (logsContent) {
@@ -1910,9 +1910,7 @@ function downloadLogs() {
         .catch(err => {
             console.error('Error downloading logs:', err);
             if (logsContent) {
-                const message = (err && err.message === 'SESSION_EXPIRED')
-                    ? 'Сесія закінчилась, увійдіть знову'
-                    : 'Помилка при збереженні логів';
+                const message = logsErrorMessage(err, 'Помилка при збереженні логів');
                 logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
             }
         });
