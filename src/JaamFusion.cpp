@@ -951,10 +951,26 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     int* ledsPtr = nullptr;
 
     if (strip == strip_main) {
+        // Прив'язка яскравості домашнього регіону стосується лише strip_main.
+        // region_id ненадійний при відбої (findHighestBitForLedFlat повертає 0,
+        // якщо жоден регіон LED не має активної тривоги) — перевіряємо реальну належність LED до регіонів.
+        
+        uint16_t region_buf[16];
+        int region_count = getRegionsForLedStatic(led_position, region_buf, 16);
+        uint16_t homeDistrict = (uint16_t)settings.getInt(HOME_DISTRICT);
+        for (int r = 0; r < region_count; ++r) {
+            if (region_buf[r] == homeDistrict) {
+                startBrightness = led.homeDistrictBrightness(startBrightness);
+                break;
+            }
+        }
         ledsIdx[0] = led_position;
         ledsPtr = ledsIdx;
         ledCount = 1;
     } else if (strip == strip_bg) {
+        // На фоновій стрічці (режим "Домашній регіон") яскравість завжди керується
+        // "Фонова стрічка" + її прив'язкою, а не яскравістю конкретного типу тривоги.
+        startBrightness = led.bgBrightness();
         ledsPtr = allLedsBg.data();
         ledCount = strip->numPixels();
     } else if (strip == strip_service) {
@@ -2128,7 +2144,9 @@ void initSettings() {
             case BRIGHTNESS_KABS:
             case BRIGHTNESS_BALLISTIC:
             case BRIGHTNESS_HOME_DISTRICT:
+            case BIND_HOME_DISTRICT_BRIGHTNESS:
             case BRIGHTNESS_BG:
+            case BIND_BG_BRIGHTNESS:
             case BRIGHTNESS_ANIMATION_END:
             case BRIGHTNESS_LAMP:
             case BRIGHTNESS_SERVICE:

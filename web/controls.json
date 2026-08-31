@@ -1745,6 +1745,13 @@
             1,
             "brightness",
             "%",
+            "bind_home_district_brightness==0"
+        ],
+        [
+            "bool",
+            "bind_home_district_brightness",
+            "Прив'язати яскравість домашнього регіону до загальної яскравості",
+            "brightness",
             ""
         ],
         [
@@ -1756,6 +1763,13 @@
             1,
             "brightness",
             "%",
+            ""
+        ],
+        [
+            "bool",
+            "bind_bg_brightness",
+            "Прив'язати яскравість фонової стрічки до загальної яскравості",
+            "brightness",
             ""
         ],
         [

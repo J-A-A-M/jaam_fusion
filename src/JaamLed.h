@@ -28,6 +28,8 @@ public:
     static uint8_t brightnessRelative(uint8_t percentLocal);
     static uint8_t brightnessParabolic(uint8_t percent);
     static uint8_t brightnessMapped(uint8_t percent);
+    static uint8_t homeDistrictBrightness(uint8_t baseBrightness);
+    static uint8_t bgBrightness();
 
     // Перевірка ініціалізації стрічки
     static bool isStripInitialized(Adafruit_NeoPixel* strip);

@@ -118,7 +118,9 @@ std::map<Type, SettingItemInt> intSettings = {
     {BRIGHTNESS_KABS, {"bkab", 100}},                      // KAB threat
     {BRIGHTNESS_BALLISTIC, {"bbal", 100}},                 // Ballistic threat
     {BRIGHTNESS_HOME_DISTRICT, {"bhd", 100}},              // Home district
+    {BIND_HOME_DISTRICT_BRIGHTNESS, {"bhb", 1}},           // Bind home district brightness to global brightness (0/1)
     {BRIGHTNESS_BG, {"bbg", 100}},                         // Background LEDs
+    {BIND_BG_BRIGHTNESS, {"bbb", 1}},                      // Bind bg strip brightness to global brightness (0/1)
     {BRIGHTNESS_SERVICE, {"bs", 50}},                      // Service LEDs
     {BRIGHTNESS_ANIMATION_END, {"baend", 20}},             // Animation end brightness
     {BRIGHTNESS_MIN, {"brmin", 3}},                        // Minimum allowed brightness
