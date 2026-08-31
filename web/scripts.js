@@ -1547,6 +1547,8 @@ let logsPanelVisible = true;
 let logsStreamActive = false;
 let logsUpdateInterval = null;
 let logsRequestPending = false;
+// Bumped on every clear so that /logs-info responses issued before it can be dropped
+let logsClearGeneration = 0;
 
 // Tag color mapping for different log types
 const logTagColors = {
@@ -1710,12 +1712,19 @@ function updateLogsInfo() {
     }
     
     logsRequestPending = true;
+    const generation = logsClearGeneration;
     
     // No limit: /logs-info defaults to the whole ring buffer, so the client never
     // has to carry its own copy of MAX_LOGS and drift away from the firmware
     fetch('/logs-info')
         .then(response => response.json())
         .then(data => {
+            // A clear that landed while this request was in flight already emptied the
+            // device buffer, so these entries are stale and would repaint the panel
+            if (generation !== logsClearGeneration) {
+                return;
+            }
+            
             if (!data.logs || !Array.isArray(data.logs)) {
                 return;
             }
@@ -1786,6 +1795,10 @@ function updateLogsInfo() {
 
 function clearLogs() {
     const logsContent = document.getElementById('logsContent');
+
+    // Marks every /logs-info request already in flight as stale: the poll runs once a
+    // second, and its response would otherwise arrive with the entries just cleared
+    logsClearGeneration++;
 
     // The ring buffer lives on the device, so wiping only the DOM would be undone
     // by the next poll of /logs-info while the stream is running
