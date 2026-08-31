@@ -22,9 +22,10 @@ struct LogEntry {
     uint8_t level;         // 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR
 };
 
-// Keeps the RAM estimate next to MAX_LOGS honest: every extra byte here costs
-// MAX_LOGS bytes of static RAM. The bound is the exact current size, because a
-// looser one would let a 64-bit time_t through - that alone adds 8 bytes here
+// Keeps the RAM estimate in the MAX_LOGS comment below honest: every extra byte
+// here costs MAX_LOGS bytes of static RAM. The bound is the exact current size,
+// because a looser one would let a 64-bit time_t through, and that alone adds 8
+// bytes per entry
 static_assert(sizeof(LogEntry) <= 152, "LogEntry grew - revisit the logBuffer RAM estimate");
 
 class JaamLogsManager;
@@ -104,7 +105,8 @@ public:
     
     // Circular buffer capacity - upper bound for any limit a client may ask for.
     // logBuffer lives in static RAM and sizeof(LogEntry) is 152 bytes on esp32,
-    // esp32s3 and esp32c3 (tag and message alone take 144), so it costs ~15KB
+    // esp32s3 and esp32c3 (tag and message alone take 144), so it costs ~15KB.
+    // The static_assert under the LogEntry definition guards that 152.
     static const int MAX_LOGS = 100;
     
 private:
