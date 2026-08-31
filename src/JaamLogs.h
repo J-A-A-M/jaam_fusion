@@ -23,8 +23,9 @@ struct LogEntry {
 };
 
 // Keeps the RAM estimate next to MAX_LOGS honest: every extra byte here costs
-// MAX_LOGS bytes of static RAM
-static_assert(sizeof(LogEntry) <= 160, "LogEntry grew - revisit the logBuffer RAM estimate");
+// MAX_LOGS bytes of static RAM. The bound is the exact current size, because a
+// looser one would let a 64-bit time_t through - that alone adds 8 bytes here
+static_assert(sizeof(LogEntry) <= 152, "LogEntry grew - revisit the logBuffer RAM estimate");
 
 class JaamLogsManager;
 
