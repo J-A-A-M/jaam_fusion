@@ -101,6 +101,7 @@ extern int                              weatherAutoMaxTemp;
 extern bool                             weatherAutoBoundsValid;
 extern uint16_t                         alertsFlat[MAX_REGIONS + 1];
 extern int8_t                           ledBitCache[MAX_LEDS_STRIP_MAIN];
+extern bool                              ledHomeDistrictCache[MAX_LEDS_STRIP_MAIN];
 extern JaamSettings                     settings;
 extern JaamFirmwareUpdate               fwUpdate;
 extern JaamBattery                      battery;
@@ -613,6 +614,28 @@ inline int getRegionsForLedStatic(int led_position, uint16_t* out, int max_out) 
         }
     }
     return count;
+}
+
+// Перевіряє, чи LED належить до домашнього регіону (HOME_DISTRICT) — O(1) через ledHomeDistrictCache.
+inline bool isLedInHomeDistrict(int led_position) {
+    if (led_position < 0 || led_position >= MAX_LEDS_STRIP_MAIN) return false;
+    return ledHomeDistrictCache[led_position];
+}
+
+// Перераховує ledHomeDistrictCache для поточної currentMap і HOME_DISTRICT.
+// Викликати після зміни region-мапи (generateCurrentRegionMap) і після зміни HOME_DISTRICT.
+inline void rebuildLedHomeDistrictCache() {
+    uint16_t homeDistrict = (uint16_t)settings.getInt(HOME_DISTRICT);
+    memset(ledHomeDistrictCache, 0, sizeof(ledHomeDistrictCache));
+    const RegionLedMapMeta* meta = findRegionMeta(homeDistrict);
+    if (!meta) return;
+    const uint16_t* leds = getRegionLeds(meta);
+    for (uint8_t j = 0; j < meta->led_count; ++j) {
+        int led = (int)leds[j];
+        if (led >= 0 && led < MAX_LEDS_STRIP_MAIN) {
+            ledHomeDistrictCache[led] = true;
+        }
+    }
 }
 
 // Повертає найвищий priority-bit для LED використовуючи alertsFlat (без heap).

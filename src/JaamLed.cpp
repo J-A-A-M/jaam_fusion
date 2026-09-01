@@ -17,6 +17,22 @@ uint8_t JaamLed::brightnessRelative(uint8_t percentLocal) {
     return brightnessMapped(combinedPercent);
 }
 
+uint8_t JaamLed::homeDistrictBrightness(uint8_t baseBrightness) {
+    if (settings.getBool(BIND_HOME_DISTRICT_BRIGHTNESS)) {
+        return baseBrightness; // повторює загальне налаштування типу тривоги/відбою, без змін
+    }
+    uint8_t bhd = settings.getInt(BRIGHTNESS_HOME_DISTRICT);
+    return brightnessMapped(bhd); // незалежно від CURRENT_BRIGHTNESS і від типу тривоги
+}
+
+uint8_t JaamLed::bgBrightness() {
+    uint8_t bbg = settings.getInt(BRIGHTNESS_BG);
+    if (settings.getBool(BIND_BG_BRIGHTNESS)) {
+        return brightnessRelative(bbg);   // прив'язано до CURRENT_BRIGHTNESS (глобальна/денна/нічна)
+    }
+    return brightnessMapped(bbg);         // незалежно від CURRENT_BRIGHTNESS
+}
+
 uint8_t JaamLed::brightnessParabolic(uint8_t percent) {
     if (percent == 0) return 0; // Швидкий вихід для 0% яскравості
     // // Використовуємо пряму параболічну залежність

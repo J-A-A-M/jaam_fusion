@@ -951,6 +951,11 @@ void AnimationManager::adaptAllAnimationBrightness() {
             if (s.bit >= -1) {
                 std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(s.bit);
                 uint8_t newStart = result.second;
+
+                if (isLedInHomeDistrict(i)) {
+                    newStart = led.homeDistrictBrightness(newStart);
+                }
+
                 if (newStart != s.startBr) {
                     LOG.printf("[ANIMATION] Adapt startBrightness led %d: bit=%d %u->%u\n", i, s.bit, s.startBr, newStart);
                     s.startBr = newStart;
@@ -963,8 +968,9 @@ void AnimationManager::adaptAllAnimationBrightness() {
         }
         if (bgState.active) {
             if (bgState.bit >= -1) {
-                std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(bgState.bit);
-                bgState.startBr = result.second;
+                // Фонова стрічка (режим "Домашній регіон") завжди керується BRIGHTNESS_BG,
+                // а не яскравістю конкретного типу тривоги.
+                bgState.startBr = led.bgBrightness();
             }
             bgState.endBr = globalEnd;
         }
@@ -1149,7 +1155,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         break;
                     case MapModes::ALERT:
                         color = regionActualColor(settings->getInt(HOME_DISTRICT), false);
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     case MapModes::WEATHER: {
                         int hidx = getRegionFlatIdx(settings->getInt(HOME_DISTRICT));
@@ -1161,7 +1167,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     }
                     case MapModes::ENERGY: {
@@ -1172,7 +1178,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                         } else {
                             color = colorFromHex(settings->getString(ENERGY_COLOR_UNKNOWN));
                         }
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     }
                     case MapModes::RADIATION: {
@@ -1184,12 +1190,12 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
                             // немає даних — налаштовуваний колір
                             color = colorFromHex(settings->getString(RADIATION_COLOR_UNKNOWN));
                         }
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     }
                     case MapModes::FLAG:
                         color = DefaultColors::FLAG_BLUE;
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     case MapModes::LAMP:
                         color = colorFromHex(settings->getString(COLOR_LAMP));
@@ -1201,7 +1207,7 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
         } else {
             LOG.printf("[COLOR] bg strip color SELF\n");
             color = colorFromHex(settings->getString(COLOR_BG));
-            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+            brightness = led.bgBrightness();
         }
     }
     if (strip == strip_service) {
@@ -1227,17 +1233,21 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     uint32_t color;
     uint8_t brightness = 0;
     int highest_bit = findHighestBitForRegionFlat(region_id);
+    bool isHome = (region_id == settings->getInt(HOME_DISTRICT));
 
     if (highest_bit != -1) {
         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
         color = result.first;
         brightness = result.second;
+        if (isHome) {
+            brightness = led.homeDistrictBrightness(brightness);
+        }
     } else {
         color = colorFromHex(settings->getString(COLOR_CLEAR));
         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
-        if (region_id == settings->getInt(HOME_DISTRICT)) {
+        if (isHome) {
             color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
-            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
+            brightness = led.homeDistrictBrightness(brightness);
         }
     }
     if (adapted) {
@@ -1278,20 +1288,21 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                                       ? (int)ledBitCache[position]
                                       : findHighestBitForLedFlat(position);
                     }
+                    bool isHome = isLedInHomeDistrict(position);
                     if (highest_bit != -1) {
                         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                         color = result.first;
                         brightness = result.second;
+                        if (isHome) {
+                            brightness = led.homeDistrictBrightness(brightness);
+                        }
                     } else {
                         // Немає тривоги — перевіряємо домашній регіон (region_buf уже заповнений вище)
                         color = colorFromHex(settings->getString(COLOR_CLEAR));
                         brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
-                        for (int r = 0; r < region_count; ++r) {
-                            if (region_buf[r] == (uint16_t)settings->getInt(HOME_DISTRICT)) {
-                                color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
-                                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_HOME_DISTRICT));
-                                break;
-                            }
+                        if (isHome) {
+                            color = colorFromHex(settings->getString(COLOR_HOME_DISTRICT));
+                            brightness = led.homeDistrictBrightness(brightness);
                         }
                     }
                     break;
@@ -1403,7 +1414,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
         } else {
             if (settings->getInt(BG_LED_MODE) == BgLedModes::COLOR_MAP) {
                 color = getBgLedColor(position);
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                brightness = led.bgBrightness();
             } else {
                 switch (getCurrentMapMode()) {
                     case MapModes::OFF:
@@ -1423,7 +1434,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     }
                     case MapModes::WEATHER: {
@@ -1436,7 +1447,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
                         }
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     }
                     case MapModes::ENERGY: {
@@ -1447,7 +1458,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         } else {
                             color = colorFromHex(settings->getString(ENERGY_COLOR_UNKNOWN));
                         }
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     }
                     case MapModes::RADIATION: {
@@ -1459,12 +1470,12 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                             // немає даних — налаштовуваний колір
                             color = colorFromHex(settings->getString(RADIATION_COLOR_UNKNOWN));
                         }
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     }
                     case MapModes::FLAG:
                         color = DefaultColors::FLAG_BLUE;
-                        brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BG));
+                        brightness = led.bgBrightness();
                         break;
                     case MapModes::LAMP:
                         color = colorFromHex(settings->getString(COLOR_LAMP));
