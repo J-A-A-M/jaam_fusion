@@ -952,14 +952,8 @@ void AnimationManager::adaptAllAnimationBrightness() {
                 std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(s.bit);
                 uint8_t newStart = result.second;
 
-                uint16_t region_buf[16];
-                int region_count = getRegionsForLedStatic(i, region_buf, 16);
-                uint16_t homeDistrict = (uint16_t)settings->getInt(HOME_DISTRICT);
-                for (int r = 0; r < region_count; ++r) {
-                    if (region_buf[r] == homeDistrict) {
-                        newStart = led.homeDistrictBrightness(newStart);
-                        break;
-                    }
+                if (isLedInHomeDistrict(i)) {
+                    newStart = led.homeDistrictBrightness(newStart);
                 }
 
                 if (newStart != s.startBr) {
@@ -1294,14 +1288,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                                       ? (int)ledBitCache[position]
                                       : findHighestBitForLedFlat(position);
                     }
-                    bool isHome = false;
-                    uint16_t homeDistrict = (uint16_t)settings->getInt(HOME_DISTRICT);
-                    for (int r = 0; r < region_count; ++r) {
-                        if (region_buf[r] == homeDistrict) {
-                            isHome = true;
-                            break;
-                        }
-                    }
+                    bool isHome = isLedInHomeDistrict(position);
                     if (highest_bit != -1) {
                         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                         color = result.first;

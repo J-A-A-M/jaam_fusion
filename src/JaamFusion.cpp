@@ -135,6 +135,8 @@ uint8_t  energyFlat[MAX_REGIONS + 1] = {};
 uint16_t radiationFlat[MAX_REGIONS + 1] = {};
 // ~500 B BSS: led_pos → поточний найвищий alert-bit (-1 = немає тривоги)
 int8_t   ledBitCache[MAX_LEDS_STRIP_MAIN];
+// ~500 B BSS: led_pos → чи належить LED до HOME_DISTRICT (кеш, щоб не сканувати регіони на кожен виклик)
+bool     ledHomeDistrictCache[MAX_LEDS_STRIP_MAIN];
 // ~63 B BSS: бітсет — які LED змінились у поточному пакеті
 static uint8_t s_ledDirty[(MAX_LEDS_STRIP_MAIN + 7) / 8];
 
@@ -954,15 +956,8 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
         // Прив'язка яскравості домашнього регіону стосується лише strip_main.
         // region_id ненадійний при відбої (findHighestBitForLedFlat повертає 0,
         // якщо жоден регіон LED не має активної тривоги) — перевіряємо реальну належність LED до регіонів.
-        
-        uint16_t region_buf[16];
-        int region_count = getRegionsForLedStatic(led_position, region_buf, 16);
-        uint16_t homeDistrict = (uint16_t)settings.getInt(HOME_DISTRICT);
-        for (int r = 0; r < region_count; ++r) {
-            if (region_buf[r] == homeDistrict) {
-                startBrightness = led.homeDistrictBrightness(startBrightness);
-                break;
-            }
+        if (isLedInHomeDistrict(led_position)) {
+            startBrightness = led.homeDistrictBrightness(startBrightness);
         }
         ledsIdx[0] = led_position;
         ledsPtr = ledsIdx;
@@ -2114,6 +2109,7 @@ void initSettings() {
             
             // Домашній регіон (кольори + анімації + оновлення бітів)
             case HOME_DISTRICT:
+                rebuildLedHomeDistrictCache();
                 adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
                 handleUpdateHomeAlertBit();
@@ -2481,6 +2477,7 @@ void initMapping() {
     LOG.printf("[INIT] Init mapping\n");
     // Ініціалізуємо мапінг регіонів
     generateCurrentRegionMap(hardwareConfig);
+    rebuildLedHomeDistrictCache();
     // Ініціалізуємо кольори задніх LED
     generateBgLedColorsMap();
 }
@@ -2979,6 +2976,7 @@ void handleAdaptAnimationType() {
 void handleRecalculateLeds() {
     LOG.printf("[SETTINGS] Recalculating LEDs\n");
     generateCurrentRegionMap(hardwareConfig);
+    rebuildLedHomeDistrictCache();
 }
 
 void handleReconnectStrips(bool main = false, bool bg = false, bool service = false) {
