@@ -18,7 +18,7 @@ uint8_t JaamLed::brightnessRelative(uint8_t percentLocal) {
 }
 
 uint8_t JaamLed::homeDistrictBrightness(uint8_t baseBrightness) {
-    if (settings.getInt(BIND_HOME_DISTRICT_BRIGHTNESS)) {
+    if (settings.getBool(BIND_HOME_DISTRICT_BRIGHTNESS)) {
         return baseBrightness; // повторює загальне налаштування типу тривоги/відбою, без змін
     }
     uint8_t bhd = settings.getInt(BRIGHTNESS_HOME_DISTRICT);
@@ -27,7 +27,7 @@ uint8_t JaamLed::homeDistrictBrightness(uint8_t baseBrightness) {
 
 uint8_t JaamLed::bgBrightness() {
     uint8_t bbg = settings.getInt(BRIGHTNESS_BG);
-    if (settings.getInt(BIND_BG_BRIGHTNESS)) {
+    if (settings.getBool(BIND_BG_BRIGHTNESS)) {
         return brightnessRelative(bbg);   // прив'язано до CURRENT_BRIGHTNESS (глобальна/денна/нічна)
     }
     return brightnessMapped(bbg);         // незалежно від CURRENT_BRIGHTNESS
