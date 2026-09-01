@@ -626,7 +626,7 @@ inline bool isLedInHomeDistrict(int led_position) {
 // Викликати після зміни region-мапи (generateCurrentRegionMap) і після зміни HOME_DISTRICT.
 inline void rebuildLedHomeDistrictCache() {
     uint16_t homeDistrict = (uint16_t)settings.getInt(HOME_DISTRICT);
-    memset(ledHomeDistrictCache, 0, sizeof(bool) * MAX_LEDS_STRIP_MAIN);
+    memset(ledHomeDistrictCache, 0, sizeof(ledHomeDistrictCache));
     const RegionLedMapMeta* meta = findRegionMeta(homeDistrict);
     if (!meta) return;
     const uint16_t* leds = getRegionLeds(meta);
