@@ -148,7 +148,7 @@ String JaamLogsManager::getLogsJson(int limit) {
     }
     
     // Validate limit
-    if (limit <= 0) limit = 100;
+    if (limit <= 0) limit = MAX_LOGS;
     if (limit > logCount) limit = logCount;
     
     // Determine starting index in circular buffer

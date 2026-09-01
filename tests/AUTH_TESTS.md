@@ -36,6 +36,7 @@ pytest tests/test_web_auth.py --ip <ip-пристрою> --login admin --passwor
 | `test_root_accessible` | `GET /` повертає 200 |
 | `test_system_info_accessible` | `GET /system-info` повертає 200 |
 | `test_alerts_info_accessible` | `GET /alerts-info` повертає 200 |
+| `test_logs_info_accessible` | `GET /logs-info` повертає 200 |
 | `test_login_page_accessible` | `GET /login` при вимкненій авторизації повертає 302 → `/` |
 | `test_static_assets_accessible` | `/styles.css` і `/scripts.js` повертають 200 |
 
@@ -54,6 +55,9 @@ pytest tests/test_web_auth.py --ip <ip-пристрою> --login admin --passwor
 | `test_login_empty_submitted_password` | Порожній пароль → `error=1` |
 | `test_login_invalid_recovery_token` | Невірний токен відновлення → `error=2` |
 | `test_login_empty_recovery_token_falls_through_to_login` | Порожній recovery-токен → сервер ігнорує recovery і перевіряє логін/пароль → `error=1` |
+| `test_logs_clear_redirects_without_session` | `POST /logs-clear` без сесії → 302 на `/login` |
+| `test_logs_clear_rejects_foreign_origin` | `POST /logs-clear` із чужим `Origin` → 403 (CSRF-перевірка) |
+| `test_logs_clear_with_session` | `POST /logs-clear` із сесією → 200 і `{"success":true}` |
 | `test_logout_clears_session` | Після виходу сесія більше не дає доступу |
 | `test_login_page_public` | `GET /login` повертає 200 без сесії |
 | `test_static_assets_public` | Статичні файли повертають 200 без сесії |

@@ -1547,6 +1547,8 @@ let logsPanelVisible = true;
 let logsStreamActive = false;
 let logsUpdateInterval = null;
 let logsRequestPending = false;
+// Bumped on every clear so that /logs-info responses issued before it can be dropped
+let logsClearGeneration = 0;
 
 // Tag color mapping for different log types
 const logTagColors = {
@@ -1684,24 +1686,57 @@ function stopLogStream() {
     logsRequestPending = false;
 }
 
+// Shared by every /logs-* request: requireAuth() answers with 302 to /login, fetch
+// follows it and returns 200 with HTML, so response.ok alone would not catch an
+// expired session
+function checkLogsResponse(response, failure) {
+    if (response.redirected) {
+        throw new Error('SESSION_EXPIRED');
+    }
+    if (!response.ok) {
+        throw new Error(failure + ': ' + response.status);
+    }
+    return response;
+}
+
+function logsErrorMessage(err, fallback) {
+    return (err && err.message === 'SESSION_EXPIRED')
+        ? 'Сесія закінчилась, увійдіть знову'
+        : fallback;
+}
+
 function updateLogsInfo() {
     // Skip if previous request is still pending
     if (logsRequestPending) {
         return;
     }
     
-    const limit = logsStreamActive ? 200 : 100;
     logsRequestPending = true;
+    const generation = logsClearGeneration;
     
-    fetch(`/logs-info?limit=${limit}`)
-        .then(response => response.json())
+    // No limit: /logs-info defaults to the whole ring buffer, so the client never
+    // has to carry its own copy of MAX_LOGS and drift away from the firmware
+    fetch('/logs-info')
+        .then(response => checkLogsResponse(response, 'Failed to fetch logs').json())
         .then(data => {
+            // A clear that landed while this request was in flight already emptied the
+            // device buffer, so these entries are stale and would repaint the panel
+            if (generation !== logsClearGeneration) {
+                return;
+            }
+            
             if (!data.logs || !Array.isArray(data.logs)) {
                 return;
             }
             
             const logsContent = document.getElementById('logsContent');
             if (!logsContent) return;
+            
+            if (data.logs.length === 0) {
+                // Without this the panel goes blank, e.g. on the poll right after a clear
+                logsContent.innerHTML = '<div class="logs-empty">Логи порожні</div>';
+                return;
+            }
             
             // Clear and rebuild from scratch (circular buffer may overwrite old entries)
             logsContent.innerHTML = '';
@@ -1748,9 +1783,14 @@ function updateLogsInfo() {
         })
         .catch(err => {
             console.error('Error fetching logs:', err);
+            if (err && err.message === 'SESSION_EXPIRED' && logsStreamActive) {
+                // The poll runs once a second and every run would hit the same redirect
+                stopLogStream();
+            }
             const logsContent = document.getElementById('logsContent');
             if (logsContent) {
-                logsContent.innerHTML = '<div class="logs-error">Помилка при завантаженні логів</div>';
+                const message = logsErrorMessage(err, 'Помилка при завантаженні логів');
+                logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
             }
         })
         .finally(() => {
@@ -1760,9 +1800,27 @@ function updateLogsInfo() {
 
 function clearLogs() {
     const logsContent = document.getElementById('logsContent');
-    if (logsContent) {
-        logsContent.innerHTML = '<div class="logs-empty">Логи очищені</div>';
-    }
+
+    // Marks every /logs-info request already in flight as stale: the poll runs once a
+    // second, and its response would otherwise arrive with the entries just cleared
+    logsClearGeneration++;
+
+    // The ring buffer lives on the device, so wiping only the DOM would be undone
+    // by the next poll of /logs-info while the stream is running
+    fetch('/logs-clear', { method: 'POST' })
+        .then(response => {
+            checkLogsResponse(response, 'Failed to clear logs');
+            if (logsContent) {
+                logsContent.innerHTML = '<div class="logs-empty">Логи очищені</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Error clearing logs:', err);
+            if (logsContent) {
+                const message = logsErrorMessage(err, 'Помилка при очищенні логів');
+                logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
+            }
+        });
 }
 
 function formatLogTimestampFull(unixTimestamp) {
@@ -1845,18 +1903,8 @@ function downloadLogs() {
 
     // Always fetch a fresh copy: the panel may be collapsed or the stream stopped,
     // in that case the DOM holds nothing to export
-    fetch('/logs-info?limit=500')
-        .then(response => {
-            // requireAuth() answers with 302 to /login: fetch follows it and returns 200 with HTML,
-            // so response.ok alone would not catch an expired session
-            if (response.redirected) {
-                throw new Error('SESSION_EXPIRED');
-            }
-            if (!response.ok) {
-                throw new Error('Failed to fetch logs: ' + response.status);
-            }
-            return response.json();
-        })
+    fetch('/logs-info')
+        .then(response => checkLogsResponse(response, 'Failed to fetch logs').json())
         .then(data => {
             if (!data.logs || !Array.isArray(data.logs) || data.logs.length === 0) {
                 if (logsContent) {
@@ -1880,9 +1928,7 @@ function downloadLogs() {
         .catch(err => {
             console.error('Error downloading logs:', err);
             if (logsContent) {
-                const message = (err && err.message === 'SESSION_EXPIRED')
-                    ? 'Сесія закінчилась, увійдіть знову'
-                    : 'Помилка при збереженні логів';
+                const message = logsErrorMessage(err, 'Помилка при збереженні логів');
                 logsContent.innerHTML = '<div class="logs-error">' + message + '</div>';
             }
         });

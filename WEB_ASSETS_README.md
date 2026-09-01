@@ -44,7 +44,9 @@ jaam_fusion/
 │   ├── ui_schema_sections.json  # UI секції (статичні)
 │   └── controls.json            # UI контроли без значень (статичні)
 ├── tools/
-│   └── compress_assets.py       # PlatformIO pre-build script
+│   ├── pre_build.py             # PlatformIO pre-build script (обгортка)
+│   ├── compress_assets.py       # Компресія веб-ресурсів, запускається з pre_build.py
+│   └── convert_region_map.py    # Окремий pre-build крок (не про веб-ресурси)
 └── src/
     ├── web_assets.h             # Auto-generated (GZIP compressed arrays)
     └── JaamWeb.cpp              # Використовує compressed assets
@@ -53,7 +55,7 @@ jaam_fusion/
 ### Як це працює
 
 1. **Вихідні файли**: CSS і JS зберігаються у папці `web/` як звичайні text файли
-2. **Pre-build компресія**: Перед кожною збіркою PlatformIO запускає `tools/compress_assets.py`
+2. **Pre-build компресія**: Перед кожною збіркою PlatformIO запускає `tools/pre_build.py`, який викликає `tools/compress_assets.py`
 3. **Генерація header**: Скрипт створює `src/web_assets.h` з GZIP-compressed binary arrays
 4. **Вбудовування**: JaamWeb.cpp включає web_assets.h та відправляє compressed дані з `Content-Encoding: gzip`
 5. **Браузер**: Автоматично розпаковує GZIP дані
@@ -83,7 +85,7 @@ platformio run
 platformio run -e firmware
 ```
 
-Компресія відбувається автоматично перед кожною збіркою завдяки `extra_scripts = pre:tools/compress_assets.py` у `platformio.ini`.
+Компресія відбувається автоматично перед кожною збіркою завдяки `extra_scripts = pre:tools/pre_build.py` у `platformio.ini`. `tools/pre_build.py` — це обгортка, яка послідовно запускає `tools/compress_assets.py` і `tools/convert_region_map.py`.
 
 ## Технічні деталі
 
@@ -219,7 +221,7 @@ Compressed arrays зберігаються в Flash пам'яті ESP32 (`PROGME
 ```bash
 # Перевірте platformio.ini
 grep extra_scripts platformio.ini
-# Повинно бути: extra_scripts = pre:tools/compress_assets.py
+# Повинно бути: extra_scripts = pre:tools/pre_build.py
 ```
 
 ### Помилка компіляції "web_assets.h not found"

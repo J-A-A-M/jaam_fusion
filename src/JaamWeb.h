@@ -48,6 +48,7 @@ private:
     void handleSystemInfo();
     void handleAlertsInfo();
     void handleLogsInfo();
+    void handleLogsClear();
     void handleUiSchemaModels();
     void handleUiSchemaSections();
     void handleUiSchemaDropdownLists();

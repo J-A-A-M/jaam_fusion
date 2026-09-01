@@ -164,6 +164,10 @@ class TestAuthDisabled:
         resp = requests.get(base_url + "/alerts-info", timeout=TIMEOUT)
         assert resp.status_code == 200
 
+    def test_logs_info_accessible(self, base_url):
+        resp = requests.get(base_url + "/logs-info", timeout=TIMEOUT)
+        assert resp.status_code == 200
+
     def test_login_page_accessible(self, base_url):
         # /login redirects to / when auth is disabled
         resp = requests.get(base_url + "/login", allow_redirects=False, timeout=TIMEOUT)
@@ -188,7 +192,7 @@ class TestAuthEnabled:
         assert urlparse(resp.headers.get("Location", "")).path == "/login"
 
     def test_protected_endpoints_redirect_without_session(self, base_url):
-        for path in ["/system-info", "/alerts-info", "/map-data", "/ui-schema/models"]:
+        for path in ["/system-info", "/alerts-info", "/logs-info", "/map-data", "/ui-schema/models"]:
             resp = requests.get(base_url + path, allow_redirects=False, timeout=TIMEOUT)
             assert resp.status_code == 302, f"{path} should redirect without session"
             assert urlparse(resp.headers.get("Location", "")).path == "/login"
@@ -235,6 +239,34 @@ class TestAuthEnabled:
         _, resp = do_recovery_login(base_url, "")
         assert resp.status_code == 302
         assert "error=1" in resp.headers.get("Location", "")
+
+    def test_logs_clear_redirects_without_session(self, base_url):
+        resp = requests.post(base_url + "/logs-clear", allow_redirects=False, timeout=TIMEOUT)
+        assert resp.status_code == 302
+        assert urlparse(resp.headers.get("Location", "")).path == "/login"
+
+    def test_logs_clear_rejects_foreign_origin(self, base_url, ensure_auth_enabled):
+        creds = ensure_auth_enabled
+        session, resp = do_login(base_url, creds["login"], creds["password"])
+        assert resp.status_code == 302 and "error" not in resp.headers.get("Location", "")
+
+        resp = session.post(
+            base_url + "/logs-clear",
+            headers={"Origin": "http://not-this-device.example"},
+            allow_redirects=False,
+            timeout=TIMEOUT,
+        )
+        assert resp.status_code == 403
+
+    def test_logs_clear_with_session(self, base_url, ensure_auth_enabled):
+        # Empties the device log buffer, which is a debugging aid with no persistence
+        creds = ensure_auth_enabled
+        session, resp = do_login(base_url, creds["login"], creds["password"])
+        assert resp.status_code == 302 and "error" not in resp.headers.get("Location", "")
+
+        resp = session.post(base_url + "/logs-clear", allow_redirects=False, timeout=TIMEOUT)
+        assert resp.status_code == 200
+        assert resp.json().get("success") is True
 
     def test_logout_clears_session(self, base_url, ensure_auth_enabled):
         creds = ensure_auth_enabled

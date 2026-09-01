@@ -1093,6 +1093,8 @@ void JaamWeb::begin(Adafruit_NeoPixel* strip_main, Adafruit_NeoPixel* strip_bg, 
     server.on("/alerts-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/logs-info", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleLogsInfo(); });
     server.on("/logs-info", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
+    server.on("/logs-clear", HTTP_POST, [this]() { if (!requireAuth()) return; this->handleLogsClear(); });
+    server.on("/logs-clear", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/models", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaModels(); });
     server.on("/ui-schema/models", HTTP_OPTIONS, [this]() { this->sendCrossOriginHeader(); });
     server.on("/ui-schema/sections", HTTP_GET, [this]() { if (!requireAuth()) return; this->handleUiSchemaSections(); });
@@ -1154,19 +1156,30 @@ void JaamWeb::handleAlertsInfo() {
 void JaamWeb::handleLogsInfo() {
     setCrossOrigin();
     
-    // Get limit from query parameter (default 100)
-    int limit = 100;
+    // Get limit from query parameter (defaults to the whole buffer)
+    int limit = JaamLogsManager::MAX_LOGS;
     if (server.hasArg("limit")) {
         String limitStr = server.arg("limit");
         int parsed = 0;
         if (parseStrictInt(limitStr, parsed)) {
-            limit = constrain(parsed, 10, 500);
+            limit = constrain(parsed, 10, JaamLogsManager::MAX_LOGS);
         }
     }
     
     String response = logsManager.getLogsJson(limit);
     sendCompressedJson(&server, response);
     response.clear();
+}
+
+void JaamWeb::handleLogsClear() {
+    if (!validateMutatingRequest()) return;
+    setCrossOrigin();
+
+    // Log before clearing: LOG is captured into the very buffer being cleared, so
+    // logging afterwards would leave the confirmation as its only entry
+    LOG.printf("[WEB] Clearing logs buffer\n");
+    logsManager.clearLogs();
+    server.send(200, "application/json", "{\"success\":true}");
 }
 
 void JaamWeb::handleMapData() {

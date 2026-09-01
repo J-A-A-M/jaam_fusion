@@ -22,6 +22,12 @@ struct LogEntry {
     uint8_t level;         // 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR
 };
 
+// Keeps the RAM estimate in the MAX_LOGS comment below honest: every extra byte
+// here costs MAX_LOGS bytes of static RAM. The bound is the exact current size,
+// because a looser one would let a 64-bit time_t through, and that alone adds 8
+// bytes per entry
+static_assert(sizeof(LogEntry) <= 152, "LogEntry grew - revisit the logBuffer RAM estimate");
+
 class JaamLogsManager;
 
 // Custom Print wrapper that intercepts all log output
@@ -83,7 +89,7 @@ public:
     void addLog(const char* tag, const char* message, uint8_t level = 1);
     
     // Get recent logs as JSON array (limit: max number of logs to return)
-    String getLogsJson(int limit = 100);
+    String getLogsJson(int limit = MAX_LOGS);
     
     // Get total number of logs captured
     int getLogCount() const {
@@ -97,8 +103,13 @@ public:
     // Get the logging print wrapper
     LoggingPrint* getLoggingPrint() { return loggingPrint; }
     
+    // Circular buffer capacity - upper bound for any limit a client may ask for.
+    // logBuffer lives in static RAM and sizeof(LogEntry) is 152 bytes on esp32,
+    // esp32s3 and esp32c3 (tag and message alone take 144), so it costs ~15KB.
+    // The static_assert under the LogEntry definition guards that 152.
+    static const int MAX_LOGS = 100;
+    
 private:
-    static const int MAX_LOGS = 100;  // Circular buffer size (~6KB total)
     LogEntry logBuffer[MAX_LOGS];     // Static circular buffer
     int writeIndex = 0;               // Where next log will be written
     int logCount = 0;                 // Number of logs currently stored (0 to MAX_LOGS)
