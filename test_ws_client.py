@@ -12,8 +12,9 @@ import traceback
 
 def parse_alert_flags(flags16):
     """Parse flags16 and return list of active alert types."""
+    # Значення мають збігатися з namespace AlertModes у src/JaamConfig.h
     alert_names = {
-        0: "Air",
+        0: "Air (legacy)",
         1: "Artillery",
         2: "Urban",
         3: "Chemical",
@@ -24,6 +25,8 @@ def parse_alert_flags(flags16):
         8: "Ballistic",
         9: "Explosion",
         10: "Recon Drones",
+        11: "Air Low",
+        12: "Air",
     }
     active_alerts = []
     for bit, name in alert_names.items():

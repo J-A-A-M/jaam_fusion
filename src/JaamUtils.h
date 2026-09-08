@@ -533,13 +533,13 @@ inline bool isAlertBitEnabled(int bit) {
 
 // Функція для пошуку номеру найстаршого дозволеного біту в 16-бітному числі
 inline int findHighestBit16(uint16_t value, bool checkAirAlert = true) {
-    if (value == 0) return -1; // Повертаємо -1 як індикатор відсутності бітів
+    if (value == 0) return AlertModes::NO_ALERT; // Повертаємо -1 як індикатор відсутності бітів
 
 
     // Перевіряємо наявність біта "висока тривога" або "тиха тривога".
     // Legacy-біт (AlertModes::LEGACY_ALERT) від старих прошивок тут ігнорується.
     if (!(value & (1 << AlertModes::ALERT)) && !(value & (1 << AlertModes::ALERT_LOW)) && checkAirAlert) {
-        return -1; // Жоден з air-alert бітів не встановлений і потрібна перевірка — повертаємо -1
+        return AlertModes::NO_ALERT; // Жоден з air-alert бітів не встановлений і потрібна перевірка — повертаємо -1
     }
 
     // Пошук найвищого дозволеного біту за пріоритетом
@@ -556,24 +556,24 @@ inline int findHighestBit16(uint16_t value, bool checkAirAlert = true) {
         }
     }
     
-    return -1; // Жоден з дозволених пріоритетних бітів не встановлений
+    return AlertModes::NO_ALERT; // Жоден з дозволених пріоритетних бітів не встановлений
 }
 
 // Функція для порівняння пріоритетів двох бітів (повертає true, якщо bit1 має вищий пріоритет за bit2)
 inline bool hasHigherPriority(int bit1, int bit2) {
-    if (bit1 == -1) return false;
-    if (bit2 == -1) return true;
+    if (bit1 == AlertModes::NO_ALERT) return false;
+    if (bit2 == AlertModes::NO_ALERT) return true;
     if (bit1 == bit2) return true;
     
     // Знаходимо індекси в масиві пріоритетів
-    int index1 = -1, index2 = -1;
+    int index1 = AlertModes::NO_ALERT, index2 = AlertModes::NO_ALERT;
     for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
         if (ALERT_PRIORITY_ORDER[i] == bit1) index1 = i;
         if (ALERT_PRIORITY_ORDER[i] == bit2) index2 = i;
     }
     
     // Менший індекс означає вищий пріоритет
-    return index1 != -1 && index2 != -1 && index1 < index2;
+    return index1 != AlertModes::NO_ALERT && index2 != AlertModes::NO_ALERT && index1 < index2;
 }
 
 // ─── Flat-версії (без heap, для нового обробника TYPE_ALERTS_BATCH) ──────────
@@ -587,7 +587,7 @@ inline int getRegionFlatIdx(uint16_t region_id) {
             return (int)i;
         }
     }
-    return -1;
+    return AlertModes::NO_ALERT;
 }
 
 // Пошук усіх region_id для led_position без heap-алокації.
@@ -635,7 +635,7 @@ inline int findHighestBitForLedFlat(int position, uint16_t* out_region = nullptr
     uint16_t region_buf[16];
     int region_count = getRegionsForLedStatic(position, region_buf, 16);
 
-    int      best_bit    = -1;
+    int      best_bit    = AlertModes::NO_ALERT;
     uint16_t best_region = 0;
 
     for (int i = 0; i < region_count; ++i) {
@@ -645,7 +645,7 @@ inline int findHighestBitForLedFlat(int position, uint16_t* out_region = nullptr
         uint16_t flags = alertsFlat[idx];
         if (flags == 0) continue;
         int bit = findHighestBit16(flags);
-        if (bit != -1 && (best_bit == -1 || hasHigherPriority(bit, best_bit))) {
+        if (bit != AlertModes::NO_ALERT && (best_bit == AlertModes::NO_ALERT || hasHigherPriority(bit, best_bit))) {
             best_bit    = bit;
             best_region = rid;
         }
@@ -658,9 +658,9 @@ inline int findHighestBitForLedFlat(int position, uint16_t* out_region = nullptr
 // Повертає найвищий priority-bit для регіону з alertsFlat (без heap).
 inline int findHighestBitForRegionFlat(uint16_t region_id) {
     int idx = getRegionFlatIdx(region_id);
-    if (idx < 0) return -1;
+    if (idx < 0) return AlertModes::NO_ALERT;
     uint16_t flags = alertsFlat[idx];
-    return (flags != 0) ? findHighestBit16(flags) : -1;
+    return (flags != 0) ? findHighestBit16(flags) : AlertModes::NO_ALERT;
 }
 
 // Заповнює ledBitCache з поточного стану alertsFlat.
@@ -672,10 +672,10 @@ inline void rebuildLedBitCache() {
 }
 
 inline int getHighestActualBit(int sourceBit) {
-    int actualBit = -1;
+    int actualBit = AlertModes::NO_ALERT;
     
     // Знаходимо позицію sourceBit в ALERT_PRIORITY_ORDER
-    int sourceBitIndex = -1;
+    int sourceBitIndex = AlertModes::NO_ALERT;
     for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
         if (ALERT_PRIORITY_ORDER[i] == sourceBit) {
             sourceBitIndex = i;
@@ -683,9 +683,9 @@ inline int getHighestActualBit(int sourceBit) {
         }
     }
     
-    // Якщо sourceBit не знайдено в пріоритетах, повертаємо -1
-    if (sourceBitIndex == -1) {
-        return -1;
+    // Якщо sourceBit не знайдено в пріоритетах, повертаємо AlertModes::NO_ALERT
+    if (sourceBitIndex == AlertModes::NO_ALERT) {
+        return AlertModes::NO_ALERT;
     }
     
     // Перебираємо біти за порядком пріоритету, починаючи з sourceBit

@@ -123,7 +123,7 @@ class AnimationManager {
                            uint8_t endBrightness = 255,
                            uint16_t region_id = 0,
                            int bit = 0,
-                           int initialBit = -1);
+                           int initialBit = AlertModes::NO_ALERT);
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
@@ -136,7 +136,7 @@ class AnimationManager {
         void adaptAllAnimationType();
         static uint32_t colorFromHex(const char* hex);
         uint32_t stripActualColor(Adafruit_NeoPixel* strip, bool adapted = true);
-        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = -1);
+        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = AlertModes::NO_ALERT);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
         static uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
 

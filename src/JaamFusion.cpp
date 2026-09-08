@@ -162,7 +162,7 @@ short               clockBeepInterval = -1;
 bool                isMapOff = false;
 bool                isDisplayOff = false;
 int                 prevMapMode = 1;
-int                 alertBit = -1;
+int                 alertBit = AlertModes::NO_ALERT;
 time_t              lastHomeAlertChangeTime = 0;
 bool                nightMode = false;
 uint16_t            homeAlertFlags = 0;
@@ -1119,13 +1119,13 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             // Знаходимо поточний найвищий alert-bit для LEDs цього регіону з кешу
             // (без heap — ledBitCache вже містить актуальний стан після ALERTS_BATCH)
-            int highestBitRegion = -1;
+            int highestBitRegion = AlertModes::NO_ALERT;
             const uint16_t* leds = getRegionLeds(meta);
             for (uint8_t j = 0; j < meta->led_count; ++j) {
                 int led = (int)leds[j];
                 if (led < 0 || led >= MAX_LEDS_STRIP_MAIN) continue;
                 int8_t bit = ledBitCache[led];
-                if (bit != -1 && (highestBitRegion == -1 || hasHigherPriority((int)bit, highestBitRegion))) {
+                if (bit != AlertModes::NO_ALERT && (highestBitRegion == AlertModes::NO_ALERT || hasHigherPriority((int)bit, highestBitRegion))) {
                     highestBitRegion = (int)bit;
                 }
             }

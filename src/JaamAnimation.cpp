@@ -319,7 +319,7 @@ bool AnimationManager::createAnimation(uint16_t type,
 
         // ── strip_bg — один стан на всю стрічку ──
         if (strip == strip_bg) {
-            if (!hasHigherPriority(bit, bgState.bit) && bit != -1 && bgState.active) {
+            if (!hasHigherPriority(bit, bgState.bit) && bit != AlertModes::NO_ALERT && bgState.active) {
                 LOG.printf("[ANIMATION] REJECTED strip=%s, type=%d, region=%d: existing bit %d vs %d\n",
                            stripName, type, region_id, bgState.bit, bit);
                 xSemaphoreGive(animMutex);
@@ -374,7 +374,7 @@ bool AnimationManager::createAnimation(uint16_t type,
 
             LedState& s = stateArr[ledPos];
 
-            if (s.active && !hasHigherPriority(bit, (int)s.bit) && bit != -1) {
+            if (s.active && !hasHigherPriority(bit, (int)s.bit) && bit != AlertModes::NO_ALERT) {
                 LOG.printf("[ANIMATION] REJECTED strip=%s, type=%d, region=%d, led=%d: existing bit %d vs %d\n",
                            stripName, type, region_id, ledPos, s.bit, bit);
                 continue;
@@ -538,7 +538,7 @@ void AnimationManager::update() {
     int      mapMode = getCurrentMapMode();
 
     // ── Track RANDOM_COLORS mode changes and initialization ──
-    static int lastMapMode = -1;
+    static int lastMapMode = AlertModes::NO_ALERT;
     if (mapMode != lastMapMode) {
         LOG.printf("[ANIMATION] Map mode changed from %d to %d\n", lastMapMode, mapMode);
         
@@ -948,7 +948,7 @@ void AnimationManager::adaptAllAnimationBrightness() {
         for (int i = 0; i < numMain; i++) {
             LedState& s = mainStates[i];
             if (!s.active) continue;
-            if (s.bit >= -1) {
+            if (s.bit >= AlertModes::NO_ALERT) {
                 std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(s.bit);
                 uint8_t newStart = result.second;
 
@@ -967,7 +967,7 @@ void AnimationManager::adaptAllAnimationBrightness() {
             }
         }
         if (bgState.active) {
-            if (bgState.bit >= -1) {
+            if (bgState.bit >= AlertModes::NO_ALERT) {
                 // Фонова стрічка (режим "Домашній регіон") завжди керується BRIGHTNESS_BG,
                 // а не яскравістю конкретного типу тривоги.
                 bgState.startBr = led.bgBrightness();
@@ -1077,7 +1077,7 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
     uint32_t color = 0;
     uint8_t brightness = 0;
 
-    for (int bit = highest_bit; bit >= -1; bit--) {
+    for (int bit = highest_bit; bit >= AlertModes::NO_ALERT; bit--) {
         bool is_enabled = false;
 
         if (bit == AlertModes::NO_ALERT) {
@@ -1242,7 +1242,7 @@ uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     int highest_bit = findHighestBitForRegionFlat(region_id);
     bool isHome = (region_id == settings->getInt(HOME_DISTRICT));
 
-    if (highest_bit != -1) {
+    if (highest_bit != AlertModes::NO_ALERT) {
         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
         color = result.first;
         brightness = result.second;
@@ -1286,8 +1286,8 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     brightness = 0;
                     break;
                 case MapModes::ALERT: {
-                    int highest_bit = -1;
-                    if (bit != -1) {
+                    int highest_bit = AlertModes::NO_ALERT;
+                    if (bit != AlertModes::NO_ALERT) {
                         highest_bit = bit;
                     } else {
                         // ledBitCache відображає поточний стан alertsFlat (O(1), без heap)
@@ -1296,7 +1296,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                                       : findHighestBitForLedFlat(position);
                     }
                     bool isHome = isLedInHomeDistrict(position);
-                    if (highest_bit != -1) {
+                    if (highest_bit != AlertModes::NO_ALERT) {
                         std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
                         color = result.first;
                         brightness = result.second;
@@ -1429,8 +1429,8 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                         brightness = 0;
                         break;
                     case MapModes::ALERT: {
-                        int highest_bit = -1;
-                        if (bit != -1) {
+                        int highest_bit = AlertModes::NO_ALERT;
+                        if (bit != AlertModes::NO_ALERT) {
                             highest_bit = bit;
                         } else {
                             highest_bit = findHighestBitForRegionFlat(settings->getInt(HOME_DISTRICT));
@@ -1787,8 +1787,8 @@ void AnimationManager::initRandomColorsMain() {
             s.animType = AnimationTypes::ONE_WAY_BLEND_FADE;
             s.startBr = brightness;
             s.endBr = brightness;
-            s.bit = -1;       // no priority
-            s.initialBit = -1;
+            s.bit = AlertModes::NO_ALERT;       // no priority
+            s.initialBit = AlertModes::NO_ALERT;
             s.mapMode = MapModes::RANDOM_COLORS;
             s.active = true;
         }
@@ -1838,8 +1838,8 @@ void AnimationManager::initRandomColorsBg() {
         rcBgState.animType = AnimationTypes::ONE_WAY_BLEND_FADE;
         rcBgState.startBr = brightness;
         rcBgState.endBr = brightness;
-        rcBgState.bit = -1;       // no priority
-        rcBgState.initialBit = -1;
+        rcBgState.bit = AlertModes::NO_ALERT;       // no priority
+        rcBgState.initialBit = AlertModes::NO_ALERT;
         rcBgState.mapMode = MapModes::RANDOM_COLORS;
         rcBgState.active = true;
         xSemaphoreGive(animMutex);
