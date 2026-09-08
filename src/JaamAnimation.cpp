@@ -1000,15 +1000,15 @@ void AnimationManager::adaptAllAnimationPeriod() {
             uint32_t newPeriod   = period;
             uint32_t totalTimeMs = 0;
             switch (bit) {
-                case -1: newPeriod = settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);  totalTimeMs = settings->getInt(ALERT_OFF_TIME)       * 1000UL; break;
-                case  0: newPeriod = settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME);   totalTimeMs = settings->getInt(ALERT_ON_TIME)        * 1000UL; break;
-                case  5: newPeriod = settings->getInt(ANIMATION_DRONE_CYCLE_TIME);      totalTimeMs = settings->getInt(DRONE_TIME)           * 1000UL; break;
-                case  6: newPeriod = settings->getInt(ANIMATION_MISSILE_CYCLE_TIME);    totalTimeMs = settings->getInt(MISSILE_TIME)         * 1000UL; break;
-                case  7: newPeriod = settings->getInt(ANIMATION_KAB_CYCLE_TIME);        totalTimeMs = settings->getInt(KAB_TIME)             * 1000UL; break;
-                case  8: newPeriod = settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME);  totalTimeMs = settings->getInt(BALLISTIC_TIME)       * 1000UL; break;
-                case  9: newPeriod = settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME);  totalTimeMs = settings->getInt(EXPLOSION_TIME)       * 1000UL; break;
-                case 10: newPeriod = settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);totalTimeMs = settings->getInt(RECON_DRONE_TIME)     * 1000UL; break;
-                case 11: newPeriod = settings->getInt(ANIMATION_ALERT_LOW_CYCLE_TIME); totalTimeMs = settings->getInt(ALERT_LOW_TIME)       * 1000UL; break;
+                case AlertModes::NO_ALERT:     newPeriod = settings->getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);   totalTimeMs = settings->getInt(ALERT_OFF_TIME)   * 1000UL; break;
+                case AlertModes::ALERT:        newPeriod = settings->getInt(ANIMATION_ALERT_ON_CYCLE_TIME);    totalTimeMs = settings->getInt(ALERT_ON_TIME)    * 1000UL; break;
+                case AlertModes::DRONES:       newPeriod = settings->getInt(ANIMATION_DRONE_CYCLE_TIME);       totalTimeMs = settings->getInt(DRONE_TIME)       * 1000UL; break;
+                case AlertModes::MISSILES:     newPeriod = settings->getInt(ANIMATION_MISSILE_CYCLE_TIME);     totalTimeMs = settings->getInt(MISSILE_TIME)     * 1000UL; break;
+                case AlertModes::KABS:         newPeriod = settings->getInt(ANIMATION_KAB_CYCLE_TIME);         totalTimeMs = settings->getInt(KAB_TIME)         * 1000UL; break;
+                case AlertModes::BALLISTIC:    newPeriod = settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME);   totalTimeMs = settings->getInt(BALLISTIC_TIME)   * 1000UL; break;
+                case AlertModes::EXPLOSION:    newPeriod = settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME);   totalTimeMs = settings->getInt(EXPLOSION_TIME)   * 1000UL; break;
+                case AlertModes::RECON_DRONES: newPeriod = settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME); totalTimeMs = settings->getInt(RECON_DRONE_TIME) * 1000UL; break;
+                case AlertModes::ALERT_LOW:    newPeriod = settings->getInt(ANIMATION_ALERT_LOW_CYCLE_TIME);   totalTimeMs = settings->getInt(ALERT_LOW_TIME)   * 1000UL; break;
                 default: break;
             }
             if (newPeriod > 0 && totalTimeMs > 0) {
@@ -1037,15 +1037,15 @@ void AnimationManager::adaptAllAnimationType() {
 
         auto newType = [&](int8_t bit) -> uint16_t {
             switch (bit) {
-                case -1: return settings->getInt(ANIMATION_ALERT_OFF_TYPE);
-                case  0: return settings->getInt(ANIMATION_ALERT_ON_TYPE);
-                case  5: return settings->getInt(ANIMATION_DRONE_TYPE);
-                case  6: return settings->getInt(ANIMATION_MISSILE_TYPE);
-                case  7: return settings->getInt(ANIMATION_KAB_TYPE);
-                case  8: return settings->getInt(ANIMATION_BALLISTIC_TYPE);
-                case  9: return settings->getInt(ANIMATION_EXPLOSION_TYPE);
-                case 10: return settings->getInt(ANIMATION_RECON_DRONE_TYPE);
-                case 11: return settings->getInt(ANIMATION_ALERT_LOW_TYPE);
+                case AlertModes::NO_ALERT:     return settings->getInt(ANIMATION_ALERT_OFF_TYPE);
+                case AlertModes::ALERT:        return settings->getInt(ANIMATION_ALERT_ON_TYPE);
+                case AlertModes::DRONES:       return settings->getInt(ANIMATION_DRONE_TYPE);
+                case AlertModes::MISSILES:     return settings->getInt(ANIMATION_MISSILE_TYPE);
+                case AlertModes::KABS:         return settings->getInt(ANIMATION_KAB_TYPE);
+                case AlertModes::BALLISTIC:    return settings->getInt(ANIMATION_BALLISTIC_TYPE);
+                case AlertModes::EXPLOSION:    return settings->getInt(ANIMATION_EXPLOSION_TYPE);
+                case AlertModes::RECON_DRONES: return settings->getInt(ANIMATION_RECON_DRONE_TYPE);
+                case AlertModes::ALERT_LOW:    return settings->getInt(ANIMATION_ALERT_LOW_TYPE);
                 default: return 0xFF; // sentinel: no change
             }
         };
@@ -1080,52 +1080,52 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
     for (int bit = highest_bit; bit >= -1; bit--) {
         bool is_enabled = false;
 
-        if (bit == -1) {
+        if (bit == AlertModes::NO_ALERT) {
             is_enabled = true;
-        } else if (bit == 0) {
+        } else if (bit == AlertModes::ALERT) {
             is_enabled = true;
-        } else if (bit == 5) {
+        } else if (bit == AlertModes::DRONES) {
             is_enabled = settings->getBool(ENABLE_DRONES);
-        } else if (bit == 6) {
+        } else if (bit == AlertModes::MISSILES) {
             is_enabled = settings->getBool(ENABLE_MISSILES);
-        } else if (bit == 7) {
+        } else if (bit == AlertModes::KABS) {
             is_enabled = settings->getBool(ENABLE_KABS);
-        } else if (bit == 8) {
+        } else if (bit == AlertModes::BALLISTIC) {
             is_enabled = settings->getBool(ENABLE_BALLISTIC);
-        } else if (bit == 9) {
+        } else if (bit == AlertModes::EXPLOSION) {
             is_enabled = settings->getBool(ENABLE_EXPLOSIONS);
-        } else if (bit == 10) {
+        } else if (bit == AlertModes::RECON_DRONES) {
             is_enabled = settings->getBool(ENABLE_RECON_DRONES);
-        } else if (bit == 11) {
+        } else if (bit == AlertModes::ALERT_LOW) {
             is_enabled = true;
         }
 
         if (is_enabled) {
-            if (bit == -1) {
+            if (bit == AlertModes::NO_ALERT) {
                 color = colorFromHex(settings->getString(COLOR_CLEAR));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
-            } else if (bit == 0) {
+            } else if (bit == AlertModes::ALERT) {
                 color = colorFromHex(settings->getString(COLOR_ALERT));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT));
-            } else if (bit == 5) {
+            } else if (bit == AlertModes::DRONES) {
                 color = colorFromHex(settings->getString(COLOR_DRONES));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_DRONES));
-            } else if (bit == 6) {
+            } else if (bit == AlertModes::MISSILES) {
                 color = colorFromHex(settings->getString(COLOR_MISSILES));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_MISSILES));
-            } else if (bit == 7) {
+            } else if (bit == AlertModes::KABS) {
                 color = colorFromHex(settings->getString(COLOR_KABS));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_KABS));
-            } else if (bit == 8) {
+            } else if (bit == AlertModes::BALLISTIC) {
                 color = colorFromHex(settings->getString(COLOR_BALLISTIC));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BALLISTIC));
-            } else if (bit == 9) {
+            } else if (bit == AlertModes::EXPLOSION) {
                 color = colorFromHex(settings->getString(COLOR_EXPLOSION));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_EXPLOSION));
-            } else if (bit == 10) {
+            } else if (bit == AlertModes::RECON_DRONES) {
                 color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_RECON_DRONES));
-            } else if (bit == 11) {
+            } else if (bit == AlertModes::ALERT_LOW) {
                 color = colorFromHex(settings->getString(COLOR_ALERT_LOW));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT_LOW));
             }

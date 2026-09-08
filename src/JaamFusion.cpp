@@ -904,63 +904,63 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     // }
 
     switch (bit) {
-        case -1: 
-            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));  
+        case AlertModes::NO_ALERT:
+            color = animation.colorFromHex(settings.getString(COLOR_CLEAR));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_CLEAR));             
             animType = settings.getInt(ANIMATION_ALERT_OFF_TYPE);
             cycles = (settings.getInt(ALERT_OFF_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             period = settings.getInt(ANIMATION_ALERT_OFF_CYCLE_TIME);
             break;
-        case 0:
-            color = animation.colorFromHex(settings.getString(COLOR_ALERT)); 
+        case AlertModes::ALERT:
+            color = animation.colorFromHex(settings.getString(COLOR_ALERT));
             animType = (increase) ? settings.getInt(ANIMATION_ALERT_ON_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ALERT));
             period = (increase) ? settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(ALERT_ON_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_ON_CYCLE_TIME) : 1;
             break;
-        case 5: 
+        case AlertModes::DRONES:
             color = animation.colorFromHex(settings.getString(COLOR_DRONES));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_DRONES));
             animType = (increase) ? settings.getInt(ANIMATION_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(DRONE_TIME) * 1000)/settings.getInt(ANIMATION_DRONE_CYCLE_TIME) : 1; 
             break;
-        case 6:
+        case AlertModes::MISSILES:
             color = animation.colorFromHex(settings.getString(COLOR_MISSILES));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_MISSILES));
             animType = (increase) ? settings.getInt(ANIMATION_MISSILE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(MISSILE_TIME) * 1000)/settings.getInt(ANIMATION_MISSILE_CYCLE_TIME) : 1; 
             break;
-        case 7:
+        case AlertModes::KABS:
             color = animation.colorFromHex(settings.getString(COLOR_KABS));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_KABS));
             animType = (increase) ? settings.getInt(ANIMATION_KAB_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(KAB_TIME) * 1000)/settings.getInt(ANIMATION_KAB_CYCLE_TIME) : 1;
             break;
-        case 8:
+        case AlertModes::BALLISTIC:
             color = animation.colorFromHex(settings.getString(COLOR_BALLISTIC));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_BALLISTIC));
             animType = (increase) ? settings.getInt(ANIMATION_BALLISTIC_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(BALLISTIC_TIME) * 1000)/settings.getInt(ANIMATION_BALLISTIC_CYCLE_TIME)  : 1;
             break;
-        case 9:
+        case AlertModes::EXPLOSION:
             color = animation.colorFromHex(settings.getString(COLOR_EXPLOSION));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_EXPLOSION));
             animType = (increase) ? settings.getInt(ANIMATION_EXPLOSION_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(EXPLOSION_TIME) * 1000)/settings.getInt(ANIMATION_EXPLOSION_CYCLE_TIME)  : 1;
             break;
-        case 10:
+        case AlertModes::RECON_DRONES:
             color = animation.colorFromHex(settings.getString(COLOR_RECON_DRONES));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_RECON_DRONES));
             animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
             break;
-        case 11:
+        case AlertModes::ALERT_LOW:
             color = animation.colorFromHex(settings.getString(COLOR_ALERT_LOW));
             startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ALERT_LOW));
             animType = (increase) ? settings.getInt(ANIMATION_ALERT_LOW_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
@@ -1250,7 +1250,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 } else {
                     LOG.printf("[WEBSOCKET] Home district: region %d bit %d decrease\n",
                                settings.getInt(HOME_DISTRICT), localAlertBit);
-                    if (localAlertBit == -1) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
+                    if (localAlertBit == AlertModes::NO_ALERT) alertAction(localAlertBit, settings.getInt(HOME_DISTRICT));
                 }
                 animateLed(strip_bg, MapModes::ALERT, 0, localAlertBit, alertBit, settings.getInt(HOME_DISTRICT), homeIncrease);
                 updateSirenIfNeeded(localAlertBit);

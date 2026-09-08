@@ -23,25 +23,11 @@
 
 static const char* CUSTOM_MAP_PATH = "/custom_map.json";
 
-// Масив з описом типів тривог
-static const char* ALERT_TYPES[] = {
-    "Air",      // bit 0
-    "Artillery", // bit 1
-    "Urban",    // bit 2
-    "Chemical", // bit 3
-    "Nuclear",  // bit 4
-    "Drones",   // bit 5
-    "Missiles", // bit 6
-    "KAB",      // bit 7
-    "Ballistic",// bit 8
-    "Explosion", // bit 9
-    "Recon Drones", // bit 10
-    "Air Low"   // bit 11
-};
-static const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
-
 // Alert priority order - from highest to lowest priority
-static const int ALERT_PRIORITY_ORDER[] = {9, 8, 7, 6, 5, 10, 0, 11};
+static const int ALERT_PRIORITY_ORDER[] = {
+    AlertModes::EXPLOSION, AlertModes::BALLISTIC, AlertModes::KABS, AlertModes::MISSILES,
+    AlertModes::DRONES, AlertModes::RECON_DRONES, AlertModes::ALERT, AlertModes::ALERT_LOW
+};
 static const int ALERT_PRIORITY_COUNT = sizeof(ALERT_PRIORITY_ORDER) / sizeof(ALERT_PRIORITY_ORDER[0]);
 
 // SVG Icons for system metrics (stored in PROGMEM to save RAM)
@@ -534,25 +520,26 @@ inline void checkFreeHeap(const char* label) {
 }
 
 inline bool isAlertBitEnabled(int bit) {
-    if (bit == 0) return true;
-    if (bit == 11) return true;
-    if (bit == 5) return settings.getBool(ENABLE_DRONES);
-    if (bit == 6) return settings.getBool(ENABLE_MISSILES);
-    if (bit == 7) return settings.getBool(ENABLE_KABS);
-    if (bit == 8) return settings.getBool(ENABLE_BALLISTIC);
-    if (bit == 9) return settings.getBool(ENABLE_EXPLOSIONS);
-    if (bit == 10) return settings.getBool(ENABLE_RECON_DRONES);
+    if (bit == AlertModes::ALERT) return true;
+    if (bit == AlertModes::ALERT_LOW) return true;
+    if (bit == AlertModes::DRONES) return settings.getBool(ENABLE_DRONES);
+    if (bit == AlertModes::MISSILES) return settings.getBool(ENABLE_MISSILES);
+    if (bit == AlertModes::KABS) return settings.getBool(ENABLE_KABS);
+    if (bit == AlertModes::BALLISTIC) return settings.getBool(ENABLE_BALLISTIC);
+    if (bit == AlertModes::EXPLOSION) return settings.getBool(ENABLE_EXPLOSIONS);
+    if (bit == AlertModes::RECON_DRONES) return settings.getBool(ENABLE_RECON_DRONES);
     return false;
 }
 
 // Функція для пошуку номеру найстаршого дозволеного біту в 16-бітному числі
-inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
+inline int findHighestBit16(uint16_t value, bool checkAirAlert = true) {
     if (value == 0) return -1; // Повертаємо -1 як індикатор відсутності бітів
-    
 
-    // Перевіряємо наявність біта 0 (повітряна тривога) або біта 11 (тиха повітряна тривога)
-    if (!(value & (1 << 0)) && !(value & (1 << 11)) && checkBit0) {
-        return -1; // Якщо ні біт 0, ні біт 11 не встановлені і потрібна перевірка — повертаємо -1
+
+    // Перевіряємо наявність біта "висока тривога" або "тиха тривога".
+    // Legacy-біт (AlertModes::LEGACY_ALERT) від старих прошивок тут ігнорується.
+    if (!(value & (1 << AlertModes::ALERT)) && !(value & (1 << AlertModes::ALERT_LOW)) && checkAirAlert) {
+        return -1; // Жоден з air-alert бітів не встановлений і потрібна перевірка — повертаємо -1
     }
 
     // Пошук найвищого дозволеного біту за пріоритетом
@@ -1063,8 +1050,8 @@ inline String getAlertsJson() {
         uint16_t flags16 = alertsFlat[i];
         uint16_t region_id = currentMap.meta[i].region_id;
 
-        // Перевіряємо чи є активний біт 0 або 11 (повітряна тривога)
-        bool airAlert = (flags16 & (1 << 0)) || (flags16 & (1 << 11));
+        // Перевіряємо чи є активна повітряна тривога (high або low)
+        bool airAlert = (flags16 & (1 << AlertModes::ALERT)) || (flags16 & (1 << AlertModes::ALERT_LOW));
         if (!airAlert) {
             continue; // Пропускаємо регіони без активної повітряної тривоги
         }
@@ -1092,18 +1079,18 @@ inline String getAlertsJson() {
         
         // Розкладаємо статуси тривог по бітам
         JsonObject alerts = region["alerts"].to<JsonObject>();
-        alerts["air"] = (flags16 & (1 << 0)) ? 1 : 0;
-        alerts["artillery"] = (flags16 & (1 << 1)) ? 1 : 0;
-        alerts["urban"] = (flags16 & (1 << 2)) ? 1 : 0;
-        alerts["chemical"] = (flags16 & (1 << 3)) ? 1 : 0;
-        alerts["nuclear"] = (flags16 & (1 << 4)) ? 1 : 0;
-        alerts["drones"] = (flags16 & (1 << 5)) ? 1 : 0;
-        alerts["missiles"] = (flags16 & (1 << 6)) ? 1 : 0;
-        alerts["kab"] = (flags16 & (1 << 7)) ? 1 : 0;
-        alerts["ballistic"] = (flags16 & (1 << 8)) ? 1 : 0;
-        alerts["explosion"] = (flags16 & (1 << 9)) ? 1 : 0;
-        alerts["recon"] = (flags16 & (1 << 10)) ? 1 : 0;
-        alerts["air_low"] = (flags16 & (1 << 11)) ? 1 : 0;
+        alerts["air"] = (flags16 & (1 << AlertModes::ALERT)) ? 1 : 0;
+        alerts["artillery"] = (flags16 & (1 << AlertModes::ARTILLERY)) ? 1 : 0;
+        alerts["urban"] = (flags16 & (1 << AlertModes::URBAN)) ? 1 : 0;
+        alerts["chemical"] = (flags16 & (1 << AlertModes::CHEMICAL)) ? 1 : 0;
+        alerts["nuclear"] = (flags16 & (1 << AlertModes::NUCLEAR)) ? 1 : 0;
+        alerts["drones"] = (flags16 & (1 << AlertModes::DRONES)) ? 1 : 0;
+        alerts["missiles"] = (flags16 & (1 << AlertModes::MISSILES)) ? 1 : 0;
+        alerts["kab"] = (flags16 & (1 << AlertModes::KABS)) ? 1 : 0;
+        alerts["ballistic"] = (flags16 & (1 << AlertModes::BALLISTIC)) ? 1 : 0;
+        alerts["explosion"] = (flags16 & (1 << AlertModes::EXPLOSION)) ? 1 : 0;
+        alerts["recon"] = (flags16 & (1 << AlertModes::RECON_DRONES)) ? 1 : 0;
+        alerts["air_low"] = (flags16 & (1 << AlertModes::ALERT_LOW)) ? 1 : 0;
     }
     
     String response;

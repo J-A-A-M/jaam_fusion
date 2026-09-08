@@ -17,16 +17,23 @@ namespace DefaultColors {
     static const uint32_t FLAG_YELLOW = 0xFFD700;  // Yellow
 }
 // --- ALERT Modes ---
+// Єдине джерело істини для номерів бітів у 16-бітному слові flags16 (WebSocket).
+// Змінюєш значення тут — воно застосовується по всьому коду (switch-cases, маски, пріоритети).
 namespace AlertModes {
     static const int NO_ALERT = -1;
-    static const int ALERT = 0;
-    static const int ALERT_LOW = 11;
+    static const int LEGACY_ALERT = 0; // legacy-біт від старих прошивок; нова логіка ігнорує
+    static const int ARTILLERY = 1;
+    static const int URBAN = 2;
+    static const int CHEMICAL = 3;
+    static const int NUCLEAR = 4;
     static const int DRONES = 5;
     static const int MISSILES = 6;
     static const int KABS = 7;
     static const int BALLISTIC = 8;
     static const int EXPLOSION = 9;
     static const int RECON_DRONES = 10;
+    static const int ALERT_LOW = 11;   // "тиха" повітряна тривога
+    static const int ALERT = 12;       // "висока" повітряна тривога (основний тригер)
 }
 
 // --- MAP Modes ---
