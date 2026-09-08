@@ -282,6 +282,15 @@ static const ParamMapping ALL_PARAM_MAPPINGS[] = {
     {"melody_on_kabs", MELODY_ON_KABS, TYPE_INT},
     {"melody_on_ballistic", MELODY_ON_BALLISTIC, TYPE_INT},
     
+    // Low-level air alert (bit 11)
+    {"alert_low_animation", ANIMATION_ALERT_LOW_TYPE, TYPE_INT},
+    {"alert_low_time", ALERT_LOW_TIME, TYPE_INT},
+    {"alert_low_cycle", ANIMATION_ALERT_LOW_CYCLE_TIME, TYPE_INT},
+    {"color_alert_low", COLOR_ALERT_LOW, TYPE_STRING},
+    {"brightness_alert_low", BRIGHTNESS_ALERT_LOW, TYPE_INT},
+    {"sound_on_alert_low", SOUND_ON_ALERT_LOW, TYPE_BOOL},
+    {"melody_on_alert_low", MELODY_ON_ALERT_LOW, TYPE_INT},
+
     // Legacy/unused parameters for compatibility
     {"district_mode_kyiv", DISTRICT_MODE_KYIV, TYPE_INT},
     {"district_mode_kharkiv", DISTRICT_MODE_KHARKIV, TYPE_INT},
@@ -665,6 +674,7 @@ void JaamWeb::handleParameter() {
             
             // Додаткові дії для мелодій
             if (success && (settingType == MELODY_ON_ALERT || settingType == MELODY_ON_ALERT_END ||
+                settingType == MELODY_ON_ALERT_LOW ||
                 settingType == MELODY_ON_EXPLOSION || settingType == MELODY_ON_DRONES ||
                 settingType == MELODY_ON_MISSILES || settingType == MELODY_ON_KABS ||
                 settingType == MELODY_ON_BALLISTIC || settingType == MELODY_ON_RECON_DRONES)) {

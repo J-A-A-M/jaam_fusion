@@ -1008,6 +1008,7 @@ void AnimationManager::adaptAllAnimationPeriod() {
                 case  8: newPeriod = settings->getInt(ANIMATION_BALLISTIC_CYCLE_TIME);  totalTimeMs = settings->getInt(BALLISTIC_TIME)       * 1000UL; break;
                 case  9: newPeriod = settings->getInt(ANIMATION_EXPLOSION_CYCLE_TIME);  totalTimeMs = settings->getInt(EXPLOSION_TIME)       * 1000UL; break;
                 case 10: newPeriod = settings->getInt(ANIMATION_RECON_DRONE_CYCLE_TIME);totalTimeMs = settings->getInt(RECON_DRONE_TIME)     * 1000UL; break;
+                case 11: newPeriod = settings->getInt(ANIMATION_ALERT_LOW_CYCLE_TIME); totalTimeMs = settings->getInt(ALERT_LOW_TIME)       * 1000UL; break;
                 default: break;
             }
             if (newPeriod > 0 && totalTimeMs > 0) {
@@ -1044,6 +1045,7 @@ void AnimationManager::adaptAllAnimationType() {
                 case  8: return settings->getInt(ANIMATION_BALLISTIC_TYPE);
                 case  9: return settings->getInt(ANIMATION_EXPLOSION_TYPE);
                 case 10: return settings->getInt(ANIMATION_RECON_DRONE_TYPE);
+                case 11: return settings->getInt(ANIMATION_ALERT_LOW_TYPE);
                 default: return 0xFF; // sentinel: no change
             }
         };
@@ -1094,6 +1096,8 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
             is_enabled = settings->getBool(ENABLE_EXPLOSIONS);
         } else if (bit == 10) {
             is_enabled = settings->getBool(ENABLE_RECON_DRONES);
+        } else if (bit == 11) {
+            is_enabled = true;
         }
 
         if (is_enabled) {
@@ -1121,6 +1125,9 @@ std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int h
             } else if (bit == 10) {
                 color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
                 brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_RECON_DRONES));
+            } else if (bit == 11) {
+                color = colorFromHex(settings->getString(COLOR_ALERT_LOW));
+                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT_LOW));
             }
             break;
         }
@@ -1612,7 +1619,7 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         // - Для NO_ALERT: перехід від alert назад до clear  
         // - Для інших загроз: перехід від alert до більш небезпечного стану
         uint32_t initColor;
-        if (eventType == AlertModes::ALERT) {
+        if (eventType == AlertModes::ALERT || eventType == AlertModes::ALERT_LOW) {
             initColor = colorFromHex(settings->getString(COLOR_CLEAR));
         } else {
             // NO_ALERT та інші загрози починаються з alert кольору

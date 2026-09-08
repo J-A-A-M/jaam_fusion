@@ -35,12 +35,13 @@ static const char* ALERT_TYPES[] = {
     "KAB",      // bit 7
     "Ballistic",// bit 8
     "Explosion", // bit 9
-    "Recon Drones" // bit 10
+    "Recon Drones", // bit 10
+    "Air Low"   // bit 11
 };
 static const int ALERT_TYPES_COUNT = sizeof(ALERT_TYPES) / sizeof(ALERT_TYPES[0]);
 
 // Alert priority order - from highest to lowest priority
-static const int ALERT_PRIORITY_ORDER[] = {9, 8, 7, 6, 5, 10, 0};
+static const int ALERT_PRIORITY_ORDER[] = {9, 8, 7, 6, 5, 10, 0, 11};
 static const int ALERT_PRIORITY_COUNT = sizeof(ALERT_PRIORITY_ORDER) / sizeof(ALERT_PRIORITY_ORDER[0]);
 
 // SVG Icons for system metrics (stored in PROGMEM to save RAM)
@@ -63,6 +64,8 @@ inline const char* getEventTypeName(int8_t eventType) {
         case AlertModes::NO_ALERT:
             return "ВІДБІЙ";
         case AlertModes::ALERT:
+            return "ТРИВОГА";
+        case AlertModes::ALERT_LOW:
             return "ТРИВОГА";
         case AlertModes::DRONES:
             return "БПЛА";
@@ -532,6 +535,7 @@ inline void checkFreeHeap(const char* label) {
 
 inline bool isAlertBitEnabled(int bit) {
     if (bit == 0) return true;
+    if (bit == 11) return true;
     if (bit == 5) return settings.getBool(ENABLE_DRONES);
     if (bit == 6) return settings.getBool(ENABLE_MISSILES);
     if (bit == 7) return settings.getBool(ENABLE_KABS);
@@ -546,9 +550,9 @@ inline int findHighestBit16(uint16_t value, bool checkBit0 = true) {
     if (value == 0) return -1; // Повертаємо -1 як індикатор відсутності бітів
     
 
-    // Перевіряємо наявність біта 0 (повітряна тривога)
-    if (!(value & (1 << 0)) && checkBit0) {
-        return -1; // Якщо біт 0 не встановлений і потрібно перевіряти наявність біта 0, повертаємо -1
+    // Перевіряємо наявність біта 0 (повітряна тривога) або біта 11 (тиха повітряна тривога)
+    if (!(value & (1 << 0)) && !(value & (1 << 11)) && checkBit0) {
+        return -1; // Якщо ні біт 0, ні біт 11 не встановлені і потрібна перевірка — повертаємо -1
     }
 
     // Пошук найвищого дозволеного біту за пріоритетом
@@ -1059,8 +1063,8 @@ inline String getAlertsJson() {
         uint16_t flags16 = alertsFlat[i];
         uint16_t region_id = currentMap.meta[i].region_id;
 
-        // Перевіряємо чи є активний перший біт (повітряна тривога)
-        bool airAlert = flags16 & (1 << 0);
+        // Перевіряємо чи є активний біт 0 або 11 (повітряна тривога)
+        bool airAlert = (flags16 & (1 << 0)) || (flags16 & (1 << 11));
         if (!airAlert) {
             continue; // Пропускаємо регіони без активної повітряної тривоги
         }
@@ -1099,6 +1103,7 @@ inline String getAlertsJson() {
         alerts["ballistic"] = (flags16 & (1 << 8)) ? 1 : 0;
         alerts["explosion"] = (flags16 & (1 << 9)) ? 1 : 0;
         alerts["recon"] = (flags16 & (1 << 10)) ? 1 : 0;
+        alerts["air_low"] = (flags16 & (1 << 11)) ? 1 : 0;
     }
     
     String response;

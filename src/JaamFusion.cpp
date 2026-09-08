@@ -349,6 +349,10 @@ void playMelody(SoundType type) {
     playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT_END)]);
     playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT_END)));
     break;
+  case ALERT_LOW_ON:
+    playMelody(MELODIES[settings.getInt(MELODY_ON_ALERT_LOW)]);
+    playTrack(sound.getTrackById(settings.getInt(TRACK_ON_ALERT_LOW)));
+    break;
   case EXPLOSIONS:
     playMelody(MELODIES[settings.getInt(MELODY_ON_EXPLOSION)]);
     playTrack(sound.getTrackById(settings.getInt(TRACK_ON_EXPLOSION)));
@@ -429,6 +433,8 @@ bool needToPlaySound(SoundType type) {
     return settings.getBool(SOUND_ON_ALERT);
   case ALERT_OFF:
     return settings.getBool(SOUND_ON_ALERT_END);
+  case ALERT_LOW_ON:
+    return settings.getBool(SOUND_ON_ALERT_LOW);
   case EXPLOSIONS:
     return settings.getBool(SOUND_ON_EXPLOSION);
   case DRONES:
@@ -765,6 +771,12 @@ bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& col
             color = animation.colorFromHex(settings.getString(COLOR_ALERT));
             brightness = settings.getInt(BRIGHTNESS_ALERT);
             return true;
+        case AlertModes::ALERT_LOW:
+            animType = settings.getInt(ANIMATION_ALERT_LOW_TYPE);
+            period = settings.getInt(ANIMATION_ALERT_LOW_CYCLE_TIME);
+            color = animation.colorFromHex(settings.getString(COLOR_ALERT_LOW));
+            brightness = settings.getInt(BRIGHTNESS_ALERT_LOW);
+            return true;
         case AlertModes::DRONES:
             animType = settings.getInt(ANIMATION_DRONE_TYPE);
             period = settings.getInt(ANIMATION_DRONE_CYCLE_TIME);
@@ -826,6 +838,9 @@ void alertAction(int bit, int districtId) {
             case AlertModes::ALERT:
                 if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
                 break;
+            case AlertModes::ALERT_LOW:
+                if(needToPlaySound(SoundType::ALERT_LOW_ON)) playMelody(ALERT_LOW_ON);
+                break;
             case AlertModes::DRONES:
                 if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
                 break;
@@ -860,7 +875,7 @@ void alertAction(int bit, int districtId) {
 }
 
 void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bit, int initialBit, uint16_t region_id, bool increase = true) {
-    LOG.printf("[ANIMATION] LED %d: region %d to %d\n", led_position, region_id, bit); 
+    LOG.printf("[ANIMATION] LED %d: region %d from %d to %d\n", led_position, region_id, initialBit, bit); 
 
     if (strip == nullptr) {
         LOG.printf("[ANIMATION] LED %d: strip is nullptr\n", led_position);
@@ -873,7 +888,7 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     }
     
     uint32_t color;
-    uint32_t initialColor = animation.ledActualColor(strip, led_position);
+    uint32_t initialColor = animation.ledActualColor(strip, led_position, true, initialBit);
     uint32_t period;
     uint32_t cycles;
     uint8_t startBrightness;
@@ -944,6 +959,13 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
             animType = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
             period = (increase) ? settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME) : 3000;
             cycles = (increase) ? (settings.getInt(RECON_DRONE_TIME) * 1000)/settings.getInt(ANIMATION_RECON_DRONE_CYCLE_TIME)  : 1;
+            break;
+        case 11:
+            color = animation.colorFromHex(settings.getString(COLOR_ALERT_LOW));
+            startBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ALERT_LOW));
+            animType = (increase) ? settings.getInt(ANIMATION_ALERT_LOW_TYPE) : AnimationTypes::ONE_WAY_BLEND_FADE;
+            period = (increase) ? settings.getInt(ANIMATION_ALERT_LOW_CYCLE_TIME) : 3000;
+            cycles = (increase) ? (settings.getInt(ALERT_LOW_TIME) * 1000)/settings.getInt(ANIMATION_ALERT_LOW_CYCLE_TIME) : 1;
             break;
         default:
             LOG.printf("[ANIMATION] LED %d: unknown bit\n", led_position);
@@ -2075,6 +2097,7 @@ void initSettings() {
             // Кольори та зовнішній вигляд (адаптація + анімації)
             case COLOR_CLEAR:
             case COLOR_ALERT:
+            case COLOR_ALERT_LOW:
             case COLOR_EXPLOSION:
             case COLOR_MISSILES:
             case COLOR_DRONES:
@@ -2132,6 +2155,7 @@ void initSettings() {
             case BRIGHTNESS_MAX:
             case BRIGHTNESS_MAX_ACCEPT:
             case BRIGHTNESS_ALERT:
+            case BRIGHTNESS_ALERT_LOW:
             case BRIGHTNESS_CLEAR:
             case BRIGHTNESS_EXPLOSION:
             case BRIGHTNESS_MISSILES:
@@ -2154,6 +2178,7 @@ void initSettings() {
             // Час анімацій
             case ANIMATION_ALERT_ON_CYCLE_TIME:
             case ANIMATION_ALERT_OFF_CYCLE_TIME:
+            case ANIMATION_ALERT_LOW_CYCLE_TIME:
             case ANIMATION_DRONE_CYCLE_TIME:
             case ANIMATION_RECON_DRONE_CYCLE_TIME:
             case ANIMATION_MISSILE_CYCLE_TIME:
@@ -2166,6 +2191,7 @@ void initSettings() {
             // Тип анімацій
             case ANIMATION_ALERT_ON_TYPE:
             case ANIMATION_ALERT_OFF_TYPE:
+            case ANIMATION_ALERT_LOW_TYPE:
             case ANIMATION_DRONE_TYPE:
             case ANIMATION_RECON_DRONE_TYPE:
             case ANIMATION_MISSILE_TYPE:
@@ -2346,6 +2372,10 @@ void initSettings() {
                 case ANIMATION_ALERT_OFF_CYCLE_TIME:
                 case COLOR_CLEAR:
                     eventType = AlertModes::NO_ALERT; break;
+                case ANIMATION_ALERT_LOW_TYPE:
+                case ANIMATION_ALERT_LOW_CYCLE_TIME:
+                case COLOR_ALERT_LOW:
+                    eventType = AlertModes::ALERT_LOW; break;
                 case ANIMATION_EXPLOSION_TYPE:
                 case ANIMATION_EXPLOSION_CYCLE_TIME:
                 case COLOR_EXPLOSION:
