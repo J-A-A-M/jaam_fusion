@@ -2123,6 +2123,7 @@ void initSettings() {
                 // застарів. Перебудова ПЕРЕД adapt* (вони читають кеш).
                 rebuildLedBitCache();
                 adaptStripColorsAndBrightness();
+                handleUpdateHomeAlertBit();
                 handleAdaptAnimationColors();
                 handleAdaptAnimationBrightness();
                 break;

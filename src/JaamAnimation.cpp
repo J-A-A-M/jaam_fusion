@@ -1076,7 +1076,7 @@ void AnimationManager::adaptAllAnimationType() {
 }
 
 // ──────────────────────────────────────────────────────
-// Допоміжні методи для кольорів (незміАнні)
+// Допоміжні методи для кольорів (незмінні)
 // ──────────────────────────────────────────────────────
 
 std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(uint16_t flags16) {
