@@ -895,14 +895,6 @@ void animateLed(Adafruit_NeoPixel* strip, int map_mode, int led_position, int bi
     uint8_t endBrightness = led.brightnessRelative(settings.getInt(BRIGHTNESS_ANIMATION_END));
     uint8_t ledCount;
 
-    //int actualBit = getHighestActualBit(bit);
-
-    // if (increase && actualBit != bit) {
-    // //if (actualBit != bit) {
-    //     LOG.printf("[ANIMATION] actualBit %d != %d. Animation aborted\n", actualBit, bit);
-    //     return;
-    // }
-
     switch (bit) {
         case AlertModes::NO_ALERT:
             color = animation.colorFromHex(settings.getString(COLOR_CLEAR));
@@ -1131,7 +1123,7 @@ void onMessageCallback(WebsocketsMessage msg) {
             }
 
             // Notification bit — false: не вимагати наявності bit 0 (air alert)
-            int actualBitDiff = findHighestBit16(flags16, false);
+            int actualBitDiff = findHighestExistingAndEnabledBit(flags16, false);
             LOG.printf("[WEBSOCKET]   highestBitRegion %d, actualBitDiff %d\n", highestBitRegion, actualBitDiff);
 
             // Анімуємо тільки якщо нотифікація має вищий пріоритет, ніж поточна тривога
@@ -2119,12 +2111,20 @@ void initSettings() {
             case ENERGY_COLOR_UNKNOWN:
             case RADIATION_MAX:
             case RADIATION_COLOR_UNKNOWN:
+                adaptStripColorsAndBrightness();
+                handleAdaptAnimationColors();
+                handleAdaptAnimationBrightness();
+                break;
+
             case ENABLE_KABS:
             case ENABLE_MISSILES:
             case ENABLE_DRONES:
             case ENABLE_RECON_DRONES:
             case ENABLE_BALLISTIC:
             case ENABLE_EXPLOSIONS:
+                // Зміна дозволу типу міняє результат isAlertBitEnabled → ledBitCache
+                // застарів. Перебудова ПЕРЕД adapt* (вони читають кеш).
+                rebuildLedBitCache();
                 adaptStripColorsAndBrightness();
                 handleAdaptAnimationColors();
                 handleAdaptAnimationBrightness();

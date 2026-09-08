@@ -532,7 +532,7 @@ inline bool isAlertBitEnabled(int bit) {
 }
 
 // Функція для пошуку номеру найстаршого дозволеного біту в 16-бітному числі
-inline int findHighestBit16(uint16_t value, bool checkAirAlert = true) {
+inline int findHighestExistingAndEnabledBit(uint16_t value, bool checkAirAlert = true) {
     if (value == 0) return AlertModes::NO_ALERT; // Повертаємо -1 як індикатор відсутності бітів
 
 
@@ -644,7 +644,7 @@ inline int findHighestBitForLedFlat(int position, uint16_t* out_region = nullptr
         if (idx < 0) continue;
         uint16_t flags = alertsFlat[idx];
         if (flags == 0) continue;
-        int bit = findHighestBit16(flags);
+        int bit = findHighestExistingAndEnabledBit(flags);
         if (bit != AlertModes::NO_ALERT && (best_bit == AlertModes::NO_ALERT || hasHigherPriority(bit, best_bit))) {
             best_bit    = bit;
             best_region = rid;
@@ -655,12 +655,18 @@ inline int findHighestBitForLedFlat(int position, uint16_t* out_region = nullptr
     return best_bit;
 }
 
+// Повертає сирі flags16 регіону з alertsFlat (0, якщо регіон не знайдено / немає тривог).
+inline uint16_t getRegionFlags16(uint16_t region_id) {
+    int idx = getRegionFlatIdx(region_id);
+    return (idx >= 0) ? alertsFlat[idx] : 0;
+}
+
 // Повертає найвищий priority-bit для регіону з alertsFlat (без heap).
 inline int findHighestBitForRegionFlat(uint16_t region_id) {
     int idx = getRegionFlatIdx(region_id);
     if (idx < 0) return AlertModes::NO_ALERT;
     uint16_t flags = alertsFlat[idx];
-    return (flags != 0) ? findHighestBit16(flags) : AlertModes::NO_ALERT;
+    return (flags != 0) ? findHighestExistingAndEnabledBit(flags) : AlertModes::NO_ALERT;
 }
 
 // Заповнює ledBitCache з поточного стану alertsFlat.
@@ -669,38 +675,6 @@ inline void rebuildLedBitCache() {
     for (int led = 0; led < MAX_LEDS_STRIP_MAIN; ++led) {
         ledBitCache[led] = (int8_t)findHighestBitForLedFlat(led);
     }
-}
-
-inline int getHighestActualBit(int sourceBit) {
-    int actualBit = AlertModes::NO_ALERT;
-    
-    // Знаходимо позицію sourceBit в ALERT_PRIORITY_ORDER
-    int sourceBitIndex = AlertModes::NO_ALERT;
-    for (int i = 0; i < ALERT_PRIORITY_COUNT; ++i) {
-        if (ALERT_PRIORITY_ORDER[i] == sourceBit) {
-            sourceBitIndex = i;
-            break;
-        }
-    }
-    
-    // Якщо sourceBit не знайдено в пріоритетах, повертаємо AlertModes::NO_ALERT
-    if (sourceBitIndex == AlertModes::NO_ALERT) {
-        return AlertModes::NO_ALERT;
-    }
-    
-    // Перебираємо біти за порядком пріоритету, починаючи з sourceBit
-    for (int i = sourceBitIndex; i < ALERT_PRIORITY_COUNT; ++i) {
-        int bit = ALERT_PRIORITY_ORDER[i];
-        
-        bool is_enabled = isAlertBitEnabled(bit);
-        
-        // Якщо тип тривоги дозволено показувати - встановлюємо його і виходимо
-        if (is_enabled) {
-            actualBit = bit;
-            break; // Зупиняємося на першому дозволеному біті за пріоритетом
-        }
-    }
-    return actualBit;
 }
 
 

@@ -928,12 +928,14 @@ void AnimationManager::adaptAllAnimationColors() {
         int numMain = strip_main ? min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN) : 0;
         for (int i = 0; i < numMain; i++) {
             if (mainStates[i].active) {
-                mainStates[i].color = ledActualColor(strip_main, i, false, mainStates[i].bit);
+                // .color — поточний стан: резолвимо з живого ledBitCache (NO_ALERT →
+                // ledActualColor сам візьме кеш), а не зі збереженого s.bit.
+                mainStates[i].color = ledActualColor(strip_main, i, false, AlertModes::NO_ALERT);
                 mainStates[i].adaptedInitColor = ledActualColor(strip_main, i, true, mainStates[i].initialBit);
             }
         }
         if (bgState.active) {
-            bgState.color = ledActualColor(strip_bg, 0, false, bgState.bit);
+            bgState.color = ledActualColor(strip_bg, 0, false, AlertModes::NO_ALERT);
             bgState.adaptedInitColor = ledActualColor(strip_bg, 0, true, bgState.initialBit);
         }
         xSemaphoreGive(animMutex);
@@ -949,7 +951,11 @@ void AnimationManager::adaptAllAnimationBrightness() {
             LedState& s = mainStates[i];
             if (!s.active) continue;
             if (s.bit >= AlertModes::NO_ALERT) {
-                std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(s.bit);
+                // Резолвимо з живого стану alertsFlat (per-region, з priority-search),
+                // а не зі збереженого s.bit — інакше після вимкнення типу загрози
+                // яскравість осіла б на COLOR_CLEAR попри активну повітряну тривогу.
+                std::pair<uint32_t, uint8_t> result =
+                    colorForBit(findHighestBitForLedFlat(i));
                 uint8_t newStart = result.second;
 
                 if (isLedInHomeDistrict(i)) {
@@ -1070,67 +1076,60 @@ void AnimationManager::adaptAllAnimationType() {
 }
 
 // ──────────────────────────────────────────────────────
-// Допоміжні методи для кольорів (незмінні)
+// Допоміжні методи для кольорів (незміАнні)
 // ──────────────────────────────────────────────────────
 
-std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(int highest_bit) {
+std::pair<uint32_t, uint8_t> AnimationManager::getActualColorAndBrightness(uint16_t flags16) {
+    // findHighestExistingAndEnabledBit сам обходить ALERT_PRIORITY_ORDER і повертає перший біт, що
+    // встановлений у flags16 І дозволений до показу (з air-alert gate).
+    return colorForBit(findHighestExistingAndEnabledBit(flags16));
+}
+
+std::pair<uint32_t, uint8_t> AnimationManager::colorForBit(int bit) {
+    // Чистий мапер: bit уже вважається валідним і дозволеним. NO_ALERT → відбій.
+    if (bit == AlertModes::NO_ALERT) {
+        return std::make_pair(
+            colorFromHex(settings->getString(COLOR_CLEAR)),
+            led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR)));
+    }
+
     uint32_t color = 0;
-    uint8_t brightness = 0;
-
-    for (int bit = highest_bit; bit >= AlertModes::NO_ALERT; bit--) {
-        bool is_enabled = false;
-
-        if (bit == AlertModes::NO_ALERT) {
-            is_enabled = true;
-        } else if (bit == AlertModes::ALERT) {
-            is_enabled = true;
-        } else if (bit == AlertModes::DRONES) {
-            is_enabled = settings->getBool(ENABLE_DRONES);
-        } else if (bit == AlertModes::MISSILES) {
-            is_enabled = settings->getBool(ENABLE_MISSILES);
-        } else if (bit == AlertModes::KABS) {
-            is_enabled = settings->getBool(ENABLE_KABS);
-        } else if (bit == AlertModes::BALLISTIC) {
-            is_enabled = settings->getBool(ENABLE_BALLISTIC);
-        } else if (bit == AlertModes::EXPLOSION) {
-            is_enabled = settings->getBool(ENABLE_EXPLOSIONS);
-        } else if (bit == AlertModes::RECON_DRONES) {
-            is_enabled = settings->getBool(ENABLE_RECON_DRONES);
-        } else if (bit == AlertModes::ALERT_LOW) {
-            is_enabled = true;
-        }
-
-        if (is_enabled) {
-            if (bit == AlertModes::NO_ALERT) {
-                color = colorFromHex(settings->getString(COLOR_CLEAR));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_CLEAR));
-            } else if (bit == AlertModes::ALERT) {
-                color = colorFromHex(settings->getString(COLOR_ALERT));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT));
-            } else if (bit == AlertModes::DRONES) {
-                color = colorFromHex(settings->getString(COLOR_DRONES));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_DRONES));
-            } else if (bit == AlertModes::MISSILES) {
-                color = colorFromHex(settings->getString(COLOR_MISSILES));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_MISSILES));
-            } else if (bit == AlertModes::KABS) {
-                color = colorFromHex(settings->getString(COLOR_KABS));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_KABS));
-            } else if (bit == AlertModes::BALLISTIC) {
-                color = colorFromHex(settings->getString(COLOR_BALLISTIC));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BALLISTIC));
-            } else if (bit == AlertModes::EXPLOSION) {
-                color = colorFromHex(settings->getString(COLOR_EXPLOSION));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_EXPLOSION));
-            } else if (bit == AlertModes::RECON_DRONES) {
-                color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_RECON_DRONES));
-            } else if (bit == AlertModes::ALERT_LOW) {
-                color = colorFromHex(settings->getString(COLOR_ALERT_LOW));
-                brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT_LOW));
-            }
+    uint8_t  brightness = 0;
+    switch (bit) {
+        case AlertModes::ALERT:
+            color = colorFromHex(settings->getString(COLOR_ALERT));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT));
             break;
-        }
+        case AlertModes::ALERT_LOW:
+            color = colorFromHex(settings->getString(COLOR_ALERT_LOW));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_ALERT_LOW));
+            break;
+        case AlertModes::DRONES:
+            color = colorFromHex(settings->getString(COLOR_DRONES));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_DRONES));
+            break;
+        case AlertModes::MISSILES:
+            color = colorFromHex(settings->getString(COLOR_MISSILES));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_MISSILES));
+            break;
+        case AlertModes::KABS:
+            color = colorFromHex(settings->getString(COLOR_KABS));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_KABS));
+            break;
+        case AlertModes::BALLISTIC:
+            color = colorFromHex(settings->getString(COLOR_BALLISTIC));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_BALLISTIC));
+            break;
+        case AlertModes::EXPLOSION:
+            color = colorFromHex(settings->getString(COLOR_EXPLOSION));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_EXPLOSION));
+            break;
+        case AlertModes::RECON_DRONES:
+            color = colorFromHex(settings->getString(COLOR_RECON_DRONES));
+            brightness = led.brightnessRelative(settings->getInt(BRIGHTNESS_RECON_DRONES));
+            break;
+        default:
+            break;
     }
     return std::make_pair(color, brightness);
 }
@@ -1239,11 +1238,12 @@ uint32_t AnimationManager::stripActualColor(Adafruit_NeoPixel* strip, bool adapt
 uint32_t AnimationManager::regionActualColor(uint16_t region_id, bool adapted) {
     uint32_t color;
     uint8_t brightness = 0;
-    int highest_bit = findHighestBitForRegionFlat(region_id);
+    uint16_t flags16 = getRegionFlags16(region_id);
+    int highest_bit = findHighestExistingAndEnabledBit(flags16);
     bool isHome = (region_id == settings->getInt(HOME_DISTRICT));
 
     if (highest_bit != AlertModes::NO_ALERT) {
-        std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+        std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(flags16);
         color = result.first;
         brightness = result.second;
         if (isHome) {
@@ -1297,7 +1297,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                     }
                     bool isHome = isLedInHomeDistrict(position);
                     if (highest_bit != AlertModes::NO_ALERT) {
-                        std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+                        std::pair<uint32_t, uint8_t> result = colorForBit(highest_bit);
                         color = result.first;
                         brightness = result.second;
                         if (isHome) {
@@ -1436,7 +1436,7 @@ uint32_t AnimationManager::ledActualColor(Adafruit_NeoPixel* strip, uint16_t pos
                             highest_bit = findHighestBitForRegionFlat(settings->getInt(HOME_DISTRICT));
                         }
                         if (settings->getInt(BG_LED_MODE) == BgLedModes::HOME_REGION) {
-                            std::pair<uint32_t, uint8_t> result = getActualColorAndBrightness(highest_bit);
+                            std::pair<uint32_t, uint8_t> result = colorForBit(highest_bit);
                             color = result.first;
                         } else {
                             color = colorFromHex(settings->getString(COLOR_BG));
