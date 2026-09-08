@@ -96,7 +96,13 @@ class AnimationManager {
         void renderRunningLight(const StripState& s, float elapsed);
 
         static uint32_t blendColors(uint32_t color1, uint32_t color2, float factor);
-        std::pair<uint32_t, uint8_t> getActualColorAndBrightness(int highest_bit);
+        // flags16 (сирі біти з alertsFlat) → найближчий активний+дозволений тип за
+        // ALERT_PRIORITY_ORDER → колір/яскравість. NO_ALERT → COLOR_CLEAR.
+        std::pair<uint32_t, uint8_t> getActualColorAndBrightness(uint16_t flags16);
+        // Мапер bit → колір/яскравість. bit має бути вже резолвнутий із реального стану
+        // регіону (findHighestExistingAndEnabledBit / findHighestBitForLedFlat / findHighestBitForRegionFlat).
+        // NO_ALERT → COLOR_CLEAR.
+        std::pair<uint32_t, uint8_t> colorForBit(int bit);
         const char* getStripName(Adafruit_NeoPixel* strip);
         
         // Перевірка чи preview активний для поточного map mode
@@ -123,7 +129,7 @@ class AnimationManager {
                            uint8_t endBrightness = 255,
                            uint16_t region_id = 0,
                            int bit = 0,
-                           int initialBit = -1);
+                           int initialBit = AlertModes::NO_ALERT);
         void update();
         void clearAllAnimations();
         void logActiveAnimations();
@@ -136,7 +142,7 @@ class AnimationManager {
         void adaptAllAnimationType();
         static uint32_t colorFromHex(const char* hex);
         uint32_t stripActualColor(Adafruit_NeoPixel* strip, bool adapted = true);
-        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = -1);
+        uint32_t ledActualColor(Adafruit_NeoPixel* strip, uint16_t position, bool adapted = true, int bit = AlertModes::NO_ALERT);
         uint32_t regionActualColor(uint16_t region_id, bool adapted = true);
         static uint32_t adaptColorBrightness(uint32_t color, uint8_t brightness);
 

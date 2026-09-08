@@ -17,15 +17,23 @@ namespace DefaultColors {
     static const uint32_t FLAG_YELLOW = 0xFFD700;  // Yellow
 }
 // --- ALERT Modes ---
+// Єдине джерело істини для номерів бітів у 16-бітному слові flags16 (WebSocket).
+// Змінюєш значення тут — воно застосовується по всьому коду (switch-cases, маски, пріоритети).
 namespace AlertModes {
     static const int NO_ALERT = -1;
-    static const int ALERT = 0;
+    static const int LEGACY_ALERT = 0; // legacy-біт від старих прошивок; нова логіка ігнорує
+    static const int ARTILLERY = 1;
+    static const int URBAN = 2;
+    static const int CHEMICAL = 3;
+    static const int NUCLEAR = 4;
     static const int DRONES = 5;
     static const int MISSILES = 6;
     static const int KABS = 7;
     static const int BALLISTIC = 8;
     static const int EXPLOSION = 9;
     static const int RECON_DRONES = 10;
+    static const int ALERT_LOW = 11;   // "тиха" повітряна тривога
+    static const int ALERT = 12;       // "висока" повітряна тривога (основний тригер)
 }
 
 // --- MAP Modes ---
@@ -215,6 +223,7 @@ enum SoundType {
   REGULAR,
   ALERT_ON,
   ALERT_OFF,
+  ALERT_LOW_ON,
   EXPLOSIONS,
   DRONES,
   MISSILES,
@@ -635,6 +644,14 @@ enum Type {
     WEB_AUTH_ENABLED,
     WEB_LOGIN,
     WEB_PASSWORD,
+    COLOR_ALERT_LOW,
+    BRIGHTNESS_ALERT_LOW,
+    ANIMATION_ALERT_LOW_TYPE,
+    ANIMATION_ALERT_LOW_CYCLE_TIME,
+    ALERT_LOW_TIME,
+    SOUND_ON_ALERT_LOW,
+    MELODY_ON_ALERT_LOW,
+    TRACK_ON_ALERT_LOW,
 };
 
 // --- Адміністративні одиниці України (області + обласні центри + м. Київ + АР Крим) ---

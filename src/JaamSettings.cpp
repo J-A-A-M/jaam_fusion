@@ -108,6 +108,7 @@ std::map<Type, SettingItemInt> intSettings = {
 
     // Brightness per state (0-100%)
     {BRIGHTNESS_ALERT, {"ba", 100}},                       // Alert state
+    {BRIGHTNESS_ALERT_LOW, {"bal", 100}},                  // Low-level air alert state
     {BRIGHTNESS_CLEAR, {"bc", 100}},                       // Clear state
     {BRIGHTNESS_NEW_ALERT, {"bna", 100}},                  // New alert
     {BRIGHTNESS_ALERT_OVER, {"bao", 100}},                 // Alert ended
@@ -158,6 +159,9 @@ std::map<Type, SettingItemInt> intSettings = {
     {SOUND_ON_ALERT_END, {"soae", 1}},                     // Play sound on alert end (0/1)
     {MELODY_ON_ALERT_END, {"moae", 15}},                   // Melody index: 15 = Shedryk
     {TRACK_ON_ALERT_END, {"toae", 5}},                     // DFPlayer track index
+    {SOUND_ON_ALERT_LOW, {"soal", 1}},                     // Play sound on low-level air alert (0/1)
+    {MELODY_ON_ALERT_LOW, {"moal", 4}},                    // Melody index: 4 = Siren
+    {TRACK_ON_ALERT_LOW, {"toal", 0}},                     // DFPlayer track index
     
     // Sound events: Threats
     {SOUND_ON_EXPLOSION, {"soex", 1}},                     // Play sound on explosion (0/1)
@@ -257,6 +261,7 @@ std::map<Type, SettingItemInt> intSettings = {
     // Animation timers (seconds)
     {ALERT_ON_TIME, {"aonte", 300}},                       // Animation duration for alert on
     {ALERT_OFF_TIME, {"aofte", 300}},                      // Animation duration for alert off
+    {ALERT_LOW_TIME, {"alte", 300}},                       // Animation duration for low-level air alert
     {DRONE_TIME, {"drte", 300}},                           // Animation duration for drones
     {RECON_DRONE_TIME, {"rdrte", 300}},                    // Animation duration for recon drones
     {MISSILE_TIME, {"mite", 300}},                         // Animation duration for missiles
@@ -281,6 +286,7 @@ std::map<Type, SettingItemInt> intSettings = {
     // Animation types (0 = fade, 1 = blink, 2 = blend fade, 3 = pulse, etc.)
     {ANIMATION_ALERT_ON_TYPE, {"aanot", 0}},               // Alert on animation type
     {ANIMATION_ALERT_OFF_TYPE, {"aaoft",0}},               // Alert off animation type
+    {ANIMATION_ALERT_LOW_TYPE, {"aalt", 0}},               // Low-level air alert animation type
     {ANIMATION_DRONE_TYPE, {"adrt", 2}},                   // Drone animation type
     {ANIMATION_RECON_DRONE_TYPE, {"ardrt", 9}},            // Recon drone animation type
     {ANIMATION_MISSILE_TYPE, {"amit", 8}},                 // Missile animation type
@@ -291,6 +297,7 @@ std::map<Type, SettingItemInt> intSettings = {
     // Animation cycle times (milliseconds)
     {ANIMATION_ALERT_ON_CYCLE_TIME, {"aacot", 1000}},      // Alert on animation cycle time
     {ANIMATION_ALERT_OFF_CYCLE_TIME, {"aacft", 1000}},     // Alert off animation cycle time
+    {ANIMATION_ALERT_LOW_CYCLE_TIME, {"aalct", 1000}},     // Low-level air alert animation cycle time
     {ANIMATION_DRONE_CYCLE_TIME, {"adct", 700}},           // Drone animation cycle time
     {ANIMATION_RECON_DRONE_CYCLE_TIME, {"ardct", 1000}},   // Recon drone animation cycle time
     {ANIMATION_MISSILE_CYCLE_TIME, {"amct", 700}},         // Missile animation cycle time
@@ -322,6 +329,7 @@ std::map<Type, SettingItemString> stringSettings = {
     
     // Colors in RGB hex format (#RRGGBB)
     {COLOR_ALERT, {"rgbcal", "#FF0000"}},                   // Alert color (red)
+    {COLOR_ALERT_LOW, {"rgbcall", "#FFFF00"}},              // Low-level air alert color (yellow)
     {COLOR_CLEAR, {"rgbccl", "#00FF00"}},                   // Clear color (green)
     {COLOR_NEW_ALERT, {"rgbcna", "#FF3C00"}},               // New alert color (orange)
     {COLOR_ALERT_OVER, {"rgbcao", "#00FF3C"}},              // Alert over color (yellow-green)
@@ -329,7 +337,7 @@ std::map<Type, SettingItemString> stringSettings = {
     {COLOR_MISSILES, {"rgbcmi", "#FFFFFF"}},                // Missile color (white)
     {COLOR_DRONES, {"rgbcdr", "#FF00FF"}},                  // Drone color (magenta)
     {COLOR_RECON_DRONES, {"rgbcrdr", "#0000FF"}},           // Recon drone color (blue)
-    {COLOR_KABS, {"rgbckab", "#FFFF00"}},                   // KAB color (yellow)
+    {COLOR_KABS, {"rgbckab", "#FF8000"}},                   // KAB color (orange)
     {COLOR_BALLISTIC, {"rgbcbal", "#FFFFFF"}},              // Ballistic color (white)
     {COLOR_HOME_DISTRICT, {"rgbchd", "#00FF64"}},           // Home district color (light blue)
     {COLOR_BG, {"rgbcbg", "#00FF00"}},                      // Background color (green)
