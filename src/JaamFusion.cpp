@@ -832,39 +832,36 @@ void alertAction(int bit, int districtId) {
     const char* districtName = getNameById(DISTRICTS, districtId, MAX_REGIONS);
     LOG.printf("[ALERT] Home district %s status changed from %d to %d\n", districtName, alertBit, bit);
     
-    // Звукові сповіщення (якщо увімкнено)
-    if (settings.getBool(SOUND_ON_ALERT)) {
-        switch (bit){
-            case AlertModes::ALERT:
-                if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
-                break;
-            case AlertModes::ALERT_LOW:
-                if(needToPlaySound(SoundType::ALERT_LOW_ON)) playMelody(ALERT_LOW_ON);
-                break;
-            case AlertModes::DRONES:
-                if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
-                break;
-            case AlertModes::MISSILES:
-                if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
-                break;
-            case AlertModes::KABS:
-                if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
-                break;
-            case AlertModes::BALLISTIC:
-                if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
-                break;
-            case AlertModes::EXPLOSION:
-                if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
-                break;
-            case AlertModes::RECON_DRONES:
-                if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
-                break;
-            default:
-                break;
-        }
-    }
-    if (settings.getBool(SOUND_ON_ALERT_END) && bit == AlertModes::NO_ALERT) {
-        if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
+    switch (bit){
+        case AlertModes::NO_ALERT:
+            if(needToPlaySound(SoundType::ALERT_OFF)) playMelody(ALERT_OFF);
+            break;
+        case AlertModes::ALERT:
+            if(needToPlaySound(SoundType::ALERT_ON)) playMelody(ALERT_ON);
+            break;
+        case AlertModes::ALERT_LOW:
+            if(needToPlaySound(SoundType::ALERT_LOW_ON)) playMelody(ALERT_LOW_ON);
+            break;
+        case AlertModes::DRONES:
+            if(needToPlaySound(SoundType::DRONES)) playMelody(DRONES);
+            break;
+        case AlertModes::MISSILES:
+            if(needToPlaySound(SoundType::MISSILES)) playMelody(MISSILES);
+            break;
+        case AlertModes::KABS:
+            if(needToPlaySound(SoundType::KABS)) playMelody(KABS);
+            break;
+        case AlertModes::BALLISTIC:
+            if(needToPlaySound(SoundType::BALLISTIC)) playMelody(BALLISTIC);
+            break;
+        case AlertModes::EXPLOSION:
+            if(needToPlaySound(SoundType::EXPLOSIONS)) playMelody(EXPLOSIONS);
+            break;
+        case AlertModes::RECON_DRONES:
+            if(needToPlaySound(SoundType::RECON_DRONES)) playMelody(RECON_DRONES);
+            break;
+        default:
+            break;
     }
     
     // Показуємо повідомлення на дисплеї для будь-якого типу події
