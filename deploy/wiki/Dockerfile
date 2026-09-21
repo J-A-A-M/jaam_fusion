@@ -19,3 +19,5 @@ RUN mkdocs build --clean --strict
 # builder stage (mkdocs, git, .git, sources) ends up here - only static files.
 FROM nginx:alpine
 COPY --from=builder /docs/site /usr/share/nginx/html
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -O /dev/null http://localhost/ || exit 1
