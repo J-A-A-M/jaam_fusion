@@ -14,6 +14,11 @@ void JaamWifi::begin(const char* chipId) {
 
     WiFi.setHostname(settings->getString(BROADCAST_NAME));
     WiFi.mode(WIFI_STA);
+    // Реконектом керує process(). Ядро з увімкненим autoReconnect безперервно
+    // добивається у прибитий WiFiMulti-ом BSSID+канал (WiFi.begin() без аргументів
+    // перевикористовує конфіг з bssid_set=1) і тримає радіо зайнятим — через це
+    // наші скани повертають неповний список і мережа "зникає".
+    WiFi.setAutoReconnect(false);
 
     setupWifiEvents();
     migrateFromWifiManager();
@@ -25,18 +30,27 @@ void JaamWifi::begin(const char* chipId) {
         return;
     }
 
-    if (tryMultiConnect(MULTI_CONNECT_TIMEOUT)) {
-        handleConnected();
-    } else {
-        LOG.printf("[WIFI] All networks failed, opening captive portal\n");
-        openCaptivePortal();
+    // Одна спроба == один скан усередині WiFiMulti::run(): якщо AP не потрапив
+    // у результати скану, WiFi.begin() навіть не викликається. Слабкий або
+    // "зайнятий" AP так промахується регулярно, тому пробуємо кілька разів.
+    for (uint8_t attempt = 1; attempt <= BOOT_CONNECT_ATTEMPTS; attempt++) {
+        LOG.printf("[WIFI] Connect attempt %d/%d\n", attempt, BOOT_CONNECT_ATTEMPTS);
+        if (tryMultiConnect(MULTI_CONNECT_TIMEOUT)) {
+            handleConnected();
+            return;
+        }
+        if (attempt < BOOT_CONNECT_ATTEMPTS) resetRadio();
     }
+
+    LOG.printf("[WIFI] All networks failed, opening captive portal\n");
+    openCaptivePortal();
 }
 
 void JaamWifi::process() {
     if (portalActive) {
         dnsServer.processNextRequest();
         portalServer.handleClient();
+        if (retrySavedNetworksFromPortal()) return;
         if (millis() - portalStartTime >= PORTAL_TIMEOUT) {
             portalStartTime = millis();
             LOG.printf("[WIFI] Captive portal timeout, rebooting...\n");
@@ -60,10 +74,7 @@ void JaamWifi::process() {
     reconnectAttempts++;
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
         LOG.printf("[WIFI] Reconnect attempt %d/%d\n", reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
-        WiFi.disconnect(true);
-        WiFi.mode(WIFI_OFF);
-        delay(100);
-        WiFi.mode(WIFI_STA);
+        resetRadio();
         tryMultiConnect(MULTI_RECONNECT_TIMEOUT);
     } else {
         LOG.printf("[WIFI] Max reconnect attempts reached, rebooting...\n");
@@ -111,6 +122,10 @@ void JaamWifi::saveNetworksToNvs(const std::vector<SavedNetwork>& nets) {
         if (prefs.isKey(keyP.c_str())) prefs.remove(keyP.c_str());
     }
     prefs.end();
+
+    // Тримаємо живий APlist у синхроні з NVS — інакше зміни зі сторінки налаштувань
+    // діяли б лише після перезавантаження.
+    loadNetworksIntoMulti();
 }
 
 bool JaamWifi::addNetwork(const String& ssid, const String& pass) {
@@ -213,8 +228,22 @@ static String escapeHtml(const String& s) {
 
 // --- Private ---
 
+void JaamWifi::resetRadio() {
+    // eraseap=true прибирає зі storage прибитий WiFiMulti-ом BSSID+канал —
+    // інакше після зміни каналу на роутері наступний connect знову цілиться
+    // в точку, якої вже немає.
+    WiFi.disconnect(true, true);
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+    WiFi.mode(WIFI_STA);
+    // esp_wifi_start() щойно відпрацював — скан одразу після нього повертає
+    // неповний список. Раніше пауза стояла перед WIFI_STA і сенсу не мала.
+    delay(RADIO_SETTLE_DELAY);
+}
+
 bool JaamWifi::tryMultiConnect(uint32_t timeout) {
-    if (wifiMulti.run(timeout) == WL_CONNECTED) {
+    if (!wifiMulti) return false;
+    if (wifiMulti->run(timeout) == WL_CONNECTED) {
         LOG.printf("[WIFI] Connected to %s, IP: %s\n",
             WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
         return true;
@@ -224,6 +253,12 @@ bool JaamWifi::tryMultiConnect(uint32_t timeout) {
 }
 
 void JaamWifi::loadNetworksIntoMulti() {
+    // WiFiMulti не має публічного API для очищення APlist (APlistClean() приватний),
+    // тому перестворюємо об'єкт. Інакше видалена мережа лишалась би активною,
+    // а додана через веб-UI не з'явилась би до перезавантаження.
+    delete wifiMulti;
+    wifiMulti = new WiFiMulti();
+
     auto nets = getSavedNetworks();
     if (nets.empty()) {
         LOG.printf("[WIFI] No saved networks found\n");
@@ -231,7 +266,7 @@ void JaamWifi::loadNetworksIntoMulti() {
     }
     for (auto& n : nets) {
         LOG.printf("[WIFI] Loading network: %s\n", n.ssid.c_str());
-        wifiMulti.addAP(n.ssid.c_str(), n.pass.c_str());
+        wifiMulti->addAP(n.ssid.c_str(), n.pass.c_str());
     }
 }
 
@@ -364,8 +399,38 @@ void JaamWifi::openCaptivePortal() {
     portalServer.begin();
     portalActive = true;
     portalStartTime = millis();
+    lastPortalRetry = millis(); // перша фонова спроба — не раніше ніж через інтервал
 
     if (onPortalStartedCb) onPortalStartedCb(String(apName));
+}
+
+void JaamWifi::closeCaptivePortal() {
+    if (!portalActive) return;
+    LOG.printf("[WIFI] Closing captive portal\n");
+    portalServer.stop();
+    dnsServer.stop();
+    WiFi.softAPdisconnect(true); // лишає режим WIFI_STA, активне STA-з'єднання не чіпає
+    portalActive = false;
+}
+
+// Портал не має бути глухим кутом: мережа могла повернутись в ефір уже після
+// його відкриття (типовий випадок — перезавантаження роутера). Без цього
+// пристрій висів 3 хвилини в AP-режимі, ребутився і повторював цикл.
+bool JaamWifi::retrySavedNetworksFromPortal() {
+    if (millis() - lastPortalRetry < PORTAL_RETRY_INTERVAL) return false;
+    lastPortalRetry = millis();
+
+    // Не рвемо радіо під ногами в того, хто саме зараз вводить пароль у порталі.
+    if (WiFi.softAPgetStationNum() > 0) return false;
+    if (getSavedNetworks().empty()) return false;
+
+    LOG.printf("[WIFI] Portal active, retrying saved networks...\n");
+    if (!tryMultiConnect(PORTAL_RETRY_TIMEOUT)) return false;
+
+    LOG.printf("[WIFI] Saved network is back, leaving portal\n");
+    closeCaptivePortal();
+    handleConnected();
+    return true;
 }
 
 void JaamWifi::setupWifiEvents() {
