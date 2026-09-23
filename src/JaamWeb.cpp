@@ -2237,12 +2237,11 @@ void JaamWeb::handleWifiScanResults() {
     }
     JsonDocument doc;
     JsonArray arr = doc["networks"].to<JsonArray>();
-    int n = wifi->getScanCount();
-    for (int i = 0; i < n; i++) {
+    for (auto& net : wifi->getScanResults()) {
         JsonObject obj = arr.add<JsonObject>();
-        obj["ssid"] = wifi->getScanSSID(i);
-        obj["rssi"] = wifi->getScanRSSI(i);
-        obj["open"] = wifi->isScanOpen(i);
+        obj["ssid"] = net.ssid;
+        obj["rssi"] = net.rssi;
+        obj["open"] = net.open;
     }
     server.send(200, "application/json", doc.as<String>());
 }

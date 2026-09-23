@@ -2,6 +2,7 @@
 #include "JaamLogs.h"
 #include "web_assets.h"
 #include <esp_wifi.h>
+#include <algorithm>
 
 // --- Lifecycle ---
 
@@ -178,21 +179,34 @@ bool JaamWifi::isScanDone() {
     return WiFi.scanComplete() >= 0;
 }
 
-int JaamWifi::getScanCount() {
+std::vector<ScanResult> JaamWifi::getScanResults() {
+    std::vector<ScanResult> out;
     int n = WiFi.scanComplete();
-    return n > 0 ? n : 0;
-}
+    if (n <= 0) return out;
 
-String JaamWifi::getScanSSID(int i) {
-    return WiFi.SSID(i);
-}
+    for (int i = 0; i < n; i++) {
+        String ssid = WiFi.SSID(i);
+        // Прихована мережа — рядок без назви у списку все одно не вибрати.
+        if (ssid.length() == 0) continue;
 
-int8_t JaamWifi::getScanRSSI(int i) {
-    return WiFi.RSSI(i);
-}
+        int8_t rssi = WiFi.RSSI(i);
+        bool isOpen = WiFi.encryptionType(i) == WIFI_AUTH_OPEN;
 
-bool JaamWifi::isScanOpen(int i) {
-    return WiFi.encryptionType(i) == WIFI_AUTH_OPEN;
+        // Mesh і кілька точок з однаковим SSID дають по запису на кожен BSSID —
+        // лишаємо найсильніший, інакше список рябіє дублями.
+        auto same = std::find_if(out.begin(), out.end(),
+            [&ssid](const ScanResult& r) { return r.ssid == ssid; });
+        if (same == out.end()) {
+            out.push_back({ssid, rssi, isOpen});
+        } else if (rssi > same->rssi) {
+            same->rssi = rssi;
+            same->open = isOpen;
+        }
+    }
+
+    std::sort(out.begin(), out.end(),
+        [](const ScanResult& a, const ScanResult& b) { return a.rssi > b.rssi; });
+    return out;
 }
 
 // --- Private helpers ---
@@ -346,17 +360,18 @@ void JaamWifi::openCaptivePortal() {
     });
 
     portalServer.on("/scan-results", HTTP_GET, [this]() {
-        int n = WiFi.scanComplete();
-        if (n < 0) {
+        if (!isScanDone()) {
             portalServer.send(200, "application/json", "{\"status\":\"scanning\"}");
             return;
         }
         String json = "{\"networks\":[";
-        for (int i = 0; i < n; i++) {
-            if (i > 0) json += ",";
-            json += "{\"ssid\":\"" + escapeJson(WiFi.SSID(i)) + "\""
-                  + ",\"rssi\":" + String(WiFi.RSSI(i))
-                  + ",\"open\":" + (WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "true" : "false")
+        bool first = true;
+        for (auto& net : getScanResults()) {
+            if (!first) json += ",";
+            first = false;
+            json += "{\"ssid\":\"" + escapeJson(net.ssid) + "\""
+                  + ",\"rssi\":" + String(net.rssi)
+                  + ",\"open\":" + (net.open ? "true" : "false")
                   + "}";
         }
         json += "]}";

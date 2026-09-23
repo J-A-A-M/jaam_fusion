@@ -14,6 +14,12 @@ struct SavedNetwork {
     String pass;
 };
 
+struct ScanResult {
+    String ssid;
+    int8_t rssi;
+    bool   open;
+};
+
 class JaamWifi {
 public:
     using StringCb  = std::function<void(const String&, const String&)>; // (a, b)
@@ -51,10 +57,10 @@ public:
     bool   removeNetwork(const String& ssid);
     void   startScan();
     bool   isScanDone();
-    int    getScanCount();
-    String getScanSSID(int i);
-    int8_t getScanRSSI(int i);
-    bool   isScanOpen(int i);
+    // Дедупліковано за SSID (mesh/кілька точок дають запис на кожен BSSID — лишається
+    // найсильніший) і відсортовано за сигналом, найсильніші першими. Приховані мережі
+    // відкидаються: рядок без назви у списку все одно не вибрати.
+    std::vector<ScanResult> getScanResults();
 
 private:
     WiFiMulti*    wifiMulti     = nullptr; // перестворюється в loadNetworksIntoMulti()
