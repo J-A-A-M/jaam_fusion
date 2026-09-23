@@ -193,14 +193,17 @@ std::vector<ScanResult> JaamWifi::getScanResults() {
         bool isOpen = WiFi.encryptionType(i) == WIFI_AUTH_OPEN;
 
         // Mesh і кілька точок з однаковим SSID дають по запису на кожен BSSID —
-        // лишаємо найсильніший, інакше список рябіє дублями.
+        // лишаємо найсильніший, інакше список рябіє дублями. Ключ включає тип
+        // захисту: якщо в ефірі є відкрита й закрита точки з однаковою назвою,
+        // злиття їх в один рядок дало б у веб-UI вибір "відкритої" мережі, а той
+        // одразу зберігає SSID з порожнім паролем (web/wifi.html, addFromScan).
+        // Mesh це не зачіпає — там усі точки з однаковим захистом.
         auto same = std::find_if(out.begin(), out.end(),
-            [&ssid](const ScanResult& r) { return r.ssid == ssid; });
+            [&](const ScanResult& r) { return r.ssid == ssid && r.open == isOpen; });
         if (same == out.end()) {
             out.push_back({ssid, rssi, isOpen});
         } else if (rssi > same->rssi) {
             same->rssi = rssi;
-            same->open = isOpen;
         }
     }
 
