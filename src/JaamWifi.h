@@ -14,6 +14,12 @@ struct SavedNetwork {
     String pass;
 };
 
+struct ScanResult {
+    String ssid;
+    int8_t rssi;
+    bool   open;
+};
+
 class JaamWifi {
 public:
     using StringCb  = std::function<void(const String&, const String&)>; // (a, b)
@@ -32,6 +38,8 @@ public:
     void setOnNetworkSaved(StrCb cb)     { onNetworkSavedCb = cb; }     // (ssid)
     void setOnReboot(RebootCb cb)        { onRebootCb = cb; }
 
+    ~JaamWifi() { delete wifiMulti; }
+
     // --- Lifecycle ---
     void begin(const char* chipId);  // блокуючий: підключення або відкриття порталу
     void process();                  // перевірка стану, reconnect, обробка portal
@@ -49,13 +57,13 @@ public:
     bool   removeNetwork(const String& ssid);
     void   startScan();
     bool   isScanDone();
-    int    getScanCount();
-    String getScanSSID(int i);
-    int8_t getScanRSSI(int i);
-    bool   isScanOpen(int i);
+    // Дедупліковано за SSID (mesh/кілька точок дають запис на кожен BSSID — лишається
+    // найсильніший) і відсортовано за сигналом, найсильніші першими. Приховані мережі
+    // відкидаються: рядок без назви у списку все одно не вибрати.
+    std::vector<ScanResult> getScanResults();
 
 private:
-    WiFiMulti     wifiMulti;
+    WiFiMulti*    wifiMulti     = nullptr; // перестворюється в loadNetworksIntoMulti()
     WebServer     portalServer{80};
     DNSServer     dnsServer;
     JaamSettings* settings      = nullptr;
@@ -64,14 +72,19 @@ private:
     bool          portalActive   = false;
     unsigned long connectTime    = 0;
     unsigned long portalStartTime = 0;
+    unsigned long lastPortalRetry = 0;
     uint8_t       reconnectAttempts = 0;
     char          apName[32]     = {};
 
     static const uint8_t  MAX_NETWORKS            = 5;
     static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 5;
-    static const uint32_t MULTI_CONNECT_TIMEOUT   = 30000; // ms при першому start
-    static const uint32_t MULTI_RECONNECT_TIMEOUT = 30000; // ms при reconnect
+    static const uint8_t  BOOT_CONNECT_ATTEMPTS   = 4;      // спроб при старті перед відкриттям порталу
+    static const uint32_t MULTI_CONNECT_TIMEOUT   = 15000;  // ms при першому start
+    static const uint32_t MULTI_RECONNECT_TIMEOUT = 15000;  // ms при reconnect
     static const uint32_t PORTAL_TIMEOUT          = 180000; // 3 хв
+    static const uint32_t PORTAL_RETRY_INTERVAL   = 60000;  // як часто пробувати збережені мережі з порталу
+    static const uint32_t PORTAL_RETRY_TIMEOUT    = 10000;  // ms на одну спробу з порталу
+    static const uint32_t RADIO_SETTLE_DELAY      = 500;    // ms після esp_wifi_start() перед скануванням
 
     StringCb onConnectedCb;
     VoidCb   onDisconnectedCb;
@@ -84,7 +97,10 @@ private:
     void migrateFromWifiManager();
     void setupWifiEvents();
     bool tryMultiConnect(uint32_t timeout);
+    void resetRadio();
     void openCaptivePortal();
+    void closeCaptivePortal();
+    bool retrySavedNetworksFromPortal();
     void handleConnected();
     void handleDisconnected();
     void saveNetworksToNvs(const std::vector<SavedNetwork>& nets);
