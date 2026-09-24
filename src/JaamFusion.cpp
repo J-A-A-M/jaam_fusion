@@ -3136,7 +3136,10 @@ void reconfigureAll() {
 
 void requestReconfigureAll() {
     LOG.println("[SETTINGS] Requesting full system reconfiguration");
-    async.setTimeout(reconfigureAll, 500); // Додаємо невелику затримку перед початком повної переконфігурації
+    // Додаємо невелику затримку перед початком повної переконфігурації
+    if (async.setTimeout(reconfigureAll, 500) < 0) {
+        LOG.println("[SETTINGS] Failed to schedule reconfiguration: async pool is full");
+    }
 }
 
 void handleAdaptClimate() {
@@ -3244,7 +3247,12 @@ void requestFirmwareUpdate(const char* firmwareId) {
     }
     
     LOG.printf("[FIRMWARE] Update requested for version: %s\n", versionToUse);
-    async.setTimeout(updateFirmware, 500); // Додаємо невелику затримку перед початком оновлення
+    // Додаємо невелику затримку перед початком оновлення
+    if (async.setTimeout(updateFirmware, 500) < 0) {
+        LOG.printf("[FIRMWARE] Failed to schedule update: async pool is full\n");
+        display.showServiceMessage("Потрібен перезапуск", "Помилка оновлення:", 5000);
+        fwUpdate.clearUpdateRequest();
+    }
 }
 
 void requestRecalculateLeds() {
