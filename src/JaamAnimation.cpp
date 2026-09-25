@@ -1654,7 +1654,7 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
             previewStateBg.period = period;
             previewStateBg.cycles = cycles;
             previewStateBg.animType = animType;
-            previewStateBg.startBr = globalStart;
+            previewStateBg.startBr = led.bgBrightness(); // strip_bg керується лише "Фонова стрічка" (+ прив'язка), не яскравістю події
             previewStateBg.endBr = globalEnd;
             previewStateBg.bit = 100;
             previewStateBg.mapMode = mapMode;
