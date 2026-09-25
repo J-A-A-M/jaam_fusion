@@ -13,13 +13,16 @@
 
 Крім цього, підтримується окремий OLED-дисплей, який відображає поточний час, погоду, радіацію, стан електромережі, глобальні сповіщення та сервісні повідомлення.
 
+[КУПИТИ ГОТОВУ МАПУ МОЖНА ТУТ](https://store.jaam.net.ua/mapy-tryvoh/)
+
+<img width="700" height="500" src="https://github.com/user-attachments/assets/5d1d1132-8a91-4013-9ed0-8d0627c44cb5" />
+
 ## 📚 Ресурси проєкту
 
-- [WIKI по прошивці](https://github.com/J-A-A-M/ukraine_alarm_map/wiki)
-- [Багтрекер](https://github.com/J-A-A-M/jaam_fusion/issues)
-- [FLASHER](https://flasher.jaam.net.ua/) - прошивка прямо з браузера!
-- [ТЕЛЕГРАМ КАНАЛ ПРОЄКТУ](https://t.me/jaam_project)
-- [ЧАТ ПРОЄКТУ](https://t.me/jaam_discussions)
+- [WIKI по прошивці](https://info.jaam.net.ua/)
+- [FLASHER](https://flasher.jaam.net.ua/) - тут можна залити свіжу прошивку прямо з браузера!
+- [ТЕЛЕГРАМ КАНАЛ ПРОЕКТУ](https://t.me/jaam_project)
+- [ЧАТ ПРОЕКТУ](https://t.me/jaam_discussions)
 - [ПОРТАЛ ДАНИХ](http://jaam.net.ua)
 
 ### 📖 Документація для розробників
