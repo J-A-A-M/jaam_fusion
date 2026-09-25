@@ -19,7 +19,7 @@ uint8_t JaamLed::brightnessRelative(uint8_t percentLocal) {
 
 uint8_t JaamLed::homeDistrictBrightness(uint8_t baseBrightness) {
     if (settings.getBool(BIND_HOME_DISTRICT_BRIGHTNESS)) {
-        return baseBrightness; // повторює загальне налаштування типу тривоги/відбою, без змін
+        return brightnessRelative(settings.getInt(BRIGHTNESS_HOME_DISTRICT)); // відносна до загальної, замінює яскравість типу тривоги
     }
     uint8_t bhd = settings.getInt(BRIGHTNESS_HOME_DISTRICT);
     return brightnessMapped(bhd); // незалежно від CURRENT_BRIGHTNESS і від типу тривоги
