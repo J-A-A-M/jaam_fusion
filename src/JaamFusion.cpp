@@ -823,6 +823,7 @@ void triggerHomeAlertAnimation(int8_t bit) {
     if (!settings.getBool(ENABLE_HOME_ALERT_ANIMATION)) return;
     uint16_t haType; uint32_t haColor; uint32_t haPeriod; uint8_t haBright;
     if (getEventAnimationParams(bit, haType, haColor, haPeriod, haBright)) {
+        if (settings.getBool(BIND_HOME_DISTRICT_BRIGHTNESS)) haBright = settings.getInt(BRIGHTNESS_HOME_DISTRICT);
         uint32_t durMs = (uint32_t)settings.getInt(HOME_ALERT_ANIMATION_TIME) * 1000;
         animation.startPreview(bit, haType, haColor, haPeriod, haBright, durMs, false);
     }

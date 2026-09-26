@@ -1646,15 +1646,16 @@ void AnimationManager::startPreview(int8_t eventType, uint16_t animType, uint32_
         
         // Налаштовуємо preview для bg стрічки, якщо вона є
         if (strip_bg != nullptr) {
+            uint8_t bgBr = led.bgBrightness(); // strip_bg керується лише "Фонова стрічка" (+ прив'язка), не яскравістю події
             previewStateBg.strip = strip_bg;
             previewStateBg.color = color;
-            previewStateBg.adaptedInitColor = adaptedInitColor;
+            previewStateBg.adaptedInitColor = adaptColorBrightness(initColor, bgBr);
             previewStateBg.startTime = startTime;
             previewStateBg.localStart = now;
             previewStateBg.period = period;
             previewStateBg.cycles = cycles;
             previewStateBg.animType = animType;
-            previewStateBg.startBr = globalStart;
+            previewStateBg.startBr = bgBr;
             previewStateBg.endBr = globalEnd;
             previewStateBg.bit = 100;
             previewStateBg.mapMode = mapMode;

@@ -1793,7 +1793,7 @@
             1,
             "brightness",
             "%",
-            "bind_home_district_brightness==0"
+            ""
         ],
         [
             "bool",
