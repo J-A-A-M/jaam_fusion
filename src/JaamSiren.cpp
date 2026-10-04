@@ -192,16 +192,27 @@ void JaamSiren::setAlert(bool isStartupSync) {
     
     // Перший комплект
     if ((!isStartupSync || shouldRestoreDeviceOnStartup(SirenDevice::PRIMARY)) && alertPin > 0) {
+        if (pinModeConfig == 1) {
+            // Не тримаємо активними ALERT_PIN і CLEAR_PIN одночасно
+            cancelPulse(clearPin, activeLevel, clearTimer, clearActive);
+        }
         digitalWrite(alertPin, activeLevel);
         alertActive = true;
-        
+
         if (pinModeConfig == 1) {
             // Імпульсний режим - встановлюємо таймер для автоматичного вимкнення
             if (alertTimer >= 0) {
                 async.clearInterval(alertTimer);
             }
             alertTimer = async.setTimeout(sirenAlertCallback, pinTime);
-            LOG.printf("[SIREN 1] Alert activated on pin %d (pulse mode, %dms)\n", alertPin, pinTime);
+            if (alertTimer < 0) {
+                // Без таймера пін залишився б активним назавжди
+                LOG.printf("[SIREN 1] Failed to schedule alert pulse end: async pool is full\n");
+                deactivatePin(alertPin, activeLevel);
+                alertActive = false;
+            } else {
+                LOG.printf("[SIREN 1] Alert activated on pin %d (pulse mode, %dms)\n", alertPin, pinTime);
+            }
         } else {
             LOG.printf("[SIREN 1] Alert activated on pin %d (bistable mode)\n", alertPin);
         }
@@ -211,15 +222,24 @@ void JaamSiren::setAlert(bool isStartupSync) {
     
     // Другий комплект
     if ((!isStartupSync || shouldRestoreDeviceOnStartup(SirenDevice::SECONDARY)) && alertPin2 > 0) {
+        if (pinModeConfig2 == 1) {
+            cancelPulse(clearPin2, activeLevel2, clearTimer2, clearActive2);
+        }
         digitalWrite(alertPin2, activeLevel2);
         alertActive2 = true;
-        
+
         if (pinModeConfig2 == 1) {
             if (alertTimer2 >= 0) {
                 async.clearInterval(alertTimer2);
             }
             alertTimer2 = async.setTimeout(sirenAlert2Callback, pinTime2);
-            LOG.printf("[SIREN 2] Alert activated on pin %d (pulse mode, %dms)\n", alertPin2, pinTime2);
+            if (alertTimer2 < 0) {
+                LOG.printf("[SIREN 2] Failed to schedule alert pulse end: async pool is full\n");
+                deactivatePin(alertPin2, activeLevel2);
+                alertActive2 = false;
+            } else {
+                LOG.printf("[SIREN 2] Alert activated on pin %d (pulse mode, %dms)\n", alertPin2, pinTime2);
+            }
         } else {
             LOG.printf("[SIREN 2] Alert activated on pin %d (bistable mode)\n", alertPin2);
         }
@@ -243,14 +263,23 @@ void JaamSiren::clearAlert(bool isStartupSync) {
         } else {
         // Імпульсний режим: активуємо CLEAR_PIN
             if (clearPin > 0) {
+                // Не тримаємо активними ALERT_PIN і CLEAR_PIN одночасно
+                cancelPulse(alertPin, activeLevel, alertTimer, alertActive);
                 activatePin(clearPin, activeLevel);
                 clearActive = true;
-                
+
                 if (clearTimer >= 0) {
                     async.clearInterval(clearTimer);
                 }
                 clearTimer = async.setTimeout(sirenClearCallback, pinTime);
-                LOG.printf("[SIREN 1] Clear activated on pin %d (pulse mode, %dms)\n", clearPin, pinTime);
+                if (clearTimer < 0) {
+                    // Без таймера пін залишився б активним назавжди
+                    LOG.printf("[SIREN 1] Failed to schedule clear pulse end: async pool is full\n");
+                    deactivatePin(clearPin, activeLevel);
+                    clearActive = false;
+                } else {
+                    LOG.printf("[SIREN 1] Clear activated on pin %d (pulse mode, %dms)\n", clearPin, pinTime);
+                }
             }
         }
     } else {
@@ -267,14 +296,21 @@ void JaamSiren::clearAlert(bool isStartupSync) {
             }
         } else {
             if (clearPin2 > 0) {
+                cancelPulse(alertPin2, activeLevel2, alertTimer2, alertActive2);
                 activatePin(clearPin2, activeLevel2);
                 clearActive2 = true;
-                
+
                 if (clearTimer2 >= 0) {
                     async.clearInterval(clearTimer2);
                 }
                 clearTimer2 = async.setTimeout(sirenClear2Callback, pinTime2);
-                LOG.printf("[SIREN 2] Clear activated on pin %d (pulse mode, %dms)\n", clearPin2, pinTime2);
+                if (clearTimer2 < 0) {
+                    LOG.printf("[SIREN 2] Failed to schedule clear pulse end: async pool is full\n");
+                    deactivatePin(clearPin2, activeLevel2);
+                    clearActive2 = false;
+                } else {
+                    LOG.printf("[SIREN 2] Clear activated on pin %d (pulse mode, %dms)\n", clearPin2, pinTime2);
+                }
             }
         }
     } else {
@@ -335,6 +371,17 @@ void JaamSiren::activatePin(int pin, int activeLevel) {
     }
 }
 
+void JaamSiren::cancelPulse(int pin, int activeLevel, int& timer, bool& active) {
+    if (timer >= 0) {
+        async.clearInterval(timer);
+        timer = -1;
+    }
+    if (active) {
+        deactivatePin(pin, activeLevel);
+        active = false;
+    }
+}
+
 void JaamSiren::deactivatePin(int pin, int activeLevel) {
     int inactiveLevel = (activeLevel == HIGH) ? LOW : HIGH;
     if (pin > 0) {
@@ -360,40 +407,32 @@ bool JaamSiren::isClearActive2() const {
 
 // Callback методи для таймерів
 void JaamSiren::onAlertTimeout() {
-    if (alertTimer >= 0) {
-        async.clearInterval(alertTimer);
-        alertTimer = -1;
-    }
+    // Одноразовий таймер: слот звільняє async.run(), clearInterval тут дав би подвійний декремент
+    alertTimer = -1;
     deactivatePin(alertPin, activeLevel);
     alertActive = false;
     LOG.printf("[SIREN 1] Alert pin %d deactivated after timeout\n", alertPin);
 }
 
 void JaamSiren::onClearTimeout() {
-    if (clearTimer >= 0) {
-        async.clearInterval(clearTimer);
-        clearTimer = -1;
-    }
+    // Одноразовий таймер: слот звільняє async.run(), clearInterval тут дав би подвійний декремент
+    clearTimer = -1;
     deactivatePin(clearPin, activeLevel);
     clearActive = false;
     LOG.printf("[SIREN 1] Clear pin %d deactivated after timeout\n", clearPin);
 }
 
 void JaamSiren::onAlertTimeout2() {
-    if (alertTimer2 >= 0) {
-        async.clearInterval(alertTimer2);
-        alertTimer2 = -1;
-    }
+    // Одноразовий таймер: слот звільняє async.run(), clearInterval тут дав би подвійний декремент
+    alertTimer2 = -1;
     deactivatePin(alertPin2, activeLevel2);
     alertActive2 = false;
     LOG.printf("[SIREN 2] Alert pin %d deactivated after timeout\n", alertPin2);
 }
 
 void JaamSiren::onClearTimeout2() {
-    if (clearTimer2 >= 0) {
-        async.clearInterval(clearTimer2);
-        clearTimer2 = -1;
-    }
+    // Одноразовий таймер: слот звільняє async.run(), clearInterval тут дав би подвійний декремент
+    clearTimer2 = -1;
     deactivatePin(clearPin2, activeLevel2);
     clearActive2 = false;
     LOG.printf("[SIREN 2] Clear pin %d deactivated after timeout\n", clearPin2);

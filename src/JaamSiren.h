@@ -64,6 +64,7 @@ private:
     void setupPins();
     void deactivatePin(int pin, int activeLevel);
     void activatePin(int pin, int activeLevel);
+    void cancelPulse(int pin, int activeLevel, int& timer, bool& active); // Перервати імпульс, що триває
     void resetPins();        // Скинути всі піни
     bool shouldRestoreDeviceOnStartup(SirenDevice deviceIndex) const;
 
