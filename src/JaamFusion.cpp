@@ -1556,6 +1556,11 @@ void socketConnect() {
         char userInfo[250];
         JsonDocument userInfoJson;
         userInfoJson["legacy"] = settings.getInt(HARDWARE);
+        // The chip model, reported by the chip itself. Until now the server could only guess it from
+        // the -s3/-c3 suffix of the version string, so builds without that suffix read as plain ESP32
+        // and the answer depended on the firmware build rather than on the hardware.
+        userInfoJson["chip"] = ESP.getChipModel();
+        userInfoJson["rev"] = ESP.getChipRevision();
         snprintf(userInfo, sizeof(userInfo), "user_info:%s", userInfoJson.as<String>().c_str());
         LOG.printf("[WEBSOCKET] %s\n", userInfo);
         websocket.send(userInfo);
