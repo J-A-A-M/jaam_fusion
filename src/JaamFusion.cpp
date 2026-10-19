@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "JaamWifi.h"
+#include "JaamWsBackoff.h"
 #include <WiFiClientSecure.h>
 #include <NTPtime.h>
 
@@ -57,12 +58,13 @@ bool getEventAnimationParams(int8_t eventType, uint16_t& animType, uint32_t& col
 void triggerHomeAlertAnimation(int8_t bit);
 void handleUpdateTimezone();
 void handleUpdateNtpHost();
-void handleReconnectWebsocket();
+void handleReconnectWebsocket(bool resetBackoff = true);
 void handleRegenerateBgColorMap();
 void requestPlayTestMelody(int melodyId);
 void requestPlayTestTrack(int trackId);
 void requestReconfigureAll();
 void requestWebsocketReconnect();
+void scheduleReconnect(bool policyClose);
 void requestFirmwareUpdate(const char* firmwareId = nullptr);
 void requestRecalculateLeds();
 void requestAdaptColors();
@@ -154,6 +156,10 @@ bool                startup = true;
 bool                websocketConnected;
 bool                websocketReconnect = false;
 time_t              lastWebsocketConnectTime = 0;
+uint32_t            wsNextConnectAt = 0;                  // millis(), раніше цього часу не підключаємось
+uint32_t            wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
+uint32_t            wsConnectedAt = 0;                    // 0 - зараз не підключені
+bool                wsManualReconnect = false;            // закриття ініційоване нами, backoff не рахуємо
 
 // --- OTHER Configuration ---
 bool                minuteOfSilence = false;
@@ -1510,7 +1516,11 @@ void onEventsCallback(WebsocketsEvent event, String data) {
         //websocket.close();
         auto reason = websocket.getCloseReason();
         logWebsocketCloseReason(reason);
-        delay(500);
+        if (wsManualReconnect) {
+            wsManualReconnect = false;
+        } else if (wsConnectedAt != 0) {
+            scheduleReconnect(reason == websockets::CloseReason_PolicyViolation);
+        }
         LOG.printf("[MEMORY] Heap after close: %u\n", ESP.getFreeHeap());
     } else if (event == WebsocketsEvent::GotPing) {
         LOG.printf("[WEBSOCKET] ping, payload: [%s], len: %d\n", data.c_str(), data.length());
@@ -1520,8 +1530,19 @@ void onEventsCallback(WebsocketsEvent event, String data) {
     }
 }
 
+// Плануємо наступну спробу підключення (backoff + jitter, див. JaamWsBackoff.h)
+void scheduleReconnect(bool policyClose) {
+    bool stable = wsConnectedAt != 0 && millis() - wsConnectedAt >= WS_RECONNECT_STABLE_MS;
+    wsConnectedAt = 0;
+    uint32_t jitterPct = random(100 - WS_RECONNECT_JITTER_PCT, 100 + WS_RECONNECT_JITTER_PCT + 1);
+    uint32_t delayMs = wsBackoffStep(wsReconnectDelayMs, stable, policyClose, jitterPct);
+    wsNextConnectAt = millis() + delayMs;
+    LOG.printf("[WEBSOCKET] next connect attempt in %u ms (stable=%d, policyClose=%d)\n", delayMs, stable, policyClose);
+}
+
 void socketConnect() {
     LOG.printf("[WEBSOCKET] connection start...\n");
+    wsConnectedAt = 0; // старе з'єднання (якщо є) закриється тут і не має рахуватися ще раз
     servicePin(DATA);
     display.showServiceMessage("підключення...", "Сервер даних");
     alertsHash = 0;
@@ -1566,8 +1587,10 @@ void socketConnect() {
         websocket.send(userInfo);
         websocket.ping("A");
         lastWebsocketConnectTime  = millis();
+        wsConnectedAt = lastWebsocketConnectTime ? lastWebsocketConnectTime : 1;
         display.showServiceMessage("підключено!", "Сервер даних", 3000);
     } else {
+        scheduleReconnect(false);
         display.showServiceMessage("недоступний", "Сервер даних", 3000);
     }
 }
@@ -2894,20 +2917,24 @@ void websocketProcess() {
             200
         );
     }
-    //if (millis() - websocketLastPingTime > 40000 && websocketReconnect) {
-    if (millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
-        LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot\n");
-        rebootDevice(3000, true);
+    bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
+    if ((int32_t)(millis() - wsNextConnectAt) < 0) {
+        return; // backoff: ще рано для нової спроби (і reboot теж: невдала спроба вже відсунула наступну)
     }
-    if (!websocket.available()) {
+    if (!connected) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
         websocketConnected = false;
         socketConnect();
-    }
-    if (websocketReconnect) {
+    } else if (websocketReconnect) {
         LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
         websocketConnected = false;
         socketConnect();
+    }
+    // Після спроби: невдала спроба відсуває wsNextConnectAt, тож reboot лише якщо тиша триває попри спробу
+    if ((int32_t)(millis() - wsNextConnectAt) >= 0 &&
+        millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
+        LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot\n");
+        rebootDevice(3000, true);
     }
 }
 
@@ -3190,7 +3217,7 @@ void handleUpdateNtpHost() {
     syncTime(3);
 }
 
-void handleReconnectWebsocket() {
+void handleReconnectWebsocket(bool resetBackoff) {
     LOG.printf("[SETTINGS] WebSocket server settings changed, reconnecting...\n");
     websocketConnected = false;
     websocketReconnect = true;
@@ -3201,7 +3228,14 @@ void handleReconnectWebsocket() {
     isFirstDataFetchCompleted = false;
     alertsHash = 0;
     if (websocket.available()) {
+        wsManualReconnect = true;
         websocket.close();
+    }
+    // після close(): якщо available() сам виявив обрив, його подія вже порахована і тут перекривається
+    if (resetBackoff) {
+        wsConnectedAt = 0;
+        wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
+        wsNextConnectAt = millis();
     }
 }
 
@@ -3226,7 +3260,10 @@ void requestPlayTestTrack(int trackId) {
 
 void requestWebsocketReconnect() {
     LOG.printf("[WEBSOCKET] Reconnection requested\n");
-    handleReconnectWebsocket();
+    // запит від протоколу (розрив hash-ланцюга, биті дані) іде через backoff, щоб не було швидкого циклу
+    handleReconnectWebsocket(false);
+    if (wsConnectedAt != 0) scheduleReconnect(false); // без з'єднання затримка вже запланована, не нарощуємо
+
 }
 
 void updateFirmware() {
