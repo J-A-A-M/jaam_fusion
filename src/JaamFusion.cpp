@@ -2895,8 +2895,13 @@ void websocketProcess() {
         return;
     }
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
-    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !wsLostShown) {
-        LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)\n");
+    bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
+    uint32_t silentMs = millis() - websocketLastPingTime;
+    // нема з'єднання WS_LOST_AFTER_MS, або з'єднання "висить" без пінгів WS_ALERT_TIME
+    bool lost = silentMs > settings.getInt(WS_ALERT_TIME) || (!connected && silentMs > WS_LOST_AFTER_MS);
+    if (lost && !wsLostShown) {
+        LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: %s\n",
+                   connected ? "no ping/pong from server (WS_ALERT_TIME)" : "no connection for 60 s");
         websocketReconnect = true;
         wsLostShown = true;
         clearAllAlertsMaps();
@@ -2915,12 +2920,11 @@ void websocketProcess() {
             0xFF0000,      
             0x001100,        
             1000,
-            180,
+            UINT32_MAX, // до вдалого підключення (скидається в socketConnect)
             50,
-            200
+            led.brightnessRelative(100) // поточна яскравість мапи
         );
     }
-    bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
     if ((int32_t)(millis() - wsNextConnectAt) < 0) {
         return; // backoff: ще рано для нової спроби (і reboot теж: невдала спроба вже відсунула наступну)
     }
@@ -3536,7 +3540,12 @@ void displayProcess()
         showMinOfSilenceScreen(1);
         return;
     }
-    // Show firmware update notification if available (Priority - 2)
+    // Show lost server connection (Priority - 2): інакше екран показує застарілі дані
+    if (wsLostShown) {
+        display.printMessage("недоступний", "Сервер даних");
+        return;
+    }
+    // Show firmware update notification if available (Priority - 3)
     if (fwUpdate.isUpdateAvailable() && settings.getBool(NEW_FW_NOTIFICATION)) {
         showNewFirmwareNotification();
         return;

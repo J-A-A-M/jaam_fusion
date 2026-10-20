@@ -6,6 +6,7 @@ static const uint32_t WS_RECONNECT_MIN_MS = 5000;
 static const uint32_t WS_RECONNECT_MAX_MS = 300000;
 static const uint32_t WS_RECONNECT_STABLE_MS = 60000;   // коротше за це з'єднання не вважається успішним
 static const uint32_t WS_RECONNECT_JITTER_PCT = 20;
+static const uint32_t WS_LOST_AFTER_MS = 60000;          // стільки без зв'язку - показуємо "немає зв'язку"
 
 // Повертає затримку (мс) до наступної спроби й готує наступну базу в `next`.
 // `stable` - попереднє з'єднання трималося >= WS_RECONNECT_STABLE_MS; `policyClose` - закриття з кодом 1008.
