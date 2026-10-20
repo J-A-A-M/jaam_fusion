@@ -155,6 +155,7 @@ bool                isFirstDataFetchCompleted = false;
 bool                startup = true;
 bool                websocketConnected;
 bool                websocketReconnect = false;
+bool                wsLostShown = false;                  // показано сповіщення "немає зв'язку" (мапи очищено, біжить анімація)
 time_t              lastWebsocketConnectTime = 0;
 uint32_t            wsNextConnectAt = 0;                  // millis(), раніше цього часу не підключаємось
 uint32_t            wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
@@ -1561,9 +1562,10 @@ void socketConnect() {
     if (websocket.available()) {
         websocketConnected = true;
         servicePin(DATA);
-        if (websocketReconnect) {
+        if (websocketReconnect || wsLostShown) {
             animation.clearAllAnimations();
             websocketReconnect = false;
+            wsLostShown = false;
         }
         LOG.printf("[WEBSOCKET] connection time - %d ms\n", millis() - startTime);
         char chipIdInfo[25];
@@ -2893,9 +2895,10 @@ void websocketProcess() {
         return;
     }
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
-    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !websocketReconnect) {
+    if (millis() - websocketLastPingTime > settings.getInt(WS_ALERT_TIME) && !wsLostShown) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: no ping/pong from server (WS_ALERT_TIME)\n");
         websocketReconnect = true;
+        wsLostShown = true;
         clearAllAlertsMaps();
         clearAllWeatherMaps();
         clearAllEnergyMaps();
