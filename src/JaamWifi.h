@@ -8,7 +8,7 @@
 #include <functional>
 #include "JaamSettings.h"
 #include "JaamConfig.h"
-#include "JaamWsBackoff.h"
+#include "JaamBackoff.h"
 
 struct SavedNetwork {
     String ssid;
@@ -94,7 +94,7 @@ private:
     static const uint32_t PORTAL_TIMEOUT          = 180000; // 3 хв
     static const uint32_t PORTAL_RETRY_INTERVAL   = 60000;  // як часто пробувати збережені мережі з порталу
     static const uint32_t PORTAL_RETRY_TIMEOUT    = 10000;  // ms на одну спробу з порталу
-    static const uint32_t RADIO_SETTLE_DELAY      = 500;    // ms після esp_wifi_start() перед скануванням
+    static const uint32_t RADIO_SETTLE_DELAY      = 500;    // ms після esp_wifi_start() перед WiFi.begin
 
     StringCb onConnectedCb;
     VoidCb   onDisconnectedCb;
@@ -108,6 +108,7 @@ private:
     void setupWifiEvents();
     bool tryMultiConnect(uint32_t timeout);
     void resetRadio();
+    void radioStop();                // disconnect(eraseap) + WIFI_OFF
     void startReconnectAttempt();
     void failReconnectAttempt();
     void openCaptivePortal();

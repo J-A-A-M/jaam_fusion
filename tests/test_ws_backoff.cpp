@@ -1,6 +1,6 @@
-// Хост-тест backoff реконекту (src/JaamWsBackoff.h). Запуск: pytest tests/test_ws_backoff.py --ip 0 (conftest вимагає --ip)
+// Хост-тест backoff реконекту (src/JaamBackoff.h). Запуск: pytest tests/test_ws_backoff.py --ip 0 (conftest вимагає --ip)
 #include <cassert>
-#include "../src/JaamWsBackoff.h"
+#include "../src/JaamBackoff.h"
 
 int main() {
     uint32_t n = WS_RECONNECT_MIN_MS;

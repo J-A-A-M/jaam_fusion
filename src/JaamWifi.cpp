@@ -82,7 +82,7 @@ void JaamWifi::process() {
         case RC_RADIO_OFF:
             if ((int32_t)(millis() - rcAt) < 0) break;
             WiFi.mode(WIFI_STA);
-            rcAt = millis() + RADIO_SETTLE_DELAY; // скан одразу після esp_wifi_start() неповний
+            rcAt = millis() + RADIO_SETTLE_DELAY; // WiFi.begin одразу після esp_wifi_start() ненадійний
             rcState = RC_SETTLING;
             break;
         case RC_SETTLING: {
@@ -115,8 +115,7 @@ void JaamWifi::process() {
 
 void JaamWifi::startReconnectAttempt() {
     LOG.printf("[WIFI] Reconnect attempt %d/%d\n", reconnectAttempts + 1, MAX_RECONNECT_ATTEMPTS);
-    WiFi.disconnect(true, true); // eraseap: прибрати збережений BSSID+канал (див. resetRadio)
-    WiFi.mode(WIFI_OFF);
+    radioStop();
     rcAt = millis() + RADIO_OFF_DELAY;
     rcState = RC_RADIO_OFF;
 }
@@ -131,7 +130,7 @@ void JaamWifi::failReconnectAttempt() {
         if (onRebootCb) onRebootCb(3000);
         return;
     }
-    uint32_t delayMs = backoffStep(rcBackoffMs, false, false, random(100 - WS_RECONNECT_JITTER_PCT, 101 + WS_RECONNECT_JITTER_PCT), WIFI_RECONNECT_MIN_MS, WIFI_RECONNECT_MAX_MS);
+    uint32_t delayMs = backoffStep(rcBackoffMs, false, false, randomJitterPct(), WIFI_RECONNECT_MIN_MS, WIFI_RECONNECT_MAX_MS);
     LOG.printf("[WIFI] Next attempt in %u s\n", (delayMs + 500) / 1000);
     rcAt = millis() + delayMs;
     rcState = RC_WAITING;
@@ -299,13 +298,18 @@ static String escapeHtml(const String& s) {
 
 // --- Private ---
 
-void JaamWifi::resetRadio() {
+void JaamWifi::radioStop() {
     // eraseap=true прибирає зі storage прибитий WiFiMulti-ом BSSID+канал —
     // інакше після зміни каналу на роутері наступний connect знову цілиться
     // в точку, якої вже немає.
     WiFi.disconnect(true, true);
     WiFi.mode(WIFI_OFF);
-    delay(100);
+}
+
+// Блокуючий варіант для begin(); після втрати зв'язку радіо скидає автомат у process().
+void JaamWifi::resetRadio() {
+    radioStop();
+    delay(RADIO_OFF_DELAY);
     WiFi.mode(WIFI_STA);
     // esp_wifi_start() щойно відпрацював — скан одразу після нього повертає
     // неповний список. Раніше пауза стояла перед WIFI_STA і сенсу не мала.

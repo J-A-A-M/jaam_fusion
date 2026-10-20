@@ -5,7 +5,7 @@
 #include <algorithm>
 
 #include "JaamWifi.h"
-#include "JaamWsBackoff.h"
+#include "JaamBackoff.h"
 #include <WiFiClientSecure.h>
 #include <NTPtime.h>
 
@@ -1128,7 +1128,6 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             // Notification bit — false: не вимагати наявності bit 0 (air alert)
             int actualBitDiff = findHighestExistingAndEnabledBit(flags16, false);
-            LOG.printf("[WEBSOCKET]   highestBitRegion %d, actualBitDiff %d\n", highestBitRegion, actualBitDiff);
 
             // Анімуємо тільки якщо нотифікація має вищий пріоритет, ніж поточна тривога
             if (hasHigherPriority(actualBitDiff, highestBitRegion)) {
@@ -1231,8 +1230,6 @@ void onMessageCallback(WebsocketsMessage msg) {
                 if (newBit == oldBit) continue; // bit не змінився
 
                 bool increase = hasHigherPriority((int)newBit, (int)oldBit);
-                LOG.printf("[WEBSOCKET] LED %d: bit %d -> %d (%s), region %d\n",
-                           led, oldBit, newBit, increase ? "increase" : "decrease", new_region);
                 animateLed(strip_main, MapModes::ALERT, led, (int)newBit, (int)oldBit, new_region, increase);
 
                 ledBitCache[led] = newBit;
@@ -1530,12 +1527,11 @@ void onEventsCallback(WebsocketsEvent event, String data) {
     }
 }
 
-// Плануємо наступну спробу підключення (backoff + jitter, див. JaamWsBackoff.h)
+// Плануємо наступну спробу підключення (backoff + jitter, див. JaamBackoff.h)
 void scheduleReconnect(bool policyClose) {
     bool stable = wsConnectedAt != 0 && millis() - wsConnectedAt >= WS_RECONNECT_STABLE_MS;
     wsConnectedAt = 0;
-    uint32_t jitterPct = random(100 - WS_RECONNECT_JITTER_PCT, 100 + WS_RECONNECT_JITTER_PCT + 1);
-    uint32_t delayMs = wsBackoffStep(wsReconnectDelayMs, stable, policyClose, jitterPct);
+    uint32_t delayMs = wsBackoffStep(wsReconnectDelayMs, stable, policyClose, randomJitterPct());
     wsNextConnectAt = millis() + delayMs;
     LOG.printf("[WEBSOCKET] next connect attempt in %u s (stable=%d, policyClose=%d)\n", (delayMs + 500) / 1000, stable, policyClose);
 }
@@ -2900,6 +2896,7 @@ void showConnectionLost(bool wifiLost) {
     websocketReconnect = true;
     wsLostShown = true;
     wsLostWifi = wifiLost;
+    if (wifiLost) wsConnectedAt = 0; // час без Wi-Fi не рахується як тривалість з'єднання
     clearAllAlertsMaps();
     clearAllWeatherMaps();
     clearAllEnergyMaps();
@@ -2936,7 +2933,7 @@ void websocketProcess() {
     bool lost = silentMs > settings.getInt(WS_ALERT_TIME) || (!connected && silentMs > WS_LOST_AFTER_MS);
     if (lost && !wsLostShown) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: %s\n",
-                   connected ? "no ping/pong from server (WS_ALERT_TIME)" : "no connection for 60 s");
+                   connected ? "no ping/pong from server (WS_ALERT_TIME)" : "no connection for WS_LOST_AFTER_MS");
         showConnectionLost(false);
     }
     // backoff: до wsNextConnectAt нову спробу не робимо, але reboot-watchdog нижче перевіряється завжди
@@ -3250,6 +3247,7 @@ void handleReconnectWebsocket(bool resetBackoff) {
     if (websocket.available()) {
         wsManualReconnect = true;
         websocket.close();
+        wsManualReconnect = false; // подія закриття вже спрацювала синхронно; прапор не має пережити close()
     }
     // після close(): якщо available() сам виявив обрив, його подія вже порахована і тут перекривається
     if (resetBackoff) {
@@ -3283,7 +3281,6 @@ void requestWebsocketReconnect() {
     // запит від протоколу (розрив hash-ланцюга, биті дані) іде через backoff, щоб не було швидкого циклу
     handleReconnectWebsocket(false);
     if (wsConnectedAt != 0) scheduleReconnect(false); // без з'єднання затримка вже запланована, не нарощуємо
-
 }
 
 void updateFirmware() {
