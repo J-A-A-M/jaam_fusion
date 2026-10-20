@@ -2939,21 +2939,20 @@ void websocketProcess() {
                    connected ? "no ping/pong from server (WS_ALERT_TIME)" : "no connection for 60 s");
         showConnectionLost(false);
     }
-    if ((int32_t)(millis() - wsNextConnectAt) < 0) {
-        return; // backoff: ще рано для нової спроби (і reboot теж: невдала спроба вже відсунула наступну)
+    // backoff: до wsNextConnectAt нову спробу не робимо, але reboot-watchdog нижче перевіряється завжди
+    if ((int32_t)(millis() - wsNextConnectAt) >= 0) {
+        if (!connected) {
+            LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
+            websocketConnected = false;
+            socketConnect();
+        } else if (websocketReconnect) {
+            LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
+            websocketConnected = false;
+            socketConnect();
+        }
     }
-    if (!connected) {
-        LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
-        websocketConnected = false;
-        socketConnect();
-    } else if (websocketReconnect) {
-        LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
-        websocketConnected = false;
-        socketConnect();
-    }
-    // Після спроби: невдала спроба відсуває wsNextConnectAt, тож reboot лише якщо тиша триває попри спробу
-    if ((int32_t)(millis() - wsNextConnectAt) >= 0 &&
-        millis() - websocketLastPingTime > settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
+    // Вдала спроба скидає websocketReconnect, тож reboot лише якщо тиша триває попри спроби
+    if ((uint32_t)(millis() - websocketLastPingTime) > (uint32_t)settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot\n");
         rebootDevice(3000, true);
     }
