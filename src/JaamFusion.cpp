@@ -2928,11 +2928,16 @@ void showConnectionLost(bool wifiLost) {
 }
 
 void websocketProcess() {
+    static bool wifiWasDown = false;
+    static uint32_t wifiDownAt = 0;
     if (!wifi.isConnected()) {
         LOG.printf("[WEBSOCKET] Reconnecting... WiFi not connected\n");
-        if (!wsLostShown || !wsLostWifi) showConnectionLost(true);
+        if (!wifiWasDown) { wifiWasDown = true; wifiDownAt = millis(); }
+        // як і для сервера: перші WS_LOST_AFTER_MS тихо, щоб швидкий реконект лишився непомітним
+        if ((!wsLostShown || !wsLostWifi) && millis() - wifiDownAt > WS_LOST_AFTER_MS) showConnectionLost(true);
         return;
     }
+    wifiWasDown = false;
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
     uint32_t silentMs = millis() - websocketLastPingTime;
