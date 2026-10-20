@@ -94,17 +94,24 @@ void JaamWifi::process() {
         case RC_SCANNING: {
             int n = WiFi.scanComplete();
             if (n == WIFI_SCAN_RUNNING && (int32_t)(millis() - rcAt) < 0) break;
-            // Найсильніша збережена мережа серед знайдених; приховані SSID, як і раніше, не підтримуються.
+            // Найсильніша збережена мережа серед знайдених. Якщо скан її не показав (пропустив, прихований SSID),
+            // WiFi.begin сам пошукає по всіх каналах: пробуємо збережені мережі по колу, а не здаємось.
             auto saved = getSavedNetworks();
+            auto found = getScanResults(); // відсортовано за сигналом
+            LOG.printf("[WIFI] Scan: %d networks\n", n);
             const SavedNetwork* best = nullptr;
-            for (auto& r : getScanResults()) { // відсортовано за сигналом
+            for (auto& r : found) {
                 auto it = std::find_if(saved.begin(), saved.end(),
                     [&](const SavedNetwork& s) { return s.ssid == r.ssid; });
                 if (it != saved.end()) { best = &*it; break; }
             }
+            if (!best && !saved.empty()) {
+                best = &saved[reconnectAttempts % saved.size()];
+                LOG.printf("[WIFI] %s not in scan, trying directly\n", best->ssid.c_str());
+            }
             if (!best) {
                 WiFi.scanDelete();
-                LOG.printf("[WIFI] No saved network in range\n");
+                LOG.printf("[WIFI] No saved networks\n");
                 failReconnectAttempt();
                 break;
             }
