@@ -156,6 +156,7 @@ bool                startup = true;
 bool                websocketConnected;
 bool                websocketReconnect = false;
 bool                wsLostWifi = false;                   // сповіщення викликане відсутністю Wi-Fi (інші кольори/текст)
+bool                wsClearLostAnim = false;              // індикацію втрати знімаємо з першим пакетом даних, а не з підключенням
 bool                wsLostShown = false;                  // показано сповіщення "немає зв'язку" (мапи очищено, біжить анімація)
 time_t              lastWebsocketConnectTime = 0;
 uint32_t            wsNextConnectAt = 0;                  // millis(), раніше цього часу не підключаємось
@@ -1262,6 +1263,10 @@ void onMessageCallback(WebsocketsMessage msg) {
         // ── Init-fetch: перший пакет після підключення ────────────────────────
         if (!isFirstDataFetchCompleted) {
             LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH init processing\n");
+            if (wsClearLostAnim) {
+                animation.clearAllAnimations();
+                wsClearLostAnim = false;
+            }
 
             // Заповнюємо кеш після першого повного стану
             rebuildLedBitCache();
@@ -1566,7 +1571,9 @@ void socketConnect() {
         websocketConnected = true;
         servicePin(DATA);
         if (websocketReconnect || wsLostShown) {
-            animation.clearAllAnimations();
+            // Індикацію втрати лишаємо до першого пакета даних: інакше між підключенням і даними мапа блимає порожньою
+            if (wsLostShown) wsClearLostAnim = true;
+            else animation.clearAllAnimations();
             websocketReconnect = false;
             wsLostShown = false;
         }
@@ -2899,6 +2906,7 @@ void showConnectionLost(bool wifiLost) {
     websocketReconnect = true;
     wsLostShown = true;
     wsLostWifi = wifiLost;
+    wsClearLostAnim = false;
     if (wifiLost) wsConnectedAt = 0; // час без Wi-Fi не рахується як тривалість з'єднання
     clearAllAlertsMaps();
     clearAllWeatherMaps();
@@ -2927,8 +2935,6 @@ void websocketProcess() {
         if (!wsLostShown || !wsLostWifi) showConnectionLost(true);
         return;
     }
-    // Wi-Fi повернувся, а сервер ще ні: змінюємо індикацію на "сервер недоступний"
-    if (wsLostShown && wsLostWifi) showConnectionLost(false);
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
     uint32_t silentMs = millis() - websocketLastPingTime;
@@ -2951,6 +2957,9 @@ void websocketProcess() {
             socketConnect();
         }
     }
+    // Wi-Fi повернувся, а спроба підключення до сервера не вдалася (або ще не настав її час): "сервер недоступний".
+    // Вдала спроба вже зняла wsLostShown, тож червоного спалаху перед підключенням немає.
+    if (wsLostShown && wsLostWifi) showConnectionLost(false);
     // Вдала спроба скидає websocketReconnect, тож reboot лише якщо тиша триває попри спроби
     if ((uint32_t)(millis() - websocketLastPingTime) > (uint32_t)settings.getInt(WS_REBOOT_TIME) && websocketReconnect) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: WS_REBOOT_TIME exceeded, will reboot\n");
