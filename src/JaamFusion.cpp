@@ -1543,7 +1543,13 @@ void scheduleReconnect(bool policyClose) {
 
 void socketConnect() {
     LOG.printf("[WEBSOCKET] connection start...\n");
-    wsConnectedAt = 0; // старе з'єднання (якщо є) закриється тут і не має рахуватися ще раз
+    // Старе з'єднання (якщо є) закриється тут і не має рахуватися ще раз. Але якщо воно було стабільним
+    // (зависло після довгої роботи), backoff скидаємо тут: далі wsConnectedAt вже 0 і scheduleReconnect
+    // вважав би його нестабільним, тож затримка лишилась би високою.
+    if (wsConnectedAt != 0 && millis() - wsConnectedAt >= WS_RECONNECT_STABLE_MS) {
+        wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
+    }
+    wsConnectedAt = 0;
     servicePin(DATA);
     display.showServiceMessage("підключення...", "Сервер даних");
     alertsHash = 0;
