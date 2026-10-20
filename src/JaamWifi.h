@@ -77,18 +77,19 @@ private:
     uint8_t       reconnectAttempts = 0;
 
     // Неблокуючий реконект після втрати зв'язку: кожен виклик process() робить один короткий крок.
-    enum RcState : uint8_t { RC_IDLE, RC_RADIO_OFF, RC_SETTLING, RC_SCANNING, RC_CONNECTING, RC_WAITING };
+    enum RcState : uint8_t { RC_IDLE, RC_RADIO_OFF, RC_SETTLING, RC_CONNECTING, RC_WAITING };
     RcState       rcState        = RC_IDLE;
     uint32_t      rcAt           = 0;                      // дедлайн поточного кроку (signed-порівняння з millis())
-    uint32_t      rcBackoffMs    = WS_RECONNECT_MIN_MS;    // база наступної паузи (wsBackoffStep)
+    uint32_t      rcBackoffMs    = WIFI_RECONNECT_MIN_MS;  // база наступної паузи (backoffStep)
     char          apName[32]     = {};
 
     static const uint8_t  MAX_NETWORKS            = 5;
     static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 7;      // невдач поспіль перед ребутом
     static const uint8_t  BOOT_CONNECT_ATTEMPTS   = 4;      // спроб при старті перед відкриттям порталу
     static const uint32_t MULTI_CONNECT_TIMEOUT   = 15000;  // ms при першому start
+    static const uint32_t WIFI_RECONNECT_MIN_MS   = 2000;   // пауза між невдалими спробами: 2, 4, 8, 16, 30 с ...
+    static const uint32_t WIFI_RECONNECT_MAX_MS   = 30000;
     static const uint32_t RECONNECT_ATTEMPT_TIMEOUT = 15000; // ms на одну спробу після втрати зв'язку
-    static const uint32_t RECONNECT_SCAN_TIMEOUT   = 10000;  // ms на асинхронний скан
     static const uint32_t RADIO_OFF_DELAY         = 100;    // ms між WIFI_OFF і WIFI_STA
     static const uint32_t PORTAL_TIMEOUT          = 180000; // 3 хв
     static const uint32_t PORTAL_RETRY_INTERVAL   = 60000;  // як часто пробувати збережені мережі з порталу

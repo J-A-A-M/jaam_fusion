@@ -15,5 +15,8 @@ int main() {
     assert(wsBackoffStep(n, false, false, 120) == 48000);
     n = 40000;
     assert(wsBackoffStep(n, false, false, 80) == 32000);
+    n = 2000; // Wi-Fi: 2, 4, 8, 16, 30, 30 с
+    const uint32_t wifiSeq[] = {2, 4, 8, 16, 30, 30};
+    for (uint32_t s : wifiSeq) assert(backoffStep(n, false, false, 100, 2000, 30000) == s * 1000);
     return 0;
 }

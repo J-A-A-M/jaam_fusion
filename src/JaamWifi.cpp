@@ -66,7 +66,7 @@ void JaamWifi::process() {
 
     if (currentlyConnected) {
         reconnectAttempts = 0;
-        rcBackoffMs = WS_RECONNECT_MIN_MS;
+        rcBackoffMs = WIFI_RECONNECT_MIN_MS;
         rcState = RC_IDLE;
         handleConnected();
         return;
@@ -85,39 +85,19 @@ void JaamWifi::process() {
             rcAt = millis() + RADIO_SETTLE_DELAY; // скан одразу після esp_wifi_start() неповний
             rcState = RC_SETTLING;
             break;
-        case RC_SETTLING:
+        case RC_SETTLING: {
             if ((int32_t)(millis() - rcAt) < 0) break;
-            WiFi.scanNetworks(true);
-            rcAt = millis() + RECONNECT_SCAN_TIMEOUT;
-            rcState = RC_SCANNING;
-            break;
-        case RC_SCANNING: {
-            int n = WiFi.scanComplete();
-            if (n == WIFI_SCAN_RUNNING && (int32_t)(millis() - rcAt) < 0) break;
-            // Найсильніша збережена мережа серед знайдених. Якщо скан її не показав (пропустив, прихований SSID),
-            // WiFi.begin сам пошукає по всіх каналах: пробуємо збережені мережі по колу, а не здаємось.
+            // Без скану: у пристрої він повертав WIFI_SCAN_FAILED. WiFi.begin сам шукає мережу по всіх каналах,
+            // збережені мережі пробуємо по колу за номером невдачі.
             auto saved = getSavedNetworks();
-            auto found = getScanResults(); // відсортовано за сигналом
-            LOG.printf("[WIFI] Scan: %d networks\n", n);
-            const SavedNetwork* best = nullptr;
-            for (auto& r : found) {
-                auto it = std::find_if(saved.begin(), saved.end(),
-                    [&](const SavedNetwork& s) { return s.ssid == r.ssid; });
-                if (it != saved.end()) { best = &*it; break; }
-            }
-            if (!best && !saved.empty()) {
-                best = &saved[reconnectAttempts % saved.size()];
-                LOG.printf("[WIFI] %s not in scan, trying directly\n", best->ssid.c_str());
-            }
-            if (!best) {
-                WiFi.scanDelete();
+            if (saved.empty()) {
                 LOG.printf("[WIFI] No saved networks\n");
                 failReconnectAttempt();
                 break;
             }
-            LOG.printf("[WIFI] Connecting to %s\n", best->ssid.c_str());
-            WiFi.begin(best->ssid.c_str(), best->pass.c_str());
-            WiFi.scanDelete();
+            const SavedNetwork& net = saved[reconnectAttempts % saved.size()];
+            LOG.printf("[WIFI] Connecting to %s\n", net.ssid.c_str());
+            WiFi.begin(net.ssid.c_str(), net.pass.c_str());
             rcAt = millis() + RECONNECT_ATTEMPT_TIMEOUT;
             rcState = RC_CONNECTING;
             break;
@@ -151,7 +131,7 @@ void JaamWifi::failReconnectAttempt() {
         if (onRebootCb) onRebootCb(3000);
         return;
     }
-    uint32_t delayMs = wsBackoffStep(rcBackoffMs, false, false, random(100 - WS_RECONNECT_JITTER_PCT, 101 + WS_RECONNECT_JITTER_PCT));
+    uint32_t delayMs = backoffStep(rcBackoffMs, false, false, random(100 - WS_RECONNECT_JITTER_PCT, 101 + WS_RECONNECT_JITTER_PCT), WIFI_RECONNECT_MIN_MS, WIFI_RECONNECT_MAX_MS);
     LOG.printf("[WIFI] Next attempt in %u s\n", (delayMs + 500) / 1000);
     rcAt = millis() + delayMs;
     rcState = RC_WAITING;
