@@ -1553,7 +1553,6 @@ void socketConnect() {
     wsConnectedAt = 0;
     wsAttempt++;
     servicePin(DATA);
-    display.showServiceMessage(String("спроба ") + wsAttempt, "Сервер даних: підключення");
     alertsHash = 0;
     websocket.onMessage(onMessageCallback);
     websocket.onEvent(onEventsCallback);
@@ -1604,7 +1603,6 @@ void socketConnect() {
         display.showServiceMessage("підключено!", "Сервер даних", 3000);
     } else {
         scheduleReconnect(false);
-        display.showServiceMessage("недоступний", "Сервер даних", 3000);
     }
 }
 
@@ -3573,7 +3571,7 @@ void displayProcess()
                 "", "Wi-Fi");
         } else {
             int32_t inMs = (int32_t)(wsNextConnectAt - millis());
-            display.printMultilineMessage("недоступний",
+            display.printMultilineMessage("перепідключення",
                 String("спроба ") + (wsAttempt + 1),
                 inMs > 0 ? String("наступна через ") + (inMs + 999) / 1000 + " с" : String("підключення..."),
                 "", "Сервер даних");
