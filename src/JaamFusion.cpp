@@ -155,6 +155,7 @@ bool                isFirstDataFetchCompleted = false;
 bool                startup = true;
 bool                websocketConnected;
 bool                websocketReconnect = false;
+bool                wsLostWifi = false;                   // сповіщення викликане відсутністю Wi-Fi (інші кольори/текст)
 bool                wsLostShown = false;                  // показано сповіщення "немає зв'язку" (мапи очищено, біжить анімація)
 time_t              lastWebsocketConnectTime = 0;
 uint32_t            wsNextConnectAt = 0;                  // millis(), раніше цього часу не підключаємось
@@ -2895,11 +2896,41 @@ void checkMinuteOfSilence()
     }
 }
 
+// Очищає мапу й запускає RUNNING_LIGHT до успішного підключення (скидається в socketConnect).
+// Сервер недоступний: червоний вогник на тьмяно-зеленому; Wi-Fi недоступний: бурштиновий на тьмяно-синьому.
+void showConnectionLost(bool wifiLost) {
+    websocketReconnect = true;
+    wsLostShown = true;
+    wsLostWifi = wifiLost;
+    clearAllAlertsMaps();
+    clearAllWeatherMaps();
+    clearAllEnergyMaps();
+    clearAllRadiationMaps();
+    isFirstDataFetchCompleted = false;
+    animation.clearAllAnimations();
+    animation.createAnimation(
+        AnimationTypes::RUNNING_LIGHT,
+        strip_main,
+        MapModes::ALERT,
+        {}, // not used in RUNNING_LIGHT
+        0,
+        wifiLost ? 0xFF8000 : 0xFF0000,
+        wifiLost ? 0x000040 : 0x004000, // тьмяний фон (~25%), щоб вогник читався; обидва множаться на яскравість мапи
+        2000, // період одного кола, мс
+        UINT32_MAX, // до вдалого підключення
+        50,
+        led.brightnessRelative(100) // поточна яскравість мапи
+    );
+}
+
 void websocketProcess() {
     if (!wifi.isConnected()) {
         LOG.printf("[WEBSOCKET] Reconnecting... WiFi not connected\n");
+        if (!wsLostShown || !wsLostWifi) showConnectionLost(true);
         return;
     }
+    // Wi-Fi повернувся, а сервер ще ні: змінюємо індикацію на "сервер недоступний"
+    if (wsLostShown && wsLostWifi) showConnectionLost(false);
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
     uint32_t silentMs = millis() - websocketLastPingTime;
@@ -2908,28 +2939,7 @@ void websocketProcess() {
     if (lost && !wsLostShown) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: %s\n",
                    connected ? "no ping/pong from server (WS_ALERT_TIME)" : "no connection for 60 s");
-        websocketReconnect = true;
-        wsLostShown = true;
-        clearAllAlertsMaps();
-        clearAllWeatherMaps();
-        clearAllEnergyMaps();
-        clearAllRadiationMaps();
-        isFirstDataFetchCompleted = false;
-        animation.clearAllAnimations();
-        //int positions[] = {}; // not used in RUNNING_LIGHT
-        animation.createAnimation(
-            AnimationTypes::RUNNING_LIGHT,
-            strip_main,  
-            MapModes::ALERT,       
-            {}, // not used in RUNNING_LIGHT        
-            0,            
-            0xFF0000,      
-            0x004000, // тьмяний зелений фон (~25%), щоб червоний вогник читався; обидва множаться на яскравість мапи
-            2000, // період одного кола, мс
-            UINT32_MAX, // до вдалого підключення (скидається в socketConnect)
-            50,
-            led.brightnessRelative(100) // поточна яскравість мапи
-        );
+        showConnectionLost(false);
     }
     if ((int32_t)(millis() - wsNextConnectAt) < 0) {
         return; // backoff: ще рано для нової спроби (і reboot теж: невдала спроба вже відсунула наступну)
@@ -3548,7 +3558,8 @@ void displayProcess()
     }
     // Show lost server connection (Priority - 2): інакше екран показує застарілі дані
     if (wsLostShown) {
-        display.printMessage("недоступний", "Сервер даних");
+        if (wsLostWifi) display.printMessage("перепідключення", "Wi-Fi");
+        else display.printMessage("недоступний", "Сервер даних");
         return;
     }
     // Show firmware update notification if available (Priority - 3)
