@@ -87,7 +87,7 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
     JaamFirmware* target = isBeta ? _firmwares_beta : _firmwares_prod;
     memset(target, 0, MAX_FW * sizeof(JaamFirmware));
 
-    LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_%s_BATCH data processing\n", isBeta ? "BETA" : "PROD");
+    LOG.printf("[WEBSOCKET] TYPE_FIRMWARE_UPDATE_%s_BATCH: %u versions\n", isBeta ? "BETA" : "PROD", (unsigned)count);
 
     for (size_t i = 0; i < count; ++i) {
         target[i].major = ptr[0];
@@ -95,9 +95,6 @@ void JaamFirmwareUpdate::processBatch(const uint8_t* data, size_t bodyLen, bool 
         target[i].patch = ptr[2];
         // Little-Endian: low byte first, high byte second
         target[i].beta = ptr[3] | (ptr[4] << 8);
-        LOG.printf("Parsed FW: %d.%d.%d b%d\n",
-                   target[i].major, target[i].minor,
-                   target[i].patch, target[i].beta);
         ptr += RECORD_FW;
     }
 

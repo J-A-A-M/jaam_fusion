@@ -1101,8 +1101,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         size_t count = bodyLen / RECORD_SZ;
         const uint8_t* ptr = data + HEADER_SZ;
 
-        LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH data processing\n");
-
+        size_t notMapped = 0;
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
@@ -1110,10 +1109,9 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             const RegionLedMapMeta* meta = getRegionEntry(region_id);
             if (!meta) {
-                LOG.printf("[WEBSOCKET] notification region %d:\t\t0x%04X skipped - not in map\n", region_id, flags16);
+                notMapped++;
                 continue;
             }
-            LOG.printf("[WEBSOCKET] notification region %d:\t\t0x%04X\n", region_id, flags16);
 
             // Знаходимо поточний найвищий alert-bit для LEDs цього регіону з кешу
             // (без heap — ledBitCache вже містить актуальний стан після ALERTS_BATCH)
@@ -1147,6 +1145,7 @@ void onMessageCallback(WebsocketsMessage msg) {
                 }
             }   
         }
+        LOG.printf("[WEBSOCKET] TYPE_NOTIFICATIONS_BATCH: %u regions, %u not in map\n", (unsigned)count, (unsigned)notMapped);
     }
 
 
@@ -1181,6 +1180,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         const uint8_t* ptr = data + HEADER_SZ + HASH_SZ;
 
         // ── Фаза 1: оновити alertsFlat, позначити dirty LED ──────────────────
+        size_t notMapped = 0, changed = 0;
         for (size_t i = 0; i < count; ++i) {
             uint16_t region_id = uint16_t(ptr[0]) | (uint16_t(ptr[1]) << 8);
             uint16_t flags16   = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8);
@@ -1189,21 +1189,19 @@ void onMessageCallback(WebsocketsMessage msg) {
             // getRegionEntry перевіряє наявність у currentMap (region_id — довільний ID, не індекс)
             const RegionLedMapMeta* meta = getRegionEntry(region_id);
             if (!meta) {
-                LOG.printf("[WEBSOCKET] alert region %d:\t\t0x%04X skipped - not in map\n", region_id, flags16);
+                notMapped++;
                 continue;
             }
             int flat_idx = getRegionFlatIdx(region_id);  // позиція в currentMap.meta (0..currentMap.size-1)
             if (flat_idx < 0 || flat_idx >= (int)(MAX_REGIONS + 1)) {
-                LOG.printf("[WEBSOCKET] alert region %d:\t\t0x%04X skipped - invalid flat_idx %d\n",
-                        region_id, flags16, flat_idx);
+                LOG.printf("[WEBSOCKET] alert region %d: invalid flat_idx %d\n", region_id, flat_idx);
                 continue;
             }
 
             if (alertsFlat[flat_idx] == flags16) {
                 continue; // нічого не змінилось
             }
-            LOG.printf("[WEBSOCKET] alert region %d:\t\t0x%04X -> 0x%04X\n",
-                       region_id, alertsFlat[flat_idx], flags16);
+            changed++;
 
             // Позначаємо dirty LED (бітсет: 1 bit на LED, без зайвого масиву s_ledOldBit)
             // ledBitCache[led] ще не змінюється до фази 2 — тому він є "старим" значенням
@@ -1216,6 +1214,9 @@ void onMessageCallback(WebsocketsMessage msg) {
 
             alertsFlat[flat_idx] = flags16; // оновлюємо одразу
         }
+
+        LOG.printf("[WEBSOCKET] TYPE_ALERTS_BATCH: %u regions, %u changed, %u not in map\n",
+                   (unsigned)count, (unsigned)changed, (unsigned)notMapped);
 
         // ── Фаза 2: обчислити нові біти і запустити анімації ─────────────────
         if (isFirstDataFetchCompleted) {
@@ -1322,7 +1323,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         // Розбираємо count записів по RECORD_LZ
         const uint8_t* ptr = data + HEADER_SZ;
 
-        LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH data processing\n");
+        LOG.printf("[WEBSOCKET] TYPE_WEATHER_BATCH: %u regions\n", (unsigned)count);
 
         memset(temperatureFlat, TEMP_NO_DATA, sizeof(temperatureFlat)); // очищаємо попередні дані
 
@@ -1331,7 +1332,6 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint8_t flags8 = ptr[2]; // flags8 займає 1 байт
             int idx = getRegionFlatIdx(region_id);
             if (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) temperatureFlat[idx] = flags8; // Зберігаємо температуру для регіону
-            LOG.printf("[WEBSOCKET] weather region %u:\tflags8=%u\n", region_id, flags8);
             ptr += RECORD_LZ; // перехід до наступного запису (2B region_id + 1B flags8)
         }
 
@@ -1413,7 +1413,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         size_t count = bodyLen / RECORD_LZ;
         const uint8_t* ptr = data + HEADER_SZ;
 
-        LOG.printf("[WEBSOCKET] TYPE_ENERGY_BATCH data processing\n");
+        LOG.printf("[WEBSOCKET] TYPE_ENERGY_BATCH: %u regions\n", (unsigned)count);
 
         memset(energyFlat, 0, sizeof(energyFlat));
 
@@ -1422,7 +1422,6 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint8_t status = ptr[2]; // статус займає 1 байт
             int idx = getRegionFlatIdx(region_id);
             if (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) energyFlat[idx] = status;
-            LOG.printf("[WEBSOCKET] energy region %u:\tstatus=%u\n", region_id, status);
             ptr += RECORD_LZ;
         }
 
@@ -1443,7 +1442,7 @@ void onMessageCallback(WebsocketsMessage msg) {
         size_t count = bodyLen / RECORD_SZ;
         const uint8_t* ptr = data + HEADER_SZ;
 
-        LOG.printf("[WEBSOCKET] TYPE_RADIATION_BATCH data processing\n");
+        LOG.printf("[WEBSOCKET] TYPE_RADIATION_BATCH: %u regions\n", (unsigned)count);
 
         memset(radiationFlat, 0, sizeof(radiationFlat));
 
@@ -1452,7 +1451,6 @@ void onMessageCallback(WebsocketsMessage msg) {
             uint16_t value = uint16_t(ptr[2]) | (uint16_t(ptr[3]) << 8); // значення займає 2 байти
             int idx = getRegionFlatIdx(region_id);
             if (idx >= 0 && idx < (int)(MAX_REGIONS + 1)) radiationFlat[idx] = value;
-            LOG.printf("[WEBSOCKET] radiation region %u:\tvalue=%u\n", region_id, value);
             ptr += RECORD_SZ;
         }
 
