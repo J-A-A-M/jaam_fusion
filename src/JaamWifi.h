@@ -84,7 +84,7 @@ private:
     char          apName[32]     = {};
 
     static const uint8_t  MAX_NETWORKS            = 5;
-    static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 7;      // невдач поспіль перед ребутом
+    static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 10;     // невдач поспіль перед ребутом
     static const uint8_t  BOOT_CONNECT_ATTEMPTS   = 4;      // спроб при старті перед відкриттям порталу
     static const uint32_t MULTI_CONNECT_TIMEOUT   = 15000;  // ms при першому start
     static const uint32_t WIFI_RECONNECT_MIN_MS   = 2000;   // пауза між невдалими спробами: 2, 4, 8, 16, 30 с ...
