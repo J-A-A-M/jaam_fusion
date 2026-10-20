@@ -8,6 +8,7 @@
 #include <functional>
 #include "JaamSettings.h"
 #include "JaamConfig.h"
+#include "JaamWsBackoff.h"
 
 struct SavedNetwork {
     String ssid;
@@ -74,13 +75,21 @@ private:
     unsigned long portalStartTime = 0;
     unsigned long lastPortalRetry = 0;
     uint8_t       reconnectAttempts = 0;
+
+    // Неблокуючий реконект після втрати зв'язку: кожен виклик process() робить один короткий крок.
+    enum RcState : uint8_t { RC_IDLE, RC_RADIO_OFF, RC_SETTLING, RC_SCANNING, RC_CONNECTING, RC_WAITING };
+    RcState       rcState        = RC_IDLE;
+    uint32_t      rcAt           = 0;                      // дедлайн поточного кроку (signed-порівняння з millis())
+    uint32_t      rcBackoffMs    = WS_RECONNECT_MIN_MS;    // база наступної паузи (wsBackoffStep)
     char          apName[32]     = {};
 
     static const uint8_t  MAX_NETWORKS            = 5;
-    static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 5;
+    static const uint8_t  MAX_RECONNECT_ATTEMPTS  = 7;      // невдач поспіль перед ребутом
     static const uint8_t  BOOT_CONNECT_ATTEMPTS   = 4;      // спроб при старті перед відкриттям порталу
     static const uint32_t MULTI_CONNECT_TIMEOUT   = 15000;  // ms при першому start
-    static const uint32_t MULTI_RECONNECT_TIMEOUT = 15000;  // ms при reconnect
+    static const uint32_t RECONNECT_ATTEMPT_TIMEOUT = 15000; // ms на одну спробу після втрати зв'язку
+    static const uint32_t RECONNECT_SCAN_TIMEOUT   = 10000;  // ms на асинхронний скан
+    static const uint32_t RADIO_OFF_DELAY         = 100;    // ms між WIFI_OFF і WIFI_STA
     static const uint32_t PORTAL_TIMEOUT          = 180000; // 3 хв
     static const uint32_t PORTAL_RETRY_INTERVAL   = 60000;  // як часто пробувати збережені мережі з порталу
     static const uint32_t PORTAL_RETRY_TIMEOUT    = 10000;  // ms на одну спробу з порталу
@@ -98,6 +107,8 @@ private:
     void setupWifiEvents();
     bool tryMultiConnect(uint32_t timeout);
     void resetRadio();
+    void startReconnectAttempt();
+    void failReconnectAttempt();
     void openCaptivePortal();
     void closeCaptivePortal();
     bool retrySavedNetworksFromPortal();
