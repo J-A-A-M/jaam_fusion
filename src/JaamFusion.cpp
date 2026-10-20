@@ -160,6 +160,7 @@ bool                wsLostShown = false;                  // показано с
 time_t              lastWebsocketConnectTime = 0;
 uint32_t            wsNextConnectAt = 0;                  // millis(), раніше цього часу не підключаємось
 uint32_t            wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
+uint16_t            wsAttempt = 0;                        // спроб підключення від останнього успіху (для екрана)
 uint32_t            wsConnectedAt = 0;                    // 0 - зараз не підключені
 bool                wsManualReconnect = false;            // закриття ініційоване нами, backoff не рахуємо
 
@@ -1545,8 +1546,9 @@ void socketConnect() {
         wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
     }
     wsConnectedAt = 0;
+    wsAttempt++;
     servicePin(DATA);
-    display.showServiceMessage("підключення...", "Сервер даних");
+    display.showServiceMessage(String("спроба ") + wsAttempt, "Сервер даних: підключення");
     alertsHash = 0;
     websocket.onMessage(onMessageCallback);
     websocket.onEvent(onEventsCallback);
@@ -1591,6 +1593,7 @@ void socketConnect() {
         websocket.ping("A");
         lastWebsocketConnectTime  = millis();
         wsConnectedAt = lastWebsocketConnectTime ? lastWebsocketConnectTime : 1;
+        wsAttempt = 0;
         display.showServiceMessage("підключено!", "Сервер даних", 3000);
     } else {
         scheduleReconnect(false);
@@ -3251,6 +3254,7 @@ void handleReconnectWebsocket(bool resetBackoff) {
     }
     // після close(): якщо available() сам виявив обрив, його подія вже порахована і тут перекривається
     if (resetBackoff) {
+        wsAttempt = 0;
         wsConnectedAt = 0;
         wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
         wsNextConnectAt = millis();
@@ -3552,8 +3556,19 @@ void displayProcess()
     }
     // Show lost server connection (Priority - 2): інакше екран показує застарілі дані
     if (wsLostShown) {
-        if (wsLostWifi) display.printMessage("перепідключення", "Wi-Fi");
-        else display.printMessage("недоступний", "Сервер даних");
+        if (wsLostWifi) {
+            uint32_t inMs = wifi.reconnectInMs();
+            display.printMultilineMessage("перепідключення",
+                String("спроба ") + wifi.reconnectAttempt() + "/" + wifi.reconnectMax(),
+                inMs ? String("наступна через ") + (inMs + 999) / 1000 + " с" : String("підключення..."),
+                "", "Wi-Fi");
+        } else {
+            int32_t inMs = (int32_t)(wsNextConnectAt - millis());
+            display.printMultilineMessage("недоступний",
+                String("спроба ") + (wsAttempt + 1),
+                inMs > 0 ? String("наступна через ") + (inMs + 999) / 1000 + " с" : String("підключення..."),
+                "", "Сервер даних");
+        }
         return;
     }
     // Show firmware update notification if available (Priority - 3)

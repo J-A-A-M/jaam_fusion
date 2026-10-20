@@ -52,6 +52,12 @@ public:
     int8_t        getRSSI()        const { return connected ? WiFi.RSSI() : 0; }
     unsigned long getConnectTime() const { return connectTime; }
 
+    // --- Стан реконекту для екрана ---
+    uint8_t  reconnectAttempt() const { return reconnectAttempts + 1; }  // номер поточної (або наступної) спроби
+    uint8_t  reconnectMax()     const { return MAX_RECONNECT_ATTEMPTS; }
+    // мс до наступної спроби; 0 - спроба триває зараз
+    uint32_t reconnectInMs()    const { return rcState == RC_WAITING && (int32_t)(rcAt - millis()) > 0 ? rcAt - millis() : 0; }
+
     // --- Network management (used by JaamWeb) ---
     std::vector<SavedNetwork> getSavedNetworks();
     bool   addNetwork(const String& ssid, const String& pass);
