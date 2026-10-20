@@ -1537,7 +1537,7 @@ void scheduleReconnect(bool policyClose) {
     uint32_t jitterPct = random(100 - WS_RECONNECT_JITTER_PCT, 100 + WS_RECONNECT_JITTER_PCT + 1);
     uint32_t delayMs = wsBackoffStep(wsReconnectDelayMs, stable, policyClose, jitterPct);
     wsNextConnectAt = millis() + delayMs;
-    LOG.printf("[WEBSOCKET] next connect attempt in %u ms (stable=%d, policyClose=%d)\n", delayMs, stable, policyClose);
+    LOG.printf("[WEBSOCKET] next connect attempt in %u s (stable=%d, policyClose=%d)\n", (delayMs + 500) / 1000, stable, policyClose);
 }
 
 void socketConnect() {
