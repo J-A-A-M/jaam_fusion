@@ -1569,10 +1569,11 @@ void socketConnect() {
     if (websocket.available()) {
         websocketConnected = true;
         servicePin(DATA);
+        // Тихий реконект (мапу не очищено): новий сеанс починається з повного стану, а не з дельти до старого хешу
+        isFirstDataFetchCompleted = false;
+        wsClearLostAnim = true;
         if (websocketReconnect || wsLostShown) {
             // Індикацію втрати лишаємо до першого пакета даних: інакше між підключенням і даними мапа блимає порожньою
-            if (wsLostShown) wsClearLostAnim = true;
-            else animation.clearAllAnimations();
             websocketReconnect = false;
             wsLostShown = false;
         }
