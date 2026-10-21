@@ -160,6 +160,7 @@ bool                wsClearLostAnim = false;              // індикацію 
 bool                wsLostShown = false;                  // показано сповіщення "немає зв'язку" (мапи очищено, біжить анімація)
 time_t              lastWebsocketConnectTime = 0;
 uint32_t            wsNextConnectAt = 0;                  // millis(), раніше цього часу не підключаємось
+bool                wsBackoffActive = false;              // wsNextConnectAt чинний (інакше він міг застаріти понад 24 доби і порівняння хибне)
 uint32_t            wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
 uint16_t            wsAttempt = 0;                        // спроб підключення від останнього успіху (для екрана)
 uint32_t            wsConnectedAt = 0;                    // 0 - зараз не підключені
@@ -1539,6 +1540,7 @@ void scheduleReconnect(bool policyClose) {
     wsConnectedAt = 0;
     uint32_t delayMs = wsBackoffStep(wsReconnectDelayMs, stable, policyClose, randomJitterPct());
     wsNextConnectAt = millis() + delayMs;
+    wsBackoffActive = true;
     LOG.printf("[WEBSOCKET] next connect attempt in %u s (stable=%d, policyClose=%d)\n", (delayMs + 500) / 1000, stable, policyClose);
 }
 
@@ -2899,7 +2901,7 @@ void checkMinuteOfSilence()
     }
 }
 
-// Очищає мапу й запускає RUNNING_LIGHT до успішного підключення (скидається в socketConnect).
+// Очищає мапу й запускає RUNNING_LIGHT до першого пакета даних після підключення (знімає wsClearLostAnim).
 // Сервер недоступний: червоний вогник на тьмяно-зеленому; Wi-Fi недоступний: бурштиновий на тьмяно-синьому.
 void showConnectionLost(bool wifiLost) {
     websocketReconnect = true;
@@ -2922,7 +2924,7 @@ void showConnectionLost(bool wifiLost) {
         wifiLost ? 0xFF8000 : 0xFF0000,
         wifiLost ? 0x000040 : 0x004000, // тьмяний фон (~25%), щоб вогник читався; обидва множаться на яскравість мапи
         2000, // період одного кола, мс
-        UINT32_MAX, // до вдалого підключення
+        UINT32_MAX, // до першого пакета даних
         50,
         led.brightnessRelative(100) // поточна яскравість мапи
     );
@@ -2932,6 +2934,7 @@ void websocketProcess() {
     static bool wifiWasDown = false;
     static uint32_t wifiDownAt = 0;
     static uint32_t wifiBackAt = 0;
+    static bool wifiBackValid = false; // wifiBackAt чинний лише до першого вдалого підключення до сервера
     if (!wifi.isConnected()) {
         LOG.printf("[WEBSOCKET] Reconnecting... WiFi not connected\n");
         if (!wifiWasDown) { wifiWasDown = true; wifiDownAt = millis(); }
@@ -2939,13 +2942,15 @@ void websocketProcess() {
         if ((!wsLostShown || !wsLostWifi) && millis() - wifiDownAt > WS_LOST_AFTER_MS) showConnectionLost(true);
         return;
     }
-    if (wifiWasDown) { wifiWasDown = false; wifiBackAt = millis(); }
+    if (wifiWasDown) { wifiWasDown = false; wifiBackAt = millis(); wifiBackValid = true; }
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
     uint32_t silentMs = millis() - websocketLastPingTime;
     // нема з'єднання WS_LOST_AFTER_MS, або з'єднання "висить" без пінгів WS_ALERT_TIME
     // тиша без з'єднання рахується від повернення Wi-Fi, якщо той був відсутній менше WS_LOST_AFTER_MS (інакше вже показано)
-    uint32_t sinceRef = (int32_t)(wifiBackAt - websocketLastPingTime) > 0 ? millis() - wifiBackAt : silentMs;
+    if (connected) wifiBackValid = false;
+    uint32_t sinceWifi = millis() - wifiBackAt;
+    uint32_t sinceRef = (wifiBackValid && sinceWifi < silentMs) ? sinceWifi : silentMs;
     bool lost = silentMs > settings.getInt(WS_ALERT_TIME) || (!connected && sinceRef > WS_LOST_AFTER_MS);
     if (lost && !wsLostShown) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: %s\n",
@@ -2953,13 +2958,10 @@ void websocketProcess() {
         showConnectionLost(false);
     }
     // backoff: до wsNextConnectAt нову спробу не робимо, але reboot-watchdog нижче перевіряється завжди
-    if ((int32_t)(millis() - wsNextConnectAt) >= 0) {
-        if (!connected) {
-            LOG.printf("[WEBSOCKET] Reconnecting... websocket.available() == false\n");
-            websocketConnected = false;
-            socketConnect();
-        } else if (websocketReconnect) {
-            LOG.printf("[WEBSOCKET] Reconnecting... websocketReconnect == true\n");
+    if (!wsBackoffActive || (int32_t)(millis() - wsNextConnectAt) >= 0) {
+        wsBackoffActive = false;
+        if (!connected || websocketReconnect) {
+            LOG.printf("[WEBSOCKET] Reconnecting... %s\n", !connected ? "websocket.available() == false" : "websocketReconnect == true");
             websocketConnected = false;
             socketConnect();
         }
@@ -3257,11 +3259,13 @@ void handleReconnectWebsocket(bool resetBackoff) {
     LOG.printf("[SETTINGS] WebSocket server settings changed, reconnecting...\n");
     websocketConnected = false;
     websocketReconnect = true;
-    clearAllAlertsMaps();
-    clearAllWeatherMaps();
-    clearAllEnergyMaps();
-    clearAllRadiationMaps();
-    isFirstDataFetchCompleted = false;
+    if (resetBackoff) { // зміна сервера: чужі дані не показуємо; помилка протоколу лишає мапу, новий сеанс почнеться з повного стану
+        clearAllAlertsMaps();
+        clearAllWeatherMaps();
+        clearAllEnergyMaps();
+        clearAllRadiationMaps();
+        isFirstDataFetchCompleted = false;
+    }
     alertsHash = 0;
     if (websocket.available()) {
         wsManualReconnect = true;
@@ -3273,7 +3277,7 @@ void handleReconnectWebsocket(bool resetBackoff) {
         wsAttempt = 0;
         wsConnectedAt = 0;
         wsReconnectDelayMs = WS_RECONNECT_MIN_MS;
-        wsNextConnectAt = millis();
+        wsBackoffActive = false;
     }
 }
 
@@ -3579,7 +3583,7 @@ void displayProcess()
                 inMs ? String("наступна через ") + (inMs + 999) / 1000 + " с" : String("підключення..."),
                 "", "Wi-Fi");
         } else {
-            int32_t inMs = (int32_t)(wsNextConnectAt - millis());
+            int32_t inMs = wsBackoffActive ? (int32_t)(wsNextConnectAt - millis()) : 0;
             display.printMultilineMessage("перепідключення",
                 String("спроба ") + (wsAttempt + 1),
                 inMs > 0 ? String("наступна через ") + (inMs + 999) / 1000 + " с" : String("підключення..."),
