@@ -2577,6 +2577,13 @@ void initTime() {
 }
 
 void initMDNS() {
+    // Повторний begin() при кожному поверненні Wi-Fi гонить з внутрішнім probe mDNS (пошкодження купи); ESP-IDF сам перезапускає mDNS на новий IP
+    static bool mdnsInitialized = false;
+    if (mdnsInitialized) {
+        LOG.printf("[INIT] mDNS already initialized, skipping...\n");
+        return;
+    }
+    mdnsInitialized = true;
     LOG.printf("[INIT] Init mDNS\n");
     mdnsService.setSettings(&settings);
     mdnsService.setDeviceInfo(chipID, fwUpdate.getCurrentVersion());
