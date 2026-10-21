@@ -2930,6 +2930,7 @@ void showConnectionLost(bool wifiLost) {
 void websocketProcess() {
     static bool wifiWasDown = false;
     static uint32_t wifiDownAt = 0;
+    static uint32_t wifiBackAt = 0;
     if (!wifi.isConnected()) {
         LOG.printf("[WEBSOCKET] Reconnecting... WiFi not connected\n");
         if (!wifiWasDown) { wifiWasDown = true; wifiDownAt = millis(); }
@@ -2937,12 +2938,14 @@ void websocketProcess() {
         if ((!wsLostShown || !wsLostWifi) && millis() - wifiDownAt > WS_LOST_AFTER_MS) showConnectionLost(true);
         return;
     }
-    wifiWasDown = false;
+    if (wifiWasDown) { wifiWasDown = false; wifiBackAt = millis(); }
     //if (millis() - websocketLastPingTime > 30000 && !websocketReconnect) {
     bool connected = websocket.available(); // може сам викликати ConnectionClosed і запланувати затримку
     uint32_t silentMs = millis() - websocketLastPingTime;
     // нема з'єднання WS_LOST_AFTER_MS, або з'єднання "висить" без пінгів WS_ALERT_TIME
-    bool lost = silentMs > settings.getInt(WS_ALERT_TIME) || (!connected && silentMs > WS_LOST_AFTER_MS);
+    // тиша без з'єднання рахується від повернення Wi-Fi, якщо той був відсутній менше WS_LOST_AFTER_MS (інакше вже показано)
+    uint32_t sinceRef = (int32_t)(wifiBackAt - websocketLastPingTime) > 0 ? millis() - wifiBackAt : silentMs;
+    bool lost = silentMs > settings.getInt(WS_ALERT_TIME) || (!connected && sinceRef > WS_LOST_AFTER_MS);
     if (lost && !wsLostShown) {
         LOG.printf("[WEBSOCKET] websocketReconnect = true; Reason: %s\n",
                    connected ? "no ping/pong from server (WS_ALERT_TIME)" : "no connection for WS_LOST_AFTER_MS");
