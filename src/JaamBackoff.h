@@ -20,7 +20,9 @@ inline uint32_t backoffStep(uint32_t& next, bool stable, bool maxNow, uint32_t j
     return delayMs;
 }
 
+// Перша затримка після скидання розкидана ширше (2...6 с), щоб пристрої не стукали на сервер хвилею; далі ±RECONNECT_JITTER_PCT.
 inline uint32_t wsBackoffStep(uint32_t& next, bool stable, bool policyClose, uint32_t jitterPct) {
+    if (!policyClose && (stable || next <= WS_RECONNECT_MIN_MS)) jitterPct = 100 + ((int32_t)jitterPct - 100) * 5 / 2;
     return backoffStep(next, stable, policyClose, jitterPct, WS_RECONNECT_MIN_MS, WS_RECONNECT_MAX_MS);
 }
 

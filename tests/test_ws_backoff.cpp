@@ -10,7 +10,9 @@ int main() {
     assert(wsBackoffStep(n, false, false, 100) == 8000);   // швидкий обрив подвоює
     assert(wsBackoffStep(n, false, true, 100) == 128000); // код 1008
     n = 4000;
-    assert(wsBackoffStep(n, false, false, 80) == 3200 && n == 8000);
+    assert(wsBackoffStep(n, false, false, 80) == 2000 && n == 8000);   // перша затримка: 2...6 с
+    n = 4000;
+    assert(wsBackoffStep(n, false, false, 120) == 6000);
     n = 40000;
     assert(wsBackoffStep(n, false, false, 120) == 48000);
     n = 40000;
