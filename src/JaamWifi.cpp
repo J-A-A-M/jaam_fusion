@@ -66,21 +66,74 @@ void JaamWifi::process() {
 
     if (currentlyConnected) {
         reconnectAttempts = 0;
+        rcBackoffMs = WIFI_RECONNECT_MIN_MS;
+        rcState = RC_IDLE;
         handleConnected();
         return;
     }
 
-    handleDisconnected();
-
-    reconnectAttempts++;
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        LOG.printf("[WIFI] Reconnect attempt %d/%d\n", reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
-        resetRadio();
-        tryMultiConnect(MULTI_RECONNECT_TIMEOUT);
-    } else {
-        LOG.printf("[WIFI] Max reconnect attempts reached, rebooting...\n");
-        if (onRebootCb) onRebootCb(3000);
+    // Автомат без delay()/блокуючих викликів: loop() і анімації не зупиняються.
+    // Успіх ловиться вище, за WiFi.status(), на наступному виклику.
+    switch (rcState) {
+        case RC_IDLE:
+            handleDisconnected();
+            startReconnectAttempt();
+            break;
+        case RC_RADIO_OFF:
+            if ((int32_t)(millis() - rcAt) < 0) break;
+            WiFi.mode(WIFI_STA);
+            rcAt = millis() + RADIO_SETTLE_DELAY; // WiFi.begin одразу після esp_wifi_start() ненадійний
+            rcState = RC_SETTLING;
+            break;
+        case RC_SETTLING: {
+            if ((int32_t)(millis() - rcAt) < 0) break;
+            // Без скану: у пристрої він повертав WIFI_SCAN_FAILED. WiFi.begin сам шукає мережу по всіх каналах,
+            // збережені мережі пробуємо по колу за номером невдачі.
+            auto saved = getSavedNetworks();
+            if (saved.empty()) {
+                LOG.printf("[WIFI] No saved networks\n");
+                failReconnectAttempt();
+                break;
+            }
+            const SavedNetwork& net = saved[reconnectAttempts % saved.size()];
+            LOG.printf("[WIFI] Connecting to %s\n", net.ssid.c_str());
+            WiFi.begin(net.ssid.c_str(), net.pass.c_str());
+            rcAt = millis() + RECONNECT_ATTEMPT_TIMEOUT;
+            rcState = RC_CONNECTING;
+            break;
+        }
+        case RC_CONNECTING:
+            if ((int32_t)(millis() - rcAt) < 0) break;
+            failReconnectAttempt();
+            break;
+        case RC_WAITING:
+            if ((int32_t)(millis() - rcAt) < 0) break;
+            startReconnectAttempt();
+            break;
     }
+}
+
+void JaamWifi::startReconnectAttempt() {
+    LOG.printf("[WIFI] Reconnect attempt %d/%d\n", reconnectAttempts + 1, MAX_RECONNECT_ATTEMPTS);
+    radioStop();
+    rcAt = millis() + RADIO_OFF_DELAY;
+    rcState = RC_RADIO_OFF;
+}
+
+void JaamWifi::failReconnectAttempt() {
+    reconnectAttempts++;
+    LOG.printf("[WIFI] Reconnect attempt %d/%d failed\n", reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        LOG.printf("[WIFI] Max reconnect attempts reached, rebooting...\n");
+        rcState = RC_IDLE;
+        reconnectAttempts = 0;
+        if (onRebootCb) onRebootCb(3000);
+        return;
+    }
+    uint32_t delayMs = backoffStep(rcBackoffMs, false, false, randomJitterPct(), WIFI_RECONNECT_MIN_MS, WIFI_RECONNECT_MAX_MS);
+    LOG.printf("[WIFI] Next attempt in %u s\n", (delayMs + 500) / 1000);
+    rcAt = millis() + delayMs;
+    rcState = RC_WAITING;
 }
 
 // --- NVS Network Management ---
@@ -245,13 +298,18 @@ static String escapeHtml(const String& s) {
 
 // --- Private ---
 
-void JaamWifi::resetRadio() {
+void JaamWifi::radioStop() {
     // eraseap=true прибирає зі storage прибитий WiFiMulti-ом BSSID+канал —
     // інакше після зміни каналу на роутері наступний connect знову цілиться
     // в точку, якої вже немає.
     WiFi.disconnect(true, true);
     WiFi.mode(WIFI_OFF);
-    delay(100);
+}
+
+// Блокуючий варіант для begin(); після втрати зв'язку радіо скидає автомат у process().
+void JaamWifi::resetRadio() {
+    radioStop();
+    delay(RADIO_OFF_DELAY);
     WiFi.mode(WIFI_STA);
     // esp_wifi_start() щойно відпрацював — скан одразу після нього повертає
     // неповний список. Раніше пауза стояла перед WIFI_STA і сенсу не мала.

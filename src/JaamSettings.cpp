@@ -251,7 +251,7 @@ std::map<Type, SettingItemInt> intSettings = {
     
     // WebSocket and connection settings
     {WS_ALERT_TIME, {"wsat", 180000}},                     // WebSocket alert timeout (ms)
-    {WS_REBOOT_TIME, {"wsrt", 300000}},                    // WebSocket reboot timeout (ms)
+    {WS_REBOOT_TIME, {"wsrt", 420000}},                    // WebSocket reboot timeout (ms)
     {MIN_OF_SILENCE, {"mos", 1}},                          // Enable minute of silence (0/1)
     
     // System settings

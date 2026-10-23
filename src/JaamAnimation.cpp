@@ -4,6 +4,8 @@
 
 extern volatile bool isMapOff;
 extern int getCurrentMapMode();
+extern bool minuteOfSilence;
+extern bool uaAnthemPlaying;
 
 // Helper: HSV -> RGB (returns 0xRRGGBB)
 static inline uint32_t hsvToRgb(float h, float s, float v) {
@@ -500,11 +502,14 @@ void AnimationManager::renderRunningLight(const StripState& s, float elapsed) {
     if (totalLeds == 0) return;
 
     const int windowSize = 9;
-    int windowStart = (int)((elapsed) * totalLeds);
+    int windowStart = (int)((elapsed - floorf(elapsed)) * totalLeds); // лише дробова частина: float не втрачає точність за години
 
-    // Базовий колір для всіх LED
+    // Базовий колір для всіх LED (з тією ж яскравістю, що й вікно, інакше фон не залежить від яскравості мапи)
+    uint8_t baseR = ((s.adaptedInitColor >> 16) & 0xFF) * s.endBr / 255;
+    uint8_t baseG = ((s.adaptedInitColor >>  8) & 0xFF) * s.endBr / 255;
+    uint8_t baseB = ( s.adaptedInitColor        & 0xFF) * s.endBr / 255;
     for (int i = 0; i < totalLeds; i++) {
-        s.strip->setPixelColor(i, s.adaptedInitColor);
+        s.strip->setPixelColor(i, baseR, baseG, baseB);
     }
 
     // Анімаційне вікно
@@ -567,6 +572,11 @@ void AnimationManager::update() {
 
     if (xSemaphoreTake(animMutex, portMAX_DELAY) != pdTRUE) return;
 
+    // RUNNING_LIGHT ("немає зв'язку") показується в будь-якому режимі мапи (на старті це FLAG, до першого пакета),
+    // крім хвилини мовчання і гімну: там мапу веде прапор
+    bool runningLightYields = mainOverride.animType == AnimationTypes::RUNNING_LIGHT && (minuteOfSilence || uaAnthemPlaying);
+    bool overrideBlocksLeds = mainOverride.active && !runningLightYields;
+
     // ── RUNNING_LIGHT / SET_BRIGHTNESS override на strip_main ──
     if (mainOverride.active && mainOverride.strip != nullptr) {
         float localElapsed = (now - mainOverride.localStart) / float(mainOverride.period);
@@ -582,7 +592,8 @@ void AnimationManager::update() {
                 xSemaphoreGive(stripMutex);
             }
             mainDirty = true;
-        } else if (!isOff && mainOverride.mapMode == mapMode) {
+        } else if (!isOff && !runningLightYields &&
+                   (mainOverride.mapMode == mapMode || mainOverride.animType == AnimationTypes::RUNNING_LIGHT)) {
             float elapsed = synchronizedMode
                 ? (now - mainOverride.startTime) / float(mainOverride.period)
                 : localElapsed;
@@ -608,7 +619,7 @@ void AnimationManager::update() {
     }
 
     // ── Per-LED strip_main ──
-    if (strip_main != nullptr && !mainOverride.active && !isPreviewActiveForMode(previewState, mapMode)) {
+    if (strip_main != nullptr && !overrideBlocksLeds && !isPreviewActiveForMode(previewState, mapMode)) {
         int numLeds = min((int)strip_main->numPixels(), MAX_LEDS_STRIP_MAIN);
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             for (int i = 0; i < numLeds; i++) {
@@ -637,7 +648,7 @@ void AnimationManager::update() {
     }
 
     // ── Random Colors mode: Per-LED strip_main (rcMainStates) ──
-    if (strip_main != nullptr && mapMode == MapModes::RANDOM_COLORS && !mainOverride.active && !isPreviewActiveForMode(previewState, mapMode)) {
+    if (strip_main != nullptr && mapMode == MapModes::RANDOM_COLORS && !overrideBlocksLeds && !isPreviewActiveForMode(previewState, mapMode)) {
         if (xSemaphoreTake(stripMutex, portMAX_DELAY) == pdTRUE) {
             for (int i = 0; i < ADMIN_UNITS_COUNT; i++) {
                 LedState& s = rcMainStates[i];
@@ -979,6 +990,10 @@ void AnimationManager::adaptAllAnimationBrightness() {
                 bgState.startBr = led.bgBrightness();
             }
             bgState.endBr = globalEnd;
+        }
+        // RUNNING_LIGHT ("немає зв'язку") іде за поточною яскравістю мапи
+        if (mainOverride.active && mainOverride.animType == AnimationTypes::RUNNING_LIGHT) {
+            mainOverride.endBr = led.brightnessRelative(100);
         }
         if (randomColorsMainInitialized) {
             uint8_t relativeBrightness = led.brightnessRelative(100);
