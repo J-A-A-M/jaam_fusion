@@ -16,3 +16,7 @@ site/
 
 # graphify
 graphify-out/
+
+# Python
+__pycache__/
+*.pyc
