@@ -1186,7 +1186,6 @@ void onMessageCallback(WebsocketsMessage msg) {
         // ledBitCache перебудовується з alertsFlat в init-обробці нижче.
         if (!isFirstDataFetchCompleted) {
             memset(alertsFlat, 0, sizeof(alertsFlat));
-            memset(s_ledDirty, 0, sizeof(s_ledDirty));
         }
 
         // ── Фаза 1: оновити alertsFlat, позначити dirty LED ──────────────────
