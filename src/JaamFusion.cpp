@@ -1181,6 +1181,13 @@ void onMessageCallback(WebsocketsMessage msg) {
         size_t count = bodyLen / RECORD_SZ;
         const uint8_t* ptr = data + HEADER_SZ + HASH_SZ;
 
+        // Перший пакет сеансу - повний стан, але сервер шле лише регіони з тривогою: без очищення тривоги,
+        // зняті під час тихого реконекту (мапу тоді не очищено), лишились би на мапі назавжди.
+        // ledBitCache перебудовується з alertsFlat в init-обробці нижче.
+        if (!isFirstDataFetchCompleted) {
+            memset(alertsFlat, 0, sizeof(alertsFlat));
+        }
+
         // ── Фаза 1: оновити alertsFlat, позначити dirty LED ──────────────────
         size_t notMapped = 0, changed = 0;
         for (size_t i = 0; i < count; ++i) {
