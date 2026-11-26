@@ -28,7 +28,7 @@
 - **THEN** його немає в списку, а `--order-number` цього замовлення сервер відхиляє (409), станція завершується до змін на платі
 
 ### Requirement: Налаштування test_mode через NVS
-`test_mode` SHALL брати номер замовлення, Wi-Fi, `firmwareUrl`, Wi-Fi користувача, домашній регіон і власний id з
+`test_mode` SHALL брати номер замовлення, Wi-Fi, `firmwareUrl`, сервер даних (`wshost`), Wi-Fi користувача, домашній регіон і власний id з
 NVS namespace `factory`, а за його відсутності - з констант збірки. Після успішного OTA прошивка MUST стерти `factory`.
 
 #### Scenario: Збірка без NVS
@@ -87,3 +87,19 @@ NVS namespace `factory`, а за його відсутності - з конст
 #### Scenario: Сервер не підтвердив release
 - **WHEN** `release` не вдався після трьох спроб
 - **THEN** у звіті `unit_state` = `release_failed`, станція попереджає оператора, одиниця лишається `reserved`
+
+### Requirement: Сервер даних за середовищем
+Для `--stage dev` станція SHALL передавати `wshost` = `dev-ws.jaam.net.ua`, для prod - `ws.jaam.net.ua`, а `test_mode`
+SHALL записати його в налаштування пристрою, щоб прошита плата підключалася до сервера свого середовища.
+
+#### Scenario: Плата зі стенду dev
+- **WHEN** плату прошито зі `--stage dev`
+- **THEN** після OTA вона підключається до `dev-ws.jaam.net.ua`
+
+### Requirement: Прогін без плати лише на dev
+Станція SHALL мати режим `--fake-chip <CHIP_ID>`, який пропускає esptool і serial та виконує лише серверну частину потоку.
+Режим MUST бути доступний лише зі `--stage dev` і MUST відхилятися на prod до будь-яких викликів.
+
+#### Scenario: Відмова на prod
+- **WHEN** станцію запущено зі `--stage prod --fake-chip DEADBEEF0001`
+- **THEN** станція завершується з помилкою, сервер не викликається
