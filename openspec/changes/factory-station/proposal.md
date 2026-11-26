@@ -14,6 +14,7 @@
   - ті самі, що в браузерному flasher (шлях задається прапорцем).
 - Мінімальна тестова прошивка `env:factory_test` (`src/factory_test/`): чип/flash, Wi-Fi станції, WebSocket з
   `chip_id:`/`firmware:`, підтвердження оператором; `FT:*` рядки в serial, як у touch.
+- Станція обслуговує лише тип `JAAM3.3` (`JAAM2`/`JAAM1` - інші плати, поза межами).
 - Токен адміна станції - `JAAM_FACTORY_TOKEN_PROD`/`_DEV`, `--stage prod|dev` обов'язковий.
 
 ## Capabilities
