@@ -466,6 +466,7 @@ def test_unsupported_board_family_stops_before_the_server(monkeypatch, tmp_path)
 
 def test_stage_is_mandatory(monkeypatch, capsys):
     monkeypatch.delenv("FACTORY_STAGE", raising=False)
+    monkeypatch.setattr(ff, "load_env_file", lambda *a, **k: False)  # a real .env must not bring the stage back
     with pytest.raises(SystemExit):
         ff.main(["run", "--no-order", "--hw-version", "JAAM2"])
 
@@ -500,3 +501,43 @@ def test_late_operator_rejection_is_ignored_once_the_ota_started():
 
     result = ff.follow_ota("/dev/x", "563412C40A24", "1234", LateF(), timeout_s=10, serial_module=serial)
     assert result.ota_ok and result.ota_started
+
+
+def test_progress_line_counts_as_ota_started_when_start_was_lost():
+    class LateF(Operator):
+        calls = 0
+
+        def rejected(self):
+            self.calls += 1
+            return self.calls > 1
+
+    serial = FakeSerialModule([lines("FT:BOOT JAAM3", "FT:CHIP 563412C40A24", "FT:ORDER 1234 nvs", "FT:READY"),
+                               lines("FT:OTA PROGRESS 10", "FT:OTA OK", "FT:CLEANUP OK")])
+    result = ff.follow_ota("/dev/x", "563412C40A24", "1234", LateF(), timeout_s=10, serial_module=serial)
+    assert result.ota_ok and result.ota_started
+
+
+def test_f_is_checked_after_the_read_so_a_start_already_on_the_wire_wins():
+    serial = FakeSerialModule([lines("FT:BOOT JAAM3", "FT:CHIP 563412C40A24", "FT:ORDER 1234 nvs", "FT:OTA START"),
+                               lines("FT:OTA OK", "FT:CLEANUP OK")])
+    result = ff.follow_ota("/dev/x", "563412C40A24", "1234", Operator(reject=True), timeout_s=10, serial_module=serial)
+    assert result.ota_ok  # "f" typed before the first read does not release a board that is already updating
+
+
+def test_wrong_test_build_platform_stops_the_run():
+    serial = FakeSerialModule([lines("FT:BOOT JAAM1", "FT:CHIP 563412C40A24")])
+    with pytest.raises(ff.StationError, match="needs JAAM3"):
+        ff.follow_ota("/dev/x", "563412C40A24", "1234", Operator(), timeout_s=5, serial_module=serial,
+                      expected_platform="JAAM3")
+
+
+def test_ota_error_waits_briefly_for_the_cleanup_line():
+    serial = FakeSerialModule([lines("FT:BOOT JAAM3", "FT:CHIP 563412C40A24", "FT:OTA ERROR 3 no_wifi"),
+                               lines("FT:CLEANUP OK")])
+    result = ff.follow_ota("/dev/x", "563412C40A24", "1234", Operator(), timeout_s=10, serial_module=serial)
+    assert result.ota_error and result.cleanup_ok is True
+
+
+def test_missing_explicit_boot_app0_is_refused_before_the_erase(tmp_path):
+    with pytest.raises(ff.StationError, match="is not a file"):
+        ff.find_boot_app0(str(tmp_path / "missing.bin"))

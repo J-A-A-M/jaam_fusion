@@ -64,6 +64,8 @@ STAGES = {
 }
 # Type of the order in the registry -> PlatformIO env of test_mode (platformio.ini). Types without a build are refused.
 PLATFORMS = {"JAAM3.3": "test_mode_jaam3", "JAAM2": "test_mode_jaam2", "JAAM1": "test_mode_jaam1"}
+# PLATFORM_NAME of each build (platformio.ini), what the board prints in FT:BOOT
+PLATFORM_NAMES = {"JAAM3.3": "JAAM3", "JAAM2": "JAAM2", "JAAM1": "JAAM1"}
 RELEASES_API = "https://api.github.com/repos/J-A-A-M/jaam_fusion/releases/latest"
 FIRMWARE_URL = "https://update.jaam.net.ua/{version}"
 OFFSET_BOOTLOADER = 0x1000  # classic ESP32; the other offsets come from the build's partitions.bin
@@ -140,6 +142,8 @@ def build_images(build_dir: Path) -> dict:
 
 def find_boot_app0(explicit: str | None) -> Path:
     if explicit:
+        if not Path(explicit).is_file():  # before the erase: a missing file must not leave the board blank
+            raise StationError(f"--boot-app0 {explicit} is not a file")
         return Path(explicit)
     home = Path.home()
     for pattern in (".platformio-pioarduino/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin",
@@ -367,7 +371,7 @@ class FtRun:
             self.ready = True
         elif kind == "OTA":
             state, _, detail = rest.partition(" ")
-            if state == "START":
+            if state in ("START", "PROGRESS"):  # a lost START line must not make a late "f" release the unit
                 self.ota_started = True
             elif state == "OK":
                 self.ota_ok = True
@@ -403,20 +407,16 @@ class OperatorInput:
 
 
 def follow_ota(port: str, expected_chip_id: str, expected_order: str, operator: OperatorInput,
-               timeout_s: int = TEST_TIMEOUT_S, serial_module=None) -> FtRun:
+               timeout_s: int = TEST_TIMEOUT_S, serial_module=None, expected_platform: str | None = None) -> FtRun:
     """Reads the FT lines until the OTA result. The USB bridge may drop while the chip resets, so the port is reopened;
     the "?" every 2 s makes the firmware re-print what it printed before we attached. The result after the restart is
     gone (the release firmware does not answer), so the OK lines must be seen here."""
     if serial_module is None:
         import serial as serial_module
 
-    state, deadline = FtRun(), time.monotonic() + timeout_s
+    state, deadline, err_deadline = FtRun(), time.monotonic() + timeout_s, None
     ser, buf, last_ping = None, b"", 0.0
     while time.monotonic() < deadline:
-        # Once the board is downloading the release a late "f" must not give the unit back: the board gets the release
-        # anyway, so the line is dropped and the OTA result decides.
-        if operator.rejected() and not state.ota_started:
-            raise OperatorRejected("the operator declared the board defective")
         if ser is None:
             try:
                 ser = serial_module.Serial(port, 115200, timeout=0.2)
@@ -442,6 +442,13 @@ def follow_ota(port: str, expected_chip_id: str, expected_order: str, operator: 
             if state.ready and not was_ready:
                 print("\n>>> Пройдіть тест на платі (стрічки, датчики, кнопки). Усе гаразд - довго натисніть BTN1: "
                       "плата сама завантажить прошивку. Брак - введіть f і Enter.")
+        # Checked after the read: a START line already on the wire must be seen before "f" can release the unit. Once
+        # the board is downloading the release the line is dropped and the OTA result decides.
+        if operator.rejected() and not state.ota_started:
+            raise OperatorRejected("the operator declared the board defective")
+        if expected_platform and state.platform and state.platform != expected_platform:
+            raise StationError(f"the board runs the {state.platform} test build, the order needs {expected_platform}: "
+                               "wrong --test-build-dir?")
         if state.chip_id and state.chip_id != expected_chip_id:
             raise StationError(f"the board reports chip_id {state.chip_id}, the station derived {expected_chip_id} "
                                "from the MAC: stop and check chip_id_from_mac()")
@@ -449,7 +456,11 @@ def follow_ota(port: str, expected_chip_id: str, expected_order: str, operator: 
             raise StationError("test_mode did not read the NVS settings (FT:ORDER ... build): wrong NVS offset?")
         if state.order and state.order != expected_order:
             raise StationError(f"the board has order {state.order}, the station sent {expected_order}")
-        if state.finished:
+        if state.ota_error is not None and err_deadline is None:
+            err_deadline = time.monotonic() + 5  # the board prints FT:CLEANUP right after the error
+        if state.ota_ok and state.cleanup_ok is not None:
+            break
+        if state.ota_error is not None and (state.cleanup_ok is not None or time.monotonic() > err_deadline):
             break
     if ser is not None:
         ser.close()
@@ -601,8 +612,12 @@ def _flash_and_wait(args, stage, admin_url, token, fake_chip, chip_id, order_num
                     hex(table["otadata"][0]), str(boot_app0),
                     hex(table["app0"][0]), str(f["firmware"]))
         print("=== Очікую тест і OTA")
-        result = follow_ota(port, chip_id, order_number, OperatorInput())
+        result = follow_ota(port, chip_id, order_number, OperatorInput(), expected_platform=PLATFORM_NAMES[record["hw_version"]])
         if result.ota_error is not None:
+            if result.cleanup_ok is not True:
+                print("\nУВАГА: після помилки OTA плата не підтвердила очищення (FT:CLEANUP): пароль Wi-Fi станції може "
+                      "лишатися в NVS забракованої плати.", file=sys.stderr)
+                record["cleanup"] = "unconfirmed"
             return _reject(args, admin_url, token, chip_id, unit, record, f"OTA: {result.ota_error}")
         if result.cleanup_ok is not True:
             raise StationError("the OTA went through but the board did not wipe the station's settings "

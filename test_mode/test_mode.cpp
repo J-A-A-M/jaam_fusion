@@ -158,6 +158,7 @@ static String buildDeviceId() {
 // Printed before ESP.restart() on purpose: after a successful OTA the release firmware runs and no longer answers "?".
 static String ftOta     = "";   // "" | "START" | "PROGRESS <n>" | "OK" | "ERROR <reason>"
 static String ftCleanup = "";   // "" | "OK" | "FAIL"
+static bool   ftReady   = false;  // set once setup() is done: a late "?" gets READY again
 
 static void ft(const String& line) { LOG.println("FT:" + line); }
 
@@ -176,6 +177,8 @@ static void ftDump() {
     ft(currentPhase == PHASE_TEST ? "PHASE TEST" : "PHASE UPDATE");
     if (ftOta.length()) ft("OTA " + ftOta);
     if (ftCleanup.length()) ft("CLEANUP " + ftCleanup);
+    // The station may attach after the first READY was lost; never during the update.
+    if (ftReady && currentPhase == PHASE_TEST) ft("READY");
 }
 
 static void ftPollSerial() {
@@ -606,6 +609,7 @@ void setup() {
         LOG.println("[TEST] Device ID: not set");
     }
     ftDump();
+    ftReady = true;
     ft("READY");  // the operator can now walk through the hardware test and long-press BTN1
 }
 
