@@ -2,28 +2,40 @@
 
 ## Why
 
-Для jaam_fusion немає станції: прошивка йде через браузерний flasher, а запис у реєстр адмінки заводять вручну. Основна
-зміна (`jaam_server`, `device-order-autoregistration`) автоматизує внесення даних замовлення; fusion-плати мають іти тим
-самим шляхом, що й touch: за номером замовлення, з тестом і підтвердженням.
+Для jaam_fusion немає станції на ПК, а запис у реєстр адмінки заводять вручну. Основна зміна (`jaam_server`,
+`device-order-autoregistration`) автоматизує внесення даних замовлення; fusion-плати мають іти тим самим шляхом, що й
+touch: за номером замовлення, з тестом і підтвердженням.
+
+Тестова прошивка вже існує: `env:test_mode` (`test_mode/test_mode.cpp`). Фаза TEST - апаратна діагностика (змійка
+на стрічках, датчики, кнопки) для платформ JAAM1/2/3; довге натискання BTN1 запускає фазу UPDATE: пише NVS-дефолти
+(`id` = `<платформа>-<номер замовлення>`, домашній регіон, режими кнопок) і через Wi-Fi ставить робочу прошивку OTA з
+`firmwareUrl`. Проблема: усе налаштування (номер замовлення, Wi-Fi, URL, платформа) - константи часу компіляції, тож
+на кожну плату потрібна окрема збірка, а результат ніхто не бачить.
 
 ## What Changes
 
-- Нова станція `tools/factory/factory_flash.py` (потік як у jaam_touch): стирання -> MAC -> chip_id (верхній регістр) ->
-  `POST /api/factory/register` -> тестова прошивка -> оператор -> робоча прошивка -> `complete` (БРАК -> `release`).
-- Робоча прошивка: останній реліз GitHub, asset за родиною чипа (`JAAM`, `JAAM_s3`, `JAAM_c3`), bootloader/partitions
-  - ті самі, що в браузерному flasher (шлях задається прапорцем).
-- Мінімальна тестова прошивка `env:factory_test` (`src/factory_test/`): чип/flash, Wi-Fi станції, WebSocket з
-  `chip_id:`/`firmware:`, підтвердження оператором; `FT:*` рядки в serial, як у touch.
-- Станція обслуговує лише тип `JAAM3.3` (`JAAM2`/`JAAM1` - інші плати, поза межами).
+- **Станція** `tools/factory/factory_flash.py` (на базі потоку jaam_touch): MAC -> chip_id (верхній регістр) ->
+  `POST /api/factory/register` -> стирання -> заливка `test_mode` потрібної платформи -> NVS-образ з налаштуваннями
+  станції -> оператор проходить тест і довго тисне BTN1 -> OTA робочої прошивки -> `complete` (БРАК/збій -> `release`).
+- **`test_mode` читає налаштування з NVS** (namespace `factory`: номер замовлення, Wi-Fi станції, `firmwareUrl`,
+  Wi-Fi користувача, домашній регіон, власний id), а константи лишаються запасними, тож ручна збірка працює як раніше.
+  Після успішного OTA прошивка стирає `factory` (Wi-Fi станції не лишається на пристрої).
+- **`test_mode` друкує `FT:*` рядки** (чип, платформа, фаза, `OTA START/PROGRESS/OK/ERROR`, `CLEANUP OK`) і
+  передруковує стан на запит `?`, як у touch: станція не губить результат, якщо під'єдналась до порту пізніше.
+- **Платформи**: окремі збірки `test_mode_jaam1/2/3` (`PLATFORM_ID`/`PLATFORM_NAME`), станція за hw_version
+  одиниці обирає збірку.
+- Виправлення поруч: порівняння `userSsid != ""` у `saveUserWifi` порівнює вказівники (завжди істина), а `deviceId[12]`
+  у `writeNvsDefaults` обрізає номер замовлення від 5 цифр.
 - Токен адміна станції - `JAAM_FACTORY_TOKEN_PROD`/`_DEV`, `--stage prod|dev` обов'язковий.
 
 ## Capabilities
 
 ### New Capabilities
-- `fusion-factory-station`: станція й тестова прошивка jaam_fusion.
+- `fusion-factory-station`: станція, налаштування `test_mode` через NVS і `FT:*` протокол.
 
 ## Impact
 
-- `tools/factory/*`, `src/factory_test/*`, `platformio.ini`, README/CONTROLS_GUIDE; бойова прошивка не змінюється
-  (NVS-секрету немає).
-- Склад тесту (датчики, дисплей, стрічка) - відкрите питання з `device-order-autoregistration/design.md`.
+- `tools/factory/*` (нове), `test_mode/test_mode.cpp`, `platformio.ini` (envs `test_mode_jaam1/2/3`), README.
+- Бойова прошивка не змінюється: `id` у NVS вона вже читає (`firmware:<версія>_<id>`).
+- Платформа `JAAM3` у `test_mode` пише `legacy=6` (конфіг JAAM 3.2), а в продажу JAAM 3.3: перевірити, чи конфіг
+  придатний для 3.3 (відкрите питання `device-order-autoregistration`).
