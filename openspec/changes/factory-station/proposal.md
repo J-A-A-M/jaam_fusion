@@ -38,5 +38,5 @@ touch: за номером замовлення, з тестом і підтве
 
 - `tools/factory/*` (нове), `test_mode/test_mode.cpp`, `platformio.ini` (envs `test_mode_jaam1/2/3`), README.
 - Бойова прошивка не змінюється: `id` у NVS вона вже читає (`firmware:<версія>_<id>`).
-- Платформа `JAAM3` у `test_mode` пише `legacy=6` (конфіг JAAM 3.2), а в продажу JAAM 3.3: перевірити, чи конфіг
-  придатний для 3.3 (відкрите питання `device-order-autoregistration`).
+- Платформа `JAAM3` у `test_mode` пише `legacy=6` (`JAAM_3_2`): це єдиний тип JAAM 3 у прошивці, тож hw_version `JAAM3.3`
+  мапиться на неї без окремої платформи (рішення власника).
