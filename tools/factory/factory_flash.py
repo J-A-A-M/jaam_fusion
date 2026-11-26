@@ -318,6 +318,8 @@ def confirm(question: str, prompt=input, interactive: bool | None = None) -> boo
     return prompt(f"{question} [Y/n]: ").strip().lower() in ("", "y", "yes", "т", "так")
 
 
+# Keep in step with jaam_touch/tools/factory/factory_flash.py: api_request, choose_order, confirm, unit_action,
+# describe_unit, check_fake_chip are the same flow there (a fix in one belongs in the other).
 def unit_action(admin_url: str, token: str, action: str, chip_id: str, sleep=time.sleep) -> bool:
     """complete / release with 3 tries: a call the panel did not confirm is not 'done'."""
     last = ""
@@ -345,6 +347,7 @@ class FtRun:
     order_source: str = ""
     platform: str = ""
     ready: bool = False
+    ota_started: bool = False
     ota_ok: bool = False
     ota_error: str | None = None
     cleanup_ok: bool | None = None
@@ -364,7 +367,9 @@ class FtRun:
             self.ready = True
         elif kind == "OTA":
             state, _, detail = rest.partition(" ")
-            if state == "OK":
+            if state == "START":
+                self.ota_started = True
+            elif state == "OK":
                 self.ota_ok = True
             elif state == "ERROR":
                 self.ota_error = detail or "unknown"
@@ -408,7 +413,9 @@ def follow_ota(port: str, expected_chip_id: str, expected_order: str, operator: 
     state, deadline = FtRun(), time.monotonic() + timeout_s
     ser, buf, last_ping = None, b"", 0.0
     while time.monotonic() < deadline:
-        if operator.rejected():
+        # Once the board is downloading the release a late "f" must not give the unit back: the board gets the release
+        # anyway, so the line is dropped and the OTA result decides.
+        if operator.rejected() and not state.ota_started:
             raise OperatorRejected("the operator declared the board defective")
         if ser is None:
             try:
@@ -512,6 +519,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     env_name = PLATFORMS.get(hw_version)
     if env_name is None:
         raise StationError(f"no test_mode build for {hw_version}")
+    if not order_number.isdigit():  # before the reservation: test_mode builds the device id from the digits
+        raise StationError(f"order number {order_number!r} is not numeric: test_mode builds JAAM3-<order> from it")
 
     firmware_url = None
     images = boot_app0 = None
@@ -576,12 +585,13 @@ def _flash_and_wait(args, stage, admin_url, token, fake_chip, chip_id, order_num
     else:
         table = images["table"]
         nvs_offset, nvs_size = table["nvs"]
-        if not args.no_erase:
-            print("=== Стираю flash")
-            esptool(port, "erase-flash")
         with tempfile.TemporaryDirectory(prefix="jaam-factory-") as tmp:
             nvs_bin = Path(tmp) / "nvs.bin"
+            # Built before the erase: a bad order number or a missing generator must not leave the board blank.
             generate_nvs(nvs_rows(order_number, ssid, wifi_pass, firmware_url, stage["ws_host"]), nvs_bin, nvs_size)
+            if not args.no_erase:
+                print("=== Стираю flash")
+                esptool(port, "erase-flash")
             print("=== Заливаю тестову прошивку з налаштуваннями")
             f = images["files"]
             esptool(port, "write-flash",

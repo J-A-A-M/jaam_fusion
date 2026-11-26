@@ -486,3 +486,17 @@ def test_env_file_never_overrides_the_environment(tmp_path):
     f.write_text("garbage", encoding="utf-8")
     with pytest.raises(ff.StationError):
         ff.load_env_file(f, {})
+
+
+def test_late_operator_rejection_is_ignored_once_the_ota_started():
+    serial = FakeSerialModule([lines("FT:BOOT JAAM3", "FT:CHIP 563412C40A24", "FT:ORDER 1234 nvs", "FT:READY", "FT:OTA START"),
+                               lines("FT:OTA OK", "FT:CLEANUP OK")])
+    class LateF(Operator):
+        calls = 0
+
+        def rejected(self):  # the operator types "f" only after the first read, when the OTA already started
+            self.calls += 1
+            return self.calls > 1
+
+    result = ff.follow_ota("/dev/x", "563412C40A24", "1234", LateF(), timeout_s=10, serial_module=serial)
+    assert result.ota_ok and result.ota_started

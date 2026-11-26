@@ -389,11 +389,16 @@ static void saveUserWifi() {
     Serial.println("[UPDATE] No User WiFi creds, erased..."); }
 }
 
+static bool cleanupFactoryNvs();
+
 // A failed update, reported once: the station gives the unit back on "FT:OTA ERROR", so it must be a real failure.
+// The board is rejected then, so the station's settings (its WiFi password) are wiped here too, not only after an OK.
 static void otaFail(String reason) {
     reason.replace('\n', ' ');
     ftOta = "ERROR " + reason;
     ft("OTA " + ftOta);
+    ftCleanup = cleanupFactoryNvs() ? "OK" : "FAIL";
+    ft("CLEANUP " + ftCleanup);
 }
 
 // Wipes the station's settings (its WiFi password included) from NVS. True only when nothing is left of them.
