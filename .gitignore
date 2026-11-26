@@ -20,3 +20,7 @@ graphify-out/
 # Python
 __pycache__/
 *.pyc
+
+# Factory station (tools/factory): per-device reports and the station's secrets (template: tools/factory/.env.example)
+factory_reports/
+tools/factory/.env
