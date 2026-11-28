@@ -4,6 +4,10 @@
 //   PHASE_TEST   — hardware diagnostics: LED snake, sensor readings, button events
 //   PHASE_UPDATE — write NVS defaults + OTA flash (triggered by BTN1 long press)
 //
+// Settings (order number, station WiFi, firmware URL, user WiFi, home district, custom id, WS host) come from the
+// NVS namespace "factory", written by the flashing station (tools/factory/factory_flash.py); the constants below are
+// the fallback for a hand-built firmware. The station follows the "FT:*" serial lines (see ft()/ftDump()).
+//
 // Build: pio run -e test_mode
 // Set in platformio.ini build_flags:
 //   -D PLATFORM_ID=<1|2|3|0>   (1=JAAM1, 2=JAAM2, 3=JAAM3, 0=default)
@@ -106,6 +110,83 @@ static const char* firmwareUrl   = "https://update.jaam.net.ua/5.0.1";
 static const int   homeDistrict  = 31;   // Default home region ID (31 = Kyiv)
 static const char* customDeviceId = "";   // Custom device ID (overrides auto-generated if set)
 
+enum Phase { PHASE_TEST, PHASE_UPDATING };
+static Phase currentPhase = PHASE_TEST;
+
+// ─── Factory config: NVS namespace "factory" over the constants above ──────────────────────────
+struct FactoryCfg {
+    String order, ssid, pass, userSsid, userPass, firmwareUrl, deviceId, wsHost;
+    int    home = 31;
+    bool   fromNvs = false;
+};
+static FactoryCfg cfg;
+
+static void loadFactoryConfig() {
+    cfg.order       = String(orderNumber);
+    cfg.ssid        = ssid;
+    cfg.pass        = password;
+    cfg.userSsid    = userSsid;
+    cfg.userPass    = userPassword;
+    cfg.firmwareUrl = firmwareUrl;
+    cfg.deviceId    = customDeviceId;
+    cfg.wsHost      = "";
+    cfg.home        = homeDistrict;
+    Preferences f;
+    if (!f.begin("factory", true)) return;  // no namespace: a hand-built firmware keeps the constants
+    cfg.fromNvs = f.isKey("order");
+    if (f.isKey("order"))    cfg.order       = f.getString("order");
+    if (f.isKey("ssid"))     cfg.ssid        = f.getString("ssid");
+    if (f.isKey("pass"))     cfg.pass        = f.getString("pass");
+    if (f.isKey("user_ssid")) cfg.userSsid   = f.getString("user_ssid");
+    if (f.isKey("user_pass")) cfg.userPass   = f.getString("user_pass");
+    if (f.isKey("fw_url"))   cfg.firmwareUrl = f.getString("fw_url");
+    if (f.isKey("dev_id"))   cfg.deviceId    = f.getString("dev_id");
+    if (f.isKey("wshost"))   cfg.wsHost      = f.getString("wshost");
+    if (f.isKey("home"))     cfg.home        = f.getInt("home");
+    f.end();
+}
+
+// "%PLATFORM%-yyyy": the order number padded to 4 digits, longer numbers kept whole (a 12-byte buffer used to cut them).
+static String buildDeviceId() {
+    if (cfg.deviceId.length() > 0) return cfg.deviceId;
+    String o = cfg.order;
+    while (o.length() < 4) o = "0" + o;
+    return String(PLATFORM_NAME) + "-" + o;
+}
+
+// ─── FT protocol: the lines the flashing station follows over serial ───────────────────────────
+// Printed before ESP.restart() on purpose: after a successful OTA the release firmware runs and no longer answers "?".
+static String ftOta     = "";   // "" | "START" | "PROGRESS <n>" | "OK" | "ERROR <reason>"
+static String ftCleanup = "";   // "" | "OK" | "FAIL"
+static bool   ftReady   = false;  // set once setup() is done: a late "?" gets READY again
+
+static void ft(const String& line) { LOG.println("FT:" + line); }
+
+static void ftChipLine() {
+    uint64_t mac = ESP.getEfuseMac();
+    char id[24];
+    snprintf(id, sizeof(id), "%04X%04X", (uint32_t)(mac >> 32), (uint32_t)mac);  // same format as the firmware's chipID
+    ft(String("CHIP ") + id);
+}
+
+// Re-prints the whole state: USB/UART output printed before the station attached is lost, so the station asks with "?".
+static void ftDump() {
+    ft(String("BOOT ") + PLATFORM_NAME);
+    ftChipLine();
+    ft(String("ORDER ") + cfg.order + (cfg.fromNvs ? " nvs" : " build"));
+    ft(currentPhase == PHASE_TEST ? "PHASE TEST" : "PHASE UPDATE");
+    if (ftOta.length()) ft("OTA " + ftOta);
+    if (ftCleanup.length()) ft("CLEANUP " + ftCleanup);
+    // The station may attach after the first READY was lost; never during the update.
+    if (ftReady && currentPhase == PHASE_TEST) ft("READY");
+}
+
+static void ftPollSerial() {
+    while (Serial.available()) {
+        if (Serial.read() == '?') ftDump();
+    }
+}
+
 // ─── Module instances ──────────────────────────────────────────────────────────
 JaamDisplay       display;
 JaamButton        buttons;
@@ -114,8 +195,6 @@ JaamClimateSensor climate;
 JaamLightSensor   lightSensor;
 
 // ─── State ─────────────────────────────────────────────────────────────────────
-enum Phase { PHASE_TEST, PHASE_UPDATING };
-static Phase         currentPhase    = PHASE_TEST;
 static bool          btnEventPending = false;
 static unsigned long btnEventTime    = 0;
 static unsigned long lastDisplayUpd  = 0;
@@ -256,15 +335,14 @@ void updateIdleDisplay() {
 
 // ─── Updater phase ─────────────────────────────────────────────────────────────
 static void writeNvsDefaults() {
-    char deviceId[12];  // "%PLATFORM%-9999\0"
-    snprintf(deviceId, sizeof(deviceId), "%s-%04d", PLATFORM_NAME, orderNumber);
+    const String deviceId = buildDeviceId();
 
     Preferences prefs;
     prefs.begin("storage", false);
     prefs.clear();
-    const char* idToSave = (customDeviceId && customDeviceId[0] != '\0') ? customDeviceId : deviceId;
-    prefs.putString("id", idToSave);    // device id
-    prefs.putInt("hmd", homeDistrict);  // home district
+    prefs.putString("id", deviceId);    // device id
+    prefs.putInt("hmd", cfg.home);      // home district
+    if (cfg.wsHost.length() > 0) prefs.putString("wshost", cfg.wsHost);  // data server of the station's environment
 
 #if PLATFORM_ID == PLATFORM_JAAM1
     prefs.putInt("legacy", 0);          // JAAM 1
@@ -272,7 +350,7 @@ static void writeNvsDefaults() {
     prefs.putInt("bml",  0);            // button long mode (0 - toggle display and map)
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
-    LOG.printf("[UPDATE] NVS: id=%s, JAAM 1 defaults applied\n", deviceId);
+    LOG.printf("[UPDATE] NVS: id=%s, JAAM 1 defaults applied\n", deviceId.c_str());
 #elif PLATFORM_ID == PLATFORM_JAAM2
     prefs.putInt("legacy", 3);          // JAAM 2.1
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
@@ -282,7 +360,7 @@ static void writeNvsDefaults() {
     prefs.putInt("sobc", 1);            // sound of button click (0 - off, 1 - on)
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
-    LOG.printf("[UPDATE] NVS: id=%s, JAAM 2 defaults applied\n", deviceId);
+    LOG.printf("[UPDATE] NVS: id=%s, JAAM 2 defaults applied\n", deviceId.c_str());
 #elif PLATFORM_ID == PLATFORM_JAAM3
     prefs.putInt("legacy", 6);          // JAAM 3.2
     prefs.putInt("bm",   1);            // button mode (1 - map mode change)
@@ -294,7 +372,7 @@ static void writeNvsDefaults() {
     prefs.putInt("sobc", 1);            // sound of button click (0 - off, 1 - on)
     prefs.putInt("brightness", 100);    // display brightness (0-100)
     prefs.putInt("brd", 100);           // auto brightness for day (0-100)
-    LOG.printf("[UPDATE] NVS: id=%s, JAAM 3 defaults applied\n", deviceId);
+    LOG.printf("[UPDATE] NVS: id=%s, JAAM 3 defaults applied\n", deviceId.c_str());
 #else
     prefs.putInt("legacy", 8);          
 #endif
@@ -306,12 +384,37 @@ static void saveUserWifi() {
   Serial.println("[UPDATE] Disconnecting from WiFi...");
   bool disconnect = WiFi.disconnect(false, true);
   Serial.println(disconnect ? "[UPDATE] Disconnected from WiFi" : "[UPDATE] Disconnect from WiFi failed");
-  if (userSsid != "" && userPassword != "") {
-    WiFi.begin(userSsid, userPassword);
+  if (cfg.userSsid.length() > 0 && cfg.userPass.length() > 0) {  // was a pointer comparison with "", always true
+    WiFi.begin(cfg.userSsid.c_str(), cfg.userPass.c_str());
     WiFi.waitForConnectResult(10000);
-    Serial.printf("[UPDATE] Saved User WiFi creds. SSID: %s\n", userSsid);
+    Serial.printf("[UPDATE] Saved User WiFi creds. SSID: %s\n", cfg.userSsid.c_str());
   } else {
     Serial.println("[UPDATE] No User WiFi creds, erased..."); }
+}
+
+static bool cleanupFactoryNvs();
+
+// A failed update, reported once: the station gives the unit back on "FT:OTA ERROR", so it must be a real failure.
+// The board is rejected then, so the station's settings (its WiFi password) are wiped here too, not only after an OK.
+static void otaFail(String reason) {
+    reason.replace('\n', ' ');
+    ftOta = "ERROR " + reason;
+    ft("OTA " + ftOta);
+    ftCleanup = cleanupFactoryNvs() ? "OK" : "FAIL";
+    ft("CLEANUP " + ftCleanup);
+}
+
+// Wipes the station's settings (its WiFi password included) from NVS. True only when nothing is left of them.
+static bool cleanupFactoryNvs() {
+    Preferences f;
+    if (f.begin("factory", false)) {
+        f.clear();
+        f.end();
+    }
+    Preferences check;
+    bool gone = !check.begin("factory", true) || !check.isKey("ssid");  // read-only begin fails once the namespace is gone
+    check.end();
+    return gone;
 }
 
 void startUpdating() {
@@ -322,27 +425,31 @@ void startUpdating() {
     if (strip_service) { strip_service->clear(); strip_service->show(); }
 
     LOG.println("[UPDATE] Phase: UPDATING");
+    ft("TEST PASS operator");  // the operator confirmed the test by the long press
+    ft("PHASE UPDATE");
     display.printMessage("UPDATE", "Writing NVS...");
     writeNvsDefaults();
 
-    if (strlen(ssid) == 0) {
+    if (cfg.ssid.length() == 0) {
         display.printMessage("UPDATE", "No WiFi config");
         LOG.println("[UPDATE] ssid is empty — NVS written, OTA skipped");
+        otaFail("no_wifi_config");
         return;
     }
 
     display.printMessage("UPDATE", "WiFi...");
-    WiFi.begin(ssid, password);
+    WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
 
     unsigned long t0 = millis();
     while (WiFi.status() != WL_CONNECTED) {
         if (millis() - t0 > 20000) {
             display.printMessage("UPDATE", "WiFi timeout");
             LOG.println("[UPDATE] WiFi connect timeout");
+            otaFail("wifi_timeout");
             return;
         }
         delay(500);
-        LOG.printf("[UPDATE] Connecting to %s...\n", ssid);
+        LOG.printf("[UPDATE] Connecting to %s...\n", cfg.ssid.c_str());
     }
     LOG.println("[UPDATE] WiFi connected");
     display.printMessage("UPDATE", "Downloading...");
@@ -355,19 +462,33 @@ void startUpdating() {
     httpUpdate.onStart([]() {
         display.printMessage("UPDATE", "Started...");
         LOG.println("[UPDATE] OTA started");
+        ftOta = "START";
+        ft("OTA START");
     });
 
     httpUpdate.onProgress([](int cur, int total) {
-        if (total == 0) return;
+        if (total < 100) return;
         int pct = cur / (total / 100);
         display.printMessage("UPDATE", String(pct) + "%");
         LOG.printf("[UPDATE] %d%%\n", pct);
+        static int lastFtPct = -10;
+        if (pct >= lastFtPct + 10) {  // a line per 10 %: enough for the station, light for the serial port
+            lastFtPct = pct;
+            ftOta = "PROGRESS " + String(pct);
+            ft("OTA " + ftOta);
+        }
     });
 
     httpUpdate.onEnd([]() {
         display.printMessage("UPDATE", "Done! Rebooting");
         LOG.println("[UPDATE] OTA complete");
         saveUserWifi();
+        // The station reads these two lines before the restart: afterwards the release firmware runs.
+        ftOta = "OK";
+        ft("OTA OK");
+        ftCleanup = cleanupFactoryNvs() ? "OK" : "FAIL";
+        ft("CLEANUP " + ftCleanup);
+        Serial.flush();
         delay(1000);
         ESP.restart();
     });
@@ -375,9 +496,15 @@ void startUpdating() {
     httpUpdate.onError([](int err) {
         display.printMessage("UPDATE ERR", String(err));
         LOG.printf("[UPDATE] OTA error %d: %s\n", err, httpUpdate.getLastErrorString().c_str());
+        otaFail(String(err) + " " + httpUpdate.getLastErrorString());
     });
 
-    httpUpdate.update(client, firmwareUrl);
+    t_httpUpdate_return ret = httpUpdate.update(client, cfg.firmwareUrl);
+    if (ret == HTTP_UPDATE_NO_UPDATES) {
+        otaFail("no_updates");
+    } else if (ret == HTTP_UPDATE_FAILED && !ftOta.startsWith("ERROR")) {
+        otaFail("failed");
+    }
 }
 
 // ─── Arduino entry points ──────────────────────────────────────────────────────
@@ -385,6 +512,7 @@ void setup() {
     LOG.begin(115200);
     delay(200);
     LOG.println("\n=== TEST MODE ===");
+    loadFactoryConfig();
 
     stripMutex = xSemaphoreCreateMutex();
 
@@ -480,9 +608,13 @@ void setup() {
     } else {
         LOG.println("[TEST] Device ID: not set");
     }
+    ftDump();
+    ftReady = true;
+    ft("READY");  // the operator can now walk through the hardware test and long-press BTN1
 }
 
 void loop() {
+    ftPollSerial();  // "?" from the station re-prints the FT state, in every phase
     if (currentPhase != PHASE_TEST) return;
 
     buttons.tick();
